@@ -9,22 +9,24 @@ import Logo from '../components/Logo';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAuth();
+  const [error, setError] = useState('');
+  const { login, user: authUser } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
-    // Default admin: username 'admin', password 'admin 123'
-    let role: 'user' | 'admin' = 'user';
-    if (email === 'Ceo@pallywear.com' && password === 'Ceo@pallywear24') {
-      role = 'admin';
-    } else if (email.includes('admin')) {
-      role = 'admin';
+    const result = login(email, password);
+    if (result.success) {
+      // Re-fetch user from context to ensure role-based navigation
+      // Note: AuthContext user state update might be async, so we use logic based on email for immediate nav
+      // but the context update will handle the rest
+      const isAdmin = email.toLowerCase() === 'ceo@pallywear.com' || email.toLowerCase().startsWith('admin') || email.toLowerCase().startsWith('ceo');
+      navigate(isAdmin ? '/admin' : '/dashboard');
+    } else {
+      setError(result.message || 'Login failed. Try ceo@pallywear.com / Ceo@pallywear24');
     }
-
-    login(email || 'Ceo@pallywear.com', role);
-    navigate(role === 'admin' ? '/admin' : '/dashboard');
   };
 
   return (
@@ -41,6 +43,11 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Mail className="w-4 h-4 opacity-70" /> Email
@@ -103,7 +110,7 @@ export default function Login() {
         <p className="text-center text-sm text-gray-500 mt-8">
           Don't have an account?{' '}
           <Link to="/register" className="font-bold text-brand-primary hover:underline ml-1">
-            Sign up for free
+            Register here
           </Link>
         </p>
       </motion.div>

@@ -29,7 +29,7 @@ const MOCK_LOGS = [
 ];
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, registeredUsers, deleteUser } = useAuth();
   const { leads } = useLeads();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'security' | 'logs'>('overview');
@@ -37,22 +37,15 @@ export default function AdminDashboard() {
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const [sysUsers, setSysUsers] = useState([
-    { id: 1, name: 'Rajesh K.', email: 'rajesh@pallywear.com', role: 'admin', date: 'May 1, 2026', status: 'Active' },
-    { id: 2, name: 'Mike L.', email: 'mike@pallywear.com', role: 'user', date: 'May 3, 2026', status: 'Active' },
-    { id: 3, name: 'Sarah K.', email: 'sarah@pallywear.com', role: 'user', date: 'May 4, 2026', status: 'Active' },
-    { id: 4, name: 'Demo User', email: 'demo@pallywear.com', role: 'user', date: 'May 5, 2026', status: 'Awaiting Verification' },
-  ]);
-
-  const removeUser = (id: number) => {
-    if (confirm('Are you sure you want to remove this user from the platform?')) {
-      setSysUsers(sysUsers.filter(u => u.id !== id));
+  const handleRemoveUser = (id: string) => {
+    if (confirm('Are you sure you want to remove this user? They will need to register again to access the platform.')) {
+      deleteUser(id);
     }
   };
 
   const handleLogout = () => {
     logout();
-    navigate('/Pallywear');
+    navigate('/login');
   };
 
   const totalRevenue = leads.reduce((sum, l) => sum + l.totalOrderValue, 0);
@@ -153,7 +146,7 @@ export default function AdminDashboard() {
                 {[
                   { label: 'Global Revenue', val: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
                   { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-brand-primary', bg: 'bg-brand-secondary' },
-                  { label: 'Hot Leads', val: leads.filter(l => l.leadType === 'Hot').length, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+                  { label: 'Staff Members', val: registeredUsers.length, icon: Shield, color: 'text-purple-600', bg: 'bg-purple-50' },
                   { label: 'Uptime', val: '99.9%', icon: Globe, color: 'text-purple-600', bg: 'bg-purple-50' },
                 ].map((stat, i) => (
                   <motion.div
@@ -238,7 +231,7 @@ export default function AdminDashboard() {
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="font-bold text-gray-800">Platform Registered Users</h3>
                 <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Total Users: 4</span>
+                  <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Total Users: {registeredUsers.length}</span>
                 </div>
               </div>
               <table className="w-full text-sm text-left">
@@ -252,12 +245,16 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {sysUsers.map((u, i) => (
-                    <tr key={i} className="hover:bg-gray-50/50 group">
+                  {registeredUsers.map((u, i) => (
+                    <tr key={u.id} className="hover:bg-gray-50/50 group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-brand-secondary flex items-center justify-center text-brand-primary font-bold text-xs uppercase overflow-hidden">
-                            <img src={`https://ui-avatars.com/api/?name=${u.name}&background=EAF4F7&color=3291B6`} alt={u.name} />
+                            {u.avatar ? (
+                              <img src={u.avatar} alt={u.name} />
+                            ) : (
+                              <span>{u.name.charAt(0)}</span>
+                            )}
                           </div>
                           <div>
                             <p className="font-bold text-gray-800">{u.name}</p>
@@ -273,17 +270,22 @@ export default function AdminDashboard() {
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-500 text-xs">{u.date}</td>
+                      <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5">
-                          <div className={cn("w-1.5 h-1.5 rounded-full", u.status === 'Active' ? "bg-green-500" : "bg-amber-500")} />
-                          <span className="text-[11px] text-gray-600">{u.status}</span>
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <span className="text-[11px] text-gray-600">Active</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-2 hover:bg-gray-100 rounded-lg text-brand-primary"><Settings className="w-4 h-4" /></button>
-                          <button onClick={() => removeUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500"><X className="w-4 h-4" /></button>
+                          {u.id !== user?.id && (
+                            <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

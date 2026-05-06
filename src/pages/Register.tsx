@@ -8,13 +8,22 @@ import Logo from '../components/Logo';
 
 export default function Register() {
   const [email, setEmail] = useState('');
-  const { login } = useAuth();
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    login(email || 'new@onleads.com', 'user');
-    navigate('/dashboard');
+    setError('');
+
+    const result = register(name, email, password);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message || 'Registration failed');
+    }
   };
 
   return (
@@ -31,12 +40,19 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <User className="w-4 h-4 opacity-70" /> Full Name
             </label>
             <input
               type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm"
               placeholder="John Doe"
               required
@@ -63,6 +79,8 @@ export default function Register() {
             </label>
             <input
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm"
               placeholder="••••••••"
               required
