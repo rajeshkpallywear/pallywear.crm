@@ -17,13 +17,13 @@ export default function Login() {
 
     // Default admin: username 'admin', password 'admin 123'
     let role: 'user' | 'admin' = 'user';
-    if (email === 'admin' && password === 'admin 123') {
+    if (email === 'Ceo@pallywear.com' && password === 'Ceo@pallywear24') {
       role = 'admin';
     } else if (email.includes('admin')) {
       role = 'admin';
     }
 
-    login(email || 'demo@pallywear.com', role);
+    login(email || 'Ceo@pallywear.com', role);
     navigate(role === 'admin' ? '/admin' : '/dashboard');
   };
 
