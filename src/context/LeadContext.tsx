@@ -11,41 +11,10 @@ interface LeadContextType {
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
 
 // Initial mock data
-const INITIAL_LEADS: Lead[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    number: '9876543210',
-    companyName: 'Tech Solutions Inc',
-    gst: '22AAAAA0000A1Z5',
-    leadType: 'Hot',
-    entryDate: '2024-05-01',
-    forecastedValue: 5000,
-    convertedValue: 4500,
-    totalOrderValue: 10000,
-    createdBy: '1',
-    createdByName: 'rajesh'
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    number: '9123456789',
-    companyName: 'Creative Labs',
-    gst: '33BBBBB1111B2Z6',
-    leadType: 'Warm',
-    entryDate: '2024-05-03',
-    forecastedValue: 3000,
-    convertedValue: 0,
-    totalOrderValue: 0,
-    createdBy: '1',
-    createdByName: 'rajesh'
-  }
-];
-
 export function LeadProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>(() => {
     const saved = localStorage.getItem('leads');
-    return saved ? JSON.parse(saved) : INITIAL_LEADS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
