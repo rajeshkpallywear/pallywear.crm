@@ -5,7 +5,7 @@ import {
   Layout, Bell, Settings, BarChart3,
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2,
-  LogOut
+  LogOut, Trash2
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -14,7 +14,7 @@ import {
 import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
-import ProfileSettings from '../components/ProfileSetting';
+import ProfileSetting from '../components/ProfileSetting';
 import Logo from '../components/Logo';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -293,6 +293,68 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          ) : activeTab === 'security' ? (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-500 mb-6">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-lg mb-2">System Cleanup</h3>
+                  <p className="text-gray-500 text-sm mb-6">
+                    Remove all leads from the system. This action is irreversible and should only be used for clearing mock data or starting fresh.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS? This cannot be undone.')) {
+                        localStorage.removeItem('leads');
+                        window.location.reload();
+                      }
+                    }}
+                  >
+                    Clear All Leads
+                  </Button>
+                </div>
+
+                <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500 mb-6">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-lg mb-2">Access Control</h3>
+                  <p className="text-gray-500 text-sm mb-6">
+                    Current system is in High-Integrity mode. Registration is restricted to internal team members.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <span className="text-xs font-bold text-gray-700">Admin-only Registration</span>
+                      <div className="w-8 h-4 bg-gray-300 rounded-full relative">
+                        <div className="absolute left-0 w-4 h-4 bg-white rounded-full shadow-sm" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'logs' ? (
+            <div className="space-y-6">
+              {MOCK_LOGS.map(log => (
+                <div key={log.id} className="bg-white p-4 rounded-xl border border-gray-100 flex gap-4">
+                  <div className="w-10 h-10 bg-brand-secondary rounded-lg flex items-center justify-center text-brand-primary">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <p className="font-bold text-sm text-gray-800">{log.action}</p>
+                      <span className="text-[10px] text-gray-400 font-medium">{log.time}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{log.details}</p>
+                    <p className="text-[10px] text-brand-primary font-bold mt-2 uppercase tracking-tight">System Operator: {log.user}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="bg-white p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
               <div className="w-16 h-16 bg-brand-secondary rounded-full flex items-center justify-center mx-auto mb-6 text-brand-primary">
@@ -384,7 +446,7 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <ProfileSetting isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

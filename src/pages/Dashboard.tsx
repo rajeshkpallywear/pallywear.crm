@@ -23,20 +23,24 @@ export default function Dashboard() {
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients'>('dashboard');
 
+  const filteredLeads = user?.role === 'admin'
+    ? leads
+    : leads.filter(l => l.createdBy === user?.id);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
   const funnelData = [
-    { value: leads.length * 10 || 10, name: 'Lead', fill: '#3291B6' },
-    { value: leads.filter(l => l.leadType === 'Warm' || l.leadType === 'Hot').length * 8 || 8, name: 'Contact', fill: '#48A9C5' },
-    { value: leads.filter(l => l.leadType === 'Hot').length * 5 || 5, name: 'Quote', fill: '#5CBFD4' },
-    { value: leads.filter(l => l.convertedValue > 0).length * 2 || 2, name: 'Deal', fill: '#70D5E3' },
+    { value: filteredLeads.length * 10 || 0, name: 'Lead', fill: '#3291B6' },
+    { value: filteredLeads.filter(l => l.leadType === 'Warm' || l.leadType === 'Hot').length * 8 || 0, name: 'Contact', fill: '#48A9C5' },
+    { value: filteredLeads.filter(l => l.leadType === 'Hot').length * 5 || 0, name: 'Quote', fill: '#5CBFD4' },
+    { value: filteredLeads.filter(l => l.convertedValue > 0).length * 2 || 0, name: 'Deal', fill: '#70D5E3' },
   ];
 
-  const totalForecast = leads.reduce((sum, l) => sum + l.forecastedValue, 0);
-  const totalConverted = leads.reduce((sum, l) => sum + l.convertedValue, 0);
+  const totalForecast = filteredLeads.reduce((sum, l) => sum + l.forecastedValue, 0);
+  const totalConverted = filteredLeads.reduce((sum, l) => sum + l.convertedValue, 0);
 
   return (
     <div className="flex bg-brand-light min-h-screen">
@@ -88,6 +92,15 @@ export default function Dashboard() {
               <p className="text-xs font-bold text-gray-800">{user?.name}</p>
               <p className="text-[10px] text-gray-400 capitalize">{user?.role}</p>
             </div>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="p-1.5 hover:bg-brand-secondary text-brand-primary rounded-lg transition-colors mr-1"
+                title="Admin Panel"
+              >
+                <Users className="w-4 h-4" />
+              </button>
+            )}
             <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-colors">
               <LogOut className="w-4 h-4" />
             </button>
@@ -101,6 +114,16 @@ export default function Dashboard() {
             Welcome back, <span className="text-gray-900 font-bold">{user?.name}</span>
           </div>
           <div className="flex items-center gap-4">
+            {user?.role === 'admin' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/admin')}
+                className="text-[10px] h-8 px-3 font-bold uppercase tracking-wider"
+              >
+                Admin Panel
+              </Button>
+            )}
             <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"><Bell className="w-5 h-5" /></button>
             <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500" onClick={() => setShowProfileModal(true)}><Settings className="w-5 h-5" /></button>
           </div>
@@ -109,14 +132,13 @@ export default function Dashboard() {
         <div className="p-8">
           {activeTab === 'dashboard' ? (
             <>
-              {/* Dashboard Content: Stats, Charts, Leads */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
-                  { label: 'Active Leads', val: leads.length, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
+                  { label: 'Active Leads', val: filteredLeads.length, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
                   { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50' },
-                  { label: 'Conversion', val: `${leads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' }
+                  { label: 'Conversion', val: `${filteredLeads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' }
                 ].map((stat, i) => (
-                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 text-left">
+                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
                     <div className={`w-12 h-12 ${stat.bg} rounded-xl flex items-center justify-center ${stat.color}`}>
                       <stat.icon className="w-6 h-6" />
                     </div>
@@ -133,11 +155,11 @@ export default function Dashboard() {
                   <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
                   <div className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={leads.slice(0, 7)}>
+                      <BarChart data={filteredLeads.slice(0, 7)}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                         <Bar dataKey="totalOrderValue" fill="#3291B6" radius={[6, 6, 0, 0]} barSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -157,16 +179,23 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <LeadManager />
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+                  Lead Management
+                </h2>
+                <LeadManager />
+              </div>
             </>
           ) : activeTab === 'reports' ? (
-            <div className="space-y-8 text-left">
+            <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Personal Reports</h2>
                 <Button variant="outline" className="gap-2">
                   <Download className="w-4 h-4" /> Download All
                 </Button>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
                   <h3 className="font-bold text-gray-800 mb-6">Monthly Conversions</h3>
@@ -185,7 +214,7 @@ export default function Dashboard() {
                     {[
                       { label: 'Follow-up Rate', pct: 92 },
                       { label: 'Closing Speed', pct: 75 },
-                      { label: 'Satisfaction', pct: 88 }
+                      { label: 'Client Satisfaction', pct: 88 }
                     ].map((m, i) => (
                       <div key={i} className="space-y-1.5">
                         <div className="flex justify-between text-xs font-bold text-gray-500 uppercase">
@@ -202,29 +231,47 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="space-y-6 text-left">
-              <h2 className="text-2xl font-bold text-gray-900">My Clients</h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">My Clients</h2>
+                <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Active Portfolios</span>
+              </div>
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-gray-50 text-gray-500 font-medium">
                     <tr>
-                      <th className="px-6 py-4">Client Name</th>
-                      <th className="px-6 py-4">Company</th>
-                      <th className="px-6 py-4">Total Value</th>
-                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 border-b border-gray-100">Client Info</th>
+                      <th className="px-6 py-4 border-b border-gray-100">Company</th>
+                      <th className="px-6 py-4 border-b border-gray-100">Total Value</th>
+                      <th className="px-6 py-4 border-b border-gray-100">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {leads.map((l, i) => (
+                    {filteredLeads.map((l, i) => (
                       <tr key={i} className="hover:bg-gray-50/50">
-                        <td className="px-6 py-4 font-bold text-gray-800">{l.name}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                              {l.name.charAt(0)}
+                            </div>
+                            <span className="font-bold text-gray-800">{l.name}</span>
+                          </div>
+                        </td>
                         <td className="px-6 py-4 text-gray-500">{l.companyName}</td>
                         <td className="px-6 py-4 font-bold text-brand-primary">₹{l.totalOrderValue.toLocaleString()}</td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase rounded-full">Active</span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase rounded-full border border-green-100">
+                            <div className="w-1 h-1 bg-green-500 rounded-full" />
+                            Active
+                          </span>
                         </td>
                       </tr>
                     ))}
+                    {filteredLeads.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">No clients assigned yet.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
