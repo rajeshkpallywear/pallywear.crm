@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3,
-  Users, LogOut, TrendingUp, DollarSign, Activity
+  Users, LogOut, TrendingUp, DollarSign, Activity, Download
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -14,16 +14,18 @@ import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
 import ProfileSettings from '../components/ProfileSetting';
 import Logo from '../components/Logo';
+import { cn } from '../lib/utils';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { leads } = useLeads();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients'>('dashboard');
 
   const handleLogout = () => {
     logout();
-    navigate('/Pallywear');
+    navigate('/login');
   };
 
   const funnelData = [
@@ -45,13 +47,31 @@ export default function Dashboard() {
         </div>
 
         <nav className="p-4 space-y-1">
-          <button className="w-full flex items-center gap-3 px-3 py-2 bg-brand-secondary text-brand-primary rounded-xl font-medium text-sm">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all",
+              activeTab === 'dashboard' ? "bg-brand-secondary text-brand-primary" : "text-gray-400 hover:bg-gray-50"
+            )}
+          >
             <Layout className="w-4 h-4" /> Dashboard
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-gray-50 rounded-xl text-sm transition-colors">
+          <button
+            onClick={() => setActiveTab('reports')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all",
+              activeTab === 'reports' ? "bg-brand-secondary text-brand-primary" : "text-gray-400 hover:bg-gray-50"
+            )}
+          >
             <BarChart3 className="w-4 h-4" /> Reports
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-400 hover:bg-gray-50 rounded-xl text-sm transition-colors">
+          <button
+            onClick={() => setActiveTab('clients')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all",
+              activeTab === 'clients' ? "bg-brand-secondary text-brand-primary" : "text-gray-400 hover:bg-gray-50"
+            )}
+          >
             <Users className="w-4 h-4" /> Clients
           </button>
         </nav>
@@ -87,60 +107,129 @@ export default function Dashboard() {
         </header>
 
         <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {[
-              { label: 'Active Leads', val: leads.length, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
-              { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50' },
-              { label: 'Conversion', val: `${leads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' }
-            ].map((stat, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                <div className={`w-12 h-12 ${stat.bg} rounded-xl flex items-center justify-center ${stat.color}`}>
-                  <stat.icon className="w-6 h-6" />
+          {activeTab === 'dashboard' ? (
+            <>
+              {/* Dashboard Content: Stats, Charts, Leads */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {[
+                  { label: 'Active Leads', val: leads.length, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
+                  { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50' },
+                  { label: 'Conversion', val: `${leads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 text-left">
+                    <div className={`w-12 h-12 ${stat.bg} rounded-xl flex items-center justify-center ${stat.color}`}>
+                      <stat.icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium uppercase">{stat.label}</p>
+                      <p className="text-2xl font-bold text-gray-900">{stat.val}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={leads.slice(0, 7)}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="name" hide />
+                        <YAxis hide />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
+                        <Bar dataKey="totalOrderValue" fill="#3291B6" radius={[6, 6, 0, 0]} barSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium uppercase">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.val}</p>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <FunnelChart>
+                        <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                          <LabelList position="right" fill="#888" stroke="none" dataKey="name" />
+                        </Funnel>
+                      </FunnelChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-            <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={leads.slice(0, 7)}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" hide />
-                    <YAxis hide />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="totalOrderValue" fill="#3291B6" radius={[6, 6, 0, 0]} barSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <LeadManager />
+            </>
+          ) : activeTab === 'reports' ? (
+            <div className="space-y-8 text-left">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Personal Reports</h2>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" /> Download All
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="font-bold text-gray-800 mb-6">Monthly Conversions</h3>
+                  <div className="h-64 flex items-end gap-3">
+                    {[40, 70, 45, 90, 65, 80].map((h, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                        <div className="w-full bg-brand-secondary rounded-lg transition-all hover:bg-brand-primary" style={{ height: `${h}%` }} />
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">M{i + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="font-bold text-gray-800 mb-6">Performance Matrix</h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Follow-up Rate', pct: 92 },
+                      { label: 'Closing Speed', pct: 75 },
+                      { label: 'Satisfaction', pct: 88 }
+                    ].map((m, i) => (
+                      <div key={i} className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-bold text-gray-500 uppercase">
+                          <span>{m.label}</span>
+                          <span>{m.pct}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-brand-primary rounded-full" style={{ width: `${m.pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <FunnelChart>
-                    <Funnel dataKey="value" data={funnelData} isAnimationActive>
-                      <LabelList position="right" fill="#888" stroke="none" dataKey="name" />
-                    </Funnel>
-                  </FunnelChart>
-                </ResponsiveContainer>
+          ) : (
+            <div className="space-y-6 text-left">
+              <h2 className="text-2xl font-bold text-gray-900">My Clients</h2>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-500 font-medium">
+                    <tr>
+                      <th className="px-6 py-4">Client Name</th>
+                      <th className="px-6 py-4">Company</th>
+                      <th className="px-6 py-4">Total Value</th>
+                      <th className="px-6 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {leads.map((l, i) => (
+                      <tr key={i} className="hover:bg-gray-50/50">
+                        <td className="px-6 py-4 font-bold text-gray-800">{l.name}</td>
+                        <td className="px-6 py-4 text-gray-500">{l.companyName}</td>
+                        <td className="px-6 py-4 font-bold text-brand-primary">₹{l.totalOrderValue.toLocaleString()}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase rounded-full">Active</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-              <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
-              Lead Management
-            </h2>
-            <LeadManager />
-          </div>
+          )}
         </div>
       </main>
       <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
