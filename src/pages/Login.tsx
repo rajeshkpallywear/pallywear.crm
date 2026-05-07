@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { Layout, Mail, Lock, ArrowRight } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Layout, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { auth } from '../lib/firebase';
 import { motion } from 'motion/react';
 import Logo from '../components/Logo';
 
@@ -10,22 +11,63 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, user: authUser } = useAuth();
+  const [successMsg, setSuccessMsg] = useState('');
+  const { login, googleLogin, user: authUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMsg(location.state.message);
+      // Clean up state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    const result = await googleLogin();
+    if (result.success) {
+      // The user role is already set in the context during onAuthStateChanged or googleLogin
+      // We'll wait a brief moment for the state to settle or check the email again
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const email = (currentUser.email || '').toLowerCase();
+        const isAdmin = email === 'ceo@pallywear.com' || email.startsWith('admin') || email.startsWith('ceo');
+        navigate(isAdmin ? '/admin' : '/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } else {
+      let message = result.message || 'Google login failed';
+      if (message.includes('auth/operation-not-allowed')) {
+        message = 'Google sign-in is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
+      }
+      setError(message);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const result = login(email, password);
-    if (result.success) {
-      // Re-fetch user from context to ensure role-based navigation
-      // Note: AuthContext user state update might be async, so we use logic based on email for immediate nav
-      // but the context update will handle the rest
-      const isAdmin = email.toLowerCase() === 'ceo@pallywear.com' || email.toLowerCase().startsWith('admin') || email.toLowerCase().startsWith('ceo');
-      navigate(isAdmin ? '/admin' : '/dashboard');
-    } else {
-      setError(result.message || 'Login failed. Try ceo@pallywear.com / Ceo@pallywear24');
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        const normalizedEmail = email.toLowerCase();
+        const isAdmin = normalizedEmail === 'ceo@pallywear.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo');
+        navigate(isAdmin ? '/admin' : '/dashboard');
+      } else {
+        let message = result.message || 'Login failed';
+        if (message.includes('auth/operation-not-allowed')) {
+          message = 'Email/Password login is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
+        } else if (message.includes('auth/invalid-credential')) {
+          message = 'Invalid email or password. If you haven\'t registered yet, please enable the registration link.';
+        }
+        setError(message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
     }
   };
 
@@ -43,6 +85,12 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {successMsg && (
+            <div className="p-3 bg-green-50 border border-green-100 rounded-xl text-green-600 text-xs font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              {successMsg}
+            </div>
+          )}
           {error && (
             <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
               {error}
@@ -98,7 +146,12 @@ export default function Login() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="bg-white gap-2 text-sm h-10">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-white gap-2 text-sm h-10"
+              onClick={handleGoogleLogin}
+            >
               <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" /> Google
             </Button>
             <Button variant="outline" className="bg-white gap-2 text-sm h-10">

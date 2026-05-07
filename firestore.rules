@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\\\-]+$');
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['id', 'email', 'role', 'name', 'createdAt']) &&
+               data.id is string &&
+               data.email is string &&
+               data.role in ['user', 'admin'] &&
+               data.name is string &&
+               data.createdAt is string;
+      }
+
+      function isAdminRoleEligible(email) {
+        let normalizedEmail = email.lower();
+        return normalizedEmail == 'ceo@pallywear.com' || 
+               normalizedEmail == 'rajeshkpallywear@gmail.com' || 
+               normalizedEmail.matches('^admin.*') || 
+               normalizedEmail.matches('^ceo.*');
+      }
+
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isSignedIn() && isAdmin();
+      
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      (isAdminRoleEligible(request.resource.data.email) ? request.resource.data.role == 'admin' : request.resource.data.role == 'user');
+      
+      allow update: if isOwner(userId) && 
+                      (
+                        // Allow own field updates
+                        (request.resource.data.role == resource.data.role && request.resource.data.email == resource.data.email) ||
+                        // Allow admin promotion if eligible
+                        (isAdminRoleEligible(resource.data.email) && request.resource.data.role == 'admin') ||
+                        isAdmin()
+                      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // Leads Collection
+    match /leads/{leadId} {
+      function isValidLead(data) {
+        return data.keys().hasAll(['id', 'name', 'leadType', 'createdBy', 'entryDate']) &&
+               data.id is string &&
+               data.name is string &&
+               data.leadType in ['Hot', 'Warm', 'Cold'] &&
+               data.createdBy == request.auth.uid;
+      }
+
+      allow get, list: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() && isValidId(leadId) && (request.resource.data.createdBy == request.auth.uid) && isValidLead(request.resource.data);
+      
+      allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()) && 
+                      isValidLead(request.resource.data) &&
+                      request.resource.data.createdBy == resource.data.createdBy;
+                      
+      allow delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+  }
+}

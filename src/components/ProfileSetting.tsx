@@ -10,14 +10,23 @@ export default function ProfileSettings({ isOpen, onClose }: { isOpen: boolean; 
     const [avatar, setAvatar] = useState(user?.avatar || '');
     const [success, setSuccess] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        updateProfile({ name, avatar });
-        setSuccess(true);
-        setTimeout(() => {
-            setSuccess(false);
-            onClose();
-        }, 1500);
+        setLoading(true);
+        try {
+            await updateProfile({ name, avatar });
+            setSuccess(true);
+            setTimeout(() => {
+                setSuccess(false);
+                onClose();
+            }, 1500);
+        } catch (error) {
+            console.error('Error updating profile: ', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -86,12 +95,13 @@ export default function ProfileSettings({ isOpen, onClose }: { isOpen: boolean; 
 
                             <Button
                                 type="submit"
+                                disabled={loading || success}
                                 className={cn(
                                     "w-full h-11 transition-all duration-300",
                                     success ? "bg-green-500 hover:bg-green-500 shadow-green-200" : "shadow-brand-primary/20"
                                 )}
                             >
-                                {success ? <><Check className="w-4 h-4 mr-2" /> Updated</> : 'Save Changes'}
+                                {loading ? 'Updating...' : success ? <><Check className="w-4 h-4 mr-2" /> Updated</> : 'Save Changes'}
                             </Button>
                         </form>
                     </motion.div>

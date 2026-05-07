@@ -18,6 +18,8 @@ import ProfileSetting from '../components/ProfileSetting';
 import Logo from '../components/Logo';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const COLORS = ['#3291B6', '#5CBFD4', '#EAF4F7', '#1F2937'];
 
@@ -29,17 +31,35 @@ const MOCK_LOGS = [
 ];
 
 export default function AdminDashboard() {
-  const { user, logout, registeredUsers, deleteUser } = useAuth();
+  const { user, logout, registeredUsers, deleteUser, loading: authLoading } = useAuth();
   const { leads } = useLeads();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'security' | 'logs'>('overview');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
 
-  const handleRemoveUser = (id: string) => {
-    if (confirm('Are you sure you want to remove this user? They will need to register again to access the platform.')) {
-      deleteUser(id);
+  const handleRemoveUser = async (id: string) => {
+    if (confirm('Are you sure you want to remove this user? Their profile data will be deleted.')) {
+      await deleteUser(id);
+    }
+  };
+
+  const handleClearAllLeads = async () => {
+    if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS from the database? This cannot be undone.')) {
+      setCleaningUp(true);
+      try {
+        const querySnapshot = await getDocs(collection(db, 'leads'));
+        const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, 'leads', d.id)));
+        await Promise.all(deletePromises);
+        alert('All leads have been cleared successfully.');
+      } catch (error) {
+        console.error('Error clearing leads: ', error);
+        alert('Failed to clear leads. Check console for details.');
+      } finally {
+        setCleaningUp(false);
+      }
     }
   };
 
@@ -48,7 +68,16 @@ export default function AdminDashboard() {
     navigate('/login');
   };
 
+  // Redirect if not admin (after loading)
+  React.useEffect(() => {
+    if (!authLoading && (!user || user.role !== 'admin')) {
+      navigate('/dashboard');
+    }
+  }, [user, authLoading]);
+
   const totalRevenue = leads.reduce((sum, l) => sum + l.totalOrderValue, 0);
+
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-brand-light">Loading security context...</div>;
 
   return (
     <div className="flex bg-brand-light min-h-screen">
@@ -223,7 +252,7 @@ export default function AdminDashboard() {
                   <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
                   Global Lead Administration
                 </h2>
-                <LeadManager hideAdd={true} />
+                <LeadManager />
               </div>
             </>
           ) : activeTab === 'users' ? (
@@ -307,14 +336,10 @@ export default function AdminDashboard() {
                   <Button
                     variant="outline"
                     className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS? This cannot be undone.')) {
-                        localStorage.removeItem('leads');
-                        window.location.reload();
-                      }
-                    }}
+                    disabled={cleaningUp}
+                    onClick={handleClearAllLeads}
                   >
-                    Clear All Leads
+                    {cleaningUp ? 'Processing...' : 'Clear All Leads'}
                   </Button>
                 </div>
 

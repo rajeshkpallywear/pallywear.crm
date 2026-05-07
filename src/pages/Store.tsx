@@ -52,12 +52,16 @@ export default function Store() {
           transition={{ delay: 0.5, duration: 0.5 }}
           className="flex flex-wrap items-center justify-center gap-4"
         >
-          <Button variant="outline" size="lg" className="bg-white gap-2">
-            See in Action
-          </Button>
-          <Button variant="primary" size="lg" className="gap-2">
-            Start Free Trial <ArrowRight className="w-4 h-4" />
-          </Button>
+          <Link to="/login">
+            <Button variant="outline" size="lg" className="bg-white gap-2">
+              See in Action
+            </Button>
+          </Link>
+          <Link to="/register">
+            <Button variant="primary" size="lg" className="gap-2">
+              Start Free Trial <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </motion.div>
 
         {/* Dashboard Preview Mockup - as seen in the image */}

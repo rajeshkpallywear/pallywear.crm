@@ -1,40 +1,141 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import {
+  collection,
+  onSnapshot,
+  addDoc as firestoreAddDoc,
+  updateDoc as firestoreUpdateDoc,
+  deleteDoc as firestoreDeleteDoc,
+  doc,
+  query,
+  where,
+  setDoc,
+  getDocFromServer
+} from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import { Lead } from '../types';
+import { useAuth } from './AuthContext';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  // You can show a notification here if you have a toast system
+  throw new Error(JSON.stringify(errInfo));
+}
 
 interface LeadContextType {
   leads: Lead[];
-  addLead: (lead: Omit<Lead, 'id'>) => void;
-  updateLead: (id: string, lead: Partial<Lead>) => void;
-  deleteLead: (id: string) => void;
+  addLead: (lead: Omit<Lead, 'id'>) => Promise<void>;
+  updateLead: (id: string, lead: Partial<Lead>) => Promise<void>;
+  deleteLead: (id: string) => Promise<void>;
 }
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
 
-// Initial mock data
 export function LeadProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    const saved = localStorage.getItem('leads');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
-    localStorage.setItem('leads', JSON.stringify(leads));
-  }, [leads]);
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    }
+    testConnection();
+  }, []);
 
-  const addLead = (lead: Omit<Lead, 'id'>) => {
+  useEffect(() => {
+    if (!user) {
+      setLeads([]);
+      return;
+    }
+
+    const leadsRef = collection(db, 'leads');
+    // If admin, show all leads. Otherwise, show only leads created by the user.
+    const q = user.role === 'admin'
+      ? query(leadsRef)
+      : query(leadsRef, where('createdBy', '==', user.id));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Lead[];
+      setLeads(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'leads');
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const addLead = async (lead: Omit<Lead, 'id'>) => {
+    if (!user) return;
+
+    const leadId = Math.random().toString(36).substring(2, 9);
     const newLead = {
       ...lead,
-      id: Math.random().toString(36).substring(2, 9),
+      id: leadId,
+      createdBy: user.id,
+      createdByName: user.name,
     };
-    setLeads([...leads, newLead]);
+
+    try {
+      await setDoc(doc(db, 'leads', leadId), newLead);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `leads/${leadId}`);
+    }
   };
 
-  const updateLead = (id: string, leadUpdate: Partial<Lead>) => {
-    setLeads(leads.map(l => l.id === id ? { ...l, ...leadUpdate } : l));
+  const updateLead = async (id: string, leadUpdate: Partial<Lead>) => {
+    try {
+      await firestoreUpdateDoc(doc(db, 'leads', id), leadUpdate);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `leads/${id}`);
+    }
   };
 
-  const deleteLead = (id: string) => {
-    setLeads(leads.filter(l => l.id !== id));
+  const deleteLead = async (id: string) => {
+    try {
+      await firestoreDeleteDoc(doc(db, 'leads', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `leads/${id}`);
+    }
   };
 
   return (
