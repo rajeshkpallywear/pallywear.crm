@@ -5,38 +5,190 @@
       "description": "User profile information and role.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["user", "admin"] },
-        "name": { "type": "string" },
-        "avatar": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "email", "role", "name", "createdAt"]
+      "required": [
+        "id",
+        "email",
+        "role",
+        "name",
+        "createdAt"
+      ]
     },
     "Lead": {
       "title": "Lead",
       "description": "Sales lead or client information.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string" },
-        "phone": { "type": "string" },
-        "status": { "type": "string" },
-        "leadType": { "type": "string" },
-        "priority": { "type": "string" },
-        "forecastedValue": { "type": "number" },
-        "convertedValue": { "type": "number" },
-        "totalOrderValue": { "type": "number" },
-        "companyName": { "type": "string" },
-        "source": { "type": "string" },
-        "notes": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "createdBy": { "type": "string" }
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "leadType": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string"
+        },
+        "forecastedValue": {
+          "type": "number"
+        },
+        "convertedValue": {
+          "type": "number"
+        },
+        "totalOrderValue": {
+          "type": "number"
+        },
+        "discountCode": {
+          "type": "string"
+        },
+        "discountAmount": {
+          "type": "number"
+        },
+        "netTotal": {
+          "type": "number"
+        },
+        "companyName": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "type": "string"
+        }
       },
-      "required": ["id", "name", "status", "createdBy", "createdAt"]
+      "required": [
+        "id",
+        "name",
+        "status",
+        "createdBy",
+        "createdAt"
+      ]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Invoice record for a lead or client.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "invoiceNumber": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "dueDate": {
+          "type": "string"
+        },
+        "fromName": {
+          "type": "string"
+        },
+        "fromEmail": {
+          "type": "string"
+        },
+        "fromAddress": {
+          "type": "string"
+        },
+        "billToName": {
+          "type": "string"
+        },
+        "billToEmail": {
+          "type": "string"
+        },
+        "billToAddress": {
+          "type": "string"
+        },
+        "total": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": [
+            "GPay",
+            "PhonePay",
+            "Cash",
+            "Account",
+            "UPI"
+          ]
+        },
+        "productType": {
+          "type": "string"
+        },
+        "productSubCategory": {
+          "type": "string"
+        },
+        "customerPhoneNumber": {
+          "type": "string"
+        },
+        "leadId": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "invoiceNumber",
+        "total",
+        "leadId",
+        "createdBy",
+        "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -47,6 +199,10 @@
     "leads/{leadId}": {
       "schema": "Lead",
       "description": "Lead and client records."
+    },
+    "invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Invoice records."
     }
   }
 }

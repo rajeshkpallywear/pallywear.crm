@@ -12,6 +12,7 @@ import {
 import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
+import InvoiceManager from '../components/InvoiceManager';
 import ProfileSetting from '../components/ProfileSetting';
 import Logo from '../components/Logo';
 import { cn } from '../lib/utils';
@@ -21,7 +22,7 @@ export default function Dashboard() {
   const { leads } = useLeads();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices'>('dashboard');
 
   const filteredLeads = user?.role === 'admin'
     ? leads
@@ -77,6 +78,15 @@ export default function Dashboard() {
             )}
           >
             <Users className="w-4 h-4" /> Clients
+          </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all",
+              activeTab === 'invoices' ? "bg-brand-secondary text-brand-primary" : "text-gray-400 hover:bg-gray-50"
+            )}
+          >
+            <Activity className="w-4 h-4" /> Invoices
           </button>
         </nav>
 
@@ -155,12 +165,12 @@ export default function Dashboard() {
                   <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
                   <div className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={filteredLeads.slice(0, 7)}>
+                      <BarChart data={filteredLeads.slice(0, 7).map(l => ({ ...l, displayValue: l.netTotal || l.totalOrderValue }))}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
                         <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                        <Bar dataKey="totalOrderValue" fill="#3291B6" radius={[6, 6, 0, 0]} barSize={40} />
+                        <Bar dataKey="displayValue" fill="#3291B6" radius={[6, 6, 0, 0]} barSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -230,7 +240,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'clients' ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">My Clients</h2>
@@ -275,6 +285,14 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Invoice Center</h2>
+                <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Billing & Payments</span>
+              </div>
+              <InvoiceManager />
             </div>
           )}
         </div>

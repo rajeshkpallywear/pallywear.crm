@@ -12,7 +12,7 @@ import {
   getDocFromServer
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
-import { Lead } from '../types';
+import { Lead, Invoice } from '../types';
 import { useAuth } from './AuthContext';
 
 enum OperationType {
@@ -55,15 +55,20 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 interface LeadContextType {
   leads: Lead[];
+  invoices: Invoice[];
   addLead: (lead: Omit<Lead, 'id'>) => Promise<void>;
   updateLead: (id: string, lead: Partial<Lead>) => Promise<void>;
   deleteLead: (id: string) => Promise<void>;
+  addInvoice: (invoice: Omit<Invoice, 'id'>) => Promise<void>;
+  updateInvoice: (id: string, invoice: Partial<Invoice>) => Promise<void>;
+  deleteInvoice: (id: string) => Promise<void>;
 }
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
 
 export function LeadProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -82,16 +87,17 @@ export function LeadProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setLeads([]);
+      setInvoices([]);
       return;
     }
 
     const leadsRef = collection(db, 'leads');
     // If admin, show all leads. Otherwise, show only leads created by the user.
-    const q = user.role === 'admin'
+    const qLeads = user.role === 'admin'
       ? query(leadsRef)
       : query(leadsRef, where('createdBy', '==', user.id));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeLeads = onSnapshot(qLeads, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
@@ -101,7 +107,25 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'leads');
     });
 
-    return () => unsubscribe();
+    const invoicesRef = collection(db, 'invoices');
+    const qInvoices = user.role === 'admin'
+      ? query(invoicesRef)
+      : query(invoicesRef, where('createdBy', '==', user.id));
+
+    const unsubscribeInvoices = onSnapshot(qInvoices, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Invoice[];
+      setInvoices(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'invoices');
+    });
+
+    return () => {
+      unsubscribeLeads();
+      unsubscribeInvoices();
+    };
   }, [user]);
 
   const addLead = async (lead: Omit<Lead, 'id'>) => {
@@ -117,6 +141,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
     try {
       await setDoc(doc(db, 'leads', leadId), newLead);
+      console.log('Lead successfully saved to Cloud:', leadId);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `leads/${leadId}`);
     }
@@ -138,8 +163,42 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const addInvoice = async (invoice: Omit<Invoice, 'id'>) => {
+    if (!user) return;
+
+    try {
+      const invoicesRef = collection(db, 'invoices');
+      const docRef = doc(invoicesRef);
+      const newInvoice = {
+        ...invoice,
+        id: docRef.id,
+        createdBy: user.id,
+        createdByName: user.name,
+      };
+      await setDoc(docRef, newInvoice);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'invoices');
+    }
+  };
+
+  const updateInvoice = async (id: string, invoiceUpdate: Partial<Invoice>) => {
+    try {
+      await firestoreUpdateDoc(doc(db, 'invoices', id), invoiceUpdate);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `invoices/${id}`);
+    }
+  };
+
+  const deleteInvoice = async (id: string) => {
+    try {
+      await firestoreDeleteDoc(doc(db, 'invoices', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `invoices/${id}`);
+    }
+  };
+
   return (
-    <LeadContext.Provider value={{ leads, addLead, updateLead, deleteLead }}>
+    <LeadContext.Provider value={{ leads, invoices, addLead, updateLead, deleteLead, addInvoice, updateInvoice, deleteInvoice }}>
       {children}
     </LeadContext.Provider>
   );
