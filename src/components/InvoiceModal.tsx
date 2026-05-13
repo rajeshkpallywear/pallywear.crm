@@ -207,8 +207,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Company Bank Details</p>
-                                            <p className="text-[10px] font-black text-gray-900">Swift Code: PALLY321</p>
-                                            <p className="text-[10px] font-black text-gray-900">Account: 1234567890</p>
+                                            <p className="text-[10px] font-black text-gray-900">IFSC Code: {invoice.bankIFSCCode || 'HDFC0008964'}</p>
+                                            <p className="text-[10px] font-black text-gray-900">Account: {invoice.bankAccountNumber || '50202110682524'}</p>
                                         </div>
                                         {invoice.notes && (
                                             <div className="mt-8">
@@ -254,15 +254,44 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                             {/* Signature area (matching image) */}
                             <div className="mt-20 flex justify-end">
                                 <div className="relative text-center">
-                                    <div className="absolute -top-24 -left-12 w-32 h-32 opacity-80 pointer-events-none">
-                                        <img src="/input_file_0.png" alt="Stamp" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                    <div className="absolute -top-32 -left-20 w-48 h-48 opacity-30 pointer-events-none rotate-[-12deg]">
+                                        <svg viewBox="0 0 200 200" className="w-full h-full text-blue-700">
+                                            <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" strokeWidth="4" />
+                                            <circle cx="100" cy="100" r="88" fill="none" stroke="currentColor" strokeWidth="2" />
+                                            <circle cx="100" cy="100" r="72" fill="none" stroke="currentColor" strokeWidth="1.5" />
+
+                                            <path id="stampPathTop" d="M 40,100 A 60,60 0 1,1 160,100" fill="none" />
+                                            <text className="text-[11px] font-black uppercase tracking-[0.25em]" fill="currentColor">
+                                                <textPath href="#stampPathTop" startOffset="50%" textAnchor="middle">PALLYWEAR PVT. LTD.</textPath>
+                                            </text>
+
+                                            {/* Center Box */}
+                                            <g transform="translate(100, 100)">
+                                                <rect x="-45" y="-18" width="90" height="36" rx="4" fill="none" stroke="currentColor" strokeWidth="2.5" />
+                                                <text x="0" y="5" textAnchor="middle" className="text-[16px] font-black tracking-tight" fill="currentColor">APPROVED</text>
+                                            </g>
+
+                                            {/* Location at bottom */}
+                                            <path id="stampPathBottom" d="M 40,100 A 60,60 0 0,0 160,100" fill="none" />
+                                            <text className="text-[9px] font-black uppercase tracking-[0.1em]" fill="currentColor">
+                                                <textPath href="#stampPathBottom" startOffset="50%" textAnchor="middle" side="right">CHENNAI - 600063</textPath>
+                                            </text>
+
+                                            <g className="text-blue-700 opacity-60">
+                                                <text x="70" y="165" textAnchor="middle" className="text-[8px]" fill="currentColor">★</text>
+                                                <text x="100" y="170" textAnchor="middle" className="text-[8px]" fill="currentColor">★</text>
+                                                <text x="130" y="165" textAnchor="middle" className="text-[8px]" fill="currentColor">★</text>
+                                            </g>
+                                        </svg>
                                     </div>
-                                    <div className="h-20 flex items-end justify-center mb-2">
-                                        <img src="/input_file_1.png" alt="Signature" className="h-16 object-contain" referrerPolicy="no-referrer" />
+                                    <div className="h-24 flex items-end justify-center mb-2 px-4">
+                                        <span className="font-['Dancing_Script',_cursive] text-6xl text-gray-800 -rotate-3 select-none translate-x-4 opacity-90">
+                                            {invoice.companySignature || 'Rajesh K.'}
+                                        </span>
                                     </div>
-                                    <div className="w-56 h-px bg-gray-300" />
-                                    <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest mt-3">Authorized Signature</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Pallywear Pvt. Ltd.</p>
+                                    <div className="w-64 h-px bg-gray-300" />
+                                    <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest mt-4">Authorized Signature</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">Pallywear Pvt. Ltd.</p>
                                 </div>
                             </div>
                         </div>

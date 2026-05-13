@@ -176,9 +176,21 @@
         "createdBy": {
           "type": "string"
         },
+        "createdByName": {
+          "type": "string"
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "bankSwiftCode": {
+          "type": "string"
+        },
+        "bankAccountNumber": {
+          "type": "string"
+        },
+        "companySignature": {
+          "type": "string"
         }
       },
       "required": [

@@ -59,6 +59,8 @@ export interface Invoice {
   productSubCategory?: string;
   customerPhoneNumber?: string;
   companySignature?: string;
+  bankIFSCCode?: string;
+  bankAccountNumber?: string;
   createdBy: string;
   createdByName: string;
   leadId: string;

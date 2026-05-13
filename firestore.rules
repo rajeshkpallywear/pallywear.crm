@@ -89,11 +89,12 @@ service cloud.firestore {
                data.invoiceNumber is string &&
                data.total is number &&
                data.leadId is string &&
-               data.createdBy == request.auth.uid;
+               data.createdBy == request.auth.uid &&
+               isValidId(data.id);
       }
 
       allow get, list: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidId(invoiceId) && (request.resource.data.createdBy == request.auth.uid) && isValidInvoice(request.resource.data);
+      allow create: if isSignedIn() && (request.resource.data.createdBy == request.auth.uid) && isValidInvoice(request.resource.data);
       allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()) && 
                       isValidInvoice(request.resource.data) &&
                       request.resource.data.createdBy == resource.data.createdBy;

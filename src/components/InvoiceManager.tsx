@@ -31,9 +31,12 @@ export default function InvoiceManager() {
         paymentMethod: 'GPay' as 'GPay' | 'PhonePay' | 'Cash' | 'Account' | 'UPI',
         unitPrice: 499,
         quantity: 1,
-        taxRate: 18,
+        taxRate: 5,
         shippingCost: 0,
-        discountRate: 0,
+        discountRate: 20,
+        companySignature: 'V.Edelt.',
+        bankIFSCCode: 'HDFC0008964',
+        bankAccountNumber: '50202110682524',
     });
 
     const products = ['tshirt', 'shirt', 'hoodie', 'bottle', 'pen', 'mug', 'pants', 'jersce'];
@@ -157,7 +160,9 @@ export default function InvoiceManager() {
             leadId: newInvoiceData.leadId,
             createdBy: user.id,
             createdByName: user.name,
-            companySignature: 'Rajesh K.'
+            companySignature: newInvoiceData.companySignature || 'Rajesh K.',
+            bankIFSCCode: newInvoiceData.bankIFSCCode || 'HDFC0008964',
+            bankAccountNumber: newInvoiceData.bankAccountNumber || '50202110682524',
         };
 
         try {
@@ -174,16 +179,26 @@ export default function InvoiceManager() {
                 customerNumber: '',
                 productType: 'tshirt',
                 productSubCategory: '',
-                paymentMethod: 'GPay',
+                paymentMethod: 'CASH',
                 unitPrice: 499,
                 quantity: 1,
-                taxRate: 18,
+                taxRate: 5,
                 shippingCost: 0,
-                discountRate: 0,
+                discountRate: 20,
+                companySignature: 'Rajesh K.',
+                bankIfscCode: 'HDFC0008964',
+                bankAccountNumber: '50202110682524',
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to save invoice:", err);
-            alert("Error saving invoice. Please check your internet connection.");
+            let errorMsg = "Error saving invoice.";
+            try {
+                const errorData = JSON.parse(err.message);
+                errorMsg = `Error: ${errorData.error}\nType: ${errorData.operationType}\nPath: ${errorData.path}`;
+            } catch (e) {
+                errorMsg = err.message || "Please check your internet connection and Firestore permissions.";
+            }
+            alert(errorMsg);
         }
     };
 
@@ -306,10 +321,10 @@ export default function InvoiceManager() {
                             initial={{ opacity: 0, y: 30, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 30, scale: 0.95 }}
-                            className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20"
+                            className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20 max-h-[90vh] flex flex-col"
                         >
-                            <div className="p-1">
-                                <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+                            <div className="p-1 flex flex-col h-full overflow-hidden">
+                                <div className="px-8 pt-8 pb-4 flex items-center justify-between flex-shrink-0">
                                     <div className="space-y-1">
                                         <h3 className="text-2xl font-black text-gray-900 tracking-tighter">Generate Invoice</h3>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-0.5">Professional Billing Solution</p>
@@ -319,7 +334,7 @@ export default function InvoiceManager() {
                                     </button>
                                 </div>
 
-                                <form onSubmit={handleCreateInvoice} className="px-8 pb-10 space-y-6">
+                                <form onSubmit={handleCreateInvoice} className="px-8 pb-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
@@ -461,6 +476,11 @@ export default function InvoiceManager() {
                                             </div>
                                         </div>
 
+                                        {/* Hidden signature details - kept in state but not in UI as they are constant */}
+                                        <input type="hidden" value={newInvoiceData.bankIfscCode} />
+                                        <input type="hidden" value={newInvoiceData.bankAccountNumber} />
+                                        <input type="hidden" value={newInvoiceData.companySignature} />
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Reference ID</label>
@@ -483,7 +503,7 @@ export default function InvoiceManager() {
                                         </div>
                                     </div>
 
-                                    <div className="pt-2 flex flex-col gap-3">
+                                    <div className="pt-2 flex flex-col gap-3 flex-shrink-0">
                                         <Button type="submit" className="w-full py-4 text-white bg-brand-primary rounded-2xl font-black text-base shadow-xl shadow-brand-primary/30 hover:scale-[1.02] active:scale-95 transition-all outline-none">
                                             Generate & Save Invoice
                                         </Button>
