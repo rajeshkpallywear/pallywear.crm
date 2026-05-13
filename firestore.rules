@@ -38,6 +38,7 @@ service cloud.firestore {
         // We assume email is lowercased by client, or use case-insensitive regex
         return email == 'ceo@pallywear.com' || 
                email == 'rajeshkpallywear@gmail.com' || 
+               email == 'daniel.smpallywear@gmail.com' ||
                email.matches('(?i)^admin.*') || 
                email.matches('(?i)^ceo.*');
       }
@@ -84,17 +85,17 @@ service cloud.firestore {
     // Invoices Collection
     match /invoices/{invoiceId} {
       function isValidInvoice(data) {
-        return data.keys().hasAll(['id', 'invoiceNumber', 'total', 'leadId', 'createdBy', 'createdAt']) &&
+        return data.keys().hasAll(['id', 'invoiceNumber', 'total', 'createdBy', 'createdAt']) &&
                data.id is string &&
                data.invoiceNumber is string &&
                data.total is number &&
-               data.leadId is string &&
-               data.createdBy == request.auth.uid &&
-               isValidId(data.id);
+               data.createdBy is string &&
+               data.createdAt is string &&
+               data.createdBy == request.auth.uid;
       }
 
       allow get, list: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.createdBy == request.auth.uid) && isValidInvoice(request.resource.data);
+      allow create: if isSignedIn() && (request.resource.data.id == invoiceId) && isValidInvoice(request.resource.data);
       allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()) && 
                       isValidInvoice(request.resource.data) &&
                       request.resource.data.createdBy == resource.data.createdBy;

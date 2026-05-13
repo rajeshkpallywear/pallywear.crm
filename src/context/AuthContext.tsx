@@ -89,6 +89,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const isAdminEmail = (email: string) => {
+  const lowerEmail = email.toLowerCase();
+  return lowerEmail === 'ceo@pallywear.com' ||
+    lowerEmail === 'rajeshkpallywear@gmail.com' ||
+    lowerEmail === 'daniel.smpallywear@gmail.com' ||
+    lowerEmail.startsWith('admin') ||
+    lowerEmail.startsWith('ceo');
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
@@ -119,13 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             let userData = userDoc.data() as User;
 
             // Auto-promote to admin if email matches whitelist but role is 'user'
-            const email = (firebaseUser.email || '').toLowerCase();
-            const isAdminEmail = email === 'ceo@pallywear.com' ||
-              email === 'ceo@pallywear.com' ||
-              email.startsWith('admin') ||
-              email.startsWith('ceo');
+            const email = firebaseUser.email || '';
+            const isEligibleForAdmin = isAdminEmail(email);
 
-            if (isAdminEmail && userData.role !== 'admin') {
+            if (isEligibleForAdmin && userData.role !== 'admin') {
               userData = { ...userData, role: 'admin' };
               await updateDoc(userDocRef, { role: 'admin' });
             }
@@ -188,24 +194,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        const email = (firebaseUser.email || '').toLowerCase();
-        const isAdminEmail = email === 'ceo@pallywear.com' ||
-          email === 'ceo@pallywear.com' ||
-          email.startsWith('admin') ||
-          email.startsWith('ceo');
-        const role = isAdminEmail ? 'admin' : 'user';
+        const email = firebaseUser.email || '';
+        const role = isAdminEmail(email) ? 'admin' : 'user';
 
         const newUser: User = {
           id: firebaseUser.uid,
           email: email,
           role: role as 'user' | 'admin',
           name: firebaseUser.displayName || 'User',
-          avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${firebaseUser.displayName || 'User'}&background=3291B6&color=fff`,
+          avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(firebaseUser.displayName || 'User')}&background=3291B6&color=fff`,
           createdAt: new Date().toISOString()
         };
 
-        await setDoc(userDocRef, newUser);
-        setUser(newUser);
+        try {
+          await setDoc(userDocRef, newUser);
+          setUser(newUser);
+        } catch (error) {
+          console.error('Error creating user document after Google Login:', error);
+          handleFirestoreError(error, OperationType.WRITE, `users/${firebaseUser.uid}`);
+        }
       }
 
       return { success: true };
@@ -221,21 +228,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
       const firebaseUser = userCredential.user;
 
-      const isAdminEmail = (normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'ceo@pallywear.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo'));
-      const role = isAdminEmail ? 'admin' : 'user';
+      const role = isAdminEmail(normalizedEmail) ? 'admin' : 'user';
 
       const newUser: User = {
         id: firebaseUser.uid,
         email: normalizedEmail,
         role: role as 'user' | 'admin',
         name,
-        avatar: `https://ui-avatars.com/api/?name=${name}&background=3291B6&color=fff`,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3291B6&color=fff`,
         createdAt: new Date().toISOString()
       };
 
       try {
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        await setDoc(userDocRef, newUser);
+        console.log('User document created successfully in Firestore');
       } catch (error) {
+        console.error('Error creating user document:', error);
         handleFirestoreError(error, OperationType.WRITE, `users/${firebaseUser.uid}`);
       }
 
