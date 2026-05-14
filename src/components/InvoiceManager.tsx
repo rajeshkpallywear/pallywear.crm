@@ -34,8 +34,10 @@ export default function InvoiceManager() {
         taxRate: 5,
         shippingCost: 0,
         discountRate: 20,
-        companySignature: 'V.Edeilt',
-        bankIFSCCode: 'HDFC0008964',
+        companySignature: 'Rajesh K.',
+        bankName: 'HDFC BANK',
+        bankAccountName: 'PALLYWEAR PVT LTD',
+        bankIfscCode: 'HDFC0008964',
         bankAccountNumber: '50202110682524',
     });
 
@@ -160,8 +162,10 @@ export default function InvoiceManager() {
             leadId: newInvoiceData.leadId,
             createdBy: user.id,
             createdByName: user.name,
-            companySignature: newInvoiceData.companySignature || 'V.Edeilt',
-            bankIFSCCode: newInvoiceData.bankIFSCCode || 'HDFC0008964',
+            companySignature: newInvoiceData.companySignature || 'Rajesh K.',
+            bankName: newInvoiceData.bankName || 'HDFC BANK',
+            bankAccountName: newInvoiceData.bankAccountName || 'PALLYWEAR PVT LTD',
+            bankIfscCode: newInvoiceData.bankIfscCode || 'HDFC0008964',
             bankAccountNumber: newInvoiceData.bankAccountNumber || '50202110682524',
         };
 
@@ -185,8 +189,10 @@ export default function InvoiceManager() {
                 taxRate: 5,
                 shippingCost: 0,
                 discountRate: 20,
-                companySignature: 'V.Edeilt',
-                bankIFSCCode: 'HDFC0008964',
+                companySignature: 'Rajesh K.',
+                bankName: 'HDFC BANK',
+                bankAccountName: 'PALLYWEAR PVT LTD',
+                bankIfscCode: 'HDFC0008964',
                 bankAccountNumber: '50202110682524',
             });
         } catch (err: any) {
@@ -476,7 +482,9 @@ export default function InvoiceManager() {
                                             </div>
                                         </div>
 
-                                        {/* Hidden signature details - kept in state but not in UI as they are constant */}
+                                        {/* Hidden bank and signature details */}
+                                        <input type="hidden" value={newInvoiceData.bankName} />
+                                        <input type="hidden" value={newInvoiceData.bankAccountName} />
                                         <input type="hidden" value={newInvoiceData.bankIfscCode} />
                                         <input type="hidden" value={newInvoiceData.bankAccountNumber} />
                                         <input type="hidden" value={newInvoiceData.companySignature} />
