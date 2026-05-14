@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3,
-  Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield
+  Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
+  ChevronLeft, ChevronRight, Menu
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices'>('dashboard');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
   const filteredLeads = user?.role === 'admin'
     ? leads
@@ -46,9 +48,18 @@ export default function Dashboard() {
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full overflow-hidden shadow-sm z-40">
-        <div className="p-6 border-b border-gray-50 flex items-center justify-center">
-          <Logo />
+      <aside className={cn(
+        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full overflow-hidden shadow-sm z-40 transition-all duration-300",
+        isSidebarCollapsed ? "w-20" : "w-64"
+      )}>
+        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+          {!isSidebarCollapsed && <Logo />}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-brand-primary transition-all flex-shrink-0"
+          >
+            {isSidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
         </div>
 
         <nav className="p-4 space-y-1">
@@ -56,68 +67,91 @@ export default function Dashboard() {
             onClick={() => setActiveTab('dashboard')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'dashboard' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Dashboard" : ""}
           >
-            <Layout className="w-4 h-4" /> Dashboard
+            <Layout className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Dashboard</span>}
           </button>
           <button
             onClick={() => setActiveTab('reports')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'reports' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Reports" : ""}
           >
-            <BarChart3 className="w-4 h-4" /> Reports
+            <BarChart3 className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Reports</span>}
           </button>
           <button
             onClick={() => setActiveTab('clients')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'clients' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Clients" : ""}
           >
-            <Users className="w-4 h-4" /> Clients
+            <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Clients</span>}
           </button>
           <button
             onClick={() => setActiveTab('invoices')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'invoices' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Invoices" : ""}
           >
-            <Activity className="w-4 h-4" /> Invoices
+            <Activity className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Invoices</span>}
           </button>
           {user?.role === 'admin' && (
             <button
               onClick={() => navigate('/admin')}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all"
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all",
+                isSidebarCollapsed && "justify-center px-0"
+              )}
+              title={isSidebarCollapsed ? "Admin Dashboard" : ""}
             >
-              <Shield className="w-4 h-4" /> Admin Dashboard
+              <Shield className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Admin Dashboard</span>}
             </button>
           )}
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
-          <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-2xl">
+          <div className={cn(
+            "flex items-center gap-3 p-2 bg-gray-50 rounded-2xl transition-all",
+            isSidebarCollapsed ? "flex-col py-3 px-1" : ""
+          )}>
             <button onClick={() => setShowProfileModal(true)} className="relative group">
-              <img src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=1A0B91&color=fff`} className="w-8 h-8 rounded-full border border-gray-200 shadow-sm" alt="Me" />
+              <img src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=1A0B91&color=fff`} className="w-8 h-8 rounded-full border border-gray-200 shadow-sm flex-shrink-0" alt="Me" />
               <div className="absolute inset-0 bg-black/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Settings className="w-3 h-3 text-brand-primary" />
               </div>
             </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-gray-800 truncate">{user?.name}</p>
-              <p className="text-[10px] text-gray-400 capitalize">{user?.role}</p>
-            </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-colors px-1">
+            {!isSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-gray-800 truncate">{user?.name}</p>
+                <p className="text-[10px] text-gray-400 capitalize">{user?.role}</p>
+              </div>
+            )}
+            <button onClick={handleLogout} className={cn(
+              "text-gray-400 hover:text-red-500 transition-colors px-1",
+              isSidebarCollapsed && "mt-1"
+            )} title={isSidebarCollapsed ? "Logout" : ""}>
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 ml-64 min-h-screen">
+      <main className={cn(
+        "flex-1 min-h-screen transition-all duration-300",
+        isSidebarCollapsed ? "ml-20" : "ml-64"
+      )}>
         <header className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between sticky top-0 z-30">
           <div className="text-sm font-medium text-gray-500">
             Welcome back, <span className="text-gray-900 font-bold">{user?.name}</span>

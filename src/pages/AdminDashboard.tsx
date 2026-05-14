@@ -5,7 +5,7 @@ import {
   Layout, Bell, Settings, BarChart3,
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2,
-  LogOut, Trash2, Download
+  LogOut, Trash2, Download, ChevronLeft, Menu
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -39,6 +39,7 @@ export default function AdminDashboard() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [adminOnlyRegistration, setAdminOnlyRegistration] = useState(true);
@@ -121,9 +122,18 @@ export default function AdminDashboard() {
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full z-40 shadow-sm">
-        <div className="p-6 border-b border-gray-50 flex items-center justify-center">
-          <Logo />
+      <aside className={cn(
+        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full z-40 shadow-sm transition-all duration-300",
+        isSidebarCollapsed ? "w-20" : "w-64"
+      )}>
+        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+          {!isSidebarCollapsed && <Logo />}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-brand-primary transition-all flex-shrink-0"
+          >
+            {isSidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
         </div>
 
         <nav className="p-4 space-y-1">
@@ -131,64 +141,84 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab('overview')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'overview' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Overview" : ""}
           >
-            <TrendingUp className="w-4 h-4" /> Overview
+            <TrendingUp className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Overview</span>}
           </button>
           <button
             onClick={() => setActiveTab('users')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'users' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Users" : ""}
           >
-            <Users className="w-4 h-4" /> Users
+            <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Users</span>}
           </button>
           <button
             onClick={() => setActiveTab('invoices')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'invoices' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Invoices" : ""}
           >
-            <BarChart3 className="w-4 h-4" /> Invoices
+            <BarChart3 className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Invoices</span>}
           </button>
           <button
             onClick={() => setActiveTab('logs')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'logs' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Audit Logs" : ""}
           >
-            <FileText className="w-4 h-4" /> Audit Logs
+            <FileText className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Audit Logs</span>}
           </button>
           <button
             onClick={() => setActiveTab('security')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              isSidebarCollapsed && "justify-center px-0",
               activeTab === 'security' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
+            title={isSidebarCollapsed ? "Security" : ""}
           >
-            <Shield className="w-4 h-4" /> Security
+            <Shield className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Security</span>}
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all"
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all",
+              isSidebarCollapsed && "justify-center px-0"
+            )}
+            title={isSidebarCollapsed ? "Return to User App" : ""}
           >
-            <Layout className="w-4 h-4" /> Return to User App
+            <Layout className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Return to User App</span>}
           </button>
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
-          <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm">
-            <LogOut className="w-4 h-4" /> Logout
+          <button onClick={handleLogout} className={cn(
+            "text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm",
+            isSidebarCollapsed && "justify-center px-0"
+          )} title={isSidebarCollapsed ? "Logout" : ""}>
+            <LogOut className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 min-h-screen">
+      <main className={cn(
+        "flex-1 min-h-screen transition-all duration-300",
+        isSidebarCollapsed ? "ml-20" : "ml-64"
+      )}>
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4 text-gray-400">
