@@ -178,7 +178,14 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                         <div ref={invoiceRef} data-invoice-container className="p-12 text-gray-800 bg-white">
                             <div className="flex justify-between items-start mb-16">
                                 <div className="scale-125 origin-top-left flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white font-black text-xl">Pw</div>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
+                                        <img
+                                            src="/logo.png"
+                                            alt="Pw"
+                                            className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    </div>
                                     <span className="text-2xl font-black text-gray-900 tracking-tighter">Pallywear</span>
                                 </div>
                                 <div className="text-right">
@@ -215,7 +222,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                             <div className="mb-12 overflow-hidden rounded-xl border border-gray-100">
                                 <table className="w-full text-sm text-left">
                                     <thead>
-                                        <tr className="bg-brand-primary text-white">
+                                        <tr className="bg-brand-primary bg-gradient-to-r from-brand-primary to-brand-secondary text-white">
                                             <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Description</th>
                                             <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Rate, Cada</th>
                                             <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-center">Qty</th>
@@ -313,9 +320,9 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                                         <span className="font-bold text-gray-500">Amount paid:</span>
                                         <span className="font-black text-gray-900">₹{invoice.amountPaid.toLocaleString()}</span>
                                     </div>
-                                    <div className="flex justify-between items-center p-4 bg-brand-secondary rounded-xl mt-6">
-                                        <span className="text-sm font-black text-brand-primary uppercase tracking-wider">Balance Due:</span>
-                                        <span className="text-lg font-black text-brand-primary">₹{invoice.balanceDue.toLocaleString()}</span>
+                                    <div className="flex justify-between items-center p-5 bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 rounded-2xl mt-6 border border-brand-primary/5">
+                                        <span className="text-sm font-black text-brand-primary uppercase tracking-widest">Balance Due:</span>
+                                        <span className="text-xl font-black text-brand-primary">₹{invoice.balanceDue.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>

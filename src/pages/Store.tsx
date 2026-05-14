@@ -1,118 +1,223 @@
 import React, { useState } from 'react';
 import { Button } from '../components/Button';
-import { ChevronDown, Play, ArrowRight, Layout, Zap, Users, Shield, Globe, Book, Newspaper, HelpCircle, BarChart3, AppWindow, Puzzle, Menu, X } from 'lucide-react';
+import { Menu, X, TrendingUp, User, Zap, BarChart3, Layout, Globe, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../components/Logo';
-
-const navItems = [
-  {
-    label: 'Product',
-    items: [
-      { name: 'Core Platform', desc: 'Powerful sales reporting & tracking', icon: Layout },
-      { name: 'Mobile Apps', desc: 'Manage leads on the go', icon: AppWindow },
-      { name: 'Integrations', desc: 'Connect your favorite tools', icon: Puzzle },
-    ],
-  },
-  {
-    label: 'Resource',
-    items: [
-      { name: 'Documentation', desc: 'How to use Pallywear', icon: Book },
-      { name: 'Product Blog', desc: 'Latest updates & insights', icon: Newspaper },
-      { name: 'Help Center', desc: '24/7 technical support', icon: HelpCircle },
-    ],
-  },
-  {
-    label: 'Pricing',
-    items: [
-      { name: 'Individual', desc: 'For solo entrepreneurs', icon: Zap },
-      { name: 'Team Plan', desc: 'Scale with your team', icon: Users },
-      { name: 'Enterprise', desc: 'Custom enterprise solutions', icon: Shield },
-    ],
-  },
-  {
-    label: 'Features',
-    items: [
-      { name: 'Real-time Analytics', desc: 'Track performance live', icon: BarChart3 },
-      { name: 'Team Sync', desc: 'Collaborate effortlessly', icon: Globe },
-      { name: 'Security', desc: 'Enterprise-grade protection', icon: Shield },
-    ],
-  },
-];
+import { cn } from '../lib/utils';
 
 export default function Store() {
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen hero-bg">
+    <div className="min-h-screen bg-white relative selection:bg-brand-primary/10 overflow-x-hidden">
+      {/* Background Image with Overlay */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop"
+          className="w-full h-full object-cover opacity-5 grayscale"
+          alt="background"
+        />
+        <div className="absolute inset-0 bg-gradient-to-tr from-white via-white/95 to-indigo-50/30" />
+      </div>
+
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between backdrop-blur-md bg-white/30 border-b border-white/20">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="md:hidden p-2 hover:bg-white/50 rounded-lg transition-colors"
-          >
-            <Menu className="w-6 h-6 text-gray-600" />
-          </button>
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-6 flex items-center justify-between border-b border-gray-100 bg-white/50 backdrop-blur-xl">
+        <div className="flex items-center gap-12">
           <Logo />
         </div>
 
-        <nav className="hidden md:flex items-center gap-8">
-          {navItems.map((item) => (
-            <div
-              key={item.label}
-              className="relative"
-              onMouseEnter={() => setActiveMenu(item.label)}
-              onMouseLeave={() => setActiveMenu(null)}
-            >
-              <button className="flex items-center gap-1 py-2 text-sm font-medium text-gray-600 hover:text-brand-primary transition-colors outline-none cursor-pointer">
-                {item.label} <ChevronDown className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ${activeMenu === item.label ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {activeMenu === item.label && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 overflow-hidden"
-                  >
-                    <div className="space-y-1">
-                      {item.items.map((subItem) => (
-                        <button
-                          key={subItem.name}
-                          className="w-full flex items-start gap-3 p-3 text-left hover:bg-gray-50 rounded-xl transition-colors group cursor-pointer"
-                        >
-                          <div className="p-2 bg-gray-50 group-hover:bg-brand-secondary/30 rounded-lg text-gray-400 group-hover:text-brand-primary transition-colors">
-                            <subItem.icon className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{subItem.name}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{subItem.desc}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="bg-gray-50/50 p-4 border-t border-gray-50">
-                      <button className="text-xs font-bold text-brand-primary uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all cursor-pointer text-left w-full">
-                        See all {item.label} <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-4">
-          <Link to="/login" className="hidden sm:block">
-            <Button variant="outline" size="sm" className="bg-white/50">Sign in</Button>
+        <div className="flex items-center gap-6">
+          <Link to="/login">
+            <Button className="bg-gray-900 text-white hover:bg-black rounded-xl px-8 py-2.5 font-bold shadow-xl shadow-gray-200 transition-all hover:scale-105">
+              Login
+            </Button>
           </Link>
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="md:hidden p-2 text-gray-900"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
         </div>
       </header>
+
+      {/* Hero Content */}
+      <main className="relative pt-40 pb-20 px-6 md:px-12 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 min-h-screen">
+        <div className="flex-1 text-left z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-full border border-indigo-100 mb-6"
+          >
+            <Zap className="w-3 h-3 text-indigo-600 fill-indigo-600" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600"> now live</span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-6xl md:text-8xl font-black text-gray-900 mb-8 leading-[0.95] tracking-tight"
+          >
+            Welcome To <br /> The <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">PallyWear</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="text-xl text-gray-500 mb-10 max-w-md leading-relaxed font-medium"
+          >
+            Predict outcomes, automate leads, and scale your business with the world's most powerful sales engine.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="flex flex-wrap items-center gap-4"
+          >
+            <Link to="/login">
+              <Button size="lg" className="bg-[#4F46E5] text-white hover:bg-indigo-700 px-10 py-5 rounded-2xl font-black text-lg shadow-2xl shadow-indigo-200 transition-all hover:scale-105 active:scale-95">
+                Join the team
+              </Button>
+            </Link>
+          </motion.div>
+
+          {/* Stats Badge */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.8 }}
+            className="mt-20 flex items-center gap-6"
+          >
+            <div className="w-24 h-24 bg-gray-900 rounded-[2rem] flex flex-col items-center justify-center p-4 relative overflow-hidden group shadow-2xl">
+              <div className="absolute inset-0 bg-white/5 group-hover:scale-150 transition-transform duration-700 rounded-full" />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-2 border-dashed border-white/10 rounded-full scale-110"
+              />
+              <span className="text-white text-2xl font-black">4.8k</span>
+              <span className="text-white/40 text-[8px] font-bold uppercase tracking-widest text-center">Global Scale</span>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Isometric Visuals */}
+        <div className="flex-1 relative w-full h-[650px] hidden lg:block perspective-[2000px]">
+          {/* Primary Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 40, rotateX: 45, rotateZ: -10 }}
+            animate={{ opacity: 1, y: 0, rotateX: 25, rotateZ: -15, rotateY: 5 }}
+            whileHover={{ y: -20, rotateX: 15, rotateY: 10 }}
+            transition={{ type: 'spring', damping: 20 }}
+            className="absolute top-0 right-0 w-[550px] h-80 bg-white/80 backdrop-blur-2xl border border-white rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.1)] p-8 z-30"
+            style={{
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            <div className="flex justify-between items-start mb-12">
+              <div>
+                <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Live Revenue Stream</h3>
+                <p className="text-5xl font-black text-gray-900 tracking-tighter">$14,058,362.00</p>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="h-24 w-full flex items-end gap-1.5 px-2">
+              {[40, 20, 60, 45, 80, 50, 90, 70, 85, 45, 65, 55].map((h, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${h}%` }}
+                  className="flex-1 bg-indigo-600/10 rounded-t-xl relative group overflow-hidden"
+                >
+                  <motion.div
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+                    className="absolute inset-0 bg-gradient-to-t from-indigo-500/20 to-transparent"
+                  />
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)]" />
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* User List Card */}
+          <motion.div
+            initial={{ opacity: 0, x: -40, rotateX: 45, rotateZ: -10 }}
+            animate={{ opacity: 1, x: 0, rotateX: 25, rotateZ: -15, rotateY: 5 }}
+            whileHover={{ x: -20, rotateY: 0 }}
+            className="absolute -bottom-5 left-0 w-[420px] bg-white/90 backdrop-blur-2xl border border-white rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.1)] p-8 z-40 overflow-hidden"
+            style={{
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            <div className="flex items-center justify-between mb-8">
+              <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Active Leads</h4>
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                    <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="user" />
+                  </div>
+                ))}
+                <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[8px] font-bold">+12</div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {[
+                { name: 'Jane Cooper', status: 'Completed', val: '$935.66', color: 'bg-green-100 text-green-600' },
+                { name: 'Arlene McCoy', status: 'Completed', val: '$120.99', color: 'bg-green-100 text-green-600' },
+                { name: 'Dianne Russell', status: 'Pending', val: '$1,733.81', color: 'bg-gray-100 text-gray-600' }
+              ].map((u, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-3xl hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100 group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 p-2 text-indigo-500 group-hover:scale-110 transition-transform">
+                      <User className="w-full h-full" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-gray-900">{u.name}</p>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${u.status === 'Completed' ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.5)]'}`} />
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{u.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm font-black text-gray-900 tracking-tighter">{u.val}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Decor Elements */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-400/5 blur-[120px] rounded-full pointer-events-none" />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 py-20 px-6 max-w-7xl mx-auto border-t border-gray-100">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          <Logo />
+          <nav className="flex items-center gap-8">
+            {['Privacy', 'Terms', 'Docs', 'Contact'].map(item => (
+              <button key={item} className="text-xs font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors cursor-pointer">{item}</button>
+            ))}
+          </nav>
+          <div className="flex gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all cursor-pointer">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all cursor-pointer">
+              <Shield className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+        <p className="text-center text-[10px] text-gray-400 font-bold mt-12 uppercase tracking-[0.3em]">© 2024 Pallywear Analytics. All rights reserved.</p>
+      </footer>
+
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
@@ -123,111 +228,37 @@ export default function Store() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
             />
             <motion.div
-              initial={{ x: '-100%' }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
+              exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-full max-w-sm bg-white z-[70] shadow-2xl p-6 overflow-y-auto"
+              className="fixed inset-y-0 right-0 w-full max-w-sm bg-white z-[110] shadow-2xl p-8 flex flex-col"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-12">
                 <Logo />
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"
                 >
-                  <X className="w-6 h-6 text-gray-600" />
+                  <X className="w-8 h-8 text-gray-900" />
                 </button>
               </div>
 
-              <div className="space-y-8">
-                {navItems.map((category) => (
-                  <div key={category.label}>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 px-2">
-                      {category.label}
-                    </p>
-                    <div className="space-y-2">
-                      {category.items.map((item) => (
-                        <button
-                          key={item.name}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors text-left group"
-                        >
-                          <div className="p-2 bg-gray-50 group-hover:bg-brand-secondary/30 rounded-lg text-gray-400 group-hover:text-brand-primary transition-colors">
-                            <item.icon className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                            <p className="text-xs text-gray-400">{item.desc}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-8 flex-1">
               </div>
 
-              <div className="mt-8 pt-8 border-t border-gray-100 space-y-4">
-                <Link to="/login" className="block">
-                  <Button variant="outline" className="w-full py-4 text-base">Sign in</Button>
+              <div className="pt-8 border-t border-gray-100">
+                <Link to="/login">
+                  <Button className="w-full py-5 text-lg font-bold rounded-2xl">Sign In</Button>
                 </Link>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
-      {/* Hero Section */}
-      <main className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-5xl md:text-7xl font-bold text-brand-dark mb-6 leading-[1.1] tracking-tight"
-        >
-          Unlock Insights and <br /> Collaborate Better
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto"
-        >
-          Powerful reporting tools and team features designed for growth.
-          Manage leads, track performance, and scale your sales funnel.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-4"
-        >
-          <Link to="/login">
-            <Button variant="outline" size="lg" className="bg-white gap-2">
-              See in Action
-            </Button>
-          </Link>
-        </motion.div>
-
-        {/* Dashboard Preview Mockup - as seen in the image */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 1 }}
-          className="mt-20 glass-card rounded-2xl overflow-hidden shadow-2xl border-white/40 max-w-5xl mx-auto relative group"
-        >
-          <img
-            src="https://picsum.photos/seed/dashboard/1200/800?blur=1"
-            alt="Dashboard Preview"
-            className="w-full opacity-80 group-hover:opacity-100 transition-opacity duration-700"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/60 to-transparent pointer-events-none" />
-        </motion.div>
-      </main>
     </div>
   );
 }

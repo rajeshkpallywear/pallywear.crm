@@ -121,26 +121,26 @@ export default function AdminDashboard() {
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-brand-dark flex flex-col fixed inset-y-0 h-full z-40">
-        <div className="p-6 border-b border-white/5 flex items-center justify-center">
-          <Logo inverted />
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full z-40 shadow-sm">
+        <div className="p-6 border-b border-gray-50 flex items-center justify-center">
+          <Logo />
         </div>
 
         <nav className="p-4 space-y-1">
           <button
             onClick={() => setActiveTab('overview')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-colors",
-              activeTab === 'overview' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              activeTab === 'overview' ? "bg-brand-secondary text-brand-primary" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
           >
-            <TrendingUp className={cn("w-4 h-4", activeTab === 'overview' ? "text-brand-primary" : "")} /> Overview
+            <TrendingUp className="w-4 h-4" /> Overview
           </button>
           <button
             onClick={() => setActiveTab('users')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-colors",
-              activeTab === 'users' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              activeTab === 'users' ? "bg-brand-secondary text-brand-primary" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
           >
             <Users className="w-4 h-4" /> Users
@@ -148,8 +148,8 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('invoices')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-colors",
-              activeTab === 'invoices' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              activeTab === 'invoices' ? "bg-brand-secondary text-brand-primary" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
           >
             <BarChart3 className="w-4 h-4" /> Invoices
@@ -157,8 +157,8 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('logs')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-colors",
-              activeTab === 'logs' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              activeTab === 'logs' ? "bg-brand-secondary text-brand-primary" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
           >
             <FileText className="w-4 h-4" /> Audit Logs
@@ -166,16 +166,22 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('security')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-colors",
-              activeTab === 'security' ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
+              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              activeTab === 'security' ? "bg-brand-secondary text-brand-primary" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
           >
             <Shield className="w-4 h-4" /> Security
           </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all"
+          >
+            <Layout className="w-4 h-4" /> Return to User App
+          </button>
         </nav>
 
-        <div className="mt-auto p-4 border-t border-white/10">
-          <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 text-sm font-medium w-full px-3 py-2 flex items-center gap-2">
+        <div className="mt-auto p-4 border-t border-gray-50">
+          <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm">
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>
@@ -210,7 +216,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="bg-white" onClick={() => setShowLogsModal(true)}>Audit Logs</Button>
-              <Button className="shadow-lg shadow-brand-primary/20" onClick={() => navigate('/register')}>
+              <Button variant="secondary" className="shadow-sm" onClick={() => navigate('/register')}>
                 <UserPlus className="w-4 h-4 mr-2" /> Register New User
               </Button>
             </div>
@@ -219,25 +225,26 @@ export default function AdminDashboard() {
           {activeTab === 'overview' ? (
             <>
               {/* Overview Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                 {[
-                  { label: 'Global Revenue', val: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-                  { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-brand-primary', bg: 'bg-brand-secondary' },
-                  { label: 'Staff Members', val: registeredUsers.length, icon: Shield, color: 'text-purple-600', bg: 'bg-purple-50' },
-                  { label: 'Uptime', val: '99.9%', icon: Globe, color: 'text-purple-600', bg: 'bg-purple-50' },
+                  { label: 'Global Revenue', val: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500' },
+                  { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-white', bg: 'bg-brand-secondary' },
+                  { label: 'Total Invoices', val: invoices.length, icon: BarChart3, color: 'text-white', bg: 'bg-brand-primary' },
+                  { label: 'Staff Members', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
+                  { label: 'Uptime', val: '99.9%', icon: Globe, color: 'text-white', bg: 'bg-purple-600' },
                 ].map((stat, i) => (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     key={i}
-                    className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"
+                    className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm"
                   >
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4", stat.bg, stat.color)}>
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mb-4 shadow-lg", stat.bg, stat.color)}>
                       <stat.icon className="w-5 h-5" />
                     </div>
-                    <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">{stat.label}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.val}</p>
+                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">{stat.label}</p>
+                    <p className="text-xl font-black text-gray-900 mt-1">{stat.val}</p>
                   </motion.div>
                 ))}
               </div>
@@ -342,7 +349,7 @@ export default function AdminDashboard() {
                       <tr key={invoice.id} className="hover:bg-gray-50/30 transition-colors group">
                         <td className="px-6 py-4 text-nowrap">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-xl bg-brand-secondary flex items-center justify-center text-xs font-bold text-brand-primary">
+                            <div className="w-8 h-8 rounded-full bg-white border border-brand-secondary/30 flex items-center justify-center text-xs font-bold text-brand-primary shadow-sm">
                               {invoice.createdByName?.charAt(0) || 'U'}
                             </div>
                             <span className="text-xs text-gray-600 font-medium">{invoice.createdByName}</span>
@@ -411,7 +418,7 @@ export default function AdminDashboard() {
                     <tr key={u.id} className="hover:bg-gray-50/50 group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-brand-secondary flex items-center justify-center text-brand-primary font-bold text-xs uppercase overflow-hidden">
+                          <div className="w-10 h-10 rounded-full bg-white border border-brand-secondary/30 flex items-center justify-center text-brand-primary font-bold text-xs uppercase overflow-hidden shadow-sm">
                             {u.avatar ? (
                               <img src={u.avatar} alt={u.name} />
                             ) : (
@@ -511,7 +518,7 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               {MOCK_LOGS.map(log => (
                 <div key={log.id} className="bg-white p-4 rounded-xl border border-gray-100 flex gap-4">
-                  <div className="w-10 h-10 bg-brand-secondary rounded-lg flex items-center justify-center text-brand-primary">
+                  <div className="w-10 h-10 bg-white border border-brand-secondary/30 rounded-full flex items-center justify-center text-brand-primary shadow-sm">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
@@ -527,7 +534,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="bg-white p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
-              <div className="w-16 h-16 bg-brand-secondary rounded-full flex items-center justify-center mx-auto mb-6 text-brand-primary">
+              <div className="w-16 h-16 bg-brand-secondary rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-md">
                 <Shield className="w-8 h-8" />
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Section Under Maintenance</h2>
@@ -591,7 +598,7 @@ export default function AdminDashboard() {
               <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
                 {MOCK_LOGS.map(log => (
                   <div key={log.id} className="flex gap-4 p-4 border border-gray-50 rounded-xl hover:bg-gray-50/50">
-                    <div className="w-10 h-10 bg-brand-secondary rounded-lg flex items-center justify-center text-brand-primary flex-shrink-0">
+                    <div className="w-10 h-10 bg-white border border-brand-secondary/30 rounded-full flex items-center justify-center text-brand-primary flex-shrink-0 shadow-sm">
                       <Clock className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
