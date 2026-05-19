@@ -40,7 +40,7 @@ service cloud.firestore {
         return data.keys().hasAll(['id', 'email', 'role', 'name', 'createdAt']) &&
                data.id is string &&
                data.email is string &&
-               data.role in ['admin', 'staff', 'accounts', 'order_management', 'production', 'delivery', 'marketing', 'user'] &&
+               data.role in ['admin', 'staff', 'accounts', 'order_management', 'production', 'delivery', 'marketing', 'user', 'designer', 'digitizer'] &&
                data.name is string &&
                data.createdAt is string;
       }
@@ -55,7 +55,7 @@ service cloud.firestore {
 
       function isStaff() {
         return isSignedIn() && (
-          hasUserRole(['staff', 'admin']) ||
+          hasUserRole(['staff', 'admin', 'designer', 'accounts', 'order_management', 'production', 'delivery', 'marketing', 'digitizer']) ||
           isAdmin() ||
           request.auth.token.email.matches('(?i)^staff.*')
         );
@@ -88,15 +88,22 @@ service cloud.firestore {
         return data.keys().hasAll(['id', 'name', 'leadType', 'createdBy', 'entryDate']) &&
                data.id is string &&
                data.name is string &&
-               data.leadType in ['Hot', 'Warm', 'Cold'] &&
-               data.createdBy == request.auth.uid;
+               data.leadType in ['Hot', 'Warm', 'Cold'];
       }
 
-      allow get, list: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      function canReadLeads() {
+        return isSignedIn() && (
+          resource.data.createdBy == request.auth.uid || 
+          isAdmin() || 
+          hasUserRole(['admin', 'marketing', 'user', 'staff', 'accounts', 'order_management', 'digitizer'])
+        );
+      }
+
+      allow get, list: if canReadLeads();
       
       allow create: if isSignedIn() && isValidId(leadId) && (request.resource.data.createdBy == request.auth.uid) && isValidLead(request.resource.data);
       
-      allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()) && 
+      allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin() || hasUserRole(['marketing', 'admin'])) && 
                       isValidLead(request.resource.data) &&
                       request.resource.data.createdBy == resource.data.createdBy;
                       
@@ -110,14 +117,20 @@ service cloud.firestore {
                data.id is string &&
                data.invoiceNumber is string &&
                data.total is number &&
-               data.createdBy is string &&
-               data.createdAt is string &&
-               data.createdBy == request.auth.uid;
+               data.createdBy is string;
       }
 
-      allow get, list: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      function canReadInvoices() {
+        return isSignedIn() && (
+          resource.data.createdBy == request.auth.uid || 
+          isAdmin() || 
+          hasUserRole(['admin', 'accounts', 'order_management', 'staff', 'digitizer'])
+        );
+      }
+
+      allow get, list: if canReadInvoices();
       allow create: if isSignedIn() && (request.resource.data.id == invoiceId) && isValidInvoice(request.resource.data);
-      allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()) && 
+      allow update: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin() || hasUserRole(['accounts', 'admin'])) && 
                       isValidInvoice(request.resource.data) &&
                       request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
@@ -146,10 +159,7 @@ service cloud.firestore {
 
     // Inventory Collection
     match /inventory/{itemId} {
-      allow read: if isSignedIn() && (
-        isAdmin() ||
-        hasUserRole(['admin', 'order_management', 'staff', 'production'])
-      );
+      allow read: if isSignedIn();
       allow write: if isSignedIn() && (
         isAdmin() ||
         hasUserRole(['admin', 'order_management'])

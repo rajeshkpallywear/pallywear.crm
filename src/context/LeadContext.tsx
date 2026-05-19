@@ -73,6 +73,28 @@ interface LeadContextType {
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
 
+// Helper to ensure data is plain and Firestore-compatible
+function sanitizeForFirestore(data: any): any {
+  if (data === undefined) return null;
+  if (data === null || typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map(v => sanitizeForFirestore(v));
+  }
+
+  const sanitized: any = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      // Skip undefined to avoid Firestore errors, effectively deleting the field if needed or just not updating it
+      if (value !== undefined) {
+        sanitized[key] = sanitizeForFirestore(value);
+      }
+    }
+  }
+  return sanitized;
+}
+
 export function LeadProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -100,36 +122,44 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const leadsRef = collection(db, 'leads');
-    // If admin, show all leads. Otherwise, show only leads created by the user.
-    const qLeads = user.role === 'admin'
-      ? query(leadsRef)
-      : query(leadsRef, where('createdBy', '==', user.id));
+    // Leads subscription - only for applicable roles
+    let unsubscribeLeads = () => { };
+    if (user.role === 'admin' || user.role === 'marketing' || user.role === 'user') {
+      const leadsRef = collection(db, 'leads');
+      // If admin, show all leads. Otherwise, show only leads created by the user.
+      const qLeads = user.role === 'admin'
+        ? query(leadsRef)
+        : query(leadsRef, where('createdBy', '==', user.id));
 
-    const unsubscribeLeads = onSnapshot(qLeads, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      })) as Lead[];
-      setLeads(data);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'leads');
-    });
+      unsubscribeLeads = onSnapshot(qLeads, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as Lead[];
+        setLeads(data);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'leads');
+      });
+    }
 
-    const invoicesRef = collection(db, 'invoices');
-    const qInvoices = user.role === 'admin'
-      ? query(invoicesRef)
-      : query(invoicesRef, where('createdBy', '==', user.id));
+    // Invoices subscription - only for applicable roles
+    let unsubscribeInvoices = () => { };
+    if (user.role === 'admin' || user.role === 'marketing' || user.role === 'user' || user.role === 'accounts') {
+      const invoicesRef = collection(db, 'invoices');
+      const qInvoices = user.role === 'admin'
+        ? query(invoicesRef)
+        : query(invoicesRef, where('createdBy', '==', user.id));
 
-    const unsubscribeInvoices = onSnapshot(qInvoices, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      })) as Invoice[];
-      setInvoices(data);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'invoices');
-    });
+      unsubscribeInvoices = onSnapshot(qInvoices, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as Invoice[];
+        setInvoices(data);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'invoices');
+      });
+    }
 
     const ordersRef = collection(db, 'orders');
     // For orders, we usually show everything to everyone in the flow, or filter by role
@@ -171,12 +201,12 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const leadId = Math.random().toString(36).substring(2, 9);
-    const newLead = {
+    const newLead = sanitizeForFirestore({
       ...lead,
       id: leadId,
       createdBy: user.id,
       createdByName: user.name,
-    };
+    });
 
     try {
       await setDoc(doc(db, 'leads', leadId), newLead);
@@ -188,7 +218,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
   const updateLead = async (id: string, leadUpdate: Partial<Lead>) => {
     try {
-      await firestoreUpdateDoc(doc(db, 'leads', id), leadUpdate);
+      const sanitizedUpdate = sanitizeForFirestore(leadUpdate);
+      await firestoreUpdateDoc(doc(db, 'leads', id), sanitizedUpdate);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `leads/${id}`);
     }
@@ -208,12 +239,12 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     try {
       const invoicesRef = collection(db, 'invoices');
       const docRef = doc(invoicesRef);
-      const newInvoice = {
+      const newInvoice = sanitizeForFirestore({
         ...invoice,
         id: docRef.id,
         createdBy: user.id,
         createdByName: user.name,
-      };
+      });
       await setDoc(docRef, newInvoice);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'invoices');
@@ -222,7 +253,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
   const updateInvoice = async (id: string, invoiceUpdate: Partial<Invoice>) => {
     try {
-      await firestoreUpdateDoc(doc(db, 'invoices', id), invoiceUpdate);
+      const sanitizedUpdate = sanitizeForFirestore(invoiceUpdate);
+      await firestoreUpdateDoc(doc(db, 'invoices', id), sanitizedUpdate);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `invoices/${id}`);
     }
@@ -241,14 +273,14 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
     try {
       const orderId = Math.random().toString(36).substr(2, 9).toUpperCase();
-      const newOrder = {
+      const newOrder = sanitizeForFirestore({
         id: orderId,
         ...orderData,
         createdBy: user.id,
         createdByName: user.name,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      };
+      });
       await setDoc(doc(db, 'orders', orderId), newOrder);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
@@ -257,10 +289,11 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
   const updateOrder = async (id: string, orderUpdate: Partial<Order>) => {
     try {
-      await firestoreUpdateDoc(doc(db, 'orders', id), {
+      const sanitizedUpdate = sanitizeForFirestore({
         ...orderUpdate,
         updatedAt: Date.now()
       });
+      await firestoreUpdateDoc(doc(db, 'orders', id), sanitizedUpdate);
     } catch (error: any) {
       if (error?.message?.includes('too large') || error?.code === 'resource-exhausted') {
         throw new Error("ORDER_TOO_LARGE: The attachments you added are too large for cloud sync. Total size must be under 1MB. Please remove some files.");
@@ -281,11 +314,12 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     try {
       const inventoryRef = collection(db, 'inventory');
       const docRef = doc(inventoryRef);
-      await setDoc(docRef, {
+      const newMovement = sanitizeForFirestore({
         ...movement,
         id: docRef.id,
         createdAt: Date.now()
       });
+      await setDoc(docRef, newMovement);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'inventory');
     }

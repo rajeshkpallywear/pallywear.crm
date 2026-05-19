@@ -5,9 +5,9 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2 } from 'lucide-react';
+import { Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { getDisplayCategory } from '../lib/utils';
+import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
 
@@ -20,6 +20,7 @@ interface ProductionDashboardProps {
 
 export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin }: ProductionDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [viewMode, setViewMode] = useState<'pending' | 'all'>('pending');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -49,6 +50,8 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       ...(order.staffImages || []),
       ...(order.staffPdfs || []),
       ...(order.accountsAttachments || []),
+      ...(order.designAttachments || []),
+      ...(order.machineFiles || []),
       ...(order.orderManagementAttachments || [])
     ].filter(Boolean);
 
@@ -85,15 +88,67 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         </button>
       </div>
 
+      {/* Summary Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <button
+          onClick={() => setViewMode(viewMode === 'all' ? 'pending' : 'all')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group",
+            viewMode === 'all' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            viewMode === 'all' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+          )}>
+            <Package size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", viewMode === 'all' ? "text-white/70" : "text-gray-500")}>
+              {viewMode === 'all' ? "Showing All Orders" : "Total Orders"}
+            </p>
+            <p className="text-2xl font-black">{orders.length}</p>
+          </div>
+        </button>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
+            <Factory size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Order Status</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {pendingOrders.length} In Production
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
+                {orders.filter(o => o.status === OrderStatus.HOLD).length} On Hold • {orders.filter(o => o.status === OrderStatus.DELIVERY).length} In Transit
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center shadow-inner">
+            <TrendingUp size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Type of Total Order</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {Array.from(new Set(orders.map(o => o.category))).length} Categories
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
+                {orders.length > 0 ? orders[0].category : 'No data'}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Factory className="text-purple-600" size={20} />
-            In Production ({pendingOrders.length})
+            {viewMode === 'all' ? 'Production History' : 'In Production'} ({viewMode === 'all' ? orders.length : pendingOrders.length})
           </h3>
           <div className="space-y-3">
-            {pendingOrders.length > 0 ? (
-              pendingOrders.map(order => (
+            {(viewMode === 'all' ? orders : pendingOrders).length > 0 ? (
+              (viewMode === 'all' ? orders : pendingOrders).map(order => (
                 <button
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
@@ -232,6 +287,34 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                       >
                         <span>Bill_{i + 1}</span>
                         <ZoomIn size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-3">
+                    <h6 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em]">Art Studio Files</h6>
+                    {(selectedOrder.designAttachments || []).map((f, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setViewingImage(f)}
+                        className="text-xs p-2 bg-purple-50 rounded border border-purple-100 truncate cursor-pointer hover:bg-purple-100 transition-colors flex items-center justify-between group text-purple-700"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          {f.startsWith('data:image/') ? <img src={f} className="w-4 h-4 object-cover rounded" /> : <FileText size={14} />}
+                          <span className="truncate">Art_{i + 1}</span>
+                        </div>
+                        <ZoomIn size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    ))}
+                    {(selectedOrder.machineFiles || []).map((f, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setViewingImage(f)}
+                        className="text-xs p-2 bg-indigo-50 rounded border border-indigo-100 truncate cursor-pointer hover:bg-indigo-100 transition-colors flex items-center justify-between group text-indigo-700 font-bold"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Download size={14} />
+                          <span className="truncate">Machine_{i + 1}.zip</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -457,6 +540,7 @@ const getStatusStyles = (status: OrderStatus) => {
   switch (status) {
     case OrderStatus.DRAFT: return 'bg-gray-100 text-gray-600';
     case OrderStatus.ACCOUNTS: return 'bg-amber-100 text-amber-700';
+    case OrderStatus.DESIGN: return 'bg-purple-100 text-purple-700';
     case OrderStatus.ORDER_MANAGEMENT: return 'bg-blue-100 text-blue-700';
     case OrderStatus.PRODUCTION: return 'bg-purple-100 text-purple-700';
     case OrderStatus.DELIVERY: return 'bg-orange-100 text-orange-700';

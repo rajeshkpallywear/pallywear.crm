@@ -5,9 +5,9 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Layers, Package, ChevronRight, FileText, Download, ExternalLink, Paperclip, ZoomIn, Share2, Globe, CreditCard, Trash2, Search, Plus } from 'lucide-react';
+import { Layers, Package, ChevronRight, FileText, Download, ExternalLink, Paperclip, ZoomIn, Share2, Globe, CreditCard, Trash2, Search, Plus, Activity, Users, Upload } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { cn, getDisplayCategory } from '../lib/utils';
+import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
@@ -23,6 +23,7 @@ interface OrderManagementDashboardProps {
 
 export default function OrderManagementDashboard({ orders, inventory = [], onUpdateOrder, onDeleteOrder, isAdmin }: OrderManagementDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [viewMode, setViewMode] = useState<'pending' | 'all'>('pending');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [managementFiles, setManagementFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -62,19 +63,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
 
-    // Check size estimation
-    const currentAttachmentsSize = [
-      ...(selectedOrder.staffImages || []),
-      ...(selectedOrder.staffPdfs || []),
-      ...(selectedOrder.accountsAttachments || [])
-    ].reduce((s, f) => s + f.length, 0);
+    // Check total order document size of next state
+    const nextOrderState = {
+      ...selectedOrder,
+      orderManagementAttachments: managementFiles
+    };
 
-    const newAttachmentsSize = managementFiles.reduce((s, f) => s + f.length, 0);
-    const totalSizeEstimate = currentAttachmentsSize + newAttachmentsSize;
-
-    // Firestore 1MB limit check (~850k chars of base64)
-    if (totalSizeEstimate > 850000) {
-      alert("Error: Total attachment size is too large for the database. Current estimate: " + (totalSizeEstimate / 1024).toFixed(0) + "KB. Please remove some existing attachments or new files.");
+    if (!isOrderSizeValid(nextOrderState)) {
+      alert("Error: Total order data limit exceeded (Max 1MB). Please remove some existing attachments before adding management files.");
       return;
     }
 
@@ -101,6 +97,45 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
   };
 
+  const [isMsgSidebarOpen, setIsMsgSidebarOpen] = useState(false);
+  const [msgRequest, setMsgRequest] = useState({
+    message: '',
+    attachments: [] as string[]
+  });
+
+  const sendToDigitizer = async () => {
+    if (!msgRequest.message && msgRequest.attachments.length === 0) {
+      alert("Please provide a message or attachments.");
+      return;
+    }
+
+    if (!selectedOrder) {
+      alert("Please select an order first.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newNote = `[ORDER MGMT -> DIGITIZER] ${new Date().toLocaleString()}\n${msgRequest.message}`;
+      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
+
+      await onUpdateOrder(selectedOrder.id, {
+        notes: updatedNotes,
+        designAttachments: [...(selectedOrder.designAttachments || []), ...msgRequest.attachments],
+        updatedAt: Date.now()
+      });
+
+      alert("Instructions sent to Digitizing team!");
+      setIsMsgSidebarOpen(false);
+      setMsgRequest({ message: '', attachments: [] });
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send message.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -108,24 +143,85 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Order Management</h2>
           <p className="text-gray-500 mt-1">Finalize files and share with production team</p>
         </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMsgSidebarOpen(true)}
+            className="px-6 py-2 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center gap-2 active:scale-95"
+          >
+            <Upload size={18} />
+            <span className="text-xs uppercase tracking-widest font-black">Message to Digitizer</span>
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
+          >
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            Sync Data
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
+          onClick={() => setViewMode(viewMode === 'all' ? 'pending' : 'all')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group",
+            viewMode === 'all' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+          )}
         >
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          Sync Data
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            viewMode === 'all' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+          )}>
+            <Package size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", viewMode === 'all' ? "text-white/70" : "text-gray-500")}>
+              {viewMode === 'all' ? "Showing All Orders" : "Total Orders"}
+            </p>
+            <p className="text-2xl font-black">{orders.length}</p>
+          </div>
         </button>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
+            <Activity size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Order Status</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {pendingOrders.length} In Queue
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
+                {orders.filter(o => o.status === OrderStatus.HOLD).length} On Hold • {orders.filter(o => o.status === OrderStatus.PRODUCTION).length} In Prod
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center shadow-inner">
+            <Layers size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Type of Total Order</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {Array.from(new Set(orders.map(o => o.category))).length} Categories
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
+                {orders.length > 0 ? orders[0].category : 'No data'}
+              </span>
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Layers className="text-blue-500" size={20} />
-            Ready for Processing ({pendingOrders.length})
+            {viewMode === 'all' ? 'Order Catalog' : 'Ready for Processing'} ({viewMode === 'all' ? orders.length : pendingOrders.length})
           </h3>
           <div className="space-y-3">
-            {pendingOrders.length > 0 ? (
-              pendingOrders.map(order => (
+            {(viewMode === 'all' ? orders : pendingOrders).length > 0 ? (
+              (viewMode === 'all' ? orders : pendingOrders).map(order => (
                 <button
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
@@ -223,6 +319,15 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                         </div>
                       )}
                     </div>
+                    {selectedOrder.notes && (
+                      <div className="mt-8 p-6 bg-brand-primary/5 border border-brand-primary/10 rounded-2xl">
+                        <h6 className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-3 flex items-center gap-2">
+                          <Users size={12} />
+                          Communication Logs
+                        </h6>
+                        <p className="text-xs text-gray-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedOrder.notes}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4">
@@ -257,8 +362,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                             <div key={idx} className="group relative w-12 h-12 rounded-lg overflow-hidden border border-gray-100 flex-shrink-0">
                               <img src={img} className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                                <button onClick={() => setViewingImage(img)} className="p-1 hover:bg-white/20 rounded text-white shadow-sm"><ZoomIn size={12} /></button>
-                                <button onClick={() => handleRemoveExistingAttachment('staffImages', idx)} className="p-1 hover:bg-red-500/50 rounded text-red-100"><Trash2 size={12} /></button>
+                                <button onClick={() => setViewingImage(img)} className="p-1 hover:bg-white/20 rounded text-white shadow-sm" title="View"><ZoomIn size={12} /></button>
+                                <a href={img} download={`Staff_Image_${idx + 1}.png`} className="p-1 hover:bg-white/20 rounded text-white shadow-sm" title="Download"><Download size={12} /></a>
+                                <button onClick={() => handleRemoveExistingAttachment('staffImages', idx)} className="p-1 hover:bg-red-500/50 rounded text-red-100" title="Remove"><Trash2 size={12} /></button>
                               </div>
                             </div>
                           ))}
@@ -277,8 +383,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
                               <span className="text-[10px] text-gray-500 truncate max-w-[150px]">PDF_{idx + 1}</span>
                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
-                                <button onClick={() => window.open(pdf)} className="text-[10px] text-blue-600 font-bold">View</button>
-                                <button onClick={() => handleRemoveExistingAttachment('staffPdfs', idx)} className="text-red-500"><Trash2 size={12} /></button>
+                                <button onClick={() => window.open(pdf)} className="text-[10px] text-blue-600 font-bold hover:underline">View</button>
+                                <a href={pdf} download={`Staff_Doc_${idx + 1}.pdf`} className="text-[10px] text-green-600 font-bold hover:underline">Down</a>
+                                <button onClick={() => handleRemoveExistingAttachment('staffPdfs', idx)} className="text-red-500 hover:text-red-700 transition-colors"><Trash2 size={12} /></button>
                               </div>
                             </div>
                           ))}
@@ -297,13 +404,45 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
                               <span className="text-[10px] text-gray-500 truncate max-w-[150px]">Doc_{idx + 1}</span>
                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
-                                <button onClick={() => setViewingImage(f)} className="text-[10px] text-blue-600 font-bold">View</button>
-                                <button onClick={() => handleRemoveExistingAttachment('accountsAttachments', idx)} className="text-red-500"><Trash2 size={12} /></button>
+                                <button onClick={() => setViewingImage(f)} className="text-[10px] text-blue-600 font-bold hover:underline">View</button>
+                                <a href={f} download={`Billing_Doc_${idx + 1}.png`} className="text-[10px] text-green-600 font-bold hover:underline">Down</a>
+                                <button onClick={() => handleRemoveExistingAttachment('accountsAttachments', idx)} className="text-red-500 hover:text-red-700 transition-colors"><Trash2 size={12} /></button>
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
+
+                      {(selectedOrder.designAttachments?.length || 0) > 0 && (
+                        <div className="p-3 bg-purple-50 border border-purple-100 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-purple-700 font-bold">
+                              <FileText size={16} />
+                              <span>Design Output ({selectedOrder.designAttachments?.length})</span>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            {selectedOrder.designAttachments?.map((f, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-white/50 rounded-lg group">
+                                <span className="text-[10px] text-purple-600 truncate max-w-[150px]">Art_{idx + 1}</span>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => setViewingImage(f)} className="text-[10px] text-purple-700 font-black hover:underline">View</button>
+                                  <a href={f} download={`Artwork_${idx + 1}.png`} className="text-[10px] text-purple-900 font-black hover:underline ml-1">Down</a>
+                                </div>
+                              </div>
+                            ))}
+                            {selectedOrder.machineFiles?.map((f, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-indigo-50/50 rounded-lg group">
+                                <span className="text-[10px] text-indigo-600 font-bold">Machine_{idx + 1}.zip</span>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => setViewingImage(f)} className="text-[10px] text-indigo-700 font-black hover:underline">Open</button>
+                                  <a href={f} download={`Machine_File_${idx + 1}.zip`} className="text-[10px] text-indigo-900 font-black hover:underline ml-1">Down</a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -312,12 +451,13 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
               <div className="p-8 space-y-8">
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <h5 className="text-sm font-bold text-gray-900">Final Production Files (Gerber/Machine ZIP)</h5>
-                    <p className="text-xs text-gray-500">Upload ZIP for machine language or HD images</p>
+                    <h5 className="text-sm font-bold text-gray-900">Final Production File (Garage ZIP ONLY)</h5>
+                    <p className="text-xs text-gray-500">Only .zip files are permitted for manufacturing specs</p>
                   </div>
                   <FileUpload
-                    label=""
-                    accept="image/*,.pdf,.zip"
+                    label="Upload Garage ZIP File"
+                    accept=".zip"
+                    maxFiles={1}
                     onFilesSelected={(files) => setManagementFiles(prev => [...prev, ...files])}
                   />
 
@@ -325,21 +465,22 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                     <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                       {managementFiles.map((file, i) => (
                         <div key={i} className="relative group rounded-xl overflow-hidden aspect-video border border-gray-100 bg-gray-50 flex items-center justify-center">
-                          {file.startsWith('data:image/') ? (
-                            <img src={file} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="flex flex-col items-center gap-1">
-                              <FileText size={32} className="text-blue-500" />
-                              <span className="text-[10px] font-bold text-gray-500 uppercase">
-                                {file.includes('application/zip') || file.includes('zip') ? 'ZIP' : 'PDF'}
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex flex-col items-center gap-1">
+                            <Package size={32} className="text-indigo-500" />
+                            <span className="text-[10px] font-bold text-gray-500 uppercase">
+                              Garage ZIP Upload
+                            </span>
+                          </div>
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            {file.startsWith('data:image/') && (
-                              <button onClick={() => setViewingImage(file)} className="p-1.5 bg-white/20 rounded-lg text-white hover:bg-white/40"><ZoomIn size={16} /></button>
-                            )}
-                            <button onClick={() => handleRemoveManagementFile(i)} className="p-1.5 bg-red-500/80 rounded-lg text-white hover:bg-red-600"><Trash2 size={16} /></button>
+                            <a
+                              href={file}
+                              download={`Garage_Final_${i + 1}.zip`}
+                              className="p-1.5 bg-white/20 rounded-lg text-white hover:bg-white/40"
+                              title="Download"
+                            >
+                              <Download size={16} />
+                            </a>
+                            <button onClick={() => handleRemoveManagementFile(i)} className="p-1.5 bg-red-500/80 rounded-lg text-white hover:bg-red-600" title="Remove"><Trash2 size={16} /></button>
                           </div>
                         </div>
                       ))}
@@ -403,7 +544,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                             notes: updatedNotes,
                             updatedAt: Date.now()
                           });
-                          setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes } : null);
+                          // The context update will eventually ripple through, but we update local state for immediate feedback
+                          const heldOrder = { ...selectedOrder, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes };
+                          setSelectedOrder(heldOrder as Order);
                           alert("Order put on HOLD.");
                         } catch (e) {
                           alert("Action failed.");
@@ -550,6 +693,87 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           }}
         />
       )}
+
+      {/* Communication Sidebar */}
+      {isMsgSidebarOpen && (
+        <div className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setIsMsgSidebarOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col"
+          >
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50 text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-black italic">PW</div>
+                <div className="text-left">
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Communicate</h3>
+                  <p className="text-[10px] text-brand-primary font-bold uppercase tracking-widest text-left">To Digitizing Team</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMsgSidebarOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"
+              >
+                <Trash2 size={24} className="rotate-45" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 text-left">
+              {!selectedOrder && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800">
+                  <Activity size={20} />
+                  <p className="text-xs font-bold uppercase tracking-widest">Please select an order from the list first</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-left">Instructions to Digitizer</label>
+                <textarea
+                  rows={6}
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-sm font-medium resize-none shadow-inner"
+                  placeholder="Provide specific details or stitching requirements..."
+                  value={msgRequest.message}
+                  onChange={(e) => setMsgRequest(prev => ({ ...prev, message: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-left">Share Images/PDFs (Max 100MB)</label>
+                <FileUpload
+                  label="Upload Artworks"
+                  accept="image/*,.pdf"
+                  onFilesSelected={(files) => setMsgRequest(prev => ({ ...prev, attachments: files }))}
+                />
+                {msgRequest.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {msgRequest.attachments.map((_, i) => (
+                      <div key={i} className="px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-lg text-[10px] font-bold uppercase">
+                        File {i + 1} Ready
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100">
+              <button
+                disabled={isProcessing || !selectedOrder}
+                onClick={sendToDigitizer}
+                className="w-full py-5 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98]"
+              >
+                {isProcessing ? "Processing..." : "Send to Digitizer"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
@@ -558,6 +782,7 @@ const getStatusStyles = (status: OrderStatus) => {
   switch (status) {
     case OrderStatus.DRAFT: return 'bg-gray-100 text-gray-600';
     case OrderStatus.ACCOUNTS: return 'bg-amber-100 text-amber-700';
+    case OrderStatus.DESIGN: return 'bg-purple-100 text-purple-700';
     case OrderStatus.ORDER_MANAGEMENT: return 'bg-blue-100 text-blue-700';
     case OrderStatus.PRODUCTION: return 'bg-purple-100 text-purple-700';
     case OrderStatus.DELIVERY: return 'bg-orange-100 text-orange-700';

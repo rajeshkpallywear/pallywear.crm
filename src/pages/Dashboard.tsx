@@ -4,7 +4,7 @@ import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
-  ChevronLeft, ChevronRight, Menu
+  ChevronLeft, ChevronRight, Menu, Plus
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -27,13 +27,16 @@ import OrderManagementDashboard from '../components/OrderManagementDashboard';
 import ProductionDashboard from '../components/ProductionDashboard';
 import DeliveryDashboard from '../components/DeliveryDashboard';
 import StaffDashboard from '../components/StaffDashboard';
+import DesignDashboard from '../components/DesignDashboard';
+import DigitizingDashboard from '../components/DigitizingDashboard';
+import DigitizerCommunication from '../components/DigitizerCommunication';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { leads, orders, inventory, addOrder, updateOrder, deleteOrder } = useLeads();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
   const handleUpdateOrder = async (id: string, updates: Partial<Order>) => {
@@ -163,8 +166,29 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Digitizing Portal link in sidebar if applicable */}
+          {user?.role === UserRole.DIGITIZER && (
+            <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
+              <p className={cn(
+                "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
+                isSidebarCollapsed && "hidden"
+              )}>Digitizing & Embroidery</p>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl shadow-sm border transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'dashboard' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
+                )}
+              >
+                <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                {!isSidebarCollapsed && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest text-left">Digitizing Hub</span>}
+              </button>
+            </div>
+          )}
+
           {/* Department Portals */}
-          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, 'user', 'admin'].includes(user.role as any) && (
+          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, UserRole.DELIVERY, 'user', 'admin'].includes(user.role as any) && (
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
               <p className={cn(
                 "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
@@ -185,7 +209,7 @@ export default function Dashboard() {
           )}
 
           {/* Logistics & Inventory Section */}
-          {(user?.role === UserRole.ADMIN || user?.role === 'admin' || user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === UserRole.STAFF || user?.role === 'staff') && (
+          {(user?.role === UserRole.ADMIN || user?.role === 'admin' || user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === UserRole.PRODUCTION || user?.role === 'production') && (
             <div className="pt-2 space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
@@ -198,10 +222,34 @@ export default function Dashboard() {
                   isSidebarCollapsed && "justify-center px-0",
                   activeTab === 'inventory' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
-                title={isSidebarCollapsed ? "Inventory" : ""}
+                title={isSidebarCollapsed ? "Inventory Stack" : ""}
               >
-                <Package className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Inventory</span>}
+                <Package className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Inventory Stack</span>}
               </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'history' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Order History" : ""}
+              >
+                <Activity className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Order History</span>}
+              </button>
+              {(user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === 'admin' || user?.role === UserRole.ADMIN) && (
+                <button
+                  onClick={() => setActiveTab('digitizer_comm')}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                    isSidebarCollapsed && "justify-center px-0",
+                    activeTab === 'digitizer_comm' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                  )}
+                  title={isSidebarCollapsed ? "Digitizer Comm" : ""}
+                >
+                  <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span className="truncate">Digitizer Comm</span>}
+                </button>
+              )}
             </div>
           )}
 
@@ -262,16 +310,71 @@ export default function Dashboard() {
         <div className="p-8">
           {activeTab === 'inventory' ? (
             <InventoryManagement userRole={user?.role as any} />
-          ) : user?.role === UserRole.STAFF || user?.role === 'staff' ? (
+          ) : activeTab === 'history' ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Order History</h2>
+                  <p className="text-gray-500 text-sm">Full list of orders across all departments</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100 font-bold text-[10px] text-gray-400 uppercase tracking-widest">
+                    <tr>
+                      <th className="px-6 py-4">Order ID</th>
+                      <th className="px-6 py-4">Customer</th>
+                      <th className="px-6 py-4">Category</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Last Update</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {orders.length > 0 ? (
+                      orders.map(order => (
+                        <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-xs">#{order.id.slice(-8)}</td>
+                          <td className="px-6 py-4 font-bold text-gray-900">{order.customerInfo.name}</td>
+                          <td className="px-6 py-4 text-xs font-semibold">{order.category}</td>
+                          <td className="px-6 py-4">
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                              order.status === 'HOLD' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                            )}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-gray-400 text-xs">
+                            {new Date(order.updatedAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">No history found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : [UserRole.STAFF, UserRole.MARKETING, 'staff', 'marketing'].includes(user?.role as any) ? (
             <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
           ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
             <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
+            <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
           ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
             <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
           ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
             <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.DIGITIZER || user?.role === 'digitizer' ? (
+            <DigitizingDashboard orders={orders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
           ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
             <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : activeTab === 'digitizer_comm' ? (
+            <DigitizerCommunication orders={orders} onUpdateOrder={handleUpdateOrder} />
           ) : activeTab === 'dashboard' ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

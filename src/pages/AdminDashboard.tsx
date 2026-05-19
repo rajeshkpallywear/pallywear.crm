@@ -14,7 +14,7 @@ import {
 import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
-import ProfileSetting from '../components/ProfileSetting';
+import ProfileSettings from '../components/ProfileSetting';
 import Logo from '../components/Logo';
 import InvoiceModal from '../components/InvoiceModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -525,7 +525,8 @@ export default function AdminDashboard() {
                                     u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
                                       u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
                                         u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
-                                          "text-gray-600 border-gray-100 bg-gray-50"
+                                          u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
+                                            "text-gray-600 border-gray-100 bg-gray-50"
                           )}
                         >
                           {u.role?.replace('_', ' ')}
@@ -778,7 +779,7 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      <ProfileSetting isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <InvoiceModal
         invoice={selectedInvoice}
         isOpen={!!selectedInvoice}
@@ -792,6 +793,7 @@ const getStatusStyles = (status: string) => {
   switch (status) {
     case 'draft': return 'bg-gray-100 text-gray-600';
     case 'accounts': return 'bg-amber-100 text-amber-700';
+    case 'design': return 'bg-purple-100 text-purple-700';
     case 'order_management': return 'bg-blue-100 text-blue-700';
     case 'production': return 'bg-purple-100 text-purple-700';
     case 'delivery': return 'bg-orange-100 text-orange-700';

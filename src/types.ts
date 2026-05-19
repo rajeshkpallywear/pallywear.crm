@@ -75,7 +75,9 @@ export enum UserRole {
   ORDER_MANAGEMENT = 'order_management',
   PRODUCTION = 'production',
   DELIVERY = 'delivery',
-  MARKETING = 'marketing'
+  MARKETING = 'marketing',
+  DESIGNER = 'designer',
+  DIGITIZER = 'digitizer'
 }
 
 export interface UserProfile {
@@ -89,6 +91,7 @@ export enum OrderStatus {
   DRAFT = 'draft',
   PENDING = 'pending',
   ACCOUNTS = 'accounts',
+  DESIGN = 'design',
   ORDER_MANAGEMENT = 'order_management',
   PRODUCTION = 'production',
   DELIVERY = 'delivery',
@@ -135,6 +138,8 @@ export interface Order {
   staffAttachments?: string[];
   accountsAttachments: string[];
   orderManagementAttachments: string[];
+  designAttachments?: string[];
+  machineFiles?: string[];
   createdAt: number;
   updatedAt: number;
   holdReason?: string;

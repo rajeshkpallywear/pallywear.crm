@@ -40,7 +40,9 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
   const getStatusStyles = (status: OrderStatus) => {
     switch (status) {
       case OrderStatus.DRAFT: return 'bg-gray-100 text-gray-600';
+      case OrderStatus.PENDING: return 'bg-red-100 text-red-700';
       case OrderStatus.ACCOUNTS: return 'bg-amber-100 text-amber-700';
+      case OrderStatus.DESIGN: return 'bg-purple-100 text-purple-700';
       case OrderStatus.ORDER_MANAGEMENT: return 'bg-blue-100 text-blue-700';
       case OrderStatus.PRODUCTION: return 'bg-purple-100 text-purple-700';
       case OrderStatus.DELIVERY: return 'bg-orange-100 text-orange-700';
@@ -293,17 +295,63 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                 </div>
                 {order.orderManagementAttachments?.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold text-brand-primary uppercase mb-2">Production Specs</p>
+                    <p className="text-[10px] font-bold text-blue-500 uppercase mb-2">Management Files</p>
                     <div className="flex flex-wrap gap-2">
                       {order.orderManagementAttachments.map((file, i) => (
                         <div
                           key={i}
                           onClick={() => setViewingImage(file)}
-                          className="w-16 h-16 rounded-xl bg-brand-primary/5 border border-brand-primary/10 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition-all text-brand-primary group"
-                          title="Production Spec"
+                          className="w-16 h-16 rounded-xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition-all text-blue-500 group"
                         >
                           {file.includes('zip') ? <Download size={24} /> : <FileText size={24} />}
-                          <span className="text-[8px] font-black mt-1 uppercase">{file.includes('zip') ? 'ZIP' : 'PDF/IMG'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {order.designAttachments?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-purple-500 uppercase mb-2">Art Studio Files</p>
+                    <div className="flex flex-wrap gap-2">
+                      {order.designAttachments.map((file, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setViewingImage(file)}
+                          className="w-16 h-16 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-purple-500"
+                        >
+                          {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {order.machineFiles?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase mb-2">Machine Language (ZIP)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {order.machineFiles.map((file, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setViewingImage(file)}
+                          className="w-16 h-16 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-indigo-500"
+                        >
+                          <Download size={24} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {order.accountsAttachments?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-amber-500 uppercase mb-2">Billing Docs</p>
+                    <div className="flex flex-wrap gap-2">
+                      {order.accountsAttachments.map((file, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setViewingImage(file)}
+                          className="w-16 h-16 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-amber-500"
+                        >
+                          {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
                         </div>
                       ))}
                     </div>

@@ -5,7 +5,7 @@
 
 import { useState, FormEvent } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package } from 'lucide-react';
+import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown } from '../types';
 import OrderDetailModal from './OrderDetailModal';
 import {
@@ -18,7 +18,8 @@ import {
 } from '../constants';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
-import { cn, getDisplayCategory } from '../lib/utils';
+import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
+import { useRef } from 'react';
 
 interface StaffDashboardProps {
   orders: Order[];
@@ -36,6 +37,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [activeShareMenu, setActiveShareMenu] = useState<string | null>(null);
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customerName: '',
     phone: '',
@@ -50,66 +52,190 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     isUrgent: false
   });
 
+  const [viewMode, setViewMode] = useState<'pending' | 'all'>('pending');
+
+  const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
+  const [designRequest, setDesignRequest] = useState({
+    staffName: '',
+    message: '',
+    attachments: [] as string[],
+    voiceNote: null as string | null
+  });
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Audio recording is not supported in this browser or environment.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setDesignRequest(prev => ({ ...prev, voiceNote: reader.result as string }));
+        };
+        reader.readAsDataURL(audioBlob);
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err: any) {
+      console.error('Error starting recording:', err);
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert('Recording Failed: No microphone found. Please connect a microphone and try again.');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert('Recording Failed: Permission to use microphone was denied. Please allow microphone access in your browser settings.');
+      } else {
+        alert('Could not access microphone. Please ensure one is connected and permissions are granted.');
+      }
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const sendToDesign = async () => {
+    if (!designRequest.message && designRequest.attachments.length === 0 && !designRequest.voiceNote) {
+      alert("Please provide some design instructions or attachments.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Find orders that might need design or create a new "Design Request" order
+      // For now, let's assume we link it to the last created order or just create a new Order in DESIGN status
+      const newOrder: Partial<Order> = {
+        status: OrderStatus.DESIGN,
+        category: 'Design Request',
+        customerInfo: {
+          name: designRequest.staffName || 'Staff Design Request',
+          phone: '',
+          address: 'Internal Support'
+        },
+        notes: `[DESIGN REQUEST] ${new Date().toLocaleString()}\nBy: ${designRequest.staffName || 'Unknown'}\n${designRequest.message}`,
+        designAttachments: designRequest.attachments,
+        staffImages: designRequest.attachments,
+        financials: { totalAmount: 0, advancePay: 0, balanceAmount: 0 },
+        quantity: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      // Add voice note to notes as a data URL if needed or handle separately
+      // Since Order type doesn't have a voiceNote field explicitly, we'll append it to notes if it's small, 
+      // but better to add it to generic attachments.
+      if (designRequest.voiceNote) {
+        newOrder.staffPdfs = [...(newOrder.staffPdfs || []), designRequest.voiceNote];
+      }
+
+      await onCreateOrder(newOrder);
+      alert("Design request sent successfully!");
+      setIsDesignSidebarOpen(false);
+      setDesignRequest({ staffName: '', message: '', attachments: [], voiceNote: null });
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send design request.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      customerName: '',
+      phone: '',
+      address: '',
+      category: CATEGORIES[0],
+      details: {},
+      imageAttachments: [],
+      pdfAttachments: [],
+      sizeBreakdown: [],
+      totalAmount: 0,
+      advancePay: 0,
+      isUrgent: false
+    });
+    setEditingOrderId(null);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isProcessing) return;
 
-    // Check size
-    const totalSize = (formData.imageAttachments.reduce((s, f) => s + f.length, 0)) + (formData.pdfAttachments.reduce((s, f) => s + f.length, 0));
-    if (totalSize > 800000) {
-      alert("Warning: Attachments too large (Max ~800KB total). Please remove some files or use lower resolution images.");
+    // Check size estimation of the FINAL order object
+    const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
+    const finalOrderData = {
+      status: OrderStatus.ACCOUNTS,
+      category: formData.category,
+      customerInfo: {
+        name: formData.customerName,
+        phone: formData.phone,
+        address: formData.address
+      },
+      details: formData.details,
+      sizeBreakdown: formData.sizeBreakdown,
+      quantity: totalQuantity,
+      isUrgent: formData.isUrgent,
+      financials: {
+        totalAmount: formData.totalAmount,
+        advancePay: formData.advancePay,
+        balanceAmount: formData.totalAmount - formData.advancePay
+      },
+      staffImages: formData.imageAttachments,
+      staffPdfs: formData.pdfAttachments,
+      staffAttachments: [...formData.imageAttachments, ...formData.pdfAttachments], // Legacy
+      updatedAt: Date.now(),
+    };
+
+    if (!isOrderSizeValid(finalOrderData)) {
+      alert("Error: Total order data limit exceeded (Max 1MB). Please use fewer images or smaller files. Your current attempt is too large for the cloud.");
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
-
-      await onCreateOrder({
-        status: OrderStatus.ACCOUNTS,
-        category: formData.category,
-        customerInfo: {
-          name: formData.customerName,
-          phone: formData.phone,
-          address: formData.address
-        },
-        details: formData.details,
-        sizeBreakdown: formData.sizeBreakdown,
-        quantity: totalQuantity,
-        isUrgent: formData.isUrgent,
-        financials: {
-          totalAmount: formData.totalAmount,
-          advancePay: formData.advancePay,
-          balanceAmount: formData.totalAmount - formData.advancePay
-        },
-        staffImages: formData.imageAttachments,
-        staffPdfs: formData.pdfAttachments,
-        staffAttachments: [...formData.imageAttachments, ...formData.pdfAttachments], // Legacy
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
+      if (editingOrderId) {
+        await onUpdateOrder(editingOrderId, finalOrderData);
+        alert("Success: Order updated and moved to Accounts Portal.");
+      } else {
+        await onCreateOrder({
+          ...finalOrderData,
+          createdAt: Date.now(),
+        });
+        alert("Success: Order created and moved to Accounts Portal.");
+      }
       setIsCreating(false);
-      setFormData({
-        customerName: '',
-        phone: '',
-        address: '',
-        category: CATEGORIES[0],
-        details: {},
-        imageAttachments: [],
-        pdfAttachments: [],
-        sizeBreakdown: [],
-        totalAmount: 0,
-        advancePay: 0,
-        isUrgent: false
-      });
-      alert("Success: Order created and moved to Accounts Team.");
+      setEditingOrderId(null);
+      resetForm();
     } catch (error: any) {
       console.error("Order submission failed:", error);
-      if (error?.message?.includes("ORDER_TOO_LARGE")) {
-        alert("Failed to create: Attachments are too large for Cloud Sync (Max 1MB total). Please use fewer or smaller files.");
+      const errorMessage = error?.message || "";
+      if (errorMessage.includes("ORDER_TOO_LARGE") || errorMessage.includes("exceeds the maximum allowed size") || errorMessage.includes("size")) {
+        alert("Failed to submit: Attachments are too large for the database (Max 1MB per order total). Please use fewer or smaller files.");
       } else {
-        alert("Failed to submit order. Please check your data.");
+        alert("Failed to submit order. Please check all fields. Error: " + (errorMessage.slice(0, 100)));
       }
     } finally {
       setIsProcessing(false);
@@ -187,6 +313,17 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     }
   };
 
+  const getSleevesForCategory = (category: string) => {
+    if (category === 'Jersey') return ['pull', 'half'];
+    if (['Shirt', 'T-Shirt'].includes(category)) return ['full', 'half'];
+    return [];
+  };
+
+  const getPocketsForCategory = (category: string) => {
+    if (['Shirt', 'T-Shirt'].includes(category)) return ['yes', 'no'];
+    return [];
+  };
+
   const removeSizeQuantity = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -198,12 +335,31 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     const { id, createdAt, updatedAt, ...rest } = order;
     onCreateOrder({
       ...rest,
-      status: OrderStatus.ACCOUNTS, // New copies start at accounts
+      status: OrderStatus.DESIGN, // New copies start at design
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
   };
 
+  const startEdit = (order: Order) => {
+    setEditingOrderId(order.id);
+    setFormData({
+      customerName: order.customerInfo.name,
+      phone: order.customerInfo.phone,
+      address: order.customerInfo.address,
+      category: order.category,
+      details: order.details || {},
+      imageAttachments: order.staffImages || [],
+      pdfAttachments: order.staffPdfs || [],
+      sizeBreakdown: order.sizeBreakdown || [],
+      totalAmount: order.financials?.totalAmount || 0,
+      advancePay: order.financials?.advancePay || 0,
+      isUrgent: order.isUrgent || false
+    });
+    setIsCreating(true);
+  };
+
+  const actionRequiredOrders = orders.filter(o => o.status === OrderStatus.PENDING);
   const filteredOrders = orders.filter(o =>
     o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     o.id.includes(searchTerm)
@@ -216,14 +372,245 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
           <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Staff Dashboard</h2>
           <p className="text-gray-500 mt-1">Create and manage order intake</p>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="flex items-center justify-center gap-2 bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg active:scale-95"
-        >
-          <Plus size={20} />
-          <span>New Order</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsDesignSidebarOpen(true)}
+            className="flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg active:scale-95"
+          >
+            <MessageSquare size={20} />
+            <span>Design Team</span>
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setIsCreating(true);
+            }}
+            className="flex items-center justify-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg active:scale-95"
+          >
+            <Plus size={20} />
+            <span>Create Order</span>
+          </button>
+        </div>
       </div>
+
+      {/* Design Team Sidebar */}
+      {isDesignSidebarOpen && (
+        <div className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setIsDesignSidebarOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col"
+          >
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-purple-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white">
+                  <MessageSquare size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Design Team</h3>
+                  <p className="text-[10px] text-purple-600 font-bold uppercase tracking-widest">Collaborate on Artworks</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDesignSidebarOpen(false)}
+                className="p-2 hover:bg-purple-100 rounded-full transition-colors text-purple-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your Name (Staff)</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold"
+                  placeholder="Enter your name..."
+                  value={designRequest.staffName}
+                  onChange={(e) => setDesignRequest(prev => ({ ...prev, staffName: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Message to Designer</label>
+                <textarea
+                  rows={4}
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm font-medium resize-none shadow-inner"
+                  placeholder="Explain the design requirements, colors, logos, etc..."
+                  value={designRequest.message}
+                  onChange={(e) => setDesignRequest(prev => ({ ...prev, message: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Design Assets (Images/PDFs)</label>
+                <FileUpload
+                  label="Upload references"
+                  accept="image/*,.pdf"
+                  maxFiles={10}
+                  onFilesSelected={(files) => setDesignRequest(prev => ({ ...prev, attachments: files }))}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Voice Instructions</label>
+                <div className="flex items-center gap-4 p-4 bg-purple-50 border border-purple-100 rounded-2xl">
+                  {isRecording ? (
+                    <button
+                      onClick={stopRecording}
+                      className="w-12 h-12 bg-red-600 text-white rounded-full flex items-center justify-center animate-pulse shadow-lg"
+                    >
+                      <X size={20} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={startRecording}
+                      className="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                    >
+                      <Mic size={20} />
+                    </button>
+                  )}
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-purple-900 uppercase">
+                      {isRecording ? "Recording your voice..." : "Record Voice Note"}
+                    </p>
+                    <p className="text-[10px] text-purple-600 font-medium">
+                      {isRecording ? "Press square to stop" : "Explain design details verbally"}
+                    </p>
+                  </div>
+                </div>
+
+                {designRequest.voiceNote && (
+                  <div className="flex items-center justify-between p-3 bg-white border border-purple-100 rounded-xl shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Mic size={14} className="text-purple-600" />
+                      <span className="text-xs font-bold text-gray-900">Voice_Note.wav</span>
+                    </div>
+                    <button
+                      onClick={() => setDesignRequest(prev => ({ ...prev, voiceNote: null }))}
+                      className="text-red-500 p-1 hover:bg-red-50 rounded"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100">
+              <button
+                disabled={isProcessing}
+                onClick={sendToDesign}
+                className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold hover:bg-purple-700 transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    <span>Send to Design Team</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Summary Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <button
+          onClick={() => setViewMode(viewMode === 'all' ? 'pending' : 'all')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group",
+            viewMode === 'all' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            viewMode === 'all' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+          )}>
+            <Package size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", viewMode === 'all' ? "text-white/70" : "text-gray-500")}>
+              {viewMode === 'all' ? "Showing All Orders" : "Total Orders"}
+            </p>
+            <p className="text-2xl font-black">{orders.length}</p>
+          </div>
+        </button>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
+            <Activity size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Order Status</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length} Active
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
+                {orders.filter(o => o.status === OrderStatus.HOLD).length} On Hold • {orders.filter(o => o.status === OrderStatus.DELIVERED).length} Done
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center shadow-inner">
+            <TrendingUp size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Type of Total Order</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {Array.from(new Set(orders.map(o => o.category))).length} Categories
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
+                {orders.length > 0 ? (orders[0].category + (orders.length > 1 ? ', ' + orders[1].category : '')) : 'No data'}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {actionRequiredOrders.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-red-600 font-bold">
+            <AlertCircle size={20} />
+            <h3 className="uppercase tracking-widest text-xs">Action Required ({actionRequiredOrders.length})</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {actionRequiredOrders.map(order => (
+              <div key={order.id} className="bg-red-50 border border-red-100 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] font-black text-red-400 uppercase">Reason for return</p>
+                    <p className="text-sm font-bold text-red-700 italic">"{order.notes?.split('\n').filter(l => l.includes('[RETURNED]')).pop()?.split(':').slice(2).join(':').trim() || 'No reason specified'}"</p>
+                  </div>
+                </div>
+                <div className="h-px bg-red-100" />
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">{order.customerInfo.name}</p>
+                    <p className="text-[10px] text-gray-500">#{order.id.slice(-8)}</p>
+                  </div>
+                  <button
+                    onClick={() => startEdit(order)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-all shadow-sm"
+                  >
+                    Fix & Resubmit
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
         <div className="p-4 border-b border-gray-100 flex items-center gap-3">
@@ -304,7 +691,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
       <div className="pt-8 border-t border-gray-100">
         <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
           <Globe className="text-brand-primary" size={24} />
-          Global Order Status Hub
+          Order Status
         </h3>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[300px] mb-12">
           <table className="w-full text-left text-sm">
@@ -672,22 +1059,26 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
                                   onChange={(v) => updateSizeQuantity(idx, 'printType', v)}
                                 />
                               </div>
-                              <div>
-                                <Select
-                                  label="Sleeve"
-                                  value={item.sleeve || ''}
-                                  options={SLEEVE_OPTIONS}
-                                  onChange={(v) => updateSizeQuantity(idx, 'sleeve', v)}
-                                />
-                              </div>
-                              <div>
-                                <Select
-                                  label="Pocket"
-                                  value={item.pocket || ''}
-                                  options={['Yes', 'No']}
-                                  onChange={(v) => updateSizeQuantity(idx, 'pocket', v)}
-                                />
-                              </div>
+                              {getSleevesForCategory(item.category).length > 0 && (
+                                <div>
+                                  <Select
+                                    label="Sleeve"
+                                    value={item.sleeve || ''}
+                                    options={getSleevesForCategory(item.category)}
+                                    onChange={(v) => updateSizeQuantity(idx, 'sleeve', v)}
+                                  />
+                                </div>
+                              )}
+                              {getPocketsForCategory(item.category).length > 0 && (
+                                <div>
+                                  <Select
+                                    label="Pocket"
+                                    value={item.pocket || ''}
+                                    options={getPocketsForCategory(item.category)}
+                                    onChange={(v) => updateSizeQuantity(idx, 'pocket', v)}
+                                  />
+                                </div>
+                              )}
                             </div>
                             <div className="mt-2 pt-2 border-t border-gray-50 flex justify-end items-center gap-4">
                               <div className="text-right">
@@ -871,6 +1262,7 @@ const getStatusStyles = (status: OrderStatus) => {
   switch (status) {
     case OrderStatus.DRAFT: return 'bg-gray-100 text-gray-600';
     case OrderStatus.ACCOUNTS: return 'bg-amber-100 text-amber-700';
+    case OrderStatus.DESIGN: return 'bg-purple-100 text-purple-700';
     case OrderStatus.ORDER_MANAGEMENT: return 'bg-blue-100 text-blue-700';
     case OrderStatus.PRODUCTION: return 'bg-purple-100 text-purple-700';
     case OrderStatus.DELIVERY: return 'bg-orange-100 text-orange-700';

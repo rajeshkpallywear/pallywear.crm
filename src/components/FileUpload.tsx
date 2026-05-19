@@ -4,7 +4,8 @@
  */
 
 import { useState, useRef, ChangeEvent } from 'react';
-import { Upload, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 interface FileUploadProps {
   label: string;
@@ -15,34 +16,65 @@ interface FileUploadProps {
 
 export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accept = "image/*,.pdf" }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<{ name: string, type: string, size: number, data: string }[]>([]);
+  const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file: File) => {
-      if (file.size > 100 * 1024 * 1024) {
-        alert(`${file.name} is too large. Max size is 100MB.`);
-        return;
-      }
+    setIsCompressing(true);
+    const fileList: File[] = Array.from(files);
+    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+    const processedFiles: { name: string, type: string, size: number, data: string }[] = [];
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newData = event.target?.result as string;
-        const newFile = {
+    for (const file of fileList) {
+      if (file.size > MAX_SIZE) {
+        alert(`File ${file.name} is too large. Max size is 100MB.`);
+        continue;
+      }
+      try {
+        let fileToProcess: File | Blob = file;
+
+        // Compress images
+        if (file.type.startsWith('image/')) {
+          const options = {
+            maxSizeMB: 0.1, // Target 100KB per image to allow multiple images across stages
+            maxWidthOrHeight: 1280,
+            useWebWorker: true,
+          };
+          try {
+            fileToProcess = await imageCompression(file, options);
+          } catch (error) {
+            console.error('Compression failed:', error);
+            // Fallback to original file
+          }
+        }
+
+        const reader = new FileReader();
+        const data = await new Promise<string>((resolve) => {
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.readAsDataURL(fileToProcess);
+        });
+
+        processedFiles.push({
           name: file.name,
           type: file.type,
-          size: file.size,
-          data: newData
-        };
+          size: fileToProcess.size,
+          data: data
+        });
+      } catch (error) {
+        console.error('Error processing file:', error);
+      }
+    }
 
-        const updated = [...selectedFiles, newFile].slice(-maxFiles);
-        setSelectedFiles(updated);
-        onFilesSelected(updated.map(f => f.data));
-      };
-      reader.readAsDataURL(file);
-    });
+    const updated = [...selectedFiles, ...processedFiles].slice(-maxFiles);
+    setSelectedFiles(updated);
+    onFilesSelected(updated.map(f => f.data));
+    setIsCompressing(false);
+
+    // Clear input
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -53,16 +85,26 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-semibold text-gray-700">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-semibold text-gray-700">{label}</label>
+        {isCompressing && (
+          <div className="flex items-center gap-1.5 text-xs text-brand-primary animate-pulse font-bold">
+            <Loader2 size={12} className="animate-spin" />
+            Optimizing...
+          </div>
+        )}
+      </div>
       <div
-        onClick={() => fileInputRef.current?.click()}
-        className="border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-black hover:bg-gray-50 transition-all cursor-pointer text-center group"
+        onClick={() => !isCompressing && fileInputRef.current?.click()}
+        className={`border-2 border-dashed rounded-xl p-8 transition-all cursor-pointer text-center group ${isCompressing ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-gray-300 hover:border-black hover:bg-gray-50'
+          }`}
       >
         <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
           <Upload size={24} className="text-gray-500" />
         </div>
         <p className="text-sm font-medium text-gray-700">Click or drag to upload files</p>
-        <p className="text-xs text-gray-500 mt-1">{accept.includes('pdf') && accept.includes('image') ? 'PDF or image files' : accept.includes('pdf') ? 'PDF files only' : 'Image files only'} (Max 100MB)</p>
+        <p className="text-xs text-brand-primary mt-1 font-bold">Images are auto-optimized for HD quality (Max 100MB)</p>
+        <p className="text-[10px] text-gray-400">PDF, ZIP or image files (Max {maxFiles} total)</p>
         <input
           type="file"
           hidden
@@ -70,6 +112,7 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
           onChange={handleFileChange}
           accept={accept}
           multiple
+          disabled={isCompressing}
         />
       </div>
 
@@ -78,15 +121,21 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
           {selectedFiles.map((file, idx) => (
             <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
               <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
-                {file.type.includes('image') ? <ImageIcon size={16} /> : <FileText size={16} />}
+                {file.type.includes('image') ? <ImageIcon size={16} /> :
+                  file.type.includes('zip') ? <Upload size={16} className="text-blue-500" /> :
+                    <FileText size={16} className="text-gray-500" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB (Optimized)</p>
               </div>
               <button
-                onClick={() => removeFile(idx)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFile(idx);
+                }}
                 className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-colors"
+                disabled={isCompressing}
               >
                 <X size={16} />
               </button>

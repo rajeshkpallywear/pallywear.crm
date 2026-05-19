@@ -5,9 +5,9 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { ClipboardCheck, CreditCard, ChevronRight, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2 } from 'lucide-react';
+import { ClipboardCheck, CreditCard, ChevronRight, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { getDisplayCategory } from '../lib/utils';
+import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
@@ -21,15 +21,28 @@ interface AccountsDashboardProps {
 
 export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin }: AccountsDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [viewMode, setViewMode] = useState<'pending' | 'all'>('pending');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || o.status === OrderStatus.HOLD);
+  const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
+
+    // Size check on next state
+    const nextOrderState = {
+      ...selectedOrder,
+      accountsAttachments: billingFiles
+    };
+
+    if (!isOrderSizeValid(nextOrderState)) {
+      alert("Error: Total order data limit exceeded (Max 1MB). Please reduce the number of attachments or compress images in accounts.");
+      return;
+    }
+
     setIsProcessing(true);
     try {
       await onUpdateOrder(selectedOrder.id, {
@@ -39,10 +52,14 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       });
       setSelectedOrder(null);
       setBillingFiles([]);
-      alert("Success: Order moved to Management Hub.");
+      alert("Success: Order moved to Order Management Hub.");
     } catch (e: any) {
       console.error(e);
-      alert("An error occurred while moving the order.");
+      if (e?.message?.includes("exceeds the maximum allowed size")) {
+        alert("Action failed: The order document is now too large (Max 1MB). Please reduce the number of attachments.");
+      } else {
+        alert("An error occurred while moving the order.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -50,25 +67,47 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   const handleHoldOrder = async () => {
     if (!selectedOrder || isProcessing) return;
+
+    if (selectedOrder.status === OrderStatus.HOLD) {
+      const newStatus = selectedOrder.previousStatus || OrderStatus.ACCOUNTS;
+      if (window.confirm(`Release order back to ${newStatus}?`)) {
+        setIsProcessing(true);
+        try {
+          await onUpdateOrder(selectedOrder.id, {
+            status: newStatus,
+            updatedAt: Date.now()
+          });
+          setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+          alert("Order released.");
+        } catch (e) {
+          alert("Action failed.");
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+      return;
+    }
+
     const reason = window.prompt("Enter mandatory reason for putting this order on HOLD:");
-    if (!reason) {
+    if (reason === null) return;
+    if (!reason.trim()) {
       alert("Hold reason is mandatory.");
       return;
     }
 
     setIsProcessing(true);
     try {
-      const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason}`;
+      const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
       const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
 
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.HOLD,
-        holdReason: reason,
+        holdReason: reason.trim(),
         previousStatus: selectedOrder.status,
         notes: updatedNotes,
         updatedAt: Date.now()
       });
-      setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason, previousStatus: selectedOrder.status, notes: updatedNotes } : null);
+      setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes } : null);
       alert("Order put on HOLD.");
     } catch (e) {
       alert("Action failed.");
@@ -84,15 +123,67 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
         <p className="text-gray-500 mt-1">Review and attach billing documentation</p>
       </div>
 
+      {/* Summary Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <button
+          onClick={() => setViewMode(viewMode === 'all' ? 'pending' : 'all')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group",
+            viewMode === 'all' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            viewMode === 'all' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+          )}>
+            <Package size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", viewMode === 'all' ? "text-white/70" : "text-gray-500")}>
+              {viewMode === 'all' ? "Showing All Orders" : "Total Orders"}
+            </p>
+            <p className="text-2xl font-black">{orders.length}</p>
+          </div>
+        </button>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
+            <Activity size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Order Status</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {pendingOrders.length} Pending
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
+                {orders.filter(o => o.status === OrderStatus.HOLD).length} On Hold • {orders.length - pendingOrders.length} In Other Stages
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center shadow-inner">
+            <TrendingUp size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Type of Total Order</p>
+            <p className="text-lg font-bold text-gray-900 leading-tight">
+              {Array.from(new Set(orders.map(o => o.category))).length} Categories
+              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
+                {orders.length > 0 ? orders[0].category : 'No data'}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <ClipboardCheck className="text-amber-500" size={20} />
-            Pending Billing ({pendingOrders.length})
+            {viewMode === 'all' ? 'Order History' : 'Pending Billing'} ({viewMode === 'all' ? orders.length : pendingOrders.length})
           </h3>
           <div className="space-y-3">
-            {pendingOrders.length > 0 ? (
-              pendingOrders.map(order => (
+            {(viewMode === 'all' ? orders : pendingOrders).length > 0 ? (
+              (viewMode === 'all' ? orders : pendingOrders).map(order => (
                 <button
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
@@ -245,6 +336,23 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       {(selectedOrder.staffPdfs || []).length === 0 && <p className="text-xs text-gray-400 italic">No PDFs</p>}
                     </div>
                   </div>
+                  {(selectedOrder.designAttachments?.length || 0) > 0 && (
+                    <div className="md:col-span-2">
+                      <h5 className="text-sm font-bold text-purple-400 uppercase tracking-widest mb-4 border-t border-gray-50 pt-4">Design Studio Output</h5>
+                      <div className="flex flex-wrap gap-3">
+                        {selectedOrder.designAttachments?.map((file, idx) => (
+                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-purple-500">
+                            {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
+                          </div>
+                        ))}
+                        {selectedOrder.designMachineFiles?.map((file, idx) => (
+                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-indigo-500">
+                            <Download size={24} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 {viewingImage && (
@@ -256,20 +364,23 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 <section className="space-y-4">
                   <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Billing Action</h5>
                   <FileUpload
-                    label="Add Billing PDF or Picture (Max 100MB)"
+                    label="Add Billing PDF or Picture (Auto-Optimized)"
                     onFilesSelected={(files) => setBillingFiles(files)}
                   />
                   <div className="pt-4 flex gap-3">
                     <button
                       onClick={handleHoldOrder}
                       disabled={isProcessing}
-                      className="px-6 py-4 bg-red-100 text-red-700 rounded-2xl font-bold hover:bg-red-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
+                      className={cn(
+                        "px-6 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70",
+                        selectedOrder.status === OrderStatus.HOLD ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"
+                      )}
                     >
-                      Hold
+                      {selectedOrder.status === OrderStatus.HOLD ? "Release" : "Hold"}
                     </button>
                     <button
                       onClick={handleProcessOrder}
-                      disabled={isProcessing}
+                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
                       className="flex-1 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
                     >
                       {isProcessing ? (
@@ -280,7 +391,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       ) : (
                         <>
                           <ChevronRight size={20} />
-                          Move to Order Hub
+                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Move to Order Management'}
                         </>
                       )}
                     </button>

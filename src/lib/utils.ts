@@ -13,3 +13,25 @@ export function getDisplayCategory(order: { category?: string; sizeBreakdown?: {
   }
   return order.category || 'General';
 }
+
+export function calculateOrderSize(order: any): number {
+  try {
+    // Stringify gives a rough estimate of the document size in bytes
+    // Firestore limit is 1,048,576 bytes.
+    return encodeURI(JSON.stringify(order)).split(/%..|./).length - 1;
+  } catch (e) {
+    return 0;
+  }
+}
+
+export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
+  const currentSize = calculateOrderSize(order);
+  const totalSize = currentSize + extraSize;
+  const limit = 1000000; // 1MB Firestore limit
+
+  if (totalSize > limit) {
+    console.warn(`Order size validation failed: ${(totalSize / 1024).toFixed(0)}KB exceeds ${limit / 1024}KB limit`);
+  }
+
+  return totalSize < limit;
+}
