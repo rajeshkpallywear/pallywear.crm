@@ -18,11 +18,12 @@ import {
   getDocFromServer
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { UserRole } from '../types';
 
 export interface User {
   id: string;
   email: string;
-  role: 'user' | 'admin';
+  role: UserRole | 'admin' | 'user';
   name: string;
   avatar?: string;
   createdAt: string;
@@ -80,7 +81,7 @@ interface AuthContextType {
   registeredUsers: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   googleLogin: () => Promise<{ success: boolean; message?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  register: (name: string, email: string, password: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -95,8 +96,21 @@ const isAdminEmail = (email: string) => {
   return lowerEmail === 'ceo@pallywear.com' ||
     lowerEmail === 'rajeshkpallywear@gmail.com' ||
     lowerEmail === 'daniel.smpallywear@gmail.com' ||
+    lowerEmail === 'admin' ||
     lowerEmail.startsWith('admin') ||
     lowerEmail.startsWith('ceo');
+};
+
+const getRoleFromEmail = (email: string): UserRole => {
+  const lower = email.toLowerCase();
+  if (isAdminEmail(lower)) return UserRole.ADMIN;
+  if (lower.startsWith('staff')) return UserRole.STAFF;
+  if (lower.startsWith('user')) return UserRole.MARKETING;
+  if (lower.startsWith('account')) return UserRole.ACCOUNTS;
+  if (lower.startsWith('order') || lower.startsWith('hub')) return UserRole.ORDER_MANAGEMENT;
+  if (lower.startsWith('prod') || lower.startsWith('factory')) return UserRole.PRODUCTION;
+  if (lower.startsWith('del') || lower.startsWith('delyvery')) return UserRole.DELIVERY;
+  return UserRole.STAFF;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -130,34 +144,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      if (firebaseUser) {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        try {
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            let userData = userDoc.data() as User;
+      try {
+        setLoading(true);
+        if (firebaseUser) {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          try {
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+              let userData = userDoc.data() as User;
 
-            // Auto-promote to admin if email matches whitelist but role is 'user'
-            const email = firebaseUser.email || '';
-            const isEligibleForAdmin = isAdminEmail(email);
+              const email = firebaseUser.email || '';
+              const isEligibleForAdmin = isAdminEmail(email);
 
-            if (isEligibleForAdmin && userData.role !== 'admin') {
-              userData = { ...userData, role: 'admin' };
-              await updateDoc(userDocRef, { role: 'admin' });
+              if (isEligibleForAdmin && userData.role !== 'admin') {
+                userData = { ...userData, role: 'admin' };
+                await updateDoc(userDocRef, { role: 'admin' });
+              }
+
+              setUser(userData);
+            } else {
+              // AUTO-PROFILE RECOVERY
+              const email = firebaseUser.email || '';
+              const role = getRoleFromEmail(email);
+              const newUser: User = {
+                id: firebaseUser.uid,
+                email: email,
+                role: role,
+                name: firebaseUser.displayName || email.split('@')[0].split('.')[0],
+                avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=3291B6&color=fff`,
+                createdAt: new Date().toISOString()
+              };
+
+              await setDoc(userDocRef, newUser);
+              setUser(newUser);
             }
-
-            setUser(userData);
-          } else {
+          } catch (error) {
+            console.error('Firestore sync error:', error);
+            // Don't throw here, just set user to null so they stay on login
             setUser(null);
           }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+        } else {
+          setUser(null);
         }
-      } else {
-        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -165,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sync registered users list
   useEffect(() => {
-    if (!user) {
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
       setRegisteredUsers([]);
       return;
     }
@@ -183,16 +214,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     let normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail === 'admin') {
-      normalizedEmail = 'ceo@pallywear.com';
-    }
+
+    let portalName = '';
+    // Removed shorthand portal mapping logic to enforce separate registered logins
 
     try {
-      await signInWithEmailAndPassword(auth, normalizedEmail, password);
+      const result = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+
+      // Manual sync: Fetch the user document immediately to ensure state is ready
+      const userDocRef = doc(db, 'users', result.user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUser(userDoc.data() as User);
+      } else {
+        // Fallback for missing profile during login
+        const role = getRoleFromEmail(normalizedEmail);
+        const newUser: User = {
+          id: result.user.uid,
+          email: normalizedEmail,
+          role: role,
+          name: normalizedEmail.split('@')[0],
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(userDocRef, newUser);
+        setUser(newUser);
+      }
+
       return { success: true };
     } catch (error: any) {
-      console.error('Login error:', error.code, error.message);
-      return { success: false, message: error.message || 'Login failed' };
+      console.log(`Initial login attempt failed for ${normalizedEmail}. Code: ${error.code}`);
+
+      // INTELLIGENT RECOVERY: If user doesn't exist or credentials invalid, try to auto-register
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        if (password.length >= 6) {
+          console.log(`Attempting auto-registration for: ${normalizedEmail}`);
+          const name = normalizedEmail.split('@')[0].split('.')[0];
+          const regResult = await register(name, normalizedEmail, password);
+
+          if (regResult.success) {
+            console.log(`Auto-registration successful for: ${normalizedEmail}`);
+            return regResult;
+          }
+
+          // If registration failed because user already exists, then the password typed was objectively wrong
+          if (regResult.code === 'auth/email-already-in-use' || (regResult.message && regResult.message.includes('email-already-in-use'))) {
+            return {
+              success: false,
+              message: 'This account already exists, but the password you entered is incorrect. Please use your original password.'
+            };
+          }
+
+          // If registration failed for any other reason (e.g. Firestore rules)
+          return {
+            success: false,
+            message: `Account creation failed: ${regResult.message || 'Check network connection.'}`
+          };
+        }
+      }
+
+      console.error('Final login error:', error.code, error.message);
+      return {
+        success: false,
+        message: 'Invalid email or password. For a new account, use at least 6 characters.'
+      };
     }
   };
 
@@ -233,19 +318,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, role?: UserRole) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
       const firebaseUser = userCredential.user;
 
-      const role = isAdminEmail(normalizedEmail) ? 'admin' : 'user';
+      const finalRole = role || getRoleFromEmail(normalizedEmail);
 
       const newUser: User = {
         id: firebaseUser.uid,
         email: normalizedEmail,
-        role: role as 'user' | 'admin',
+        role: finalRole,
         name: name.trim(),
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=3291B6&color=fff`,
         createdAt: new Date().toISOString()
@@ -263,7 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newUser);
       return { success: true };
     } catch (error: any) {
-      return { success: false, message: error.message || 'Registration failed' };
+      return { success: false, message: error.message || 'Registration failed', code: error.code };
     }
   };
 

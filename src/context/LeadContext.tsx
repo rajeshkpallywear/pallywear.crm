@@ -12,7 +12,7 @@ import {
   getDocFromServer
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
-import { Lead, Invoice } from '../types';
+import { Lead, Invoice, Order, InventoryMovement } from '../types';
 import { useAuth } from './AuthContext';
 
 enum OperationType {
@@ -37,7 +37,7 @@ interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
+  const errInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
       userId: auth.currentUser?.uid,
@@ -47,21 +47,28 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     },
     operationType,
     path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  // You can show a notification here if you have a toast system
-  throw new Error(JSON.stringify(errInfo));
+  };
+
+  console.error('Firestore Error Details:', errInfo);
+  throw new Error(`Cloud Sync Error (${operationType} at ${path}): ${errInfo.error}`);
 }
 
 interface LeadContextType {
   leads: Lead[];
   invoices: Invoice[];
+  orders: Order[];
+  inventory: InventoryMovement[];
   addLead: (lead: Omit<Lead, 'id'>) => Promise<void>;
   updateLead: (id: string, lead: Partial<Lead>) => Promise<void>;
   deleteLead: (id: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, 'id'>) => Promise<void>;
   updateInvoice: (id: string, invoice: Partial<Invoice>) => Promise<void>;
   deleteInvoice: (id: string) => Promise<void>;
+  addOrder: (order: Partial<Order>) => Promise<void>;
+  updateOrder: (id: string, order: Partial<Order>) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
+  addInventoryMovement: (movement: Omit<InventoryMovement, 'id' | 'createdAt'>) => Promise<void>;
+  deleteInventoryMovement: (id: string) => Promise<void>;
 }
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
@@ -69,6 +76,8 @@ const LeadContext = createContext<LeadContextType | undefined>(undefined);
 export function LeadProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [inventory, setInventory] = useState<InventoryMovement[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -122,9 +131,39 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'invoices');
     });
 
+    const ordersRef = collection(db, 'orders');
+    // For orders, we usually show everything to everyone in the flow, or filter by role
+    // Here we show all orders to keep the flow transparent across departments
+    const unsubscribeOrders = onSnapshot(ordersRef, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Order[];
+      setOrders(data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'orders');
+    });
+
+    let unsubscribeInventory = () => { };
+    // Subscription for inventory - accessible by relevant roles
+    if (user.role === 'admin' || user.role === 'order_management' || user.role === 'staff' || user.role === 'production') {
+      const inventoryRef = collection(db, 'inventory');
+      unsubscribeInventory = onSnapshot(inventoryRef, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as InventoryMovement[];
+        setInventory(data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'inventory');
+      });
+    }
+
     return () => {
       unsubscribeLeads();
       unsubscribeInvoices();
+      unsubscribeOrders();
+      unsubscribeInventory();
     };
   }, [user]);
 
@@ -197,8 +236,77 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const addOrder = async (orderData: Partial<Order>) => {
+    if (!user) return;
+
+    try {
+      const orderId = Math.random().toString(36).substr(2, 9).toUpperCase();
+      const newOrder = {
+        id: orderId,
+        ...orderData,
+        createdBy: user.id,
+        createdByName: user.name,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      await setDoc(doc(db, 'orders', orderId), newOrder);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'orders');
+    }
+  };
+
+  const updateOrder = async (id: string, orderUpdate: Partial<Order>) => {
+    try {
+      await firestoreUpdateDoc(doc(db, 'orders', id), {
+        ...orderUpdate,
+        updatedAt: Date.now()
+      });
+    } catch (error: any) {
+      if (error?.message?.includes('too large') || error?.code === 'resource-exhausted') {
+        throw new Error("ORDER_TOO_LARGE: The attachments you added are too large for cloud sync. Total size must be under 1MB. Please remove some files.");
+      }
+      handleFirestoreError(error, OperationType.UPDATE, `orders/${id}`);
+    }
+  };
+
+  const deleteOrder = async (id: string) => {
+    try {
+      await firestoreDeleteDoc(doc(db, 'orders', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `orders/${id}`);
+    }
+  };
+
+  const addInventoryMovement = async (movement: Omit<InventoryMovement, 'id' | 'createdAt'>) => {
+    try {
+      const inventoryRef = collection(db, 'inventory');
+      const docRef = doc(inventoryRef);
+      await setDoc(docRef, {
+        ...movement,
+        id: docRef.id,
+        createdAt: Date.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'inventory');
+    }
+  };
+
+  const deleteInventoryMovement = async (id: string) => {
+    try {
+      await firestoreDeleteDoc(doc(db, 'inventory', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `inventory/${id}`);
+    }
+  };
+
   return (
-    <LeadContext.Provider value={{ leads, invoices, addLead, updateLead, deleteLead, addInvoice, updateInvoice, deleteInvoice }}>
+    <LeadContext.Provider value={{
+      leads, invoices, orders, inventory,
+      addLead, updateLead, deleteLead,
+      addInvoice, updateInvoice, deleteInvoice,
+      addOrder, updateOrder, deleteOrder,
+      addInventoryMovement, deleteInventoryMovement
+    }}>
       {children}
     </LeadContext.Provider>
   );

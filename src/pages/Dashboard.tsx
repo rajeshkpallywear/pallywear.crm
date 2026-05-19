@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
 import {
-  Layout, Bell, Settings, BarChart3,
+  Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
   ChevronLeft, ChevronRight, Menu
 } from 'lucide-react';
@@ -15,16 +15,55 @@ import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
 import InvoiceManager from '../components/InvoiceManager';
 import ProfileSetting from '../components/ProfileSetting';
+import InventoryManagement from '../components/InventoryManagement';
 import Logo from '../components/Logo';
 import { cn } from '../lib/utils';
+import { UserRole, Order } from '../types';
+import { mockDataService } from '../service/mockDataService';
+
+// Import New Role Dashboards
+import AccountsDashboard from '../components/AccountsDashboard';
+import OrderManagementDashboard from '../components/OrderManagementDashboard';
+import ProductionDashboard from '../components/ProductionDashboard';
+import DeliveryDashboard from '../components/DeliveryDashboard';
+import StaffDashboard from '../components/StaffDashboard';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const { leads } = useLeads();
+  const { leads, orders, inventory, addOrder, updateOrder, deleteOrder } = useLeads();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+
+  const handleUpdateOrder = async (id: string, updates: Partial<Order>) => {
+    try {
+      await updateOrder(id, updates);
+    } catch (error) {
+      console.error("Failed to update order:", error);
+      alert("Sync failed: Data might be too large (Max 1MB per order in current setup). Try using smaller images.");
+      throw error;
+    }
+  };
+
+  const handleCreateOrder = async (orderData: Partial<Order>) => {
+    try {
+      await addOrder(orderData);
+    } catch (error) {
+      console.error("Failed to create order:", error);
+      alert("Creation failed: Data might be too large.");
+      throw error;
+    }
+  };
+
+  const handleDeleteOrder = async (id: string) => {
+    try {
+      await deleteOrder(id);
+    } catch (error) {
+      console.error("Failed to delete order:", error);
+      alert("Delete failed.");
+    }
+  };
 
   const filteredLeads = user?.role === 'admin'
     ? leads
@@ -45,6 +84,12 @@ export default function Dashboard() {
   const totalForecast = filteredLeads.reduce((sum, l) => sum + l.forecastedValue, 0);
   const totalConverted = filteredLeads.reduce((sum, l) => sum + l.convertedValue, 0);
 
+  const userRoleDisplay = React.useMemo(() => {
+    if (!user?.role) return 'User';
+    if (user.role === 'admin' || user.role === UserRole.ADMIN) return 'Pallywear';
+    return String(user.role).replace('_', ' ');
+  }, [user?.role]);
+
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Sidebar */}
@@ -63,62 +108,104 @@ export default function Dashboard() {
         </div>
 
         <nav className="p-4 space-y-1">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'dashboard' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-            )}
-            title={isSidebarCollapsed ? "Dashboard" : ""}
-          >
-            <Layout className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Dashboard</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'reports' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-            )}
-            title={isSidebarCollapsed ? "Reports" : ""}
-          >
-            <BarChart3 className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Reports</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('clients')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'clients' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-            )}
-            title={isSidebarCollapsed ? "Clients" : ""}
-          >
-            <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Clients</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('invoices')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-            )}
-            title={isSidebarCollapsed ? "Invoices" : ""}
-          >
-            <Activity className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Invoices</span>}
-          </button>
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => navigate('/admin')}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all",
-                isSidebarCollapsed && "justify-center px-0"
-              )}
-              title={isSidebarCollapsed ? "Admin Dashboard" : ""}
-            >
-              <Shield className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Admin Dashboard</span>}
-            </button>
+          {/* Main Dashboard - Only for Marketing/Staff/Admin or generic view */}
+          {/* Marketing & Admin Tabs */}
+          {(user?.role === UserRole.ADMIN || user?.role === UserRole.MARKETING || user?.role === 'admin' || user?.role === 'user') && (
+            <div className="space-y-1">
+              <p className={cn(
+                "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+                isSidebarCollapsed && "hidden"
+              )}>Lead Management</p>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'dashboard' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Dashboard" : ""}
+              >
+                <Layout className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Dashboard</span>}
+              </button>
+              <button
+                onClick={() => setActiveTab('reports')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'reports' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Reports" : ""}
+              >
+                <BarChart3 className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Reports</span>}
+              </button>
+              <button
+                onClick={() => setActiveTab('clients')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'clients' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Clients" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Clients</span>}
+              </button>
+              <button
+                onClick={() => setActiveTab('invoices')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Invoices" : ""}
+              >
+                <Activity className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Invoices</span>}
+              </button>
+            </div>
           )}
+
+          {/* Department Portals */}
+          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, 'user', 'admin'].includes(user.role as any) && (
+            <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
+              <p className={cn(
+                "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
+                isSidebarCollapsed && "hidden"
+              )}>Active Portal</p>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl shadow-sm border transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'dashboard' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
+                )}
+              >
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                {!isSidebarCollapsed && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{String(user.role).replace('_', ' ')} Portal</span>}
+              </button>
+            </div>
+          )}
+
+          {/* Logistics & Inventory Section */}
+          {(user?.role === UserRole.ADMIN || user?.role === 'admin' || user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === UserRole.STAFF || user?.role === 'staff') && (
+            <div className="pt-2 space-y-1">
+              <p className={cn(
+                "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+                isSidebarCollapsed && "hidden"
+              )}>Operations</p>
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "justify-center px-0",
+                  activeTab === 'inventory' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Inventory" : ""}
+              >
+                <Package className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Inventory</span>}
+              </button>
+            </div>
+          )}
+
+          {/* Security & Users link removed as requested */}
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
@@ -127,7 +214,7 @@ export default function Dashboard() {
             isSidebarCollapsed ? "flex-col py-3 px-1" : ""
           )}>
             <button onClick={() => setShowProfileModal(true)} className="relative group">
-              <img src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=1A0B91&color=fff`} className="w-8 h-8 rounded-full border border-gray-200 shadow-sm flex-shrink-0" alt="Me" />
+              <img src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=1A0B91&color=fff`} className="w-8 h-8 rounded-full border border-gray-200 shadow-sm flex-shrink-0" alt="Me" referrerPolicy="no-referrer" />
               <div className="absolute inset-0 bg-black/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Settings className="w-3 h-3 text-brand-primary" />
               </div>
@@ -135,7 +222,7 @@ export default function Dashboard() {
             {!isSidebarCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-gray-800 truncate">{user?.name}</p>
-                <p className="text-[10px] text-gray-400 capitalize">{user?.role}</p>
+                <p className="text-[10px] text-gray-400 capitalize">{String(user?.role || '')}</p>
               </div>
             )}
             <button onClick={handleLogout} className={cn(
@@ -154,7 +241,7 @@ export default function Dashboard() {
       )}>
         <header className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between sticky top-0 z-30">
           <div className="text-sm font-medium text-gray-500">
-            Welcome back, <span className="text-gray-900 font-bold">{user?.name}</span>
+            {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
           </div>
           <div className="flex items-center gap-4">
             {user?.role === 'admin' && (
@@ -173,7 +260,19 @@ export default function Dashboard() {
         </header>
 
         <div className="p-8">
-          {activeTab === 'dashboard' ? (
+          {activeTab === 'inventory' ? (
+            <InventoryManagement userRole={user?.role as any} />
+          ) : user?.role === UserRole.STAFF || user?.role === 'staff' ? (
+            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
+            <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
+            <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
+            <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
+            <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : activeTab === 'dashboard' ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
@@ -225,7 +324,7 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
                   <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
-                  Lead Management
+                  Marketing Dashboard
                 </h2>
                 <LeadManager />
               </div>

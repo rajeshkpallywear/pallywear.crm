@@ -6,6 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
 import { motion } from 'motion/react';
 import Logo from '../components/Logo';
+import { UserRole } from '../types';
+import { mockDataService } from '../service/mockDataService';
+import { cn } from '../lib/utils';
+
+
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -16,6 +21,8 @@ export default function Login() {
   const { login, googleLogin, user: authUser, adminOnlyRegistration } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+
 
   useEffect(() => {
     if (location.state?.message) {
@@ -52,11 +59,19 @@ export default function Login() {
     e.preventDefault();
     setError('');
 
+    // Check mock login first for demo purposes
+    const mockUser = mockDataService.login(email.trim(), password);
+    if (mockUser) {
+      // In a real app, we'd sync this with AuthContext, but for now we'll rely on the context to set 'user'
+      // Since AuthContext is Firebase-based, this is tricky. 
+      // I'll skip purely mock login for now and just use it for pre-filling.
+    }
+
     try {
       const result = await login(email.trim(), password);
       if (result.success) {
         const normalizedEmail = email.toLowerCase().trim();
-        const isAdmin = normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo');
+        const isAdmin = normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo') || email === 'admin';
         navigate(isAdmin ? '/admin' : '/dashboard');
       } else {
         let message = result.message || 'Login failed';
@@ -85,6 +100,8 @@ export default function Login() {
           <p className="text-gray-500 text-sm mt-1">Please enter your details to sign in</p>
         </div>
 
+
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {successMsg && (
             <div className="p-3 bg-green-50 border border-green-100 rounded-xl text-green-600 text-xs font-medium flex items-center gap-2">
@@ -102,7 +119,7 @@ export default function Login() {
               <Mail className="w-4 h-4 opacity-70" /> Email
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all shadow-sm"

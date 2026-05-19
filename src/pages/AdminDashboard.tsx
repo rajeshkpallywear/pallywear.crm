@@ -5,7 +5,7 @@ import {
   Layout, Bell, Settings, BarChart3,
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2,
-  LogOut, Trash2, Download, ChevronLeft, Menu
+  LogOut, Trash2, Download, ChevronLeft, Menu, Zap
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { collection, getDocs, deleteDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { mockDataService } from '../service/mockDataService';
 
 const COLORS = ['#3291B6', '#5CBFD4', '#EAF4F7', '#1F2937'];
 
@@ -33,9 +34,9 @@ const MOCK_LOGS = [
 
 export default function AdminDashboard() {
   const { user, logout, registeredUsers, deleteUser, loading: authLoading } = useAuth();
-  const { leads, invoices } = useLeads();
+  const { leads, invoices, orders, deleteOrder } = useLeads();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'invoices' | 'security' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'invoices' | 'security' | 'logs' | 'orders'>('overview');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -68,13 +69,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const isStaff = user?.role === 'staff';
+
   const handleRemoveUser = async (id: string) => {
+    if (isStaff) {
+      alert('Only administrators can remove users.');
+      return;
+    }
     if (confirm('Are you sure you want to remove this user? Their profile data will be deleted.')) {
       await deleteUser(id);
     }
   };
 
   const handleToggleUserRole = async (userId: string, currentRole: string) => {
+    if (isStaff) {
+      alert('Only administrators can change roles.');
+      return;
+    }
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     if (confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
       try {
@@ -87,6 +98,10 @@ export default function AdminDashboard() {
   };
 
   const handleClearAllLeads = async () => {
+    if (isStaff) {
+      alert('Only administrators can clear all leads.');
+      return;
+    }
     if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS from the database? This cannot be undone.')) {
       setCleaningUp(true);
       try {
@@ -103,19 +118,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteOrder = async (id: string) => {
+    if (user?.role !== 'admin') {
+      alert('Only administrators can delete orders.');
+      return;
+    }
+    if (confirm('Are you sure you want to delete this order? This action is irreversible.')) {
+      try {
+        await deleteOrder(id);
+      } catch (error) {
+        console.error('Error deleting order:', error);
+        alert('Failed to delete order.');
+      }
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // Redirect if not admin (after loading)
+  // Redirect if not admin or staff (after loading)
   React.useEffect(() => {
-    if (!authLoading && (!user || user.role !== 'admin')) {
+    if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'staff'))) {
       navigate('/dashboard');
     }
   }, [user, authLoading]);
 
   const totalRevenue = leads.reduce((sum, l) => sum + l.totalOrderValue, 0);
+  const totalOrdersValue = orders.reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
+  const aggregateTotal = totalRevenue + totalOrdersValue;
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-brand-light">Loading security context...</div>;
 
@@ -140,9 +172,9 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('overview')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
               isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'overview' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
+              activeTab === 'overview' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Overview" : ""}
           >
@@ -151,20 +183,31 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('users')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
               isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'users' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
+              activeTab === 'users' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Users" : ""}
           >
             <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Users</span>}
           </button>
           <button
+            onClick={() => setActiveTab('orders')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+              isSidebarCollapsed && "justify-center px-0",
+              activeTab === 'orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+            )}
+            title={isSidebarCollapsed ? "Global Orders" : ""}
+          >
+            <Zap className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Global Orders</span>}
+          </button>
+          <button
             onClick={() => setActiveTab('invoices')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
               isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'invoices' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
+              activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Invoices" : ""}
           >
@@ -173,9 +216,9 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('logs')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
               isSidebarCollapsed && "justify-center px-0",
-              activeTab === 'logs' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
+              activeTab === 'logs' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Audit Logs" : ""}
           >
@@ -257,11 +300,11 @@ export default function AdminDashboard() {
               {/* Overview Stats */}
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                 {[
-                  { label: 'Global Revenue', val: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500' },
+                  { label: 'Aggregate Value', val: `₹${aggregateTotal.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500' },
                   { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-white', bg: 'bg-brand-secondary' },
-                  { label: 'Total Invoices', val: invoices.length, icon: BarChart3, color: 'text-white', bg: 'bg-brand-primary' },
-                  { label: 'Staff Members', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
-                  { label: 'Uptime', val: '99.9%', icon: Globe, color: 'text-white', bg: 'bg-purple-600' },
+                  { label: 'Global Orders', val: orders.length, icon: Zap, color: 'text-white', bg: 'bg-orange-500' },
+                  { label: 'Registered Team', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
+                  { label: 'Invoices', val: invoices.length, icon: BarChart3, color: 'text-white', bg: 'bg-brand-primary' },
                 ].map((stat, i) => (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -343,81 +386,91 @@ export default function AdminDashboard() {
           ) : activeTab === 'invoices' ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
-                  Global Invoice Records
-                </h2>
-                <Button variant="outline" className="bg-white gap-2" onClick={() => {
-                  const exportData = invoices.map(inv => ({
-                    'Invoice #': inv.invoiceNumber,
-                    'Date': inv.date,
-                    'Customer': inv.billToName,
-                    'Total': inv.total,
-                    'Staff': inv.createdByName
-                  }));
-                  // Using the existing excel logic if needed, but for now just showing button
-                  alert('Exporting ' + invoices.length + ' invoices...');
-                }}>
-                  <Download className="w-4 h-4" /> Export All Invoices
-                </Button>
+                <div className="space-y-1">
+                  <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                    <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+                    Global Invoice Management
+                  </h2>
+                  <p className="text-xs text-gray-500 font-medium">Monitoring all generated invoices across the platform</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="bg-white gap-2" onClick={() => {
+                    const exportData = invoices.map(inv => ({
+                      'Invoice #': inv.invoiceNumber,
+                      'Date': inv.date,
+                      'Customer': inv.billToName,
+                      'Total': inv.total,
+                      'Staff': inv.createdByName
+                    }));
+                    alert('Exporting ' + invoices.length + ' invoices...');
+                  }}>
+                    <Download className="w-4 h-4" /> Export All
+                  </Button>
+                </div>
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                  <thead className="bg-gray-50/80 text-gray-400 font-black uppercase tracking-widest text-[10px] border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4">Staff</th>
-                      <th className="px-6 py-4">Invoice #</th>
-                      <th className="px-6 py-4">Customer</th>
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4 text-right">Total Amount</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th className="px-6 py-5">System Creator</th>
+                      <th className="px-6 py-5">Invoice Reference</th>
+                      <th className="px-6 py-5">Customer Entity</th>
+                      <th className="px-6 py-5">Generation Date</th>
+                      <th className="px-6 py-5 text-right">Financial Value</th>
+                      <th className="px-6 py-5 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-50">
                     {invoices.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-gray-50/30 transition-colors group">
-                        <td className="px-6 py-4 text-nowrap">
+                      <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-5 text-nowrap">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-brand-primary/20">
                               {invoice.createdByName?.charAt(0) || 'U'}
                             </div>
-                            <span className="text-xs text-gray-600 font-medium">{invoice.createdByName}</span>
+                            <span className="text-xs text-gray-700 font-bold">{invoice.createdByName}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-nowrap">
-                          <span className="font-mono font-bold text-brand-primary">#{invoice.invoiceNumber}</span>
+                        <td className="px-6 py-5 text-nowrap">
+                          <span className="font-mono font-bold text-brand-primary bg-brand-secondary/50 px-2 py-1 rounded-lg">#{invoice.invoiceNumber}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-5">
                           <div>
                             <p className="font-bold text-gray-900">{invoice.billToName}</p>
-                            <p className="text-[10px] text-gray-400">{invoice.billToEmail}</p>
+                            <p className="text-[10px] text-gray-400 font-medium truncate max-w-[150px]">{invoice.billToEmail}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-nowrap text-gray-500">
+                        <td className="px-6 py-5 text-nowrap text-gray-500 font-medium">
                           {new Date(invoice.date).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-right text-nowrap">
+                        <td className="px-6 py-5 text-right text-nowrap">
                           <span className="font-black text-gray-900">₹{invoice.total.toLocaleString()}</span>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-brand-primary hover:bg-brand-secondary px-3"
-                              onClick={() => setSelectedInvoice(invoice)}
-                            >
-                              <FileText className="w-4 h-4 mr-2" /> View PDF
-                            </Button>
-                          </div>
+                        <td className="px-6 py-5 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-brand-primary hover:bg-brand-secondary font-bold"
+                            onClick={() => setSelectedInvoice(invoice)}
+                          >
+                            <FileText className="w-4 h-4 mr-2" /> View PDF
+                          </Button>
                         </td>
                       </tr>
                     ))}
                     {invoices.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">
-                          No invoices found in the system.
+                        <td colSpan={6} className="px-6 py-32 text-center">
+                          <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                            <div className="p-6 bg-brand-secondary rounded-full">
+                              <FileText className="w-10 h-10 text-brand-primary opacity-50" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-gray-900 font-black text-lg">System Repository Empty</p>
+                              <p className="text-gray-400 text-sm italic">No invoices have been recorded in the global context yet.</p>
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -462,15 +515,21 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleToggleUserRole(u.id, u.role)}
+                        <span
                           className={cn(
-                            "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 bg-white shadow-sm",
-                            u.role === 'admin' ? "text-purple-700 border-purple-100" : "text-gray-600 border-gray-100"
+                            "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shadow-sm",
+                            u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
+                              u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
+                                u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
+                                  u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                                    u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                                      u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
+                                        u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
+                                          "text-gray-600 border-gray-100 bg-gray-50"
                           )}
                         >
-                          {u.role}
-                        </button>
+                          {u.role?.replace('_', ' ')}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
                         {new Date(u.createdAt).toLocaleDateString()}
@@ -485,15 +544,81 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           {u.id !== user?.id && (
                             <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
-                              <X className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
                       </td>
                     </tr>
                   ))}
+                  {registeredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                        No team members registered yet or sync in progress.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
+            </div>
+          ) : activeTab === 'orders' ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+                  Global Order Management
+                </h2>
+                <Button variant="outline" size="sm" onClick={() => {
+                  window.location.reload();
+                }}>Refresh App</Button>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-500 font-medium">
+                    <tr>
+                      <th className="px-6 py-4 text-nowrap">Order ID</th>
+                      <th className="px-6 py-4">Customer</th>
+                      <th className="px-6 py-4">Category</th>
+                      <th className="px-6 py-4">Quantity</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Value</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {orders.map((o) => (
+                      <tr key={o.id} className="hover:bg-gray-50/50 group">
+                        <td className="px-6 py-4 font-mono font-bold text-brand-primary text-xs">#{o.id.slice(-8)}</td>
+                        <td className="px-6 py-4 font-bold text-gray-800">{o.customerInfo.name}</td>
+                        <td className="px-6 py-4 text-gray-500">{o.category}</td>
+                        <td className="px-6 py-4 font-bold text-gray-600">{o.quantity}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusStyles(o.status)}`}>
+                            {(o.status as string).replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-black text-gray-900">₹{(o.financials?.totalAmount || 0).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-right">
+                          {user?.role === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteOrder(o.id)}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                              title="Delete Order"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {orders.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">No global orders recorded yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : activeTab === 'security' ? (
             <div className="space-y-8">
@@ -662,5 +787,17 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+const getStatusStyles = (status: string) => {
+  switch (status) {
+    case 'draft': return 'bg-gray-100 text-gray-600';
+    case 'accounts': return 'bg-amber-100 text-amber-700';
+    case 'order_management': return 'bg-blue-100 text-blue-700';
+    case 'production': return 'bg-purple-100 text-purple-700';
+    case 'delivery': return 'bg-orange-100 text-orange-700';
+    case 'delivered': return 'bg-green-100 text-green-700';
+    default: return 'bg-gray-100 text-gray-600';
+  }
+};
 
 

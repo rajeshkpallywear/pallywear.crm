@@ -67,3 +67,93 @@ export interface Invoice {
   createdByName: string;
   leadId: string;
 }
+
+export enum UserRole {
+  ADMIN = 'admin',
+  STAFF = 'staff',
+  ACCOUNTS = 'accounts',
+  ORDER_MANAGEMENT = 'order_management',
+  PRODUCTION = 'production',
+  DELIVERY = 'delivery',
+  MARKETING = 'marketing'
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  role: UserRole;
+  name: string;
+}
+
+export enum OrderStatus {
+  DRAFT = 'draft',
+  PENDING = 'pending',
+  ACCOUNTS = 'accounts',
+  ORDER_MANAGEMENT = 'order_management',
+  PRODUCTION = 'production',
+  DELIVERY = 'delivery',
+  DELIVERED = 'delivered',
+  HOLD = 'hold'
+}
+
+export interface SizeBreakdown {
+  category: string;
+  size: string;
+  quantity: number;
+  price: number;
+  colour?: string;
+  printType?: string;
+  sleeve?: string;
+  pocket?: string;
+  material?: string;
+  model?: string;
+}
+
+export interface Financials {
+  totalAmount: number;
+  advancePay: number;
+  balanceAmount: number;
+}
+
+export interface Order {
+  id: string;
+  customerInfo: {
+    name: string;
+    phone: string;
+    address: string;
+  };
+  category: string;
+  quantity: number;
+  details: Record<string, any>;
+  sizeBreakdown: SizeBreakdown[];
+  financials: Financials;
+  status: OrderStatus;
+  isUrgent?: boolean;
+  notes?: string;
+  staffImages: string[];
+  staffPdfs: string[];
+  staffAttachments?: string[];
+  accountsAttachments: string[];
+  orderManagementAttachments: string[];
+  createdAt: number;
+  updatedAt: number;
+  holdReason?: string;
+  previousStatus?: OrderStatus;
+}
+
+export interface InventoryMovement {
+  id: string;
+  type: 'inward' | 'outward';
+  vendor?: string;
+  customer?: string;
+  date: string;
+  transportName?: string;
+  transportNumber?: string;
+  orderId?: string;
+  product: string;
+  productType: string;
+  sleeve?: string;
+  pocket?: string;
+  quantity: number;
+  createdAt: number;
+}

@@ -16,7 +16,18 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && (
+        request.auth.token.email in ['rajeshkpallywear@gmail.com', 'ceo@pallywear.com', 'daniel.smpallywear@gmail.com'] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function hasUserRole(roles) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() in roles;
     }
 
     function isValidId(id) {
@@ -29,13 +40,12 @@ service cloud.firestore {
         return data.keys().hasAll(['id', 'email', 'role', 'name', 'createdAt']) &&
                data.id is string &&
                data.email is string &&
-               data.role in ['user', 'admin'] &&
+               data.role in ['admin', 'staff', 'accounts', 'order_management', 'production', 'delivery', 'marketing', 'user'] &&
                data.name is string &&
                data.createdAt is string;
       }
 
       function isAdminRoleEligible(email) {
-        // We assume email is lowercased by client, or use case-insensitive regex
         return email == 'ceo@pallywear.com' || 
                email == 'rajeshkpallywear@gmail.com' || 
                email == 'daniel.smpallywear@gmail.com' ||
@@ -43,22 +53,33 @@ service cloud.firestore {
                email.matches('(?i)^ceo.*');
       }
 
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isSignedIn() && isAdmin();
+      function isStaff() {
+        return isSignedIn() && (
+          hasUserRole(['staff', 'admin']) ||
+          isAdmin() ||
+          request.auth.token.email.matches('(?i)^staff.*')
+        );
+      }
+
+      allow get: if isOwner(userId) || isAdmin() || isStaff();
+      allow list: if isSignedIn() && (isAdmin() || isStaff());
       
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
-                      (isAdminRoleEligible(request.resource.data.email) ? request.resource.data.role == 'admin' : request.resource.data.role == 'user');
+                      (isAdminRoleEligible(request.resource.data.email) ? request.resource.data.role == 'admin' : true);
       
       allow update: if isOwner(userId) && 
                       (
-                        // Allow own field updates
+                        // Allow own field updates except role usually
                         (request.resource.data.role == resource.data.role && request.resource.data.email == resource.data.email) ||
-                        // Allow admin promotion if eligible
-                        (isAdminRoleEligible(resource.data.email) && request.resource.data.role == 'admin') ||
                         isAdmin()
                       );
       
       allow delete: if isAdmin();
+    }
+
+    // Test Connection
+    match /test/connection {
+      allow read: if true;
     }
 
     // Leads Collection
@@ -102,10 +123,37 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
+    // Orders Collection
+    match /orders/{orderId} {
+      function isValidOrder(data) {
+        return data.keys().hasAll(['id', 'status', 'createdBy', 'createdAt']) &&
+               data.id is string &&
+               data.status is string &&
+               data.createdBy is string;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(orderId) && isValidOrder(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+
     // App Settings
     match /settings/{settingId} {
-      allow read: if true; // Publicly readable for registration check
+      allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // Inventory Collection
+    match /inventory/{itemId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        hasUserRole(['admin', 'order_management', 'staff', 'production'])
+      );
+      allow write: if isSignedIn() && (
+        isAdmin() ||
+        hasUserRole(['admin', 'order_management'])
+      );
     }
   }
 }

@@ -211,6 +211,82 @@
         "createdBy",
         "createdAt"
       ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Manufacturing or sales order record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "customerInfo": {
+          "type": "object"
+        },
+        "category": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "createdBy",
+        "createdAt"
+      ]
+    },
+    "InventoryMovement": {
+      "title": "Inventory Movement",
+      "description": "Record of stock inward or outward.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "inward",
+            "outward"
+          ]
+        },
+        "product": {
+          "type": "string"
+        },
+        "productType": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "date": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "product",
+        "quantity",
+        "date"
+      ]
     }
   },
   "firestore": {
@@ -225,6 +301,14 @@
     "invoices/{invoiceId}": {
       "schema": "Invoice",
       "description": "Invoice records."
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Order records for tracking production and delivery."
+    },
+    "inventory/{itemId}": {
+      "schema": "InventoryMovement",
+      "description": "Inventory stock movements."
     },
     "settings/{settingId}": {
       "schema": "AppSettings",

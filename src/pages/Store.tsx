@@ -14,8 +14,8 @@ export default function Store() {
       {/* Background Image with Overlay */}
       <div className="fixed inset-0 z-0">
         <img
-          src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop"
-          className="w-full h-full object-cover opacity-5 grayscale"
+          src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2015&auto=format&fit=crop"
+          className="w-full h-full object-cover opacity-10"
           alt="background"
         />
         <div className="absolute inset-0 bg-gradient-to-tr from-white via-white/95 to-indigo-50/30" />
@@ -60,7 +60,7 @@ export default function Store() {
             transition={{ duration: 0.6 }}
             className="text-6xl md:text-8xl font-black text-gray-900 mb-8 leading-[0.95] tracking-tight"
           >
-            Welcome To<br />Pilots Of <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">PallyWear</span>
+            Analytics at <br /> the <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">next level</span>
           </motion.h1>
 
           <motion.p
@@ -85,24 +85,7 @@ export default function Store() {
             </Link>
           </motion.div>
 
-          {/* Stats Badge */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.8 }}
-            className="mt-20 flex items-center gap-6"
-          >
-            <div className="w-24 h-24 bg-gray-900 rounded-[2rem] flex flex-col items-center justify-center p-4 relative overflow-hidden group shadow-2xl">
-              <div className="absolute inset-0 bg-white/5 group-hover:scale-150 transition-transform duration-700 rounded-full" />
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-2 border-dashed border-white/10 rounded-full scale-110"
-              />
-              <span className="text-white text-2xl font-black">4.8k</span>
-              <span className="text-white/40 text-[8px] font-bold uppercase tracking-widest text-center">Global Scale</span>
-            </div>
-          </motion.div>
+          {/* Stats Badge removed */}
         </div>
 
         {/* Isometric Visuals */}
@@ -158,14 +141,6 @@ export default function Store() {
           >
             <div className="flex items-center justify-between mb-8">
               <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Active Leads</h4>
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold overflow-hidden">
-                    <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="user" />
-                  </div>
-                ))}
-                <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-900 text-white flex items-center justify-center text-[8px] font-bold">+12</div>
-              </div>
             </div>
             <div className="space-y-4">
               {[
@@ -202,7 +177,7 @@ export default function Store() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           <Logo />
           <nav className="flex items-center gap-8">
-            {['Privacy', 'Terms', 'Docs', 'Contact'].map(item => (
+            {['Privacy', 'Contact'].map(item => (
               <button key={item} className="text-xs font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors cursor-pointer">{item}</button>
             ))}
           </nav>

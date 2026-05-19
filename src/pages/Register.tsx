@@ -6,12 +6,15 @@ import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
 import { motion } from 'motion/react';
 import Logo from '../components/Logo';
+import { UserRole } from '../types';
+import { Shield } from 'lucide-react';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<UserRole>(UserRole.STAFF);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { register, googleLogin, logout } = useAuth();
@@ -49,7 +52,7 @@ export default function Register() {
     }
 
     try {
-      const result = await register(name, email, password);
+      const result = await register(name, email, password, role);
       if (result.success) {
         await logout();
         navigate('/login', { state: { message: `Successfully registered ${email}! Please sign in with the new credentials.` } });
@@ -137,6 +140,25 @@ export default function Register() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Shield className="w-4 h-4 opacity-70" /> Assign Role
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm bg-white"
+            >
+              <option value={UserRole.MARKETING}>Marketing</option>
+              <option value={UserRole.STAFF}>Staff (Front Desk)</option>
+              <option value={UserRole.ACCOUNTS}>Accounts</option>
+              <option value={UserRole.ORDER_MANAGEMENT}>Order Management</option>
+              <option value={UserRole.PRODUCTION}>Production (Factory)</option>
+              <option value={UserRole.DELIVERY}>Delivery</option>
+              <option value={UserRole.ADMIN}>Administrator</option>
+            </select>
           </div>
 
           <div className="space-y-2">

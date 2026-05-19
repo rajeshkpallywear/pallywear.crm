@@ -6,18 +6,20 @@ import { Button } from './Button';
 import {
   Plus, Edit2, Trash2, Download, Search,
   X, Check, AlertCircle, Phone, Building2,
-  FileText, Calendar, DollarSign, Briefcase
+  FileText, Calendar, DollarSign, Briefcase, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { exportToExcel } from '../lib/excel';
 import { cn } from '../lib/utils';
+import { mockDataService } from '../service/mockDataService';
+import { OrderStatus } from '../types';
 
 interface LeadManagerProps {
   hideAdd?: boolean;
 }
 
 export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
-  const { leads, addLead, updateLead, deleteLead } = useLeads();
+  const { leads, addLead, updateLead, deleteLead, addOrder } = useLeads();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -35,7 +37,12 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
     forecastedValue: 0,
     convertedValue: 0,
     totalOrderValue: 0,
+    discountCode: '',
+    discountAmount: 0,
+    netTotal: 0,
   });
+
+  const isFirstLead = leads.filter(l => l.createdBy === user?.id).length === 0;
 
   const handleOpenAdd = () => {
     setEditingLead(null);
@@ -49,8 +56,62 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
       forecastedValue: 0,
       convertedValue: 0,
       totalOrderValue: 0,
+      discountCode: isFirstLead ? 'FIRST10' : '',
+      discountAmount: 0,
+      netTotal: 0,
     });
     setIsModalOpen(true);
+  };
+
+  const calculateFinancials = (total: number, code: string) => {
+    let discount = 0;
+    if (code === 'FIRST10') {
+      discount = total * 0.1;
+    }
+    return {
+      discountAmount: discount,
+      netTotal: total - discount
+    };
+  };
+
+  const handleConvertOrder = async (lead: Lead) => {
+    if (confirm(`Convert ${lead.name} to a formal order for billing?`)) {
+      const newOrder = {
+        id: `ORD-${Date.now()}`,
+        customerInfo: {
+          name: lead.name,
+          phone: lead.number,
+          address: lead.companyName, // Use company as initial address
+        },
+        category: 'Apparel', // Default
+        quantity: 1,
+        details: {
+          company: lead.companyName,
+          gst: lead.gst,
+          leadType: lead.leadType
+        },
+        sizeBreakdown: [],
+        financials: {
+          totalAmount: lead.netTotal || lead.totalOrderValue,
+          advancePay: 0,
+          balanceAmount: lead.netTotal || lead.totalOrderValue,
+        },
+        status: OrderStatus.ACCOUNTS,
+        staffImages: [],
+        staffPdfs: [],
+        accountsAttachments: [],
+        orderManagementAttachments: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      try {
+        await addOrder(newOrder);
+        alert("Order created and sent to Accounts team!");
+      } catch (err: any) {
+        alert("Failed to create order: " + err.message);
+      }
+    }
   };
 
   const handleOpenEdit = (lead: Lead) => {
@@ -65,17 +126,23 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
       forecastedValue: lead.forecastedValue,
       convertedValue: lead.convertedValue,
       totalOrderValue: lead.totalOrderValue,
+      discountCode: lead.discountCode || '',
+      discountAmount: lead.discountAmount || 0,
+      netTotal: lead.netTotal || lead.totalOrderValue,
     });
     setIsModalOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const { discountAmount, netTotal } = calculateFinancials(formData.totalOrderValue, formData.discountCode);
+    const finalData = { ...formData, discountAmount, netTotal };
+
     if (editingLead) {
-      updateLead(editingLead.id, formData);
+      updateLead(editingLead.id, finalData);
     } else {
       addLead({
-        ...formData,
+        ...finalData,
         createdBy: user?.id || 'unknown',
         createdByName: user?.name || 'Unknown',
       });
@@ -161,11 +228,20 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="md" className="bg-white gap-2" onClick={handleExport}>
+          <Button
+            variant="outline"
+            size="md"
+            className="bg-white text-gray-500 border-gray-100 hover:bg-gray-50 gap-2 rounded-xl shadow-sm font-bold"
+            onClick={handleExport}
+          >
             <Download className="w-4 h-4" /> Export Excel
           </Button>
           {!hideAdd && (
-            <Button size="md" className="gap-2" onClick={handleOpenAdd}>
+            <Button
+              size="md"
+              className="bg-white text-brand-primary border-2 border-brand-primary/10 hover:bg-gray-50 gap-2 rounded-xl shadow-sm font-bold"
+              onClick={handleOpenAdd}
+            >
               <Plus className="w-4 h-4" /> Add Lead
             </Button>
           )}
@@ -191,7 +267,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
               <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-brand-secondary flex items-center justify-center text-xs font-bold text-brand-primary">
+                    <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-brand-primary/20">
                       {lead.createdByName?.charAt(0) || 'U'}
                     </div>
                     <span className="text-xs text-gray-600 font-medium">{lead.createdByName}</span>
@@ -200,10 +276,10 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg",
-                      lead.leadType === 'Hot' ? "bg-red-50 text-red-500" :
-                        lead.leadType === 'Warm' ? "bg-amber-50 text-amber-500" :
-                          "bg-blue-50 text-blue-500"
+                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-md shadow-black/5",
+                      lead.leadType === 'Hot' ? "bg-red-500" :
+                        lead.leadType === 'Warm' ? "bg-amber-500" :
+                          "bg-blue-500"
                     )}>
                       {lead.name.charAt(0)}
                     </div>
@@ -244,23 +320,36 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                 <td className="px-6 py-4 text-right">
                   <div className="space-y-1">
                     <p className="text-xs">
-                      <span className="text-gray-400">Forecast:</span>
-                      <span className="font-bold text-gray-700 ml-1">₹{lead.forecastedValue.toLocaleString()}</span>
+                      <span className="text-gray-400">Total Value:</span>
+                      <span className="font-bold text-gray-700 ml-1">₹{lead.totalOrderValue?.toLocaleString()}</span>
                     </p>
-                    <p className="text-xs">
-                      <span className="text-gray-400">Converted:</span>
-                      <span className="font-bold text-brand-primary ml-1">₹{lead.convertedValue.toLocaleString()}</span>
-                    </p>
-                    <p className="text-xs">
-                      <span className="text-gray-400">Total:</span>
-                      <span className="font-bold text-gray-900 ml-1">₹{lead.totalOrderValue.toLocaleString()}</span>
-                    </p>
+                    {lead.discountAmount ? (
+                      <>
+                        <p className="text-[10px] text-green-600 font-bold flex items-center justify-end gap-1">
+                          <Check className="w-3 h-3" /> Discount ({lead.discountCode}): -₹{lead.discountAmount.toLocaleString()}
+                        </p>
+                        <p className="text-sm font-black text-brand-primary">
+                          ₹{lead.netTotal?.toLocaleString()}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-black text-gray-900">
+                        ₹{lead.totalOrderValue?.toLocaleString()}
+                      </p>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {canManage(lead) && (
                       <>
+                        <button
+                          onClick={() => handleConvertOrder(lead)}
+                          className="p-2 hover:bg-green-50 text-green-600 rounded-lg transition-colors"
+                          title="Convert to Order"
+                        >
+                          <Zap className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleOpenEdit(lead)}
                           className="p-2 hover:bg-brand-secondary text-brand-primary rounded-lg transition-colors"
@@ -320,6 +409,23 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 overflow-y-auto overflow-x-hidden space-y-6">
+                {/* Special Offer Banner */}
+                {!editingLead && isFirstLead && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="bg-brand-primary/5 border border-brand-primary/20 p-4 rounded-xl flex items-start gap-3"
+                  >
+                    <div className="p-2 bg-brand-primary/10 rounded-lg">
+                      <Zap className="w-5 h-5 text-brand-primary" strokeWidth={3} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-brand-primary">First Order Reward Unlocked!</p>
+                      <p className="text-xs text-brand-primary/70">Use coupon <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-brand-primary/20">FIRST10</span> to get 10% off on your first order conversion.</p>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -395,7 +501,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                           className={cn(
                             "flex-1 py-2 px-3 rounded-xl text-xs font-bold border transition-all",
                             formData.leadType === type
-                              ? "bg-brand-primary text-white border-brand-primary shadow-md"
+                              ? "bg-white text-brand-primary border-brand-primary shadow-md"
                               : "bg-white border-gray-200 text-gray-500 hover:border-brand-primary/50"
                           )}
                         >
@@ -459,6 +565,25 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                         />
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Coupon Code</label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.discountCode}
+                      onChange={(e) => setFormData({ ...formData, discountCode: e.target.value.toUpperCase() })}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-primary/10 font-mono uppercase"
+                      placeholder="e.g. FIRST10"
+                    />
+                    {formData.discountCode === 'FIRST10' && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-100">
+                        <Check className="w-3 h-3" /> 10% Applied
+                      </div>
+                    )}
                   </div>
                 </div>
 

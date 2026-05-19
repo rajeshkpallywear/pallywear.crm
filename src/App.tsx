@@ -13,21 +13,22 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Store from './pages/Store';
 
+import { UserRole } from './types';
+
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
   const { user } = useAuth();
 
   if (!user) return <Navigate to="/login" />;
 
-  // If admin-only route and user is not admin, redirect to user dashboard
-  if (adminOnly && user.role !== 'admin') {
+  const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
+  const isStaff = user.role === UserRole.STAFF || user.role === 'staff';
+
+  // Admin and Staff can access admin panel
+  if (adminOnly && !isAdmin && !isStaff) {
     return <Navigate to="/dashboard" />;
   }
 
-  // If regular user tries to access admin dashboard, redirect
-  if (!adminOnly && user.role === 'admin' && window.location.pathname === '/dashboard') {
-    return <Navigate to="/admin" />;
-  }
-
+  // Staff and other roles should stay on /dashboard to see their portals
   return children;
 };
 
@@ -46,9 +47,13 @@ function AppRoutes() {
         <Route
           path="/register"
           element={
-            <ProtectedRoute adminOnly={adminOnlyRegistration}>
+            adminOnlyRegistration ? (
+              <ProtectedRoute adminOnly={true}>
+                <Register />
+              </ProtectedRoute>
+            ) : (
               <Register />
-            </ProtectedRoute>
+            )
           }
         />
 
@@ -73,7 +78,7 @@ function AppRoutes() {
 
         {/* Redirects */}
         <Route path="/" element={<Navigate to="/Pallywear" />} />
-        <Route path="*" element={<Navigate to="/Pallywear" />} />
+        <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   );
