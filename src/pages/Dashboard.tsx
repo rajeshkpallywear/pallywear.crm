@@ -14,7 +14,7 @@ import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
 import InvoiceManager from '../components/InvoiceManager';
-import ProfileSetting from '../components/ProfileSetting';
+import ProfileSettings from '../components/ProfileSettings';
 import InventoryManagement from '../components/InventoryManagement';
 import Logo from '../components/Logo';
 import { cn } from '../lib/utils';
@@ -36,8 +36,14 @@ export default function Dashboard() {
   const { leads, orders, inventory, addOrder, updateOrder, deleteOrder } = useLeads();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+  const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setIsMobileOpen(false);
+  };
 
   const handleUpdateOrder = async (id: string, updates: Partial<Order>) => {
     try {
@@ -95,15 +101,31 @@ export default function Dashboard() {
 
   return (
     <div className="flex bg-brand-light min-h-screen">
+      {/* Mobile Sidebar Backdrop */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={cn(
-        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full overflow-hidden shadow-sm z-40 transition-all duration-300",
-        isSidebarCollapsed ? "w-20" : "w-64"
+        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full overflow-hidden shadow-sm z-40 transition-all duration-300",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        isSidebarCollapsed ? "md:w-20" : "md:w-64",
+        "w-64"
       )}>
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
-          {!isSidebarCollapsed && <Logo />}
+          {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={() => {
+              if (window.innerWidth < 768) {
+                setIsMobileOpen(false);
+              } else {
+                setIsSidebarCollapsed(!isSidebarCollapsed);
+              }
+            }}
             className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-brand-primary transition-all flex-shrink-0"
           >
             {isSidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
@@ -117,51 +139,62 @@ export default function Dashboard() {
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
-                isSidebarCollapsed && "hidden"
+                isSidebarCollapsed && "md:hidden"
               )}>Lead Management</p>
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => selectTab('dashboard')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'dashboard' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
                 title={isSidebarCollapsed ? "Dashboard" : ""}
               >
-                <Layout className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Dashboard</span>}
+                <Layout className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Dashboard</span>}
               </button>
               <button
-                onClick={() => setActiveTab('reports')}
+                onClick={() => selectTab('reports')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'reports' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
                 title={isSidebarCollapsed ? "Reports" : ""}
               >
-                <BarChart3 className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Reports</span>}
+                <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Reports</span>}
               </button>
               <button
-                onClick={() => setActiveTab('clients')}
+                onClick={() => selectTab('clients')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'clients' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
                 title={isSidebarCollapsed ? "Clients" : ""}
               >
-                <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Clients</span>}
+                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Clients</span>}
               </button>
               <button
-                onClick={() => setActiveTab('invoices')}
+                onClick={() => selectTab('invoices')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
                 title={isSidebarCollapsed ? "Invoices" : ""}
               >
-                <Activity className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Invoices</span>}
+                <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
+              </button>
+              <button
+                onClick={() => selectTab('marketing_orders')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'marketing_orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Create Order" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
               </button>
             </div>
           )}
@@ -171,39 +204,39 @@ export default function Dashboard() {
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
               <p className={cn(
                 "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
-                isSidebarCollapsed && "hidden"
+                isSidebarCollapsed && "md:hidden"
               )}>Digitizing & Embroidery</p>
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => selectTab('dashboard')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl shadow-sm border transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'dashboard' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
                 )}
               >
                 <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                {!isSidebarCollapsed && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest text-left">Digitizing Hub</span>}
+                {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest text-left">Digitizing Hub</span>}
               </button>
             </div>
           )}
 
           {/* Department Portals */}
-          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, UserRole.DELIVERY, 'user', 'admin'].includes(user.role as any) && (
+          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, 'user', 'admin'].includes(user.role as any) && (
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
               <p className={cn(
                 "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
-                isSidebarCollapsed && "hidden"
+                isSidebarCollapsed && "md:hidden"
               )}>Active Portal</p>
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => selectTab('dashboard')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl shadow-sm border transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'dashboard' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
                 )}
               >
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                {!isSidebarCollapsed && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{String(user.role).replace('_', ' ')} Portal</span>}
+                {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{String(user.role).replace('_', ' ')} Portal</span>}
               </button>
             </div>
           )}
@@ -213,41 +246,41 @@ export default function Dashboard() {
             <div className="pt-2 space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
-                isSidebarCollapsed && "hidden"
+                isSidebarCollapsed && "md:hidden"
               )}>Operations</p>
               <button
-                onClick={() => setActiveTab('inventory')}
+                onClick={() => selectTab('inventory')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'inventory' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
                 title={isSidebarCollapsed ? "Inventory Stack" : ""}
               >
-                <Package className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Inventory Stack</span>}
+                <Package className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Inventory Stack</span>}
               </button>
               <button
-                onClick={() => setActiveTab('history')}
+                onClick={() => selectTab('history')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "justify-center px-0",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
                   activeTab === 'history' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                 )}
                 title={isSidebarCollapsed ? "Order History" : ""}
               >
-                <Activity className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Order History</span>}
+                <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Order History</span>}
               </button>
               {(user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === 'admin' || user?.role === UserRole.ADMIN) && (
                 <button
-                  onClick={() => setActiveTab('digitizer_comm')}
+                  onClick={() => selectTab('digitizer_comm')}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                    isSidebarCollapsed && "justify-center px-0",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
                     activeTab === 'digitizer_comm' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
                   )}
                   title={isSidebarCollapsed ? "Digitizer Comm" : ""}
                 >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span className="truncate">Digitizer Comm</span>}
+                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span className="truncate">Digitizer Comm</span>}
                 </button>
               )}
             </div>
@@ -285,19 +318,29 @@ export default function Dashboard() {
 
       <main className={cn(
         "flex-1 min-h-screen transition-all duration-300",
-        isSidebarCollapsed ? "ml-20" : "ml-64"
+        isSidebarCollapsed ? "md:ml-20" : "md:ml-64",
+        "ml-0"
       )}>
-        <header className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between sticky top-0 z-30">
-          <div className="text-sm font-medium text-gray-500">
-            {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
+        <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="text-xs md:text-sm font-medium text-gray-500">
+              {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             {user?.role === 'admin' && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/admin')}
-                className="text-[10px] h-8 px-3 font-bold uppercase tracking-wider"
+                className="text-[9px] md:text-[10px] h-7 md:h-8 px-2 md:px-3 font-bold uppercase tracking-wider"
               >
                 Admin Panel
               </Button>
@@ -318,7 +361,7 @@ export default function Dashboard() {
                   <p className="text-gray-500 text-sm">Full list of orders across all departments</p>
                 </div>
               </div>
-
+              
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100 font-bold text-[10px] text-gray-400 uppercase tracking-widest">
@@ -359,79 +402,8 @@ export default function Dashboard() {
                 </table>
               </div>
             </div>
-          ) : [UserRole.STAFF, UserRole.MARKETING, 'staff', 'marketing'].includes(user?.role as any) ? (
+          ) : activeTab === 'marketing_orders' ? (
             <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
-            <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
-            <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
-          ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
-            <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
-            <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.DIGITIZER || user?.role === 'digitizer' ? (
-            <DigitizingDashboard orders={orders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
-            <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : activeTab === 'digitizer_comm' ? (
-            <DigitizerCommunication orders={orders} onUpdateOrder={handleUpdateOrder} />
-          ) : activeTab === 'dashboard' ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {[
-                  { label: 'Total Leads', val: filteredLeads.length, icon: TrendingUp, color: 'text-white', bg: 'bg-brand-primary' },
-                  { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-brand-secondary' },
-                  { label: 'Conversion', val: `${filteredLeads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-white', bg: 'bg-brand-dark' }
-                ].map((stat, i) => (
-                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className={`w-12 h-12 ${stat.bg} rounded-full flex items-center justify-center ${stat.color} shadow-lg shadow-brand-primary/10`}>
-                      <stat.icon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{stat.label}</p>
-                      <p className="text-2xl font-bold text-gray-900">{stat.val}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={filteredLeads.slice(0, 7).map(l => ({ ...l, displayValue: l.netTotal || l.totalOrderValue }))}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="name" hide />
-                        <YAxis hide />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                        <Bar dataKey="displayValue" fill="#1A0B91" radius={[6, 6, 0, 0]} barSize={40} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <FunnelChart>
-                        <Funnel dataKey="value" data={funnelData} isAnimationActive>
-                          <LabelList position="right" fill="#888" stroke="none" dataKey="name" />
-                        </Funnel>
-                      </FunnelChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
-                  Marketing Dashboard
-                </h2>
-                <LeadManager />
-              </div>
-            </>
           ) : activeTab === 'reports' ? (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
@@ -521,7 +493,7 @@ export default function Dashboard() {
                 </table>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'invoices' ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -532,10 +504,83 @@ export default function Dashboard() {
               </div>
               <InvoiceManager />
             </div>
+          ) : [UserRole.STAFF, 'staff'].includes(user?.role as any) ? (
+            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
+            <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
+            <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
+          ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
+            <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
+            <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.DIGITIZER || user?.role === 'digitizer' ? (
+            <DigitizingDashboard orders={orders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
+          ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
+            <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+          ) : activeTab === 'digitizer_comm' ? (
+            <DigitizerCommunication orders={orders} onUpdateOrder={handleUpdateOrder} />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {[
+                  { label: 'Total Leads', val: filteredLeads.length, icon: TrendingUp, color: 'text-white', bg: 'bg-brand-primary' },
+                  { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-brand-secondary' },
+                  { label: 'Conversion', val: `${filteredLeads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-white', bg: 'bg-brand-dark' }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div className={`w-12 h-12 ${stat.bg} rounded-full flex items-center justify-center ${stat.color} shadow-lg shadow-brand-primary/10`}>
+                      <stat.icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{stat.label}</p>
+                      <p className="text-2xl font-bold text-gray-900">{stat.val}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={filteredLeads.slice(0, 7).map(l => ({ ...l, displayValue: l.netTotal || l.totalOrderValue }))}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="name" hide />
+                        <YAxis hide />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                        <Bar dataKey="displayValue" fill="#1A0B91" radius={[6, 6, 0, 0]} barSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <FunnelChart>
+                        <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                          <LabelList position="right" fill="#888" stroke="none" dataKey="name" />
+                        </Funnel>
+                      </FunnelChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+                  Marketing Dashboard
+                </h2>
+                <LeadManager />
+              </div>
+            </>
           )}
         </div>
       </main>
-      <ProfileSetting isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

@@ -14,7 +14,7 @@ import {
 import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import LeadManager from '../components/LeadManager';
-import ProfileSettings from '../components/ProfileSetting';
+import ProfileSettings from '../components/ProfileSettings';
 import Logo from '../components/Logo';
 import InvoiceModal from '../components/InvoiceModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -41,6 +41,12 @@ export default function AdminDashboard() {
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setIsMobileOpen(false);
+  };
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [adminOnlyRegistration, setAdminOnlyRegistration] = useState(true);
@@ -153,15 +159,31 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex bg-brand-light min-h-screen">
+      {/* Mobile Sidebar Backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={cn(
-        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 h-full z-40 shadow-sm transition-all duration-300",
-        isSidebarCollapsed ? "w-20" : "w-64"
+        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full z-40 shadow-sm transition-all duration-300",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        isSidebarCollapsed ? "md:w-20" : "md:w-64",
+        "w-64"
       )}>
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
-          {!isSidebarCollapsed && <Logo />}
+          {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={() => {
+              if (window.innerWidth < 768) {
+                setIsMobileOpen(false);
+              } else {
+                setIsSidebarCollapsed(!isSidebarCollapsed);
+              }
+            }}
             className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-brand-primary transition-all flex-shrink-0"
           >
             {isSidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
@@ -170,89 +192,92 @@ export default function AdminDashboard() {
 
         <nav className="p-4 space-y-1">
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => selectTab('overview')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
+              isSidebarCollapsed && "md:justify-center md:px-0",
               activeTab === 'overview' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Overview" : ""}
           >
-            <TrendingUp className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Overview</span>}
+            <TrendingUp className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Overview</span>}
           </button>
           <button
-            onClick={() => setActiveTab('users')}
+            onClick={() => selectTab('users')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
+              isSidebarCollapsed && "md:justify-center md:px-0",
               activeTab === 'users' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Users" : ""}
           >
-            <Users className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Users</span>}
+            <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Users</span>}
           </button>
           <button
-            onClick={() => setActiveTab('orders')}
+            onClick={() => selectTab('orders')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
+              isSidebarCollapsed && "md:justify-center md:px-0",
               activeTab === 'orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Global Orders" : ""}
           >
-            <Zap className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Global Orders</span>}
+            <Zap className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Global Orders</span>}
           </button>
           <button
-            onClick={() => setActiveTab('invoices')}
+            onClick={() => selectTab('invoices')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
+              isSidebarCollapsed && "md:justify-center md:px-0",
               activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Invoices" : ""}
           >
-            <BarChart3 className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Invoices</span>}
+            <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
           </button>
           <button
-            onClick={() => setActiveTab('logs')}
+            onClick={() => selectTab('logs')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-              isSidebarCollapsed && "justify-center px-0",
+              isSidebarCollapsed && "md:justify-center md:px-0",
               activeTab === 'logs' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
             )}
             title={isSidebarCollapsed ? "Audit Logs" : ""}
           >
-            <FileText className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Audit Logs</span>}
+            <FileText className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Audit Logs</span>}
           </button>
           <button
-            onClick={() => setActiveTab('security')}
+            onClick={() => selectTab('security')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
-              isSidebarCollapsed && "justify-center px-0",
+              isSidebarCollapsed && "md:justify-center md:px-0",
               activeTab === 'security' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
             )}
             title={isSidebarCollapsed ? "Security" : ""}
           >
-            <Shield className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Security</span>}
+            <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
           </button>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => {
+              setIsMobileOpen(false);
+              navigate('/dashboard');
+            }}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all",
-              isSidebarCollapsed && "justify-center px-0"
+              isSidebarCollapsed && "md:justify-center md:px-0"
             )}
             title={isSidebarCollapsed ? "Return to User App" : ""}
           >
-            <Layout className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Return to User App</span>}
+            <Layout className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Return to User App</span>}
           </button>
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
           <button onClick={handleLogout} className={cn(
             "text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm",
-            isSidebarCollapsed && "justify-center px-0"
+            isSidebarCollapsed && "md:justify-center md:px-0"
           )} title={isSidebarCollapsed ? "Logout" : ""}>
-            <LogOut className="w-4 h-4 flex-shrink-0" /> {!isSidebarCollapsed && <span>Logout</span>}
+            <LogOut className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Logout</span>}
           </button>
         </div>
       </aside>
@@ -260,12 +285,20 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className={cn(
         "flex-1 min-h-screen transition-all duration-300",
-        isSidebarCollapsed ? "ml-20" : "ml-64"
+        isSidebarCollapsed ? "md:ml-20" : "md:ml-64",
+        "ml-0"
       )}>
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-30">
-          <div className="flex items-center gap-4 text-gray-400">
-            <span className="text-xs font-bold uppercase tracking-widest">Admin Control Panel</span>
+        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
+          <div className="flex items-center gap-3 text-gray-400">
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Admin Control Panel</span>
           </div>
           <div className="flex items-center gap-4">
             <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"><Bell className="w-5 h-5" /></button>

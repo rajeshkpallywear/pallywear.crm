@@ -6,7 +6,8 @@
 import { useState, FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip } from 'lucide-react';
-import { Order, OrderStatus, SizeBreakdown } from '../types';
+import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
+import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
 import {
   CATEGORIES, JERSEY_MATERIALS, JERSEY_MODELS, SLEEVE_OPTIONS,
@@ -124,17 +125,19 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
 
     setIsProcessing(true);
     try {
-      // Find orders that might need design or create a new "Design Request" order
-      // For now, let's assume we link it to the last created order or just create a new Order in DESIGN status
+      const timestamp = new Date().toLocaleString();
+      const sender = designRequest.staffName || 'Staff';
+
+      // Always create a new design request card
       const newOrder: Partial<Order> = {
         status: OrderStatus.DESIGN,
         category: 'Design Request',
         customerInfo: {
-          name: designRequest.staffName || 'Staff Design Request',
+          name: `Design Request`,
           phone: '',
           address: 'Internal Support'
         },
-        notes: `[DESIGN REQUEST] ${new Date().toLocaleString()}\nBy: ${designRequest.staffName || 'Unknown'}\n${designRequest.message}`,
+        notes: `[DESIGN REQUEST] ${timestamp}\nBy: ${sender}\n\nRequirements:\n${designRequest.message}`,
         designAttachments: designRequest.attachments,
         staffImages: designRequest.attachments,
         financials: { totalAmount: 0, advancePay: 0, balanceAmount: 0 },
@@ -143,15 +146,13 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
         updatedAt: Date.now(),
       };
 
-      // Add voice note to notes as a data URL if needed or handle separately
-      // Since Order type doesn't have a voiceNote field explicitly, we'll append it to notes if it's small, 
-      // but better to add it to generic attachments.
       if (designRequest.voiceNote) {
-        newOrder.staffPdfs = [...(newOrder.staffPdfs || []), designRequest.voiceNote];
+        newOrder.staffPdfs = [designRequest.voiceNote];
       }
 
       await onCreateOrder(newOrder);
-      alert("Design request sent successfully!");
+      alert(`Design request sent successfully!`);
+
       setIsDesignSidebarOpen(false);
       setDesignRequest({ staffName: '', message: '', attachments: [], voiceNote: null });
     } catch (error) {
@@ -185,8 +186,9 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
 
     // Check size estimation of the FINAL order object
     const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
+    const existingOrder = editingOrderId ? orders.find(o => o.id === editingOrderId) : null;
     const finalOrderData = {
-      status: OrderStatus.ACCOUNTS,
+      status: existingOrder ? existingOrder.status : OrderStatus.PENDING,
       category: formData.category,
       customerInfo: {
         name: formData.customerName,
@@ -218,13 +220,13 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     try {
       if (editingOrderId) {
         await onUpdateOrder(editingOrderId, finalOrderData);
-        alert("Success: Order updated and moved to Accounts Portal.");
+        alert("Success: Order updated in portal.");
       } else {
         await onCreateOrder({
           ...finalOrderData,
           createdAt: Date.now(),
         });
-        alert("Success: Order created and moved to Accounts Portal.");
+        alert("Success: Order created. Use the [Send to Accounts] manual button next to the order to move it when ready.");
       }
       setIsCreating(false);
       setEditingOrderId(null);
@@ -359,7 +361,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     setIsCreating(true);
   };
 
-  const actionRequiredOrders = orders.filter(o => o.status === OrderStatus.PENDING);
+  const actionRequiredOrders = orders.filter(o => o.status === OrderStatus.PENDING && o.notes?.includes('[RETURNED]'));
   const filteredOrders = orders.filter(o =>
     o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     o.id.includes(searchTerm)
@@ -436,6 +438,8 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
                   onChange={(e) => setDesignRequest(prev => ({ ...prev, staffName: e.target.value }))}
                 />
               </div>
+
+
 
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Message to Designer</label>
@@ -639,7 +643,11 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
             <tbody className="divide-y divide-gray-50">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={order.id}
+                    onClick={() => setSelectedHubOrder(order)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                  >
                     <td className="px-6 py-4 font-mono text-xs text-gray-500">
                       <div className="flex items-center gap-2">
                         #{order.id.slice(-6)}
@@ -659,9 +667,32 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
                     </td>
                     <td className="px-6 py-4 text-xs font-bold text-gray-900">{order.quantity || 1}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${getStatusStyles(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
+                      <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase w-fit ${getStatusStyles(order.status)}`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                        {order.status === OrderStatus.PENDING && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm("Send this order manually to Accounts?")) {
+                                try {
+                                  await onUpdateOrder(order.id, {
+                                    status: OrderStatus.ACCOUNTS,
+                                    updatedAt: Date.now()
+                                  });
+                                  alert("Success: Order sent to Accounts.");
+                                } catch (err) {
+                                  alert("Failed to send order.");
+                                }
+                              }
+                            }}
+                            className="text-[10px] font-black text-amber-600 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-300 rounded px-2.5 py-1 tracking-widest uppercase transition-all duration-200 w-fit cursor-pointer"
+                          >
+                            Send to Accounts
+                          </button>
+                        )}
+                      </div>
                       {order.status === OrderStatus.HOLD && order.holdReason && (
                         <div className="text-[8px] text-red-500 mt-1 font-bold italic truncate max-w-[80px]" title={order.holdReason}>
                           {order.holdReason}
@@ -687,88 +718,8 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
         </div>
       </div>
 
-      {/* Global Order Status Section */}
+      {/* Inventory Summary Section - View Only for Staff */}
       <div className="pt-8 border-t border-gray-100">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
-          <Globe className="text-brand-primary" size={24} />
-          Order Status
-        </h3>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[300px] mb-12">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100 italic">
-              <tr className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
-                <th className="px-6 py-4 text-nowrap">Order ID</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Last Update</th>
-                {isAdmin && <th className="px-6 py-4 text-center">Action</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {orders.length > 0 ? (
-                orders.map(order => (
-                  <tr
-                    key={order.id}
-                    onClick={() => setSelectedHubOrder(order)}
-                    className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                  >
-                    <td className="px-6 py-4 font-mono text-xs text-gray-400">
-                      <div className="flex items-center gap-2">
-                        #{order.id.slice(-8)}
-                        {order.isUrgent && (
-                          <span className="bg-red-500 text-white text-[8px] font-black px-1 rounded">URGENT</span>
-                        )}
-                        <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-brand-primary" />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-gray-900">{order.customerInfo.name}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 bg-gray-100 rounded text-[8px] font-black text-gray-500 uppercase tracking-tighter">
-                        {getDisplayCategory(order)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
-                      {order.status === OrderStatus.HOLD && order.holdReason && (
-                        <div className="text-[9px] text-red-500 mt-1 font-bold italic truncate max-w-[120px] mx-auto" title={order.holdReason}>
-                          {order.holdReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right text-xs text-gray-400">
-                      {new Date(order.updatedAt).toLocaleString()}
-                    </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Delete this order? This cannot be undone.')) {
-                              onDeleteOrder?.(order.id);
-                            }
-                          }}
-                          className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg transition-colors relative z-10"
-                          title="Delete Order (Admin Only)"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="px-6 py-12 text-center text-gray-400 italic">No global orders available.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Inventory Summary Section - View Only for Staff */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">

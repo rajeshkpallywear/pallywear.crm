@@ -400,45 +400,75 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                       </button>
                     </div>
                   ) : (
-                    <button
-                      disabled={isProcessingAction}
-                      onClick={async () => {
-                        const reason = window.prompt("Enter Mandatory Hold Reason:");
-                        if (reason === null) return; // Cancelled
-                        if (!reason.trim()) {
-                          alert("Hold reason is required.");
-                          return;
-                        }
-
-                        setIsProcessingAction(true);
-                        try {
-                          const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason}`;
-                          const updatedNotes = order.notes ? `${order.notes}\n${newNote}` : newNote;
-
-                          const updates = {
-                            status: OrderStatus.HOLD,
-                            holdReason: reason.trim(),
-                            previousStatus: order.status,
-                            notes: updatedNotes,
-                            updatedAt: Date.now()
-                          };
-
-                          if (onUpdateOrder) {
-                            await onUpdateOrder(order.id, updates);
-                          } else if (onUpdateStatus) {
-                            onUpdateStatus(OrderStatus.HOLD);
+                    <div className="space-y-2">
+                      {order.status === OrderStatus.PENDING && (
+                        <button
+                          disabled={isProcessingAction}
+                          onClick={async () => {
+                            if (window.confirm("Send this order manually to Accounts?")) {
+                              setIsProcessingAction(true);
+                              try {
+                                if (onUpdateOrder) {
+                                  await onUpdateOrder(order.id, {
+                                    status: OrderStatus.ACCOUNTS,
+                                    updatedAt: Date.now()
+                                  });
+                                } else if (onUpdateStatus) {
+                                  onUpdateStatus(OrderStatus.ACCOUNTS);
+                                }
+                                alert("Order successfully sent to Accounts.");
+                              } catch (e) {
+                                alert("Failed to send order.");
+                              } finally {
+                                setIsProcessingAction(false);
+                              }
+                            }
+                          }}
+                          className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
+                        >
+                          <CheckCircle size={14} /> Send to Accounts
+                        </button>
+                      )}
+                      <button
+                        disabled={isProcessingAction}
+                        onClick={async () => {
+                          const reason = window.prompt("Enter Mandatory Hold Reason:");
+                          if (reason === null) return; // Cancelled
+                          if (!reason.trim()) {
+                            alert("Hold reason is required.");
+                            return;
                           }
-                          alert("Order put on HOLD.");
-                        } catch (e) {
-                          alert("Failed to put order on hold.");
-                        } finally {
-                          setIsProcessingAction(false);
-                        }
-                      }}
-                      className="w-full py-3 bg-red-500/20 text-red-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <AlertCircle size={14} /> {isProcessingAction ? 'Processing...' : 'Hold Order'}
-                    </button>
+
+                          setIsProcessingAction(true);
+                          try {
+                            const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason}`;
+                            const updatedNotes = order.notes ? `${order.notes}\n${newNote}` : newNote;
+
+                            const updates = {
+                              status: OrderStatus.HOLD,
+                              holdReason: reason.trim(),
+                              previousStatus: order.status,
+                              notes: updatedNotes,
+                              updatedAt: Date.now()
+                            };
+
+                            if (onUpdateOrder) {
+                              await onUpdateOrder(order.id, updates);
+                            } else if (onUpdateStatus) {
+                              onUpdateStatus(OrderStatus.HOLD);
+                            }
+                            alert("Order put on HOLD.");
+                          } catch (e) {
+                            alert("Failed to put order on hold.");
+                          } finally {
+                            setIsProcessingAction(false);
+                          }
+                        }}
+                        className="w-full py-3 bg-red-500/20 text-red-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <AlertCircle size={14} /> {isProcessingAction ? 'Processing...' : 'Hold Order'}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

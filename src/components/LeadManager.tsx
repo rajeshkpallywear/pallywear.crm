@@ -96,7 +96,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
           advancePay: 0,
           balanceAmount: lead.netTotal || lead.totalOrderValue,
         },
-        status: OrderStatus.ACCOUNTS,
+        status: OrderStatus.PENDING,
         staffImages: [],
         staffPdfs: [],
         accountsAttachments: [],
@@ -107,7 +107,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
 
       try {
         await addOrder(newOrder);
-        alert("Order created and sent to Accounts team!");
+        alert("Order created in portal! Go to Staff Dashboard Orders to manually send it to Accounts.");
       } catch (err: any) {
         alert("Failed to create order: " + err.message);
       }

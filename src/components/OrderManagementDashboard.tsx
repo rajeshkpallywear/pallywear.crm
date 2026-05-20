@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Layers, Package, ChevronRight, FileText, Download, ExternalLink, Paperclip, ZoomIn, Share2, Globe, CreditCard, Trash2, Search, Plus, Activity, Users, Upload } from 'lucide-react';
+import { Layers, Package, ChevronRight, FileText, Download, ExternalLink, Paperclip, ZoomIn, Share2, Globe, CreditCard, Trash2, Search, Plus, Activity, Users, Upload, Palette } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
@@ -103,6 +103,12 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     attachments: [] as string[]
   });
 
+  const [isDesignMsgSidebarOpen, setIsDesignMsgSidebarOpen] = useState(false);
+  const [designMsgRequest, setDesignMsgRequest] = useState({
+    message: '',
+    attachments: [] as string[]
+  });
+
   const sendToDigitizer = async () => {
     if (!msgRequest.message && msgRequest.attachments.length === 0) {
       alert("Please provide a message or attachments.");
@@ -136,6 +142,40 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
   };
 
+  const sendToDesigner = async () => {
+    if (!designMsgRequest.message && designMsgRequest.attachments.length === 0) {
+      alert("Please provide a message or attachments.");
+      return;
+    }
+
+    if (!selectedOrder) {
+      alert("Please select an order first from the list.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newNote = `[ORDER MGMT -> DESIGNER] ${new Date().toLocaleString()}\n${designMsgRequest.message}`;
+      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
+
+      await onUpdateOrder(selectedOrder.id, {
+        notes: updatedNotes,
+        staffImages: [...(selectedOrder.staffImages || []), ...designMsgRequest.attachments],
+        status: OrderStatus.DESIGN,
+        updatedAt: Date.now()
+      });
+
+      alert("Instructions and references sent to Design team!");
+      setIsDesignMsgSidebarOpen(false);
+      setDesignMsgRequest({ message: '', attachments: [] });
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send message.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -150,6 +190,13 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           >
             <Upload size={18} />
             <span className="text-xs uppercase tracking-widest font-black">Message to Digitizer</span>
+          </button>
+          <button
+            onClick={() => setIsDesignMsgSidebarOpen(true)}
+            className="px-6 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg flex items-center gap-2 active:scale-95"
+          >
+            <Palette size={18} />
+            <span className="text-xs uppercase tracking-widest font-black">Message to Designer</span>
           </button>
           <button
             onClick={() => window.location.reload()}
@@ -590,94 +637,10 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
             </div>
           )}
         </div>
-      </div>
-
-      {/* Global Order Status Section */}
-      <div className="pt-8 border-t border-gray-100">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
-          <Globe className="text-brand-primary" size={24} />
-          Global Order Status Hub
-        </h3>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[300px] mb-12">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100 italic">
-              <tr className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
-                <th className="px-6 py-4 text-nowrap">Order ID</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Last Update</th>
-                {isAdmin && <th className="px-6 py-4 text-center">Action</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {orders.length > 0 ? (
-                orders.map(order => (
-                  <tr
-                    key={order.id}
-                    onClick={() => setSelectedHubOrder(order)}
-                    className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                  >
-                    <td className="px-6 py-4 font-mono text-xs text-gray-400">
-                      <div className="flex items-center gap-2">
-                        #{order.id.slice(-8)}
-                        {order.isUrgent && (
-                          <span className="bg-red-500 text-white text-[8px] font-black px-1 rounded">URGENT</span>
-                        )}
-                        <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-brand-primary" />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-gray-900">{order.customerInfo.name}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 bg-gray-100 rounded text-[8px] font-black text-gray-500 uppercase tracking-tighter">
-                        {getDisplayCategory(order)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
-                      {order.status === OrderStatus.HOLD && order.holdReason && (
-                        <div className="text-[9px] text-red-500 mt-1 font-bold italic truncate max-w-[120px] mx-auto" title={order.holdReason}>
-                          {order.holdReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right text-xs text-gray-400">
-                      {new Date(order.updatedAt).toLocaleString()}
-                    </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Delete this order? This cannot be undone.')) {
-                              onDeleteOrder?.(order.id);
-                            }
-                          }}
-                          className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg transition-colors relative z-10"
-                          title="Delete Order (Admin Only)"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="px-6 py-12 text-center text-gray-400 italic">No global orders available.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
         {/* Inventory Summary Section */}
-        <div className="pt-8 border-t border-gray-100">
+        <div className="pt-8 border-t border-gray-100 pb-12">
           <InventoryManagement userRole={isAdmin ? 'admin' : 'order_management'} />
-        </div>
-      </div>
+        </div>    </div>
 
       {selectedHubOrder && (
         <OrderDetailModal
@@ -769,6 +732,87 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                 className="w-full py-5 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98]"
               >
                 {isProcessing ? "Processing..." : "Send to Digitizer"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Designer Communication Sidebar */}
+      {isDesignMsgSidebarOpen && (
+        <div className="fixed inset-0 z-[60] flex justify-end">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setIsDesignMsgSidebarOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col"
+          >
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-purple-50 text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white font-black italic">PW</div>
+                <div className="text-left">
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Communicate</h3>
+                  <p className="text-[10px] text-purple-600 font-bold uppercase tracking-widest text-left">To Design Team</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDesignMsgSidebarOpen(false)}
+                className="p-2 hover:bg-purple-100 rounded-full transition-colors text-purple-400"
+              >
+                <Trash2 size={24} className="rotate-45" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 text-left">
+              {!selectedOrder && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800">
+                  <Activity size={20} />
+                  <p className="text-xs font-bold uppercase tracking-widest">Please select an order from the list first</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-left">Instructions to Designer</label>
+                <textarea
+                  rows={6}
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-medium resize-none shadow-inner"
+                  placeholder="Provide design, logo placements, sizing, or layout notes..."
+                  value={designMsgRequest.message}
+                  onChange={(e) => setDesignMsgRequest(prev => ({ ...prev, message: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-left">Share Design References (Max 100MB)</label>
+                <FileUpload
+                  label="Upload Ref Files (JPG/PNG/PDF)"
+                  accept="image/*,.pdf"
+                  onFilesSelected={(files) => setDesignMsgRequest(prev => ({ ...prev, attachments: files }))}
+                />
+                {designMsgRequest.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {designMsgRequest.attachments.map((_, i) => (
+                      <div key={i} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-bold uppercase">
+                        File {i + 1} Ready
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100">
+              <button
+                disabled={isProcessing || !selectedOrder}
+                onClick={sendToDesigner}
+                className="w-full py-5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-750 transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98]"
+              >
+                {isProcessing ? "Processing..." : "Send to Designer"}
               </button>
             </div>
           </motion.div>

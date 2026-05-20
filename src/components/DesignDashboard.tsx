@@ -44,7 +44,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const [designFiles, setDesignFiles] = useState<string[]>([]);
   const [machineFiles, setMachineFiles] = useState<string[]>([]);
 
-  const designOrders = orders.filter(o => o.status === OrderStatus.DESIGN);
+  const designOrders = orders.filter(o => o.status === OrderStatus.DESIGN || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN));
 
   const filteredOrders = designOrders.filter(o =>
     o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -111,6 +111,60 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } catch (e) {
       console.error(e);
       alert("Action failed.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePutOnHold = async () => {
+    if (!selectedOrder || isProcessing) return;
+
+    if (selectedOrder.status === OrderStatus.HOLD) {
+      // Resume design work
+      setIsProcessing(true);
+      try {
+        await onUpdateOrder(selectedOrder.id, {
+          status: OrderStatus.DESIGN,
+          previousStatus: undefined,
+          holdReason: undefined,
+          updatedAt: Date.now()
+        });
+        setSelectedOrder(null);
+        alert("Success: Order resumed from Hold and active again.");
+      } catch (e) {
+        console.error(e);
+        alert("Failed to resume design.");
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    // Put on Hold prompt
+    const reason = window.prompt("The design team wants to put this order on hold. Please specify the reason (e.g. Design too difficult, require pattern update):");
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert("Reason is mandatory to place design on hold.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newNote = `[HOLD REPORT] ${new Date().toLocaleString()}: ${reason.trim()}`;
+      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
+
+      await onUpdateOrder(selectedOrder.id, {
+        status: OrderStatus.HOLD,
+        previousStatus: OrderStatus.DESIGN,
+        holdReason: reason.trim(),
+        notes: updatedNotes,
+        updatedAt: Date.now()
+      });
+      setSelectedOrder(null);
+      alert("Success: Order put on Hold.");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to put on Hold.");
     } finally {
       setIsProcessing(false);
     }
@@ -242,20 +296,31 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={cn(
-                        "flex items-center justify-center gap-1.5 font-bold text-xs capitalize",
-                        order.status === OrderStatus.DESIGN ? "text-amber-600" : "text-gray-400"
+                        "flex flex-col items-center justify-center gap-1 font-bold text-xs uppercase text-center",
+                        order.status === OrderStatus.DESIGN ? "text-amber-600" : order.status === OrderStatus.HOLD ? "text-red-600" : "text-gray-400"
                       )}>
-                        {order.status === OrderStatus.DESIGN && <Clock size={14} className="animate-spin" />}
-                        {order.status === OrderStatus.DESIGN ? "Awaiting Art" : order.status}
+                        <div className="flex items-center gap-1">
+                          {order.status === OrderStatus.DESIGN && <Clock size={14} className="animate-spin" />}
+                          {order.status === OrderStatus.HOLD && <AlertCircle size={14} className="text-red-500" />}
+                          {order.status === OrderStatus.DESIGN ? "Awaiting Art" : order.status === OrderStatus.HOLD ? "On Hold" : order.status}
+                        </div>
+                        {order.status === OrderStatus.HOLD && order.holdReason && (
+                          <span className="text-[10px] text-red-500 italic max-w-[150px] truncate block" title={order.holdReason}>
+                            Reason: {order.holdReason}
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {order.status === OrderStatus.DESIGN ? (
+                      {(order.status === OrderStatus.DESIGN || order.status === OrderStatus.HOLD) ? (
                         <button
                           onClick={() => setSelectedOrder(order)}
-                          className="px-4 py-2 bg-black text-white rounded-lg text-xs font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2 ml-auto"
+                          className={cn(
+                            "px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ml-auto",
+                            order.status === OrderStatus.HOLD ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200" : "bg-black text-white hover:bg-gray-800"
+                          )}
                         >
-                          Start Design
+                          {order.status === OrderStatus.HOLD ? "View Hold" : "Start Design"}
                           <ChevronRight size={14} />
                         </button>
                       ) : (
@@ -294,6 +359,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              {selectedOrder.status === OrderStatus.HOLD && (
+                <div className="bg-red-50 border border-red-200 p-6 rounded-2xl flex items-start gap-4 mb-4 text-left">
+                  <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={24} />
+                  <div>
+                    <h5 className="text-sm font-black text-red-900 uppercase italic">Artwork Design Work is On Hold</h5>
+                    <p className="text-xs text-red-700 font-semibold mt-1">Reason: "{selectedOrder.holdReason || 'No reason specified'}"</p>
+                    <p className="text-[10px] text-red-500 font-medium mt-1">Click the "Resume Design Work" button in the footer to unlock updates and move this work to Accounts.</p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <section>
@@ -432,7 +508,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               </div>
             </div>
 
-            <div className="p-8 border-t border-gray-100 flex gap-4 shrink-0 bg-gray-50/30">
+            <div className="p-8 border-t border-gray-100 flex flex-wrap gap-4 shrink-0 bg-gray-50/30">
               <button
                 onClick={handleMoveToCreator}
                 disabled={isProcessing}
@@ -441,10 +517,23 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 {isProcessing ? <Clock size={18} className="animate-spin" /> : <AlertCircle size={18} />}
                 Move to Order Creator
               </button>
+              <button
+                onClick={handlePutOnHold}
+                disabled={isProcessing}
+                className={cn(
+                  "px-6 py-4 border-2 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 active:scale-[0.98]",
+                  selectedOrder.status === OrderStatus.HOLD
+                    ? "border-green-100 text-green-600 hover:bg-green-50 hover:border-green-200"
+                    : "border-amber-100 text-amber-600 hover:bg-amber-50 hover:border-amber-200"
+                )}
+              >
+                {isProcessing ? <Clock size={18} className="animate-spin" /> : <AlertCircle size={18} />}
+                {selectedOrder.status === OrderStatus.HOLD ? "Resume Design" : "Put on Hold"}
+              </button>
               <button onClick={() => setSelectedOrder(null)} className="px-6 py-4 border border-gray-200 rounded-2xl font-bold text-gray-500 hover:bg-gray-50">Discard</button>
               <button
                 onClick={handleProcessOrder}
-                disabled={isProcessing || (designFiles.length === 0 && machineFiles.length === 0)}
+                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD || (designFiles.length === 0 && machineFiles.length === 0)}
                 className="flex-[2] px-8 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 shadow-xl shadow-black/10 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] transition-all"
               >
                 {isProcessing ? <Clock className="animate-spin" /> : <CheckCircle size={20} />}
