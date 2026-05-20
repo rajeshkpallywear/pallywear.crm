@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
@@ -21,6 +21,7 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
+import ConversationDashboard from './ConversationDashboard';
 
 interface StaffDashboardProps {
   orders: Order[];
@@ -29,9 +30,10 @@ interface StaffDashboardProps {
   onUpdateOrder: (id: string, updates: Partial<Order>) => Promise<void>;
   onDeleteOrder?: (id: string) => void;
   isAdmin?: boolean;
+  user?: any;
 }
 
-export default function StaffDashboard({ orders, inventory = [], onCreateOrder, onUpdateOrder, onDeleteOrder, isAdmin }: StaffDashboardProps) {
+export default function StaffDashboard({ orders, inventory = [], onCreateOrder, onUpdateOrder, onDeleteOrder, isAdmin, user }: StaffDashboardProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,112 +58,16 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
   const [viewMode, setViewMode] = useState<'pending' | 'all'>('pending');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
-  const [designRequest, setDesignRequest] = useState({
-    staffName: '',
-    message: '',
-    attachments: [] as string[],
-    voiceNote: null as string | null
-  });
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
-  const startRecording = async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('Audio recording is not supported in this browser or environment.');
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setDesignRequest(prev => ({ ...prev, voiceNote: reader.result as string }));
-        };
-        reader.readAsDataURL(audioBlob);
-
-        // Stop all tracks to release microphone
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err: any) {
-      console.error('Error starting recording:', err);
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        alert('Recording Failed: No microphone found. Please connect a microphone and try again.');
-      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        alert('Recording Failed: Permission to use microphone was denied. Please allow microphone access in your browser settings.');
-      } else {
-        alert('Could not access microphone. Please ensure one is connected and permissions are granted.');
-      }
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const sendToDesign = async () => {
-    if (!designRequest.message && designRequest.attachments.length === 0 && !designRequest.voiceNote) {
-      alert("Please provide some design instructions or attachments.");
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const timestamp = new Date().toLocaleString();
-      const sender = designRequest.staffName || 'Staff';
-
-      // Always create a new design request card
-      const newOrder: Partial<Order> = {
-        status: OrderStatus.DESIGN,
-        category: 'Design Request',
-        customerInfo: {
-          name: `Design Request`,
-          phone: '',
-          address: 'Internal Support'
-        },
-        notes: `[DESIGN REQUEST] ${timestamp}\nBy: ${sender}\n\nRequirements:\n${designRequest.message}`,
-        designAttachments: designRequest.attachments,
-        staffImages: designRequest.attachments,
-        financials: { totalAmount: 0, advancePay: 0, balanceAmount: 0 },
-        quantity: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      if (designRequest.voiceNote) {
-        newOrder.staffPdfs = [designRequest.voiceNote];
-      }
-
-      await onCreateOrder(newOrder);
-      alert(`Design request sent successfully!`);
-
-      setIsDesignSidebarOpen(false);
-      setDesignRequest({ staffName: '', message: '', attachments: [], voiceNote: null });
-    } catch (error) {
-      console.error(error);
-      alert("Failed to send design request.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  useEffect(() => {
+    const handleOpenFeed = () => {
+      setIsDesignSidebarOpen(true);
+    };
+    window.addEventListener('open-conversations-feed', handleOpenFeed);
+    return () => {
+      window.removeEventListener('open-conversations-feed', handleOpenFeed);
+    };
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -247,10 +153,10 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
   const addSizeQuantity = () => {
     setFormData(prev => ({
       ...prev,
-      sizeBreakdown: [...prev.sizeBreakdown, {
-        category: prev.category,
-        size: SIZE_OPTIONS[0],
-        quantity: 1,
+      sizeBreakdown: [...prev.sizeBreakdown, { 
+        category: prev.category, 
+        size: SIZE_OPTIONS[0], 
+        quantity: 1, 
         price: 0,
         colour: '',
         printType: '',
@@ -303,7 +209,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
       case 'Hoodie': return HOODIE_COLOURS;
       case 'Sweatshirt': return SWEATSHIRT_COLOURS;
       case 'Pant': return PANT_COLOURS;
-      case 'T-Shirt':
+      case 'T-Shirt': 
         if (material) {
           // Normalizing material name for map lookup
           const key = Object.keys(TSHIRT_COLOURS_MAP).find(k => k.toLowerCase() === material.toLowerCase());
@@ -361,7 +267,6 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     setIsCreating(true);
   };
 
-  const actionRequiredOrders = orders.filter(o => o.status === OrderStatus.PENDING && o.notes?.includes('[RETURNED]'));
   const filteredOrders = orders.filter(o =>
     o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     o.id.includes(searchTerm)
@@ -376,13 +281,6 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
         </div>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setIsDesignSidebarOpen(true)}
-            className="flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg active:scale-95"
-          >
-            <MessageSquare size={20} />
-            <span>Design Team</span>
-          </button>
-          <button
             onClick={() => {
               resetForm();
               setIsCreating(true);
@@ -395,144 +293,19 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
         </div>
       </div>
 
-      {/* Design Team Sidebar */}
-      {isDesignSidebarOpen && (
-        <div className="fixed inset-0 z-[60] flex justify-end">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={() => setIsDesignSidebarOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col"
-          >
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-purple-50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white">
-                  <MessageSquare size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Design Team</h3>
-                  <p className="text-[10px] text-purple-600 font-bold uppercase tracking-widest">Collaborate on Artworks</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsDesignSidebarOpen(false)}
-                className="p-2 hover:bg-purple-100 rounded-full transition-colors text-purple-600"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your Name (Staff)</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold"
-                  placeholder="Enter your name..."
-                  value={designRequest.staffName}
-                  onChange={(e) => setDesignRequest(prev => ({ ...prev, staffName: e.target.value }))}
-                />
-              </div>
-
-
-
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Message to Designer</label>
-                <textarea
-                  rows={4}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm font-medium resize-none shadow-inner"
-                  placeholder="Explain the design requirements, colors, logos, etc..."
-                  value={designRequest.message}
-                  onChange={(e) => setDesignRequest(prev => ({ ...prev, message: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Design Assets (Images/PDFs)</label>
-                <FileUpload
-                  label="Upload references"
-                  accept="image/*,.pdf"
-                  maxFiles={10}
-                  onFilesSelected={(files) => setDesignRequest(prev => ({ ...prev, attachments: files }))}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Voice Instructions</label>
-                <div className="flex items-center gap-4 p-4 bg-purple-50 border border-purple-100 rounded-2xl">
-                  {isRecording ? (
-                    <button
-                      onClick={stopRecording}
-                      className="w-12 h-12 bg-red-600 text-white rounded-full flex items-center justify-center animate-pulse shadow-lg"
-                    >
-                      <X size={20} />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={startRecording}
-                      className="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
-                    >
-                      <Mic size={20} />
-                    </button>
-                  )}
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-purple-900 uppercase">
-                      {isRecording ? "Recording your voice..." : "Record Voice Note"}
-                    </p>
-                    <p className="text-[10px] text-purple-600 font-medium">
-                      {isRecording ? "Press square to stop" : "Explain design details verbally"}
-                    </p>
-                  </div>
-                </div>
-
-                {designRequest.voiceNote && (
-                  <div className="flex items-center justify-between p-3 bg-white border border-purple-100 rounded-xl shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <Mic size={14} className="text-purple-600" />
-                      <span className="text-xs font-bold text-gray-900">Voice_Note.wav</span>
-                    </div>
-                    <button
-                      onClick={() => setDesignRequest(prev => ({ ...prev, voiceNote: null }))}
-                      className="text-red-500 p-1 hover:bg-red-50 rounded"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-100">
-              <button
-                disabled={isProcessing}
-                onClick={sendToDesign}
-                className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold hover:bg-purple-700 transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50"
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send size={20} />
-                    <span>Send to Design Team</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      {/* Design Team Sidebar (Talk Channel Only for Conversation) */}
+      <ConversationDashboard
+        isOpen={isDesignSidebarOpen}
+        onClose={() => setIsDesignSidebarOpen(false)}
+        currentUser={user || { name: 'Staff Desk', role: 'Staff' }}
+        orders={orders}
+        onUpdateOrder={onUpdateOrder}
+        onCreateOrder={onCreateOrder}
+      />
 
       {/* Summary Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <button
+        <button 
           onClick={() => setViewMode(viewMode === 'all' ? 'pending' : 'all')}
           className={cn(
             "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group",
@@ -547,7 +320,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
           </div>
           <div>
             <p className={cn("text-[10px] font-black uppercase tracking-widest", viewMode === 'all' ? "text-white/70" : "text-gray-500")}>
-              {viewMode === 'all' ? "Showing All Orders" : "Total Orders"}
+              {viewMode === 'all' ? "Showing All Designs" : "Total Designs"}
             </p>
             <p className="text-2xl font-black">{orders.length}</p>
           </div>
@@ -559,10 +332,10 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
           <div>
             <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Order Status</p>
             <p className="text-lg font-bold text-gray-900 leading-tight">
-              {orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length} Active
-              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
+               {orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length} Active
+               <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
                 {orders.filter(o => o.status === OrderStatus.HOLD).length} On Hold • {orders.filter(o => o.status === OrderStatus.DELIVERED).length} Done
-              </span>
+               </span>
             </p>
           </div>
         </div>
@@ -573,48 +346,14 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
           <div>
             <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Type of Total Order</p>
             <p className="text-lg font-bold text-gray-900 leading-tight">
-              {Array.from(new Set(orders.map(o => o.category))).length} Categories
-              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
+               {Array.from(new Set(orders.map(o => o.category))).length} Categories
+               <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
                 {orders.length > 0 ? (orders[0].category + (orders.length > 1 ? ', ' + orders[1].category : '')) : 'No data'}
-              </span>
+               </span>
             </p>
           </div>
         </div>
       </div>
-
-      {actionRequiredOrders.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-red-600 font-bold">
-            <AlertCircle size={20} />
-            <h3 className="uppercase tracking-widest text-xs">Action Required ({actionRequiredOrders.length})</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {actionRequiredOrders.map(order => (
-              <div key={order.id} className="bg-red-50 border border-red-100 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-[10px] font-black text-red-400 uppercase">Reason for return</p>
-                    <p className="text-sm font-bold text-red-700 italic">"{order.notes?.split('\n').filter(l => l.includes('[RETURNED]')).pop()?.split(':').slice(2).join(':').trim() || 'No reason specified'}"</p>
-                  </div>
-                </div>
-                <div className="h-px bg-red-100" />
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-xs font-bold text-gray-900">{order.customerInfo.name}</p>
-                    <p className="text-[10px] text-gray-500">#{order.id.slice(-8)}</p>
-                  </div>
-                  <button
-                    onClick={() => startEdit(order)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-all shadow-sm"
-                  >
-                    Fix & Resubmit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
         <div className="p-4 border-b border-gray-100 flex items-center gap-3">
@@ -643,8 +382,8 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
             <tbody className="divide-y divide-gray-50">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => (
-                  <tr
-                    key={order.id}
+                  <tr 
+                    key={order.id} 
                     onClick={() => setSelectedHubOrder(order)}
                     className="hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
@@ -677,7 +416,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
                               e.stopPropagation();
                               if (window.confirm("Send this order manually to Accounts?")) {
                                 try {
-                                  await onUpdateOrder(order.id, {
+                                  await onUpdateOrder(order.id, { 
                                     status: OrderStatus.ACCOUNTS,
                                     updatedAt: Date.now()
                                   });
@@ -727,87 +466,87 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
               Stock Inventory (View Only)
             </h3>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by Product Name..."
-                    className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-black outline-none w-64"
-                  />
-                </div>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition-colors uppercase">Search</button>
-              </div>
+               <div className="flex items-center gap-2">
+                  <div className="relative">
+                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                     <input 
+                       type="text" 
+                       placeholder="Search by Product Name..." 
+                       className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-black outline-none w-64"
+                     />
+                  </div>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition-colors uppercase">Search</button>
+               </div>
             </div>
           </div>
-
+          
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-12">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#f9f9f9] border-b border-gray-100">
-                  <tr className="text-gray-500 font-bold text-[11px] uppercase tracking-wider">
-                    <th className="px-6 py-4">Image</th>
-                    <th className="px-6 py-4">Product Name</th>
-                    <th className="px-6 py-4">Price</th>
-                    <th className="px-6 py-4">Available Product Stock</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {inventory && inventory.length > 0 ? (
-                    // Aggregate inventory for product-wise view
-                    Object.values(inventory.reduce((acc: any, item) => {
-                      const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}`;
-                      if (!acc[key]) {
-                        acc[key] = {
-                          product: item.product,
-                          productType: item.productType,
-                          sleeve: item.sleeve,
-                          pocket: item.pocket,
-                          stock: 0,
-                          lastDate: item.date
-                        };
-                      }
-                      if (item.type === 'inward') acc[key].stock += item.quantity;
-                      else acc[key].stock -= item.quantity;
-                      return acc;
-                    }, {})).map((prod: any, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 group-hover:border-blue-200 transition-colors">
-                            <Package size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-blue-600 hover:underline cursor-pointer">{prod.product}</div>
-                          <div className="text-[10px] text-gray-400 font-medium uppercase flex items-center gap-1">
-                            {prod.productType}
-                            {prod.sleeve && <span className="bg-gray-100 px-1 rounded">{prod.sleeve}</span>}
-                            {prod.pocket && <span className="bg-gray-100 px-1 rounded">{prod.pocket}</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          ₹---
-                        </td>
-                        <td className="px-6 py-4 font-bold">
-                          <span className={cn(
-                            "text-xs",
-                            prod.stock > 0 ? "text-green-600" : "text-red-500"
-                          )}>
-                            {prod.stock > 0 ? `instock (${prod.stock})` : `outofstock (${prod.stock})`}
-                          </span>
+             <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#f9f9f9] border-b border-gray-100">
+                    <tr className="text-gray-500 font-bold text-[11px] uppercase tracking-wider">
+                      <th className="px-6 py-4">Image</th>
+                      <th className="px-6 py-4">Product Name</th>
+                      <th className="px-6 py-4">Price</th>
+                      <th className="px-6 py-4">Available Product Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {inventory && inventory.length > 0 ? (
+                      // Aggregate inventory for product-wise view
+                      Object.values(inventory.reduce((acc: any, item) => {
+                        const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}`;
+                        if (!acc[key]) {
+                          acc[key] = {
+                            product: item.product,
+                            productType: item.productType,
+                            sleeve: item.sleeve,
+                            pocket: item.pocket,
+                            stock: 0,
+                            lastDate: item.date
+                          };
+                        }
+                        if (item.type === 'inward') acc[key].stock += item.quantity;
+                        else acc[key].stock -= item.quantity;
+                        return acc;
+                      }, {})).map((prod: any, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 group-hover:border-blue-200 transition-colors">
+                              <Package size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-blue-600 hover:underline cursor-pointer">{prod.product}</div>
+                            <div className="text-[10px] text-gray-400 font-medium uppercase flex items-center gap-1">
+                               {prod.productType}
+                               {prod.sleeve && <span className="bg-gray-100 px-1 rounded">{prod.sleeve}</span>}
+                               {prod.pocket && <span className="bg-gray-100 px-1 rounded">{prod.pocket}</span>}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            ₹---
+                          </td>
+                          <td className="px-6 py-4 font-bold">
+                            <span className={cn(
+                              "text-xs",
+                              prod.stock > 0 ? "text-green-600" : "text-red-500"
+                            )}>
+                              {prod.stock > 0 ? `instock (${prod.stock})` : `outofstock (${prod.stock})`}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic font-medium">
+                          No inventory products found.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic font-medium">
-                        No inventory products found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+             </div>
           </div>
         </div>
       </div>
@@ -823,9 +562,9 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
               <div className="flex items-center gap-4">
                 <h3 className="text-2xl font-bold text-gray-900">Create New Order</h3>
                 <label className="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-lg cursor-pointer hover:bg-red-100 transition-colors">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500" 
                     checked={formData.isUrgent}
                     onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
                   />
@@ -910,7 +649,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
                             >
                               <X size={14} />
                             </button>
-
+                            
                             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
                               <div className="col-span-2 sm:col-span-1">
                                 <Select
@@ -1176,16 +915,16 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
 
       {/* Global Hub Detailed View Modal handled by common component */}
       {selectedHubOrder && (
-        <OrderDetailModal
-          order={selectedHubOrder}
-          onClose={() => setSelectedHubOrder(null)}
+        <OrderDetailModal 
+          order={selectedHubOrder} 
+          onClose={() => setSelectedHubOrder(null)} 
           isAdmin={isAdmin}
           onUpdateOrder={onUpdateOrder}
           onUpdateStatus={(status) => {
-            if (window.confirm(`Change order status to ${status}?`)) {
-              onUpdateOrder(selectedHubOrder.id, { status });
-              setSelectedHubOrder(prev => prev ? { ...prev, status } : null);
-            }
+             if (window.confirm(`Change order status to ${status}?`)) {
+               onUpdateOrder(selectedHubOrder.id, { status });
+               setSelectedHubOrder(prev => prev ? { ...prev, status } : null);
+             }
           }}
         />
       )}

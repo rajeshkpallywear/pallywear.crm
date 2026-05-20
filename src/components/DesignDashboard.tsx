@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Palette, 
@@ -21,13 +21,15 @@ import {
   Paperclip,
   Upload,
   Package,
-  Mic
+  Mic,
+  MessageSquare
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import OrderDetailModal from './OrderDetailModal';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
+import ConversationDashboard from './ConversationDashboard';
 
 interface DesignDashboardProps {
   orders: Order[];
@@ -41,8 +43,20 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [designFiles, setDesignFiles] = useState<string[]>([]);
   const [machineFiles, setMachineFiles] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handleOpenFeed = () => {
+      setIsConversationOpen(true);
+    };
+    window.addEventListener('open-conversations-feed', handleOpenFeed);
+    return () => {
+      window.removeEventListener('open-conversations-feed', handleOpenFeed);
+    };
+  }, []);
+
   const [customPrompt, setCustomPrompt] = useState<{
     type: 'return' | 'hold';
     title: string;
@@ -79,7 +93,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     setIsProcessing(true);
     try {
       await onUpdateOrder(selectedOrder.id, {
-        status: OrderStatus.ACCOUNTS,
+        status: OrderStatus.ORDER_MANAGEMENT,
         designAttachments: designFiles,
         machineFiles: machineFiles,
         updatedAt: Date.now()
@@ -87,7 +101,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setSelectedOrder(null);
       setDesignFiles([]);
       setMachineFiles([]);
-      alert("Success: Design files uploaded and moved to Accounts.");
+      alert("Success: Design files uploaded and moved to Order Management.");
     } catch (e: any) {
       console.error(e);
       alert("An error occurred while moving the order.");
@@ -200,11 +214,22 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Design Dashboard</h2>
           <p className="text-gray-500 mt-1">Prepare machine language files and artwork</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 italic font-medium">
-          <Palette size={20} />
-          <span>Pattern & Art Studio</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 italic font-medium">
+            <Palette size={20} />
+            <span>Pattern & Art Studio</span>
+          </div>
         </div>
       </div>
+
+      {/* Design Team Sidebar (Talk Channel Only for Conversation) */}
+      <ConversationDashboard
+        isOpen={isConversationOpen}
+        onClose={() => setIsConversationOpen(false)}
+        currentUser={user || { name: 'Arun', role: 'designer' }}
+        orders={orders}
+        onUpdateOrder={onUpdateOrder}
+      />
 
       {/* Summary Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -223,9 +248,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           </div>
           <div>
             <p className={cn("text-[10px] font-black uppercase tracking-widest", viewMode === 'all' ? "text-white/70" : "text-gray-500")}>
-              {viewMode === 'all' ? "Showing All Orders" : "Total Orders"}
+              {viewMode === 'all' ? "Showing All Designs" : "Total Designs"}
             </p>
-            <p className="text-2xl font-black">{orders.length}</p>
+            <p className="text-2xl font-black">{designOrders.length}</p>
           </div>
         </button>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
@@ -512,38 +537,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       </div>
                     </section>
 
-                    <section className="border-t border-gray-100 pt-6">
-                      <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Upload size={18} className="text-purple-600" />
-                        Machine Language Files (DST/EMB/PES)
-                      </h4>
-                      <FileUpload
-                        label=""
-                        accept=".dst,.emb,.pes,image/*"
-                        onFilesSelected={(files) => setMachineFiles(prev => [...prev, ...files])}
-                      />
-                      <div className="mt-4 grid grid-cols-4 gap-2">
-                        {machineFiles.map((file, i) => (
-                           <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center group">
-                             <FileText size={20} className="text-green-600" />
-                             <button onClick={() => handleRemoveFile(i, 'machine')} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={10} /></button>
-                           </div>
-                        ))}
-                      </div>
-                    </section>
+
                   </div>
                </div>
             </div>
 
             <div className="p-8 border-t border-gray-100 flex flex-col sm:flex-row gap-4 shrink-0 bg-gray-50/30">
-               <button 
-                  onClick={handleMoveToCreator} 
-                  disabled={isProcessing}
-                  className="px-6 py-4 border-2 border-red-100 text-red-600 rounded-2xl font-bold hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-               >
-                 {isProcessing ? <Clock size={18} className="animate-spin" /> : <AlertCircle size={18} />}
-                 Move to Creator
-               </button>
                <button 
                   onClick={handlePutOnHold} 
                   disabled={isProcessing}
@@ -563,7 +562,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   className="flex-1 px-6 py-4 bg-brand-primary text-white hover:bg-brand-primary/95 rounded-2xl font-bold shadow-lg shadow-brand-primary/10 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
                >
                  {isProcessing ? <Clock size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                 Complete & Send to Accounts
+                 Complete & Move to Order Management
                </button>
             </div>
           </motion.div>

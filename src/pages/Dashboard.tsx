@@ -403,7 +403,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : activeTab === 'marketing_orders' ? (
-            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
           ) : activeTab === 'reports' ? (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
@@ -505,7 +505,7 @@ export default function Dashboard() {
               <InvoiceManager />
             </div>
           ) : [UserRole.STAFF, 'staff'].includes(user?.role as any) ? (
-            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
           ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
             <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
           ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (

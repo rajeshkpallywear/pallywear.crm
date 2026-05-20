@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
+import WorkflowVisualizer from './WorkflowVisualizer';
 import { useState, useEffect } from 'react';
 
 interface OrderDetailModalProps {
@@ -74,7 +75,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
           </div>
           <div className="flex items-center gap-3">
             {isAdmin && !isEditing && (
-              <button
+               <button
                 onClick={() => setIsEditing(true)}
                 className="px-6 py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md"
               >
@@ -82,7 +83,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
               </button>
             )}
             {isEditing && (
-              <button
+               <button
                 disabled={isSaving}
                 onClick={handleSave}
                 className="px-6 py-3 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-green-700 transition-all shadow-md flex items-center gap-2"
@@ -91,7 +92,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
               </button>
             )}
             {isEditing && (
-              <button
+               <button
                 onClick={() => { setIsEditing(false); setEditedOrder(order); }}
                 className="px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-300 transition-all"
               >
@@ -107,27 +108,30 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
           </div>
         </div>
 
-        <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 max-h-[70vh] overflow-y-auto">
-          <div className="lg:col-span-2 space-y-8">
+        <div className="p-8 flex flex-col gap-8 max-h-[70vh] overflow-y-auto">
+          <WorkflowVisualizer order={order} />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
             <div className="grid grid-cols-2 gap-8">
               <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100/50 shadow-sm">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Customer Contact</p>
                 <div className="space-y-3">
                   {isEditing ? (
                     <>
-                      <input
+                      <input 
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl font-bold text-sm"
                         value={editedOrder.customerInfo.name}
                         onChange={e => setEditedOrder({ ...editedOrder, customerInfo: { ...editedOrder.customerInfo, name: e.target.value } })}
                         placeholder="Customer Name"
                       />
-                      <input
+                      <input 
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl font-bold text-sm"
                         value={editedOrder.customerInfo.phone}
                         onChange={e => setEditedOrder({ ...editedOrder, customerInfo: { ...editedOrder.customerInfo, phone: e.target.value } })}
                         placeholder="Phone"
                       />
-                      <textarea
+                      <textarea 
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl font-bold text-xs"
                         value={editedOrder.customerInfo.address}
                         onChange={e => setEditedOrder({ ...editedOrder, customerInfo: { ...editedOrder.customerInfo, address: e.target.value } })}
@@ -159,30 +163,30 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                 <div className="space-y-4">
                   {isEditing ? (
                     <div className="space-y-2">
-                      <div>
-                        <label className="text-[8px] font-black text-gray-400 uppercase">Grand Total</label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-black text-lg"
-                          value={editedOrder.financials.totalAmount}
-                          onChange={e => {
-                            const total = parseFloat(e.target.value) || 0;
-                            setEditedOrder({ ...editedOrder, financials: { ...editedOrder.financials, totalAmount: total, balanceAmount: total - editedOrder.financials.advancePay } });
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[8px] font-black text-gray-400 uppercase">Advance Paid</label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-green-600"
-                          value={editedOrder.financials.advancePay}
-                          onChange={e => {
-                            const adv = parseFloat(e.target.value) || 0;
-                            setEditedOrder({ ...editedOrder, financials: { ...editedOrder.financials, advancePay: adv, balanceAmount: editedOrder.financials.totalAmount - adv } });
-                          }}
-                        />
-                      </div>
+                       <div>
+                          <label className="text-[8px] font-black text-gray-400 uppercase">Grand Total</label>
+                          <input 
+                            type="number"
+                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-black text-lg"
+                            value={editedOrder.financials.totalAmount}
+                            onChange={e => {
+                               const total = parseFloat(e.target.value) || 0;
+                               setEditedOrder({ ...editedOrder, financials: { ...editedOrder.financials, totalAmount: total, balanceAmount: total - editedOrder.financials.advancePay } });
+                            }}
+                          />
+                       </div>
+                       <div>
+                          <label className="text-[8px] font-black text-gray-400 uppercase">Advance Paid</label>
+                          <input 
+                            type="number"
+                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-green-600"
+                            value={editedOrder.financials.advancePay}
+                            onChange={e => {
+                               const adv = parseFloat(e.target.value) || 0;
+                               setEditedOrder({ ...editedOrder, financials: { ...editedOrder.financials, advancePay: adv, balanceAmount: editedOrder.financials.totalAmount - adv } });
+                            }}
+                          />
+                       </div>
                     </div>
                   ) : (
                     <>
@@ -247,7 +251,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
               <div className="bg-gray-50/30 rounded-[32px] p-6 border border-gray-100">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Technical Details</p>
                 <div className="flex flex-wrap gap-2">
-                  {Object.entries(order.details).map(([k, v]) => (
+                   {Object.entries(order.details).map(([k, v]) => (
                     <div key={k} className="px-3 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
                       <span className="text-[10px] font-black text-gray-400 uppercase block">{k}</span>
                       <span className="text-sm font-bold text-gray-900">{String(v)}</span>
@@ -266,8 +270,8 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                   <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Pictures</p>
                   <div className="flex flex-wrap gap-2">
                     {order.staffImages?.map((img, i) => (
-                      <div
-                        key={i}
+                      <div 
+                        key={i} 
                         onClick={() => setViewingImage(img)}
                         className="w-16 h-16 rounded-xl border border-white shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-all"
                       >
@@ -281,8 +285,8 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                   <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Documents</p>
                   <div className="flex flex-wrap gap-2">
                     {order.staffPdfs?.map((pdf, i) => (
-                      <div
-                        key={i}
+                      <div 
+                        key={i} 
                         onClick={() => setViewingImage(pdf)}
                         className="w-16 h-16 rounded-xl bg-white border border-gray-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-gray-400 hover:text-brand-primary"
                         title="Staff PDF"
@@ -298,8 +302,8 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                     <p className="text-[10px] font-bold text-blue-500 uppercase mb-2">Management Files</p>
                     <div className="flex flex-wrap gap-2">
                       {order.orderManagementAttachments.map((file, i) => (
-                        <div
-                          key={i}
+                        <div 
+                          key={i} 
                           onClick={() => setViewingImage(file)}
                           className="w-16 h-16 rounded-xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition-all text-blue-500 group"
                         >
@@ -313,15 +317,15 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                   <div>
                     <p className="text-[10px] font-bold text-purple-500 uppercase mb-2">Art Studio Files</p>
                     <div className="flex flex-wrap gap-2">
-                      {order.designAttachments.map((file, i) => (
-                        <div
-                          key={i}
+                       {order.designAttachments.map((file, i) => (
+                        <div 
+                          key={i} 
                           onClick={() => setViewingImage(file)}
                           className="w-16 h-16 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-purple-500"
                         >
                           {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
                         </div>
-                      ))}
+                       ))}
                     </div>
                   </div>
                 )}
@@ -329,15 +333,15 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                   <div>
                     <p className="text-[10px] font-bold text-indigo-500 uppercase mb-2">Machine Language (ZIP)</p>
                     <div className="flex flex-wrap gap-2">
-                      {order.machineFiles.map((file, i) => (
-                        <div
-                          key={i}
+                       {order.machineFiles.map((file, i) => (
+                        <div 
+                          key={i} 
                           onClick={() => setViewingImage(file)}
                           className="w-16 h-16 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-indigo-500"
                         >
                           <Download size={24} />
                         </div>
-                      ))}
+                       ))}
                     </div>
                   </div>
                 )}
@@ -346,8 +350,8 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                     <p className="text-[10px] font-bold text-amber-500 uppercase mb-2">Billing Docs</p>
                     <div className="flex flex-wrap gap-2">
                       {order.accountsAttachments.map((file, i) => (
-                        <div
-                          key={i}
+                        <div 
+                          key={i} 
                           onClick={() => setViewingImage(file)}
                           className="w-16 h-16 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-amber-500"
                         >
@@ -361,121 +365,122 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
             </div>
 
             {onUpdateStatus && (
-              <div className="bg-gray-900 p-6 rounded-[32px] shadow-xl text-white space-y-4">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Management Actions</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {order.status === OrderStatus.HOLD ? (
-                    <div className="space-y-3">
-                      <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
-                        <p className="text-[10px] font-black text-red-400 uppercase mb-1">Hold Reason</p>
-                        <p className="text-sm font-bold text-red-700">{order.holdReason || 'No reason provided'}</p>
-                      </div>
-                      <button
-                        disabled={isProcessingAction}
-                        onClick={async () => {
-                          const newStatus = order.previousStatus || OrderStatus.ACCOUNTS;
-                          if (window.confirm(`Release order back to ${newStatus.replace('_', ' ')}?`)) {
+               <div className="bg-gray-900 p-6 rounded-[32px] shadow-xl text-white space-y-4">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Management Actions</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {order.status === OrderStatus.HOLD ? (
+                       <div className="space-y-3">
+                          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
+                             <p className="text-[10px] font-black text-red-400 uppercase mb-1">Hold Reason</p>
+                             <p className="text-sm font-bold text-red-700">{order.holdReason || 'No reason provided'}</p>
+                          </div>
+                          <button 
+                            disabled={isProcessingAction}
+                            onClick={async () => {
+                              const newStatus = order.previousStatus || OrderStatus.ACCOUNTS; 
+                              if (window.confirm(`Release order back to ${newStatus.replace('_', ' ')}?`)) {
+                                setIsProcessingAction(true);
+                                try {
+                                  if (onUpdateOrder) {
+                                    await onUpdateOrder(order.id, { 
+                                      status: newStatus, 
+                                      previousStatus: undefined,
+                                      updatedAt: Date.now() 
+                                    });
+                                  } else if (onUpdateStatus) {
+                                    onUpdateStatus(newStatus);
+                                  }
+                                  alert("Order released successfully.");
+                                } catch (e) {
+                                  alert("Failed to release order.");
+                                } finally {
+                                  setIsProcessingAction(false);
+                                }
+                              }
+                            }}
+                            className="w-full py-3 bg-green-500/20 text-green-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-green-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            <CheckCircle size={14} /> {isProcessingAction ? 'Processing...' : 'Release Order'}
+                          </button>
+                       </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {order.status === OrderStatus.PENDING && (
+                          <button 
+                            disabled={isProcessingAction}
+                            onClick={async () => {
+                              if (window.confirm("Send this order manually to Accounts?")) {
+                                setIsProcessingAction(true);
+                                try {
+                                  if (onUpdateOrder) {
+                                    await onUpdateOrder(order.id, { 
+                                      status: OrderStatus.ACCOUNTS, 
+                                      updatedAt: Date.now() 
+                                    });
+                                  } else if (onUpdateStatus) {
+                                    onUpdateStatus(OrderStatus.ACCOUNTS);
+                                  }
+                                  alert("Order successfully sent to Accounts.");
+                                } catch (e) {
+                                  alert("Failed to send order.");
+                                } finally {
+                                  setIsProcessingAction(false);
+                                }
+                              }
+                            }}
+                            className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
+                          >
+                            <CheckCircle size={14} /> Send to Accounts
+                          </button>
+                        )}
+                        <button 
+                          disabled={isProcessingAction}
+                          onClick={async () => {
+                            const reason = window.prompt("Enter Mandatory Hold Reason:");
+                            if (reason === null) return; // Cancelled
+                            if (!reason.trim()) {
+                              alert("Hold reason is required.");
+                              return;
+                            }
+                            
                             setIsProcessingAction(true);
                             try {
+                              const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason}`;
+                              const updatedNotes = order.notes ? `${order.notes}\n${newNote}` : newNote;
+
+                              const updates = { 
+                                status: OrderStatus.HOLD, 
+                                holdReason: reason.trim(), 
+                                previousStatus: order.status,
+                                notes: updatedNotes,
+                                updatedAt: Date.now() 
+                              };
+                              
                               if (onUpdateOrder) {
-                                await onUpdateOrder(order.id, {
-                                  status: newStatus,
-                                  previousStatus: undefined,
-                                  updatedAt: Date.now()
-                                });
+                                await onUpdateOrder(order.id, updates);
                               } else if (onUpdateStatus) {
-                                onUpdateStatus(newStatus);
+                                 onUpdateStatus(OrderStatus.HOLD);
                               }
-                              alert("Order released successfully.");
+                              alert("Order put on HOLD.");
                             } catch (e) {
-                              alert("Failed to release order.");
+                              alert("Failed to put order on hold.");
                             } finally {
                               setIsProcessingAction(false);
                             }
-                          }
-                        }}
-                        className="w-full py-3 bg-green-500/20 text-green-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-green-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        <CheckCircle size={14} /> {isProcessingAction ? 'Processing...' : 'Release Order'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {order.status === OrderStatus.PENDING && (
-                        <button
-                          disabled={isProcessingAction}
-                          onClick={async () => {
-                            if (window.confirm("Send this order manually to Accounts?")) {
-                              setIsProcessingAction(true);
-                              try {
-                                if (onUpdateOrder) {
-                                  await onUpdateOrder(order.id, {
-                                    status: OrderStatus.ACCOUNTS,
-                                    updatedAt: Date.now()
-                                  });
-                                } else if (onUpdateStatus) {
-                                  onUpdateStatus(OrderStatus.ACCOUNTS);
-                                }
-                                alert("Order successfully sent to Accounts.");
-                              } catch (e) {
-                                alert("Failed to send order.");
-                              } finally {
-                                setIsProcessingAction(false);
-                              }
-                            }
                           }}
-                          className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
+                          className="w-full py-3 bg-red-500/20 text-red-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
-                          <CheckCircle size={14} /> Send to Accounts
+                          <AlertCircle size={14} /> {isProcessingAction ? 'Processing...' : 'Hold Order'}
                         </button>
-                      )}
-                      <button
-                        disabled={isProcessingAction}
-                        onClick={async () => {
-                          const reason = window.prompt("Enter Mandatory Hold Reason:");
-                          if (reason === null) return; // Cancelled
-                          if (!reason.trim()) {
-                            alert("Hold reason is required.");
-                            return;
-                          }
-
-                          setIsProcessingAction(true);
-                          try {
-                            const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason}`;
-                            const updatedNotes = order.notes ? `${order.notes}\n${newNote}` : newNote;
-
-                            const updates = {
-                              status: OrderStatus.HOLD,
-                              holdReason: reason.trim(),
-                              previousStatus: order.status,
-                              notes: updatedNotes,
-                              updatedAt: Date.now()
-                            };
-
-                            if (onUpdateOrder) {
-                              await onUpdateOrder(order.id, updates);
-                            } else if (onUpdateStatus) {
-                              onUpdateStatus(OrderStatus.HOLD);
-                            }
-                            alert("Order put on HOLD.");
-                          } catch (e) {
-                            alert("Failed to put order on hold.");
-                          } finally {
-                            setIsProcessingAction(false);
-                          }
-                        }}
-                        className="w-full py-3 bg-red-500/20 text-red-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        <AlertCircle size={14} /> {isProcessingAction ? 'Processing...' : 'Hold Order'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+                      </div>
+                    )}
+                  </div>
+               </div>
             )}
 
           </div>
         </div>
+      </div>
 
         <div className="p-8 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-6 text-gray-400">

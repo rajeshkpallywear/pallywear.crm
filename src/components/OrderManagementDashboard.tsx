@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Layers, Package, ChevronRight, FileText, Download, ExternalLink, Paperclip, ZoomIn, Share2, Globe, CreditCard, Trash2, Search, Plus, Activity, Users, Upload, Palette } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
@@ -12,6 +12,7 @@ import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
+import Logo from './Logo';
 
 interface OrderManagementDashboardProps {
   orders: Order[];
@@ -30,6 +31,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   const [isProcessing, setIsProcessing] = useState(false);
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT));
+
+  // Auto-select first order if none is selected
+  useEffect(() => {
+    const list = viewMode === 'all' ? orders : pendingOrders;
+    if (list.length > 0 && (!selectedOrder || !list.some(o => o.id === selectedOrder.id))) {
+      setSelectedOrder(list[0]);
+    }
+  }, [orders, pendingOrders, viewMode]);
 
   const handleRemoveManagementFile = (index: number) => {
     setManagementFiles(prev => prev.filter((_, i) => i !== index));
@@ -62,7 +71,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
-
+    
     // Check total order document size of next state
     const nextOrderState = {
       ...selectedOrder,
@@ -88,9 +97,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     } catch (e: any) {
       console.error("Order Management process failed:", e);
       if (e?.message?.includes("exceeds the maximum allowed size")) {
-        alert("Failed to share: The total attachment size is too large for Firestore (Limit: 1MB total). Please remove some images or use smaller files.");
+         alert("Failed to share: The total attachment size is too large for Firestore (Limit: 1MB total). Please remove some images or use smaller files.");
       } else {
-        alert("Failed to share order. Error: " + (e?.message?.slice(0, 50)));
+         alert("Failed to share order. Error: " + (e?.message?.slice(0, 50)));
       }
     } finally {
       setIsProcessing(false);
@@ -124,7 +133,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     try {
       const newNote = `[ORDER MGMT -> DIGITIZER] ${new Date().toLocaleString()}\n${msgRequest.message}`;
       const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
-
+      
       await onUpdateOrder(selectedOrder.id, {
         notes: updatedNotes,
         designAttachments: [...(selectedOrder.designAttachments || []), ...msgRequest.attachments],
@@ -143,38 +152,78 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   };
 
   const sendToDesigner = async () => {
-    if (!designMsgRequest.message && designMsgRequest.attachments.length === 0) {
-      alert("Please provide a message or attachments.");
-      return;
-    }
+  if (!selectedOrder) {
+    alert("Please select an order first.");
+    return;
+  }
 
-    if (!selectedOrder) {
-      alert("Please select an order first from the list.");
-      return;
-    }
+  if (
+    !designMsgRequest.message.trim() &&
+    designMsgRequest.attachments.length === 0
+  ) {
+    alert("Please provide a message or attachments.");
+    return;
+  }
 
-    setIsProcessing(true);
-    try {
-      const newNote = `[ORDER MGMT -> DESIGNER] ${new Date().toLocaleString()}\n${designMsgRequest.message}`;
-      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
+  setIsProcessing(true);
 
-      await onUpdateOrder(selectedOrder.id, {
-        notes: updatedNotes,
-        staffImages: [...(selectedOrder.staffImages || []), ...designMsgRequest.attachments],
-        status: OrderStatus.DESIGN,
-        updatedAt: Date.now()
-      });
+  try {
+    console.log("Sending to designer...");
+    console.log("Order ID:", selectedOrder.id);
 
-      alert("Instructions and references sent to Design team!");
-      setIsDesignMsgSidebarOpen(false);
-      setDesignMsgRequest({ message: '', attachments: [] });
-    } catch (error) {
-      console.error(error);
-      alert("Failed to send message.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+    const newNote = `
+[ORDER MGMT -> DESIGNER]
+${new Date().toLocaleString()}
+
+${designMsgRequest.message}
+`;
+
+    const updatedNotes = selectedOrder.notes
+      ? `${selectedOrder.notes}\n${newNote}`
+      : newNote;
+
+    await onUpdateOrder(selectedOrder.id, {
+      notes: updatedNotes,
+
+      // Save uploaded files
+      staffImages: [
+        ...(selectedOrder.staffImages || []),
+        ...designMsgRequest.attachments,
+      ],
+
+      // Move order to DESIGN stage
+      status: OrderStatus.DESIGN,
+
+      updatedAt: Date.now(),
+    });
+
+    // Update local UI instantly
+    setSelectedOrder({
+      ...selectedOrder,
+      notes: updatedNotes,
+      staffImages: [
+        ...(selectedOrder.staffImages || []),
+        ...designMsgRequest.attachments,
+      ],
+      status: OrderStatus.DESIGN,
+    });
+
+    alert("Instructions sent to Design team successfully!");
+
+    // Reset sidebar
+    setDesignMsgRequest({
+      message: "",
+      attachments: [],
+    });
+
+    setIsDesignMsgSidebarOpen(false);
+  } catch (error) {
+    console.error("Designer Send Error:", error);
+    alert("Failed to send to designer.");
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   return (
     <div className="space-y-8">
@@ -184,21 +233,21 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           <p className="text-gray-500 mt-1">Finalize files and share with production team</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <button 
             onClick={() => setIsMsgSidebarOpen(true)}
             className="px-6 py-2 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center gap-2 active:scale-95"
           >
             <Upload size={18} />
             <span className="text-xs uppercase tracking-widest font-black">Message to Digitizer</span>
           </button>
-          <button
+          <button 
             onClick={() => setIsDesignMsgSidebarOpen(true)}
             className="px-6 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg flex items-center gap-2 active:scale-95"
           >
             <Palette size={18} />
             <span className="text-xs uppercase tracking-widest font-black">Message to Designer</span>
           </button>
-          <button
+          <button 
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
           >
@@ -210,7 +259,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
       {/* Summary Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <button
+        <button 
           onClick={() => setViewMode(viewMode === 'all' ? 'pending' : 'all')}
           className={cn(
             "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group",
@@ -237,10 +286,10 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           <div>
             <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Order Status</p>
             <p className="text-lg font-bold text-gray-900 leading-tight">
-              {pendingOrders.length} In Queue
-              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
+               {pendingOrders.length} In Queue
+               <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter">
                 {orders.filter(o => o.status === OrderStatus.HOLD).length} On Hold • {orders.filter(o => o.status === OrderStatus.PRODUCTION).length} In Prod
-              </span>
+               </span>
             </p>
           </div>
         </div>
@@ -251,10 +300,10 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           <div>
             <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Type of Total Order</p>
             <p className="text-lg font-bold text-gray-900 leading-tight">
-              {Array.from(new Set(orders.map(o => o.category))).length} Categories
-              <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
+               {Array.from(new Set(orders.map(o => o.category))).length} Categories
+               <span className="text-[10px] text-gray-400 block font-medium uppercase tracking-tighter truncate max-w-[150px]">
                 {orders.length > 0 ? orders[0].category : 'No data'}
-              </span>
+               </span>
             </p>
           </div>
         </div>
@@ -273,8 +322,8 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
                   className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedOrder?.id === order.id
-                    ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                    : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm'
+                      ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
+                      : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm'
                     }`}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -344,7 +393,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                         <span className="px-2 py-1 bg-black text-white rounded text-[10px] font-bold">{getDisplayCategory(selectedOrder)}</span>
                         <span className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] font-bold">Total Qty: {selectedOrder.quantity || 1}</span>
                       </div>
-
+                      
                       {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
                         <div className="mt-4 grid grid-cols-2 gap-3">
                           {selectedOrder.sizeBreakdown.map((item, idx) => (
@@ -368,11 +417,11 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                     </div>
                     {selectedOrder.notes && (
                       <div className="mt-8 p-6 bg-brand-primary/5 border border-brand-primary/10 rounded-2xl">
-                        <h6 className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-3 flex items-center gap-2">
-                          <Users size={12} />
-                          Communication Logs
-                        </h6>
-                        <p className="text-xs text-gray-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedOrder.notes}</p>
+                         <h6 className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-3 flex items-center gap-2">
+                           <Users size={12} />
+                           Communication Logs
+                         </h6>
+                         <p className="text-xs text-gray-700 font-medium leading-relaxed whitespace-pre-wrap">{selectedOrder.notes}</p>
                       </div>
                     )}
                   </div>
@@ -519,8 +568,8 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                             </span>
                           </div>
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <a
-                              href={file}
+                            <a 
+                              href={file} 
                               download={`Garage_Final_${i + 1}.zip`}
                               className="p-1.5 bg-white/20 rounded-lg text-white hover:bg-white/40"
                               title="Download"
@@ -541,90 +590,90 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
                 <div className="h-px bg-gray-100" />
 
-                <div className="pt-4 flex gap-3">
-                  {selectedOrder.status === OrderStatus.HOLD ? (
-                    <button
-                      disabled={isProcessing}
-                      onClick={async () => {
-                        const newStatus = selectedOrder.previousStatus || OrderStatus.ORDER_MANAGEMENT;
-                        if (window.confirm(`Release order back to ${newStatus}?`)) {
+                  <div className="pt-4 flex gap-3">
+                    {selectedOrder.status === OrderStatus.HOLD ? (
+                      <button
+                        disabled={isProcessing}
+                        onClick={async () => {
+                          const newStatus = selectedOrder.previousStatus || OrderStatus.ORDER_MANAGEMENT;
+                          if (window.confirm(`Release order back to ${newStatus}?`)) {
+                            setIsProcessing(true);
+                            try {
+                              await onUpdateOrder(selectedOrder.id, { 
+                                status: newStatus,
+                                previousStatus: undefined,
+                                updatedAt: Date.now()
+                              });
+                              setSelectedOrder(prev => prev ? { ...prev, status: newStatus, previousStatus: undefined } : null);
+                              alert("Order released.");
+                            } catch (e) {
+                              alert("Action failed.");
+                            } finally {
+                              setIsProcessing(false);
+                            }
+                          }
+                        }}
+                        className="px-6 py-4 bg-green-100 text-green-700 rounded-2xl font-bold hover:bg-green-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        Release
+                      </button>
+                    ) : (
+                      <button
+                        disabled={isProcessing}
+                        onClick={async () => {
+                          const reason = window.prompt("Enter Hold Reason:");
+                          if (reason === null) return;
+                          if (!reason.trim()) {
+                            alert("Reason is required.");
+                            return;
+                          }
+                          
                           setIsProcessing(true);
                           try {
-                            await onUpdateOrder(selectedOrder.id, {
-                              status: newStatus,
-                              previousStatus: undefined,
+                            const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
+                            const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
+
+                            await onUpdateOrder(selectedOrder.id, { 
+                              status: OrderStatus.HOLD, 
+                              holdReason: reason.trim(),
+                              previousStatus: selectedOrder.status,
+                              notes: updatedNotes,
                               updatedAt: Date.now()
                             });
-                            setSelectedOrder(prev => prev ? { ...prev, status: newStatus, previousStatus: undefined } : null);
-                            alert("Order released.");
+                            // The context update will eventually ripple through, but we update local state for immediate feedback
+                            const heldOrder = { ...selectedOrder, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes };
+                            setSelectedOrder(heldOrder as Order);
+                            alert("Order put on HOLD.");
                           } catch (e) {
                             alert("Action failed.");
                           } finally {
                             setIsProcessing(false);
                           }
-                        }
-                      }}
-                      className="px-6 py-4 bg-green-100 text-green-700 rounded-2xl font-bold hover:bg-green-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      Release
-                    </button>
-                  ) : (
-                    <button
-                      disabled={isProcessing}
-                      onClick={async () => {
-                        const reason = window.prompt("Enter Hold Reason:");
-                        if (reason === null) return;
-                        if (!reason.trim()) {
-                          alert("Reason is required.");
-                          return;
-                        }
-
-                        setIsProcessing(true);
-                        try {
-                          const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
-                          const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
-
-                          await onUpdateOrder(selectedOrder.id, {
-                            status: OrderStatus.HOLD,
-                            holdReason: reason.trim(),
-                            previousStatus: selectedOrder.status,
-                            notes: updatedNotes,
-                            updatedAt: Date.now()
-                          });
-                          // The context update will eventually ripple through, but we update local state for immediate feedback
-                          const heldOrder = { ...selectedOrder, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes };
-                          setSelectedOrder(heldOrder as Order);
-                          alert("Order put on HOLD.");
-                        } catch (e) {
-                          alert("Action failed.");
-                        } finally {
-                          setIsProcessing(false);
-                        }
-                      }}
-                      className="px-6 py-4 bg-red-100 text-red-700 rounded-2xl font-bold hover:bg-red-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      Hold
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleProcessOrder}
-                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                    className="flex-1 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Moving to Factory...
-                      </>
-                    ) : (
-                      <>
-                        <Package size={20} />
-                        {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Move to Factory'}
-                      </>
+                        }}
+                        className="px-6 py-4 bg-red-100 text-red-700 rounded-2xl font-bold hover:bg-red-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        Hold
+                      </button>
                     )}
-                  </button>
-                </div>
+                    
+                    <button
+                      onClick={handleProcessOrder}
+                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      className="flex-1 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Moving to Factory...
+                        </>
+                      ) : (
+                        <>
+                          <Package size={20} />
+                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Move to Factory'}
+                        </>
+                      )}
+                    </button>
+                  </div>
               </div>
             </motion.div>
           ) : (
@@ -637,22 +686,22 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
             </div>
           )}
         </div>
-        {/* Inventory Summary Section */}
-        <div className="pt-8 border-t border-gray-100 pb-12">
-          <InventoryManagement userRole={isAdmin ? 'admin' : 'order_management'} />
-        </div>    </div>
+          {/* Inventory Summary Section */}
+      <div className="pt-8 border-t border-gray-100 pb-12">
+         <InventoryManagement userRole={isAdmin ? 'admin' : 'order_management'} />
+      </div>    </div>
 
       {selectedHubOrder && (
-        <OrderDetailModal
-          order={selectedHubOrder}
-          onClose={() => setSelectedHubOrder(null)}
+        <OrderDetailModal 
+          order={selectedHubOrder} 
+          onClose={() => setSelectedHubOrder(null)} 
           isAdmin={isAdmin}
           onUpdateOrder={onUpdateOrder}
           onUpdateStatus={(status) => {
-            if (window.confirm(`Change order status to ${status}?`)) {
-              onUpdateOrder(selectedHubOrder.id, { status });
-              setSelectedHubOrder(prev => prev ? { ...prev, status } : null);
-            }
+             if (window.confirm(`Change order status to ${status}?`)) {
+               onUpdateOrder(selectedHubOrder.id, { status });
+               setSelectedHubOrder(prev => prev ? { ...prev, status } : null);
+             }
           }}
         />
       )}
@@ -673,28 +722,21 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           >
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50 text-left">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-black italic">PW</div>
+                <Logo iconOnly />
                 <div className="text-left">
                   <h3 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Communicate</h3>
                   <p className="text-[10px] text-brand-primary font-bold uppercase tracking-widest text-left">To Digitizing Team</p>
                 </div>
               </div>
-              <button
+              <button 
                 onClick={() => setIsMsgSidebarOpen(false)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"
               >
-                <Trash2 size={24} className="rotate-45" />
+                <Trash2 size={24} className="rotate-45" /> 
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 text-left">
-              {!selectedOrder && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800">
-                  <Activity size={20} />
-                  <p className="text-xs font-bold uppercase tracking-widest">Please select an order from the list first</p>
-                </div>
-              )}
-
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-left">Instructions to Digitizer</label>
                 <textarea
@@ -715,11 +757,11 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                 />
                 {msgRequest.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-4">
-                    {msgRequest.attachments.map((_, i) => (
-                      <div key={i} className="px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-lg text-[10px] font-bold uppercase">
-                        File {i + 1} Ready
-                      </div>
-                    ))}
+                     {msgRequest.attachments.map((_, i) => (
+                       <div key={i} className="px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-lg text-[10px] font-bold uppercase">
+                         File {i + 1} Ready
+                       </div>
+                     ))}
                   </div>
                 )}
               </div>
@@ -754,28 +796,21 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           >
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-purple-50 text-left">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white font-black italic">PW</div>
+                <Logo iconOnly />
                 <div className="text-left">
                   <h3 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Communicate</h3>
                   <p className="text-[10px] text-purple-600 font-bold uppercase tracking-widest text-left">To Design Team</p>
                 </div>
               </div>
-              <button
+              <button 
                 onClick={() => setIsDesignMsgSidebarOpen(false)}
                 className="p-2 hover:bg-purple-100 rounded-full transition-colors text-purple-400"
               >
-                <Trash2 size={24} className="rotate-45" />
+                <Trash2 size={24} className="rotate-45" /> 
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 text-left">
-              {!selectedOrder && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800">
-                  <Activity size={20} />
-                  <p className="text-xs font-bold uppercase tracking-widest">Please select an order from the list first</p>
-                </div>
-              )}
-
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block text-left">Instructions to Designer</label>
                 <textarea
@@ -796,11 +831,11 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                 />
                 {designMsgRequest.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-4">
-                    {designMsgRequest.attachments.map((_, i) => (
-                      <div key={i} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-bold uppercase">
-                        File {i + 1} Ready
-                      </div>
-                    ))}
+                     {designMsgRequest.attachments.map((_, i) => (
+                       <div key={i} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-bold uppercase">
+                         File {i + 1} Ready
+                       </div>
+                     ))}
                   </div>
                 )}
               </div>
