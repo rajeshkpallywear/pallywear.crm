@@ -1,30 +1,17 @@
 <?php
 // PHP Proxy Script for routing /api requests to local Node.js Express server on port 118
 
-if (!function_exists('getallheaders')) {
-    function getallheaders() {
-        $headers = [];
-        foreach ($_SERVER as $name => $value) {
-            if (substr($name, 0, 5) == 'HTTP_') {
-                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
-            }
-        }
-        return $headers;
-    }
-}
-
 $route = isset($_GET['route']) ? $_GET['route'] : '';
 
 // The target URL of the local Node.js server
 $targetUrl = 'http://127.0.0.1:118/api/' . $route;
 
-// Get all request headers
+// Only forward the Content-Type request header to protect against header clash or double gzip issues
 $headers = [];
-foreach (getallheaders() as $name => $value) {
-    if (strtolower($name) === 'host') {
-        continue;
-    }
-    $headers[] = "$name: $value";
+if (isset($_SERVER['CONTENT_TYPE'])) {
+    $headers[] = 'Content-Type: ' . $_SERVER['CONTENT_TYPE'];
+} elseif (isset($_SERVER['HTTP_CONTENT_TYPE'])) {
+    $headers[] = 'Content-Type: ' . $_SERVER['HTTP_CONTENT_TYPE'];
 }
 
 // Get the request method
@@ -46,7 +33,10 @@ if (!empty($input)) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
 }
 
-curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+if (!empty($headers)) {
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+}
+
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
 // Execute request
@@ -73,16 +63,14 @@ if (isset($info['http_code']) && $info['http_code'] > 0) {
     http_response_code($info['http_code']);
 }
 
-// Forward response headers safely (normalize newlines first)
+// Only forward the Content-Type response header from Node.js
 $responseHeaders = str_replace("\r\n", "\n", $responseHeaders);
 $headerLines = explode("\n", $responseHeaders);
 foreach ($headerLines as $line) {
     $line = trim($line);
-    if (!empty($line) && strncasecmp($line, 'HTTP/', 5) !== 0) {
-        if (stripos($line, 'transfer-encoding:') === 0 || stripos($line, 'content-length:') === 0 || stripos($line, 'connection:') === 0) {
-            continue;
-        }
+    if (stripos($line, 'content-type:') === 0) {
         @header($line);
+        break;
     }
 }
 

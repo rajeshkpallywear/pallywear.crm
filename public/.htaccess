@@ -2,7 +2,8 @@
   RewriteEngine On
   RewriteBase /
 
-  # Rewrite API requests to the local PHP proxy script
+  # Rewrite API requests to the local PHP proxy script (avoiding infinite loop on proxy.php)
+  RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_URI} ^/api/(.*)$
   RewriteRule ^api/(.*)$ api/proxy.php?route=$1 [QSA,L]
 
