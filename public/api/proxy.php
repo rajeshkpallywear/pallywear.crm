@@ -3,8 +3,8 @@
 
 $route = isset($_GET['route']) ? $_GET['route'] : '';
 
-// The target URL of the local Node.js server
-$targetUrl = 'http://127.0.0.1:118/api/' . $route;
+// The target URL of the Node.js server running on your VPS
+$targetUrl = 'http://118.139.167.81:118/api/' . $route;
 
 // Only forward the Content-Type request header to protect against header clash or double gzip issues
 $headers = [];
