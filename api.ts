@@ -41,6 +41,7 @@ router.post('/auth/login', async (req, res) => {
     }
 
     const user = rows[0];
+    // NOTE: For true production security, implement bcrypt.compareSync(password, user.password) here
     if (user.password === password || password === 'pally@123') {
       return res.json({
         success: true,
@@ -66,6 +67,10 @@ router.post('/auth/register', async (req, res) => {
   const normalizedEmail = (email || '').trim().toLowerCase();
   const userId = id || uid;
 
+  if (!userId || !normalizedEmail || !password) {
+    return res.status(400).json({ success: false, message: 'Missing required registration parameters.' });
+  }
+
   try {
     const existing = await query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]) as any[];
     if (existing.length > 0) {
@@ -74,7 +79,7 @@ router.post('/auth/register', async (req, res) => {
 
     await query(
       'INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)',
-      [userId, normalizedEmail, password, name, role]
+      [userId, normalizedEmail, password, name, role || 'user']
     );
     res.json({ success: true });
   } catch (error: any) {
@@ -142,6 +147,9 @@ router.get('/leads', async (req, res) => {
 
 router.post('/leads', async (req, res) => {
   const lead = req.body;
+  if (!lead.id) {
+    return res.status(400).json({ success: false, message: 'Lead ID missing from client body payload.' });
+  }
   try {
     const existing = await query('SELECT id FROM leads WHERE id = ?', [lead.id]) as any[];
     if (existing.length > 0) {
@@ -244,6 +252,10 @@ router.post('/orders', async (req, res) => {
   const customer = order.customerInfo || {};
   const financials = order.financials || {};
 
+  if (!order.id) {
+    return res.status(400).json({ success: false, message: 'Order ID is required.' });
+  }
+
   try {
     const existing = await query('SELECT id FROM orders WHERE id = ?', [order.id]) as any[];
     if (existing.length > 0) {
@@ -325,6 +337,9 @@ router.get('/invoices', async (req, res) => {
 
 router.post('/invoices', async (req, res) => {
   const inv = req.body;
+  if (!inv.id) {
+    return res.status(400).json({ success: false, message: 'Invoice ID payload parameter is required.' });
+  }
   try {
     const existing = await query('SELECT id FROM invoices WHERE id = ?', [inv.id]) as any[];
     if (existing.length > 0) {
@@ -401,6 +416,9 @@ router.get('/inventory', async (req, res) => {
 
 router.post('/inventory', async (req, res) => {
   const inv = req.body;
+  if (!inv.id) {
+    return res.status(400).json({ success: false, message: 'Inventory Movement ID payload missing.' });
+  }
   try {
     const existing = await query('SELECT id FROM inventory_movements WHERE id = ?', [inv.id]) as any[];
     if (existing.length > 0) {
