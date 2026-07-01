@@ -24,10 +24,10 @@ router.post('/auth/login', async (req, res) => {
   try {
     // Explicit check for default admin accounts
     const defaultAdmins = [
-      { uid: 'admin-1', email: 'admin', role: 'admin', name: 'Main Admin' },
-      { uid: 'admin-ceo', email: 'ceo@pallywear.com', role: 'admin', name: 'CEO Admin' },
-      { uid: 'admin-rajesh', email: 'rajeshkpallywear@gmail.com', role: 'admin', name: 'Rajesh Admin' },
-      { uid: 'admin-daniel', email: 'daniel.smpallywear@gmail.com', role: 'admin', name: 'Daniel Admin' }
+      { id: 'admin-1', uid: 'admin-1', email: 'admin', role: 'admin', name: 'Main Admin' },
+      { id: 'admin-ceo', uid: 'admin-ceo', email: 'ceo@pallywear.com', role: 'admin', name: 'CEO Admin' },
+      { id: 'admin-rajesh', uid: 'admin-rajesh', email: 'rajeshkpallywear@gmail.com', role: 'admin', name: 'Rajesh Admin' },
+      { id: 'admin-daniel', uid: 'admin-daniel', email: 'daniel.smpallywear@gmail.com', role: 'admin', name: 'Daniel Admin' }
     ];
 
     const matchedAdmin = defaultAdmins.find(a => a.email === normalizedEmail);
@@ -46,6 +46,7 @@ router.post('/auth/login', async (req, res) => {
         success: true,
         user: {
           id: user.id,
+          uid: user.id,
           email: user.email,
           role: user.role,
           name: user.name,
@@ -61,8 +62,9 @@ router.post('/auth/login', async (req, res) => {
 });
 
 router.post('/auth/register', async (req, res) => {
-  const { id, email, password, name, role } = req.body;
+  const { id, uid, email, password, name, role } = req.body;
   const normalizedEmail = (email || '').trim().toLowerCase();
+  const userId = id || uid;
 
   try {
     const existing = await query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]) as any[];
@@ -72,7 +74,7 @@ router.post('/auth/register', async (req, res) => {
 
     await query(
       'INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)',
-      [id, normalizedEmail, password, name, role]
+      [userId, normalizedEmail, password, name, role]
     );
     res.json({ success: true });
   } catch (error: any) {
@@ -85,6 +87,7 @@ router.get('/users', async (req, res) => {
   try {
     const rows = await query('SELECT id, email, name, role FROM users') as any[];
     const mapped = rows.map(r => ({
+      id: r.id,
       uid: r.id,
       email: r.email,
       name: r.name,

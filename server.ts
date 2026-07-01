@@ -3,18 +3,27 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import cors from "cors"; // 1. Imported CORS package
 import { initDB } from "./db";
 import apiRouter from "./api";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-process.env.NODE_ENV = process.env.NODE_ENV || "production";
+process.env.NODE_ENV = process.env.NODE_ENV || "development";
 
 async function startServer() {
   await initDB();
 
   const app = express();
+
+  // 2. Enabled CORS so your frontend can communicate seamlessly with this backend
+  app.use(cors({
+    origin: "*", // Allows requests from any origin; change to your specific domain in strict production setups
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  }));
+
   app.use(express.json());
 
   app.use((req, res, next) => {
@@ -76,10 +85,11 @@ async function startServer() {
     });
   }
 
-  // UPDATED: Defaults to Port 80 for production domain traffic if process.env.PORT is empty
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 80;
+  // Fallback pattern to respect your .env file or default securely
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-  app.listen(PORT, () => {
+  // Listen on '0.0.0.0' to ensure the server accepts connections from external network interfaces
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running securely on port ${PORT}`);
   });
 }
