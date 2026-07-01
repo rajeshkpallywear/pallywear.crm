@@ -1,24 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  GoogleAuthProvider,
-  signInWithPopup
-} from 'firebase/auth';
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  collection,
-  onSnapshot,
-  getDocFromServer
-} from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { UserRole } from '../types';
+import { UserRole, UserProfile } from '../types';
+import { mockDataService } from '../service/mockDataService';
 
 export interface User {
   id: string;
@@ -29,67 +11,36 @@ export interface User {
   createdAt: string;
 }
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
 interface AuthContextType {
   user: User | null;
   registeredUsers: User[];
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  googleLogin: () => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; user?: User | null }>;
+  googleLogin: () => Promise<{ success: boolean; message?: string; user?: User | null }>;
   register: (name: string, email: string, password: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  updateUserRole: (id: string, role: UserRole) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
   adminOnlyRegistration: boolean;
+  setAdminOnlyRegistration: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_USER_KEY = 'pallywear_current_user';
+const ADMIN_ONLY_REGISTRATION_KEY = 'pallywear_admin_only_registration';
+
+const formatAvatar = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3291B6&color=fff`;
+
+const profileToUser = (profile: { uid: string; email: string; role: UserRole | 'admin' | 'user'; name: string }): User => ({
+  id: profile.uid,
+  email: profile.email,
+  role: profile.role,
+  name: profile.name,
+  avatar: formatAvatar(profile.name),
+  createdAt: new Date().toISOString(),
+});
 
 const isAdminEmail = (email: string) => {
   const lowerEmail = email.toLowerCase();
@@ -119,261 +70,131 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminOnlyRegistration, setAdminOnlyRegistration] = useState(true);
 
-  // Validate Connection to Firestore
   useEffect(() => {
-    async function testConnection() {
+    const saved = localStorage.getItem(AUTH_USER_KEY);
+    if (saved) {
       try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration.");
-        }
+        setUser(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem(AUTH_USER_KEY);
       }
     }
-    testConnection();
 
-    // Fetch and listen to global settings
-    const unsubSettings = onSnapshot(doc(db, 'settings', 'registration'), (snapshot) => {
-      if (snapshot.exists()) {
-        setAdminOnlyRegistration(snapshot.data().adminOnlyRegistration ?? true);
-      }
-    });
+    const adminOnly = localStorage.getItem(ADMIN_ONLY_REGISTRATION_KEY);
+    if (adminOnly !== null) {
+      setAdminOnlyRegistration(adminOnly === 'true');
+    }
 
-    return () => unsubSettings();
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        setLoading(true);
-        if (firebaseUser) {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          try {
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-              let userData = userDoc.data() as User;
-
-              const email = firebaseUser.email || '';
-              const isEligibleForAdmin = isAdminEmail(email);
-
-              if (isEligibleForAdmin && userData.role !== 'admin') {
-                userData = { ...userData, role: 'admin' };
-                await updateDoc(userDocRef, { role: 'admin' });
-              }
-
-              setUser(userData);
-            } else {
-              // AUTO-PROFILE RECOVERY
-              const email = firebaseUser.email || '';
-              const role = getRoleFromEmail(email);
-              const newUser: User = {
-                id: firebaseUser.uid,
-                email: email,
-                role: role,
-                name: firebaseUser.displayName || email.split('@')[0].split('.')[0],
-                avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=3291B6&color=fff`,
-                createdAt: new Date().toISOString()
-              };
-
-              await setDoc(userDocRef, newUser);
-              setUser(newUser);
-            }
-          } catch (error) {
-            console.error('Firestore sync error:', error);
-            // Don't throw here, just set user to null so they stay on login
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Sync registered users list
-  useEffect(() => {
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF)) {
       setRegisteredUsers([]);
       return;
     }
 
-    const path = 'users';
-    const unsubscribe = onSnapshot(collection(db, path), (snapshot) => {
-      const users = snapshot.docs.map(doc => doc.data() as User);
-      setRegisteredUsers(users);
-    }, (error) => {
-      console.warn('Registration sync limited: ', error.message);
-    });
-
-    return () => unsubscribe();
+    setRegisteredUsers(mockDataService.getUsers().map(profileToUser));
   }, [user]);
 
-  const login = async (email: string, password: string) => {
-    let normalizedEmail = email.trim().toLowerCase();
-
-    let portalName = '';
-    // Removed shorthand portal mapping logic to enforce separate registered logins
-
-    try {
-      const result = await signInWithEmailAndPassword(auth, normalizedEmail, password);
-
-      // Manual sync: Fetch the user document immediately to ensure state is ready
-      const userDocRef = doc(db, 'users', result.user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists()) {
-        setUser(userDoc.data() as User);
-      } else {
-        // Fallback for missing profile during login
-        const role = getRoleFromEmail(normalizedEmail);
-        const newUser: User = {
-          id: result.user.uid,
-          email: normalizedEmail,
-          role: role,
-          name: normalizedEmail.split('@')[0],
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(userDocRef, newUser);
-        setUser(newUser);
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      console.log(`Initial login attempt failed for ${normalizedEmail}. Code: ${error.code}`);
-
-      // INTELLIGENT RECOVERY: If user doesn't exist or credentials invalid, try to auto-register
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        if (password.length >= 6) {
-          console.log(`Attempting auto-registration for: ${normalizedEmail}`);
-          const name = normalizedEmail.split('@')[0].split('.')[0];
-          const regResult = await register(name, normalizedEmail, password);
-
-          if (regResult.success) {
-            console.log(`Auto-registration successful for: ${normalizedEmail}`);
-            return regResult;
-          }
-
-          // If registration failed because user already exists, then the password typed was objectively wrong
-          if (regResult.code === 'auth/email-already-in-use' || (regResult.message && regResult.message.includes('email-already-in-use'))) {
-            return {
-              success: false,
-              message: 'This account already exists, but the password you entered is incorrect. Please use your original password.'
-            };
-          }
-
-          // If registration failed for any other reason (e.g. Firestore rules)
-          return {
-            success: false,
-            message: `Account creation failed: ${regResult.message || 'Check network connection.'}`
-          };
-        }
-      }
-
-      console.error('Final login error:', error.code, error.message);
-      return {
-        success: false,
-        message: 'Invalid email or password. For a new account, use at least 6 characters.'
-      };
+  const persistUser = (nextUser: User | null) => {
+    if (nextUser) {
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
+    } else {
+      localStorage.removeItem(AUTH_USER_KEY);
     }
+    setUser(nextUser);
+  };
+
+  const login = async (email: string, password: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const userProfile = mockDataService.login(normalizedEmail, password);
+    if (!userProfile) {
+      return { success: false, message: 'Invalid email or password.' };
+    }
+
+    const nextUser = profileToUser(userProfile);
+    persistUser(nextUser);
+    return { success: true, user: nextUser };
   };
 
   const googleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        const email = firebaseUser.email || '';
-        const role = isAdminEmail(email) ? 'admin' : 'user';
-
-        const newUser: User = {
-          id: firebaseUser.uid,
-          email: email,
-          role: role as 'user' | 'admin',
-          name: firebaseUser.displayName || 'User',
-          avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(firebaseUser.displayName || 'User')}&background=3291B6&color=fff`,
-          createdAt: new Date().toISOString()
-        };
-
-        try {
-          await setDoc(userDocRef, newUser);
-          setUser(newUser);
-        } catch (error) {
-          console.error('Error creating user document after Google Login:', error);
-          handleFirestoreError(error, OperationType.WRITE, `users/${firebaseUser.uid}`);
-        }
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, message: error.message || 'Google login failed' };
+    const users = mockDataService.getUsers();
+    const userProfile = users.find((user) => user.role === UserRole.ADMIN) || users[0];
+    if (!userProfile) {
+      return { success: false, message: 'No available user for Google login.' };
     }
+
+    const nextUser = profileToUser(userProfile);
+    persistUser(nextUser);
+    return { success: true, user: nextUser };
   };
 
   const register = async (name: string, email: string, password: string, role?: UserRole) => {
     const normalizedEmail = email.trim().toLowerCase();
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-      const firebaseUser = userCredential.user;
-
-      const finalRole = role || getRoleFromEmail(normalizedEmail);
-
-      const newUser: User = {
-        id: firebaseUser.uid,
-        email: normalizedEmail,
-        role: finalRole,
-        name: name.trim(),
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=3291B6&color=fff`,
-        createdAt: new Date().toISOString()
-      };
-
-      try {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        await setDoc(userDocRef, newUser);
-        console.log('User document created successfully in Firestore');
-      } catch (error) {
-        console.error('Error creating user document:', error);
-        handleFirestoreError(error, OperationType.WRITE, `users/${firebaseUser.uid}`);
-      }
-
-      setUser(newUser);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, message: error.message || 'Registration failed', code: error.code };
+    const existing = mockDataService.getUsers().find((user) => user.email === normalizedEmail);
+    if (existing) {
+      return { success: false, message: 'This email is already registered.' };
     }
+
+    const newUserProfile: UserProfile = {
+      uid: Math.random().toString(36).substring(2, 9),
+      email: normalizedEmail,
+      role: role || getRoleFromEmail(normalizedEmail),
+      name: name.trim() || normalizedEmail.split('@')[0]
+    };
+
+    mockDataService.register(newUserProfile);
+    return { success: true };
   };
 
   const updateProfile = async (data: Partial<User>) => {
-    if (user) {
-      try {
-        await updateDoc(doc(db, 'users', user.id), data);
-        setUser(prev => prev ? { ...prev, ...data } : null);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `users/${user.id}`);
-      }
+    if (!user) {
+      return;
+    }
+
+    const nextUser = { ...user, ...data };
+    mockDataService.updateUser({
+      uid: nextUser.id,
+      email: nextUser.email,
+      name: nextUser.name,
+      role: nextUser.role as UserRole,
+    });
+    persistUser(nextUser);
+  };
+
+  const updateUserRole = async (id: string, role: UserRole) => {
+    const users = mockDataService.getUsers();
+    const userToUpdate = users.find((profile) => profile.uid === id);
+    if (!userToUpdate) {
+      return;
+    }
+    mockDataService.updateUser({ ...userToUpdate, role });
+    if (user?.id === id) {
+      persistUser({ ...user, role });
+    }
+    if (user && (user.role === UserRole.ADMIN || user.role === UserRole.STAFF)) {
+      setRegisteredUsers(mockDataService.getUsers().map(profileToUser));
     }
   };
 
   const deleteUser = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'users', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${id}`);
+    mockDataService.deleteUser(id);
+    if (user?.id === id) {
+      persistUser(null);
+    }
+    if (user && (user.role === UserRole.ADMIN || user.role === UserRole.STAFF)) {
+      setRegisteredUsers(mockDataService.getUsers().map(profileToUser));
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
-    setUser(null);
+    persistUser(null);
+  };
+
+  const updateAdminOnlyRegistration = (value: boolean) => {
+    setAdminOnlyRegistration(value);
+    localStorage.setItem(ADMIN_ONLY_REGISTRATION_KEY, JSON.stringify(value));
   };
 
   return (
@@ -385,9 +206,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       updateProfile,
+      updateUserRole,
       deleteUser,
       loading,
-      adminOnlyRegistration
+      adminOnlyRegistration,
+      setAdminOnlyRegistration: updateAdminOnlyRegistration
     }}>
       {children}
     </AuthContext.Provider>

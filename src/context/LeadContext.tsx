@@ -1,57 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import {
-  collection,
-  onSnapshot,
-  addDoc as firestoreAddDoc,
-  updateDoc as firestoreUpdateDoc,
-  deleteDoc as firestoreDeleteDoc,
-  doc,
-  query,
-  where,
-  setDoc,
-  getDocFromServer
-} from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { mockDataService } from '../service/mockDataService';
 import { Lead, Invoice, Order, InventoryMovement } from '../types';
 import { useAuth } from './AuthContext';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-    },
-    operationType,
-    path
-  };
-
-  console.error('Firestore Error Details:', errInfo);
-  throw new Error(`Cloud Sync Error (${operationType} at ${path}): ${errInfo.error}`);
-}
 
 interface LeadContextType {
   leads: Lead[];
@@ -73,22 +23,18 @@ interface LeadContextType {
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
 
-// Helper to ensure data is plain and Firestore-compatible
-function sanitizeForFirestore(data: any): any {
+function sanitizeForStorage(data: any): any {
   if (data === undefined) return null;
   if (data === null || typeof data !== 'object') return data;
-
   if (Array.isArray(data)) {
-    return data.map(v => sanitizeForFirestore(v));
+    return data.map((value) => sanitizeForStorage(value));
   }
-
   const sanitized: any = {};
   for (const key in data) {
     if (Object.prototype.hasOwnProperty.call(data, key)) {
       const value = data[key];
-      // Skip undefined to avoid Firestore errors, effectively deleting the field if needed or just not updating it
       if (value !== undefined) {
-        sanitized[key] = sanitizeForFirestore(value);
+        sanitized[key] = sanitizeForStorage(value);
       }
     }
   }
@@ -103,243 +49,143 @@ export function LeadProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   useEffect(() => {
-    async function testConnection() {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration.");
-        }
-      }
-    }
-    testConnection();
-  }, []);
+    const loadData = () => {
+      setLeads(mockDataService.getLeads());
+      setInvoices(mockDataService.getInvoices());
+      setOrders(mockDataService.getOrders());
+      setInventory(mockDataService.getInventory());
+    };
 
-  useEffect(() => {
     if (!user) {
       setLeads([]);
       setInvoices([]);
+      setOrders([]);
+      setInventory([]);
       return;
     }
 
-    // Leads subscription - only for applicable roles
-    let unsubscribeLeads = () => { };
-    if (user.role === 'admin' || user.role === 'marketing' || user.role === 'user') {
-      const leadsRef = collection(db, 'leads');
-      // If admin, show all leads. Otherwise, show only leads created by the user.
-      const qLeads = user.role === 'admin'
-        ? query(leadsRef)
-        : query(leadsRef, where('createdBy', '==', user.id));
-
-      unsubscribeLeads = onSnapshot(qLeads, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as Lead[];
-        setLeads(data);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'leads');
-      });
-    }
-
-    // Invoices subscription - only for applicable roles
-    let unsubscribeInvoices = () => { };
-    if (user.role === 'admin' || user.role === 'marketing' || user.role === 'user' || user.role === 'accounts') {
-      const invoicesRef = collection(db, 'invoices');
-      const qInvoices = user.role === 'admin'
-        ? query(invoicesRef)
-        : query(invoicesRef, where('createdBy', '==', user.id));
-
-      unsubscribeInvoices = onSnapshot(qInvoices, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as Invoice[];
-        setInvoices(data);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'invoices');
-      });
-    }
-
-    const ordersRef = collection(db, 'orders');
-    // For orders, we usually show everything to everyone in the flow, or filter by role
-    // Here we show all orders to keep the flow transparent across departments
-    const unsubscribeOrders = onSnapshot(ordersRef, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      })) as Order[];
-      setOrders(data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'orders');
-    });
-
-    let unsubscribeInventory = () => { };
-    // Subscription for inventory - accessible by relevant roles
-    if (user.role === 'admin' || user.role === 'order_management' || user.role === 'staff' || user.role === 'production') {
-      const inventoryRef = collection(db, 'inventory');
-      unsubscribeInventory = onSnapshot(inventoryRef, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as InventoryMovement[];
-        setInventory(data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'inventory');
-      });
-    }
-
-    return () => {
-      unsubscribeLeads();
-      unsubscribeInvoices();
-      unsubscribeOrders();
-      unsubscribeInventory();
-    };
+    loadData();
+    window.addEventListener('pallywear-data-updated', loadData);
+    return () => window.removeEventListener('pallywear-data-updated', loadData);
   }, [user]);
+
+  const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
   const addLead = async (lead: Omit<Lead, 'id'>) => {
     if (!user) return;
-
-    const leadId = Math.random().toString(36).substring(2, 9);
-    const newLead = sanitizeForFirestore({
+    const nextLead: Lead = sanitizeForStorage({
       ...lead,
-      id: leadId,
+      id: createId('lead'),
       createdBy: user.id,
       createdByName: user.name,
     });
-
-    try {
-      await setDoc(doc(db, 'leads', leadId), newLead);
-      console.log('Lead successfully saved to Cloud:', leadId);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `leads/${leadId}`);
-    }
+    mockDataService.saveLead(nextLead);
+    setLeads((prev) => [...prev, nextLead]);
   };
 
   const updateLead = async (id: string, leadUpdate: Partial<Lead>) => {
-    try {
-      const sanitizedUpdate = sanitizeForFirestore(leadUpdate);
-      await firestoreUpdateDoc(doc(db, 'leads', id), sanitizedUpdate);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `leads/${id}`);
-    }
+    const existing = leads.find((lead) => lead.id === id);
+    if (!existing) return;
+    const nextLead: Lead = {
+      ...existing,
+      ...sanitizeForStorage(leadUpdate),
+    } as Lead;
+    mockDataService.saveLead(nextLead);
+    setLeads((prev) => prev.map((lead) => (lead.id === id ? nextLead : lead)));
   };
 
   const deleteLead = async (id: string) => {
-    try {
-      await firestoreDeleteDoc(doc(db, 'leads', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `leads/${id}`);
-    }
+    mockDataService.deleteLead(id);
+    setLeads((prev) => prev.filter((lead) => lead.id !== id));
   };
 
   const addInvoice = async (invoice: Omit<Invoice, 'id'>) => {
     if (!user) return;
-
-    try {
-      const invoicesRef = collection(db, 'invoices');
-      const docRef = doc(invoicesRef);
-      const newInvoice = sanitizeForFirestore({
-        ...invoice,
-        id: docRef.id,
-        createdBy: user.id,
-        createdByName: user.name,
-      });
-      await setDoc(docRef, newInvoice);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'invoices');
-    }
+    const nextInvoice: Invoice = sanitizeForStorage({
+      ...invoice,
+      id: createId('invoice'),
+      createdBy: user.id,
+      createdByName: user.name,
+    }) as Invoice;
+    mockDataService.saveInvoice(nextInvoice);
+    setInvoices((prev) => [...prev, nextInvoice]);
   };
 
   const updateInvoice = async (id: string, invoiceUpdate: Partial<Invoice>) => {
-    try {
-      const sanitizedUpdate = sanitizeForFirestore(invoiceUpdate);
-      await firestoreUpdateDoc(doc(db, 'invoices', id), sanitizedUpdate);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `invoices/${id}`);
-    }
+    const existing = invoices.find((invoice) => invoice.id === id);
+    if (!existing) return;
+    const nextInvoice: Invoice = {
+      ...existing,
+      ...sanitizeForStorage(invoiceUpdate),
+    } as Invoice;
+    mockDataService.saveInvoice(nextInvoice);
+    setInvoices((prev) => prev.map((invoice) => (invoice.id === id ? nextInvoice : invoice)));
   };
 
   const deleteInvoice = async (id: string) => {
-    try {
-      await firestoreDeleteDoc(doc(db, 'invoices', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `invoices/${id}`);
-    }
+    mockDataService.deleteInvoice(id);
+    setInvoices((prev) => prev.filter((invoice) => invoice.id !== id));
   };
 
   const addOrder = async (orderData: Partial<Order>) => {
     if (!user) return;
-
-    try {
-      const orderId = Math.random().toString(36).substr(2, 9).toUpperCase();
-      const newOrder = sanitizeForFirestore({
-        id: orderId,
-        ...orderData,
-        createdBy: user.id,
-        createdByName: user.name,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-      await setDoc(doc(db, 'orders', orderId), newOrder);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'orders');
-    }
+    const nextOrder = mockDataService.createOrder({
+      ...orderData,
+      createdBy: user.id,
+      createdByName: user.name,
+    });
+    setOrders((prev) => [...prev, nextOrder]);
   };
 
   const updateOrder = async (id: string, orderUpdate: Partial<Order>) => {
-    try {
-      const sanitizedUpdate = sanitizeForFirestore({
-        ...orderUpdate,
-        updatedAt: Date.now()
-      });
-      await firestoreUpdateDoc(doc(db, 'orders', id), sanitizedUpdate);
-    } catch (error: any) {
-      if (error?.message?.includes('too large') || error?.code === 'resource-exhausted') {
-        throw new Error("ORDER_TOO_LARGE: The attachments you added are too large for cloud sync. Total size must be under 1MB. Please remove some files.");
-      }
-      handleFirestoreError(error, OperationType.UPDATE, `orders/${id}`);
-    }
+    const existing = orders.find((order) => order.id === id);
+    if (!existing) return;
+    const nextOrder: Order = {
+      ...existing,
+      ...sanitizeForStorage(orderUpdate),
+      updatedAt: Date.now(),
+    };
+    mockDataService.saveOrder(nextOrder);
+    setOrders((prev) => prev.map((order) => (order.id === id ? nextOrder : order)));
   };
 
   const deleteOrder = async (id: string) => {
-    try {
-      await firestoreDeleteDoc(doc(db, 'orders', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `orders/${id}`);
-    }
+    mockDataService.deleteOrder(id);
+    setOrders((prev) => prev.filter((order) => order.id !== id));
   };
 
   const addInventoryMovement = async (movement: Omit<InventoryMovement, 'id' | 'createdAt'>) => {
-    try {
-      const inventoryRef = collection(db, 'inventory');
-      const docRef = doc(inventoryRef);
-      const newMovement = sanitizeForFirestore({
-        ...movement,
-        id: docRef.id,
-        createdAt: Date.now()
-      });
-      await setDoc(docRef, newMovement);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'inventory');
-    }
+    const nextMovement: InventoryMovement = sanitizeForStorage({
+      ...movement,
+      id: createId('inventory'),
+      createdAt: Date.now(),
+    }) as InventoryMovement;
+    mockDataService.saveInventoryMovement(nextMovement);
+    setInventory((prev) => [...prev, nextMovement]);
   };
 
   const deleteInventoryMovement = async (id: string) => {
-    try {
-      await firestoreDeleteDoc(doc(db, 'inventory', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `inventory/${id}`);
-    }
+    mockDataService.deleteInventoryMovement(id);
+    setInventory((prev) => prev.filter((item) => item.id !== id));
   };
 
   return (
     <LeadContext.Provider value={{
-      leads, invoices, orders, inventory,
-      addLead, updateLead, deleteLead,
-      addInvoice, updateInvoice, deleteInvoice,
-      addOrder, updateOrder, deleteOrder,
-      addInventoryMovement, deleteInventoryMovement
+      leads,
+      invoices,
+      orders,
+      inventory,
+      addLead,
+      updateLead,
+      deleteLead,
+      addInvoice,
+      updateInvoice,
+      deleteInvoice,
+      addOrder,
+      updateOrder,
+      deleteOrder,
+      addInventoryMovement,
+      deleteInventoryMovement
     }}>
       {children}
     </LeadContext.Provider>

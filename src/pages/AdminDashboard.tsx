@@ -21,8 +21,6 @@ import OrderDetailModal from '../components/OrderDetailModal';
 import { Order, OrderStatus } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { collection, getDocs, deleteDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { mockDataService } from '../service/mockDataService';
 
 const COLORS = ['#3291B6', '#5CBFD4', '#EAF4F7', '#1F2937'];
@@ -35,7 +33,7 @@ const MOCK_LOGS = [
 ];
 
 export default function AdminDashboard() {
-  const { user, logout, registeredUsers, deleteUser, loading: authLoading } = useAuth();
+  const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
   const { leads, invoices, orders, updateOrder, deleteOrder } = useLeads();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'invoices' | 'security' | 'logs' | 'orders'>('overview');
@@ -54,30 +52,9 @@ export default function AdminDashboard() {
   };
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [cleaningUp, setCleaningUp] = useState(false);
-  const [adminOnlyRegistration, setAdminOnlyRegistration] = useState(true);
 
-  // Fetch app settings
-  React.useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'registration'), (docSnap) => {
-      if (docSnap.exists()) {
-        setAdminOnlyRegistration(docSnap.data().adminOnlyRegistration ?? true);
-      } else {
-        // Initialize settings if not exists
-        setDoc(doc(db, 'settings', 'registration'), { adminOnlyRegistration: true });
-      }
-    });
-    return () => unsub();
-  }, []);
-
-  const handleToggleRegistration = async () => {
-    const newValue = !adminOnlyRegistration;
-    setAdminOnlyRegistration(newValue);
-    try {
-      await setDoc(doc(db, 'settings', 'registration'), { adminOnlyRegistration: newValue }, { merge: true });
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      setAdminOnlyRegistration(!newValue); // revert on error
-    }
+  const handleToggleRegistration = () => {
+    setAdminOnlyRegistration(!adminOnlyRegistration);
   };
 
   const isStaff = user?.role === 'staff';
@@ -100,10 +77,10 @@ export default function AdminDashboard() {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     if (confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
       try {
-        await setDoc(doc(db, 'users', userId), { role: newRole }, { merge: true });
+        await updateUserRole(userId, newRole as any);
       } catch (error) {
         console.error('Error updating user role:', error);
-        alert('Failed to update user role. Permissions might be restricted.');
+        alert('Failed to update user role.');
       }
     }
   };
@@ -113,12 +90,10 @@ export default function AdminDashboard() {
       alert('Only administrators can clear all leads.');
       return;
     }
-    if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS from the database? This cannot be undone.')) {
+    if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS? This cannot be undone.')) {
       setCleaningUp(true);
       try {
-        const querySnapshot = await getDocs(collection(db, 'leads'));
-        const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, 'leads', d.id)));
-        await Promise.all(deletePromises);
+        mockDataService.clearLeads();
         alert('All leads have been cleared successfully.');
       } catch (error) {
         console.error('Error clearing leads: ', error);

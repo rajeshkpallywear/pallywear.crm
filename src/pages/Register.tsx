@@ -3,7 +3,6 @@ import { Button } from '../components/Button';
 import { Layout, Mail, Lock, User, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../lib/firebase';
 import { motion } from 'motion/react';
 import Logo from '../components/Logo';
 import { UserRole } from '../types';
@@ -24,14 +23,8 @@ export default function Register() {
     setError('');
     const result = await googleLogin();
     if (result.success) {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const email = (currentUser.email || '').toLowerCase();
-        const isAdmin = email === 'ceo@pallywear.com' || email === 'rajeshkpallywear@gmail.com' || email === 'daniel.smpallywear@gmail.com' || email.startsWith('admin') || email.startsWith('ceo');
-        navigate(isAdmin ? '/admin' : '/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      const isAdmin = result.user?.role === UserRole.ADMIN || result.user?.email === 'admin' || result.user?.email?.startsWith('admin') || result.user?.email?.startsWith('ceo');
+      navigate(isAdmin ? '/admin' : '/dashboard');
     } else {
       setError(result.message || 'Google login failed');
     }

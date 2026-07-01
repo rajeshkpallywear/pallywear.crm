@@ -3,11 +3,9 @@ import { Button } from '../components/Button';
 import { Layout, Mail, Lock, ArrowRight, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../lib/firebase';
 import { motion } from 'motion/react';
 import Logo from '../components/Logo';
 import { UserRole } from '../types';
-import { mockDataService } from '../service/mockDataService';
 import { cn } from '../lib/utils';
 
 
@@ -36,16 +34,8 @@ export default function Login() {
     setError('');
     const result = await googleLogin();
     if (result.success) {
-      // The user role is already set in the context during onAuthStateChanged or googleLogin
-      // We'll wait a brief moment for the state to settle or check the email again
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const email = (currentUser.email || '').toLowerCase().trim();
-        const isAdmin = email === 'ceo@pallywear.com' || email === 'rajeshkpallywear@gmail.com' || email === 'daniel.smpallywear@gmail.com' || email.startsWith('admin') || email.startsWith('ceo');
-        navigate(isAdmin ? '/admin' : '/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      const isAdmin = result.user?.role === UserRole.ADMIN || result.user?.email === 'admin' || result.user?.email?.startsWith('admin') || result.user?.email?.startsWith('ceo');
+      navigate(isAdmin ? '/admin' : '/dashboard');
     } else {
       let message = result.message || 'Google login failed';
       if (message.includes('auth/operation-not-allowed')) {
@@ -58,14 +48,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    // Check mock login first for demo purposes
-    const mockUser = mockDataService.login(email.trim(), password);
-    if (mockUser) {
-      // In a real app, we'd sync this with AuthContext, but for now we'll rely on the context to set 'user'
-      // Since AuthContext is Firebase-based, this is tricky. 
-      // I'll skip purely mock login for now and just use it for pre-filling.
-    }
 
     try {
       const result = await login(email.trim(), password);
