@@ -571,7 +571,7 @@ export default function Dashboard() {
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                   <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
                   <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={filteredLeads.slice(0, 7).map(l => ({ ...l, displayValue: l.netTotal || l.totalOrderValue }))}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                         <XAxis dataKey="name" hide />
@@ -585,7 +585,7 @@ export default function Dashboard() {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                   <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
                   <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <FunnelChart>
                         <Funnel dataKey="value" data={funnelData} isAnimationActive>
                           <LabelList position="right" fill="#888" stroke="none" dataKey="name" />

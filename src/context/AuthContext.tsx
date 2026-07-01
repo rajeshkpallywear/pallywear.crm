@@ -89,12 +89,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF)) {
-      setRegisteredUsers([]);
-      return;
-    }
-
-    setRegisteredUsers(mockDataService.getUsers().map(profileToUser));
+    const fetchUsers = async () => {
+      if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF)) {
+        setRegisteredUsers([]);
+        return;
+      }
+      try {
+        const usersList = await mockDataService.getUsers();
+        setRegisteredUsers(usersList.map(profileToUser));
+      } catch (error) {
+        console.error('Error fetching registered users:', error);
+      }
+    };
+    fetchUsers();
   }, [user]);
 
   const persistUser = (nextUser: User | null) => {
@@ -108,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
-    const userProfile = mockDataService.login(normalizedEmail, password);
+    const userProfile = await mockDataService.login(normalizedEmail, password);
     if (!userProfile) {
       return { success: false, message: 'Invalid email or password.' };
     }
@@ -119,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const googleLogin = async () => {
-    const users = mockDataService.getUsers();
+    const users = await mockDataService.getUsers();
     const userProfile = users.find((user) => user.role === UserRole.ADMIN) || users[0];
     if (!userProfile) {
       return { success: false, message: 'No available user for Google login.' };
@@ -132,7 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (name: string, email: string, password: string, role?: UserRole) => {
     const normalizedEmail = email.trim().toLowerCase();
-    const existing = mockDataService.getUsers().find((user) => user.email === normalizedEmail);
+    const users = await mockDataService.getUsers();
+    const existing = users.find((user) => user.email === normalizedEmail);
     if (existing) {
       return { success: false, message: 'This email is already registered.' };
     }
@@ -141,10 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid: Math.random().toString(36).substring(2, 9),
       email: normalizedEmail,
       role: role || getRoleFromEmail(normalizedEmail),
-      name: name.trim() || normalizedEmail.split('@')[0]
+      name: name.trim() || normalizedEmail.split('@')[0],
+      password: password
     };
 
-    mockDataService.register(newUserProfile);
+    await mockDataService.register(newUserProfile);
     return { success: true };
   };
 
@@ -154,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const nextUser = { ...user, ...data };
-    mockDataService.updateUser({
+    await mockDataService.updateUser({
       uid: nextUser.id,
       email: nextUser.email,
       name: nextUser.name,
@@ -164,27 +173,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUserRole = async (id: string, role: UserRole) => {
-    const users = mockDataService.getUsers();
+    const users = await mockDataService.getUsers();
     const userToUpdate = users.find((profile) => profile.uid === id);
     if (!userToUpdate) {
       return;
     }
-    mockDataService.updateUser({ ...userToUpdate, role });
+    await mockDataService.updateUser({ ...userToUpdate, role });
     if (user?.id === id) {
       persistUser({ ...user, role });
     }
     if (user && (user.role === UserRole.ADMIN || user.role === UserRole.STAFF)) {
-      setRegisteredUsers(mockDataService.getUsers().map(profileToUser));
+      const updatedList = await mockDataService.getUsers();
+      setRegisteredUsers(updatedList.map(profileToUser));
     }
   };
 
   const deleteUser = async (id: string) => {
-    mockDataService.deleteUser(id);
+    await mockDataService.deleteUser(id);
     if (user?.id === id) {
       persistUser(null);
     }
     if (user && (user.role === UserRole.ADMIN || user.role === UserRole.STAFF)) {
-      setRegisteredUsers(mockDataService.getUsers().map(profileToUser));
+      const updatedList = await mockDataService.getUsers();
+      setRegisteredUsers(updatedList.map(profileToUser));
     }
   };
 

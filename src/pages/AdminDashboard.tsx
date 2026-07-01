@@ -93,7 +93,7 @@ export default function AdminDashboard() {
     if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS? This cannot be undone.')) {
       setCleaningUp(true);
       try {
-        mockDataService.clearLeads();
+        await mockDataService.clearLeads();
         alert('All leads have been cleared successfully.');
       } catch (error) {
         console.error('Error clearing leads: ', error);
@@ -442,7 +442,7 @@ export default function AdminDashboard() {
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                   <h3 className="font-bold text-gray-800 mb-6">Aggregate Revenue</h3>
                   <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <AreaChart data={leads.map(l => ({ name: l.name, val: l.totalOrderValue }))}>
                         <defs>
                           <linearGradient id="colorAdmin" x1="0" y1="0" x2="0" y2="1">
@@ -459,7 +459,7 @@ export default function AdminDashboard() {
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                   <h3 className="font-bold text-gray-800 mb-6">Segments</h3>
                   <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <PieChart>
                         <Pie
                           data={[

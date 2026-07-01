@@ -85,6 +85,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   name: string;
+  password?: string;
 }
 
 export enum OrderStatus {

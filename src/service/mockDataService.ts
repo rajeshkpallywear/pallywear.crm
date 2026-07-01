@@ -5,55 +5,28 @@
 
 import { Order, OrderStatus, UserRole, UserProfile, Lead, Invoice, InventoryMovement } from '../types';
 
-const ORDERS_KEY = 'pallywear_orders';
-const USERS_KEY = 'pallywear_users';
-const LEADS_KEY = 'pallywear_leads';
-const INVOICES_KEY = 'pallywear_invoices';
-const INVENTORY_KEY = 'pallywear_inventory';
-
-function loadItem<T>(key: string, fallback: T): T {
-  const saved = localStorage.getItem(key);
-  return saved ? JSON.parse(saved) : fallback;
-}
-
-function saveItem<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
 function notifyUpdate() {
   window.dispatchEvent(new Event('pallywear-data-updated'));
 }
 
 export const mockDataService = {
-  getOrders: (): Order[] => {
-    return loadItem<Order[]>(ORDERS_KEY, []).map((o: any) => ({
-      ...o,
-      quantity: o.quantity || 0,
-      sizeBreakdown: o.sizeBreakdown || [],
-      staffImages: o.staffImages || (o.staffAttachments?.filter((a: string) => a.startsWith('data:image')) || []),
-      staffPdfs: o.staffPdfs || (o.staffAttachments?.filter((a: string) => a.startsWith('data:application/pdf')) || []),
-      financials: o.financials || { totalAmount: 0, advancePay: 0, balanceAmount: 0 }
-    }));
+  getOrders: async (): Promise<Order[]> => {
+    const res = await fetch('/api/orders');
+    if (!res.ok) throw new Error('Failed to fetch orders');
+    return res.json();
   },
 
-  saveOrder: (order: Order) => {
-    try {
-      const orders = mockDataService.getOrders();
-      const index = orders.findIndex((o) => o.id === order.id);
-      if (index > -1) {
-        orders[index] = order;
-      } else {
-        orders.push(order);
-      }
-      saveItem(ORDERS_KEY, orders);
-      notifyUpdate();
-    } catch (error) {
-      console.error('Storage error:', error);
-      throw error;
-    }
+  saveOrder: async (order: Order): Promise<void> => {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+    if (!res.ok) throw new Error('Failed to save order');
+    notifyUpdate();
   },
 
-  createOrder: (orderData: Partial<Order>): Order => {
+  createOrder: async (orderData: Partial<Order>): Promise<Order> => {
     const id = Math.random().toString(36).substr(2, 9).toUpperCase();
     const newOrder: Order = {
       id,
@@ -78,141 +51,148 @@ export const mockDataService = {
       ...orderData
     };
 
-    mockDataService.saveOrder(newOrder);
+    await mockDataService.saveOrder(newOrder);
     return newOrder;
   },
 
-  deleteOrder: (id: string) => {
-    const orders = mockDataService.getOrders();
-    saveItem(ORDERS_KEY, orders.filter((o) => o.id !== id));
+  deleteOrder: async (id: string): Promise<void> => {
+    const res = await fetch(`/api/orders/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete order');
     notifyUpdate();
   },
 
-  getLeads: (): Lead[] => {
-    return loadItem<Lead[]>(LEADS_KEY, []);
+  getLeads: async (): Promise<Lead[]> => {
+    const res = await fetch('/api/leads');
+    if (!res.ok) throw new Error('Failed to fetch leads');
+    return res.json();
   },
 
-  saveLead: (lead: Lead) => {
-    const leads = mockDataService.getLeads();
-    const index = leads.findIndex((item) => item.id === lead.id);
-    if (index > -1) {
-      leads[index] = lead;
-    } else {
-      leads.push(lead);
-    }
-    saveItem(LEADS_KEY, leads);
+  saveLead: async (lead: Lead): Promise<void> => {
+    const res = await fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lead)
+    });
+    if (!res.ok) throw new Error('Failed to save lead');
     notifyUpdate();
   },
 
-  deleteLead: (id: string) => {
-    const leads = mockDataService.getLeads();
-    saveItem(LEADS_KEY, leads.filter((lead) => lead.id !== id));
+  deleteLead: async (id: string): Promise<void> => {
+    const res = await fetch(`/api/leads/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete lead');
     notifyUpdate();
   },
 
-  clearLeads: () => {
-    saveItem(LEADS_KEY, []);
+  clearLeads: async (): Promise<void> => {
+    const res = await fetch('/api/leads/clear', {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to clear leads');
     notifyUpdate();
   },
 
-  getInvoices: (): Invoice[] => {
-    return loadItem<Invoice[]>(INVOICES_KEY, []);
+  getInvoices: async (): Promise<Invoice[]> => {
+    const res = await fetch('/api/invoices');
+    if (!res.ok) throw new Error('Failed to fetch invoices');
+    return res.json();
   },
 
-  saveInvoice: (invoice: Invoice) => {
-    const invoices = mockDataService.getInvoices();
-    const index = invoices.findIndex((item) => item.id === invoice.id);
-    if (index > -1) {
-      invoices[index] = invoice;
-    } else {
-      invoices.push(invoice);
-    }
-    saveItem(INVOICES_KEY, invoices);
+  saveInvoice: async (invoice: Invoice): Promise<void> => {
+    const res = await fetch('/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(invoice)
+    });
+    if (!res.ok) throw new Error('Failed to save invoice');
     notifyUpdate();
   },
 
-  deleteInvoice: (id: string) => {
-    const invoices = mockDataService.getInvoices();
-    saveItem(INVOICES_KEY, invoices.filter((invoice) => invoice.id !== id));
+  deleteInvoice: async (id: string): Promise<void> => {
+    const res = await fetch(`/api/invoices/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete invoice');
     notifyUpdate();
   },
 
-  getInventory: (): InventoryMovement[] => {
-    return loadItem<InventoryMovement[]>(INVENTORY_KEY, []);
+  getInventory: async (): Promise<InventoryMovement[]> => {
+    const res = await fetch('/api/inventory');
+    if (!res.ok) throw new Error('Failed to fetch inventory');
+    return res.json();
   },
 
-  saveInventoryMovement: (movement: InventoryMovement) => {
-    const inventory = mockDataService.getInventory();
-    const index = inventory.findIndex((item) => item.id === movement.id);
-    if (index > -1) {
-      inventory[index] = movement;
-    } else {
-      inventory.push(movement);
-    }
-    saveItem(INVENTORY_KEY, inventory);
+  saveInventoryMovement: async (movement: InventoryMovement): Promise<void> => {
+    const res = await fetch('/api/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(movement)
+    });
+    if (!res.ok) throw new Error('Failed to save inventory movement');
     notifyUpdate();
   },
 
-  deleteInventoryMovement: (id: string) => {
-    const inventory = mockDataService.getInventory();
-    saveItem(INVENTORY_KEY, inventory.filter((item) => item.id !== id));
+  deleteInventoryMovement: async (id: string): Promise<void> => {
+    const res = await fetch(`/api/inventory/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete inventory movement');
     notifyUpdate();
   },
 
-  getUsers: (): UserProfile[] => {
-    const saved = localStorage.getItem(USERS_KEY);
-    return saved ? JSON.parse(saved) : [
-      { uid: 'admin-1', email: 'admin', role: UserRole.ADMIN, name: 'Main Admin' },
-      { uid: 'staff-1', email: 'staff', role: UserRole.STAFF, name: 'Front Desk' },
-      { uid: 'acc-1', email: 'accounts', role: UserRole.ACCOUNTS, name: 'Billing Dept' },
-      { uid: 'om-1', email: 'order', role: UserRole.ORDER_MANAGEMENT, name: 'Admin Hub' },
-      { uid: 'prod-1', email: 'prod', role: UserRole.PRODUCTION, name: 'Factory Lead' },
-      { uid: 'del-1', email: 'del', role: UserRole.DELIVERY, name: 'Delivery Agent' },
-    ];
+  getUsers: async (): Promise<UserProfile[]> => {
+    const res = await fetch('/api/users');
+    if (!res.ok) throw new Error('Failed to fetch users');
+    return res.json();
   },
 
-  register: (user: UserProfile) => {
-    const users = mockDataService.getUsers();
-    users.push(user);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  },
-
-  login: (email: string, password: string): UserProfile | null => {
-    // Default admin: admin / pally@123
-    if (email === 'admin' && password === 'pally@123') {
-      return { uid: 'admin-1', email: 'admin', role: UserRole.ADMIN, name: 'Main Admin' };
-    }
-
-    const users = mockDataService.getUsers();
-    const user = users.find(u => u.email === email);
-    // For demo/prototype, we accept valid passwords for valid usernames
-    if (user && password === 'pally@123') {
-      return user;
-    }
-
-    // Also allow role names as logins for easier testing
-    const roleMatch = users.find(u => u.role === email);
-    if (roleMatch && password === 'pally@123') {
-      return roleMatch;
-    }
-
-    return null;
-  },
-
-  updateUser: (user: UserProfile) => {
-    const users = mockDataService.getUsers();
-    const index = users.findIndex(u => u.uid === user.uid);
-    if (index > -1) {
-      users[index] = user;
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      notifyUpdate();
+  register: async (user: UserProfile): Promise<void> => {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Failed to register');
     }
   },
 
-  deleteUser: (id: string) => {
-    const users = mockDataService.getUsers();
-    const filtered = users.filter(u => u.uid !== id);
-    localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+  login: async (email: string, password: string): Promise<UserProfile | null> => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const data = await res.json();
+    return data.user || null;
+  },
+
+  updateUser: async (user: UserProfile): Promise<void> => {
+    const res = await fetch(`/api/users/${user.uid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: user.email,
+        name: user.name,
+        role: user.role
+      })
+    });
+    if (!res.ok) throw new Error('Failed to update user');
+    notifyUpdate();
+  },
+
+  deleteUser: async (id: string): Promise<void> => {
+    const res = await fetch(`/api/users/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete user');
     notifyUpdate();
   }
 };

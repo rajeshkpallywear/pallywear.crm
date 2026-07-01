@@ -49,11 +49,21 @@ export function LeadProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   useEffect(() => {
-    const loadData = () => {
-      setLeads(mockDataService.getLeads());
-      setInvoices(mockDataService.getInvoices());
-      setOrders(mockDataService.getOrders());
-      setInventory(mockDataService.getInventory());
+    const loadData = async () => {
+      try {
+        const [leadsData, invoicesData, ordersData, inventoryData] = await Promise.all([
+          mockDataService.getLeads(),
+          mockDataService.getInvoices(),
+          mockDataService.getOrders(),
+          mockDataService.getInventory()
+        ]);
+        setLeads(leadsData);
+        setInvoices(invoicesData);
+        setOrders(ordersData);
+        setInventory(inventoryData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
     };
 
     if (!user) {
@@ -79,7 +89,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       createdBy: user.id,
       createdByName: user.name,
     });
-    mockDataService.saveLead(nextLead);
+    await mockDataService.saveLead(nextLead);
     setLeads((prev) => [...prev, nextLead]);
   };
 
@@ -90,12 +100,12 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       ...existing,
       ...sanitizeForStorage(leadUpdate),
     } as Lead;
-    mockDataService.saveLead(nextLead);
+    await mockDataService.saveLead(nextLead);
     setLeads((prev) => prev.map((lead) => (lead.id === id ? nextLead : lead)));
   };
 
   const deleteLead = async (id: string) => {
-    mockDataService.deleteLead(id);
+    await mockDataService.deleteLead(id);
     setLeads((prev) => prev.filter((lead) => lead.id !== id));
   };
 
@@ -107,7 +117,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       createdBy: user.id,
       createdByName: user.name,
     }) as Invoice;
-    mockDataService.saveInvoice(nextInvoice);
+    await mockDataService.saveInvoice(nextInvoice);
     setInvoices((prev) => [...prev, nextInvoice]);
   };
 
@@ -118,18 +128,18 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       ...existing,
       ...sanitizeForStorage(invoiceUpdate),
     } as Invoice;
-    mockDataService.saveInvoice(nextInvoice);
+    await mockDataService.saveInvoice(nextInvoice);
     setInvoices((prev) => prev.map((invoice) => (invoice.id === id ? nextInvoice : invoice)));
   };
 
   const deleteInvoice = async (id: string) => {
-    mockDataService.deleteInvoice(id);
+    await mockDataService.deleteInvoice(id);
     setInvoices((prev) => prev.filter((invoice) => invoice.id !== id));
   };
 
   const addOrder = async (orderData: Partial<Order>) => {
     if (!user) return;
-    const nextOrder = mockDataService.createOrder({
+    const nextOrder = await mockDataService.createOrder({
       ...orderData,
       createdBy: user.id,
       createdByName: user.name,
@@ -145,12 +155,12 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       ...sanitizeForStorage(orderUpdate),
       updatedAt: Date.now(),
     };
-    mockDataService.saveOrder(nextOrder);
+    await mockDataService.saveOrder(nextOrder);
     setOrders((prev) => prev.map((order) => (order.id === id ? nextOrder : order)));
   };
 
   const deleteOrder = async (id: string) => {
-    mockDataService.deleteOrder(id);
+    await mockDataService.deleteOrder(id);
     setOrders((prev) => prev.filter((order) => order.id !== id));
   };
 
@@ -160,12 +170,12 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       id: createId('inventory'),
       createdAt: Date.now(),
     }) as InventoryMovement;
-    mockDataService.saveInventoryMovement(nextMovement);
+    await mockDataService.saveInventoryMovement(nextMovement);
     setInventory((prev) => [...prev, nextMovement]);
   };
 
   const deleteInventoryMovement = async (id: string) => {
-    mockDataService.deleteInventoryMovement(id);
+    await mockDataService.deleteInventoryMovement(id);
     setInventory((prev) => prev.filter((item) => item.id !== id));
   };
 
