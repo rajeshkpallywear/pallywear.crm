@@ -55,8 +55,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'staff' for Staff/Sales desk pipeline, 'order_management' for Backoffice pipeline
   const [activeChannel, setActiveChannel] = useState<'staff' | 'order_management'>('staff');
 
-  // Subsection filters: 'total', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
+  // Subsection filters: 'total', 'process', 'hold', 'completed'
+  const [selectedSection, setSelectedSection] = useState<'total' | 'process' | 'hold' | 'completed'>('total');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -254,9 +254,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => item.isHold);
     } else if (selectedSection === 'completed') {
       baseList = baseList.filter(item => item.isCompleted);
-    } else {
-      // Total (Active & Pending)
-      baseList = baseList.filter(item => !item.isCompleted);
+    } else if (selectedSection === 'process') {
+      baseList = baseList.filter(item => !item.isCompleted && !item.isHold);
     }
 
     // Search term matching
@@ -270,11 +269,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'staff' | 'order_management') => {
     const baseList = channel === 'staff' ? staffCombinedList : omOrderItems;
-    const totalCount = baseList.filter(item => !item.isCompleted).length;
+    const totalCount = baseList.length;
+    const processCount = baseList.filter(item => !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
 
-    return { totalCount, holdCount, completedCount };
+    return { totalCount, processCount, holdCount, completedCount };
   };
 
   const handleClaimItem = async (item: any) => {
@@ -579,7 +579,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       </div>
 
       {/* Summary Columns Counters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Card: Total */}
         <button
           onClick={() => setSelectedSection('total')}
@@ -607,6 +607,33 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           </div>
         </button>
 
+        {/* Card: Process */}
+        <button
+          onClick={() => setSelectedSection('process')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer border-dashed",
+            selectedSection === 'process'
+              ? "bg-black text-white border-black shadow-lg"
+              : "bg-white border-gray-200 hover:border-gray-400 shadow-sm"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            selectedSection === 'process' ? "bg-white/10 text-white" : "bg-indigo-50 text-indigo-600"
+          )}>
+            <Clock size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'process' ? "text-white/70" : "text-gray-500")}>
+              Process Designs
+            </p>
+            <p className="text-2xl font-black mt-0.5">{activeStats.processCount}</p>
+            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
+              Active in-progress designs
+            </span>
+          </div>
+        </button>
+
         {/* Card: Hold */}
         <button
           onClick={() => setSelectedSection('hold')}
@@ -621,7 +648,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
             selectedSection === 'hold' ? "bg-white/10 text-white" : "bg-red-50 text-red-600"
           )}>
-            <Clock size={24} />
+            <AlertCircle size={24} />
           </div>
           <div>
             <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'hold' ? "text-white/70" : "text-gray-500")}>

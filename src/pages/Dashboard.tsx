@@ -26,7 +26,7 @@ import AccountsDashboard from '../components/AccountsDashboard';
 import OrderManagementDashboard from '../components/OrderManagementDashboard';
 import ProductionDashboard from '../components/ProductionDashboard';
 import DeliveryDashboard from '../components/DeliveryDashboard';
-import StaffDashboard from '../components/StaffDashboard';
+import MarketingDashboard from '../components/MarketingDashboard';
 import DesignDashboard from '../components/DesignDashboard';
 import DigitizingDashboard from '../components/DigitizingDashboard';
 import DigitizerCommunication from '../components/DigitizerCommunication';
@@ -430,7 +430,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : activeTab === 'marketing_orders' ? (
-            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+            <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
           ) : activeTab === 'reports' ? (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
@@ -531,8 +531,8 @@ export default function Dashboard() {
               </div>
               <InvoiceManager />
             </div>
-          ) : [UserRole.STAFF, 'staff'].includes(user?.role as any) ? (
-            <StaffDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+          ) : [UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
+            <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
           ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
             <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
           ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (

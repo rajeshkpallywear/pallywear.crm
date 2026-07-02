@@ -5,7 +5,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip } from 'lucide-react';
+import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip, Clock } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
@@ -23,7 +23,7 @@ import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
 
-interface StaffDashboardProps {
+interface MarketingDashboardProps {
   orders: Order[];
   inventory?: any[];
   onCreateOrder: (order: Partial<Order>) => Promise<void>;
@@ -33,7 +33,7 @@ interface StaffDashboardProps {
   user?: any;
 }
 
-export default function StaffDashboard({ orders, inventory = [], onCreateOrder, onUpdateOrder, onDeleteOrder, isAdmin, user }: StaffDashboardProps) {
+export default function MarketingDashboard({ orders, inventory = [], onCreateOrder, onUpdateOrder, onDeleteOrder, isAdmin, user }: MarketingDashboardProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,7 +55,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     isUrgent: false
   });
 
-  const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
+  const [selectedSection, setSelectedSection] = useState<'total' | 'process' | 'hold' | 'completed'>('total');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
 
@@ -240,16 +240,6 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     }));
   };
 
-  const handleDuplicate = (order: Order) => {
-    const { id, createdAt, updatedAt, ...rest } = order;
-    onCreateOrder({
-      ...rest,
-      status: OrderStatus.DESIGN, // New copies start at design
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  };
-
   const startEdit = (order: Order) => {
     setEditingOrderId(order.id);
     setFormData({
@@ -267,6 +257,15 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     });
     setIsCreating(true);
   };
+  const handleDuplicate = (order: Order) => {
+    const { id, createdAt, updatedAt, ...rest } = order;
+    onCreateOrder({
+      ...rest,
+      status: OrderStatus.DESIGN,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  };
 
   const filteredOrders = orders.filter(o => {
     const matchesSearch = o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
@@ -278,13 +277,14 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     if (selectedSection === 'completed') {
       return o.status === OrderStatus.DELIVERED;
     }
-    if (selectedSection === 'total') {
-      return o.status !== OrderStatus.DELIVERED;
+    if (selectedSection === 'process') {
+      return o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD;
     }
     return true;
   });
 
-  const totalOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED).length;
+  const totalOrdersCount = orders.length;
+  const processOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
@@ -292,7 +292,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Staff Dashboard</h2>
+          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Marketing Dashboard</h2>
           <p className="text-gray-500 mt-1">Create and manage order intake</p>
         </div>
         <div className="flex items-center gap-4">
@@ -309,18 +309,16 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
         </div>
       </div>
 
-      {/* Design Team Sidebar (Talk Channel Only for Conversation) */}
       <ConversationDashboard
         isOpen={isDesignSidebarOpen}
         onClose={() => setIsDesignSidebarOpen(false)}
-        currentUser={user || { name: 'Staff Desk', role: 'Staff' }}
+        currentUser={user || { name: 'Marketing Desk', role: 'Marketing' }}
         orders={orders}
         onUpdateOrder={onUpdateOrder}
         onCreateOrder={onCreateOrder}
       />
 
-      {/* Summary Stats Section / Column Filter Tabs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
           onClick={() => setSelectedSection('total')}
           className={cn(
@@ -341,6 +339,30 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
             <p className="text-2.5xl font-black">{totalOrdersCount}</p>
             <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'total' ? "text-white/60" : "text-gray-400")}>
               All received intakes
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setSelectedSection('process')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
+            selectedSection === 'process' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100"
+          )}>
+            <Clock size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'process' ? "text-white/70" : "text-gray-500")}>
+              Process Orders
+            </p>
+            <p className="text-2.5xl font-black">{processOrdersCount}</p>
+            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
+              Active in-progress orders
             </span>
           </div>
         </button>

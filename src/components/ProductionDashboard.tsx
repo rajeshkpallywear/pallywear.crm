@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp } from 'lucide-react';
+import { Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
@@ -20,7 +20,7 @@ interface ProductionDashboardProps {
 
 export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin }: ProductionDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
+  const [selectedSection, setSelectedSection] = useState<'total' | 'process' | 'hold' | 'completed'>('total');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,10 +34,14 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     if (selectedSection === 'completed') {
       return o.status === OrderStatus.DELIVERED;
     }
+    if (selectedSection === 'process') {
+      return o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD;
+    }
     return true;
   });
 
   const totalOrdersCount = orders.length;
+  const processOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
@@ -103,7 +107,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       </div>
 
       {/* Summary Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
           onClick={() => setSelectedSection('total')}
           className={cn(
@@ -129,6 +133,30 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         </button>
 
         <button
+          onClick={() => setSelectedSection('process')}
+          className={cn(
+            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
+            selectedSection === 'process' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
+            selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100"
+          )}>
+            <Clock size={24} />
+          </div>
+          <div>
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'process' ? "text-white/70" : "text-gray-500")}>
+              Process Orders
+            </p>
+            <p className="text-2xl font-black">{processOrdersCount}</p>
+            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
+              Active in-progress orders
+            </span>
+          </div>
+        </button>
+
+        <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
             "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
@@ -139,7 +167,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
             "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
             selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-600 group-hover:bg-red-100"
           )}>
-            <Factory size={24} />
+            <AlertCircle size={24} />
           </div>
           <div>
             <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'hold' ? "text-white/70" : "text-gray-500")}>
