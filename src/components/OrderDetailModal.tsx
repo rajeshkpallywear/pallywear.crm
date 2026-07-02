@@ -12,9 +12,10 @@ interface OrderDetailModalProps {
   onUpdateStatus?: (status: OrderStatus) => void;
   onUpdateOrder?: (id: string, updates: Partial<Order>) => Promise<void>;
   isAdmin?: boolean;
+  onEdit?: (order: Order) => void;
 }
 
-export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpdateOrder, isAdmin }: OrderDetailModalProps) {
+export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState<Order>(order);
@@ -74,12 +75,23 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
             <span className="text-xs font-mono text-gray-400 mt-1 uppercase tracking-widest">Access Protocol - ID: #{order.id}</span>
           </div>
           <div className="flex items-center gap-3">
-            {isAdmin && !isEditing && (
+            {onUpdateOrder && !isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
                 className="px-6 py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md"
               >
-                Edit Report
+                Edit Details
+              </button>
+            )}
+            {onEdit && !isEditing && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onEdit(order);
+                }}
+                className="px-6 py-3 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-800 transition-all shadow-md"
+              >
+                Edit Order Form
               </button>
             )}
             {isEditing && (
@@ -214,35 +226,171 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                 <div className="flex items-center justify-between mb-6">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Itemised Breakdown</p>
                   <span className="px-3 py-1 bg-gray-50 text-gray-500 rounded-full text-[10px] font-black uppercase tracking-widest">
-                    {order.sizeBreakdown?.reduce((sum, i) => sum + i.quantity, 0) || order.quantity || 0} Total Units
+                    {isEditing ? (
+                      editedOrder.sizeBreakdown?.reduce((sum, i) => sum + i.quantity, 0) || editedOrder.quantity || 0
+                    ) : (
+                      order.sizeBreakdown?.reduce((sum, i) => sum + i.quantity, 0) || order.quantity || 0
+                    )} Total Units
                   </span>
                 </div>
                 <div className="space-y-3">
-                  {order.sizeBreakdown?.map((item, idx) => (
-                    <div key={idx} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-brand-primary/20 transition-all">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs font-black text-brand-primary uppercase tracking-tight">{item.category}</span>
-                        <span className="text-xs font-black text-gray-900 bg-white px-2 py-1 rounded-lg border border-gray-100 shadow-sm">{item.size}</span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                        {item.material && <div><span className="text-[8px] text-gray-400 block mb-0.5">Material</span>{item.material}</div>}
-                        {item.colour && <div><span className="text-[8px] text-gray-400 block mb-0.5">Colour</span>{item.colour}</div>}
-                        {item.printType && <div><span className="text-[8px] text-gray-400 block mb-0.5">Print</span>{item.printType}</div>}
-                        {item.model && <div><span className="text-[8px] text-gray-400 block mb-0.5">Model</span>{item.model}</div>}
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-end">
-                        <div className="flex items-center gap-4">
-                          <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
-                          <span className="text-[10px] font-black text-brand-primary">Rate: ₹{item.price}</span>
+                  {isEditing ? (
+                    editedOrder.sizeBreakdown?.length ? (
+                      editedOrder.sizeBreakdown.map((item, idx) => (
+                        <div key={idx} className="p-4 bg-white rounded-2xl border border-gray-200 space-y-3 shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-black text-brand-primary uppercase">{item.category}</span>
+                            <input
+                              type="text"
+                              className="w-20 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-center"
+                              value={item.size}
+                              onChange={e => {
+                                const updated = [...editedOrder.sizeBreakdown];
+                                updated[idx] = { ...updated[idx], size: e.target.value };
+                                setEditedOrder({ ...editedOrder, sizeBreakdown: updated });
+                              }}
+                              placeholder="Size"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <label className="text-[8px] font-black text-gray-400 uppercase">Quantity</label>
+                              <input
+                                type="number"
+                                className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl font-bold"
+                                value={item.quantity}
+                                onChange={e => {
+                                  const qty = parseInt(e.target.value, 10) || 0;
+                                  const updated = [...editedOrder.sizeBreakdown];
+                                  updated[idx] = { ...updated[idx], quantity: qty };
+                                  const newQty = updated.reduce((sum, i) => sum + i.quantity, 0);
+                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+                                  setEditedOrder({
+                                    ...editedOrder,
+                                    sizeBreakdown: updated,
+                                    quantity: newQty,
+                                    financials: {
+                                      ...editedOrder.financials,
+                                      totalAmount: newTotal,
+                                      balanceAmount: newTotal - editedOrder.financials.advancePay
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8px] font-black text-gray-400 uppercase">Rate (₹)</label>
+                              <input
+                                type="number"
+                                className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-brand-primary"
+                                value={item.price}
+                                onChange={e => {
+                                  const rate = parseFloat(e.target.value) || 0;
+                                  const updated = [...editedOrder.sizeBreakdown];
+                                  updated[idx] = { ...updated[idx], price: rate };
+                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+                                  setEditedOrder({
+                                    ...editedOrder,
+                                    sizeBreakdown: updated,
+                                    financials: {
+                                      ...editedOrder.financials,
+                                      totalAmount: newTotal,
+                                      balanceAmount: newTotal - editedOrder.financials.advancePay
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[8px]">
+                            <div>
+                              <label className="text-[8px] text-gray-400 block mb-0.5">Material</label>
+                              <input
+                                type="text"
+                                className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold"
+                                value={item.material || ''}
+                                onChange={e => {
+                                  const updated = [...editedOrder.sizeBreakdown];
+                                  updated[idx] = { ...updated[idx], material: e.target.value };
+                                  setEditedOrder({ ...editedOrder, sizeBreakdown: updated });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8px] text-gray-400 block mb-0.5">Colour</label>
+                              <input
+                                type="text"
+                                className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold"
+                                value={item.colour || ''}
+                                onChange={e => {
+                                  const updated = [...editedOrder.sizeBreakdown];
+                                  updated[idx] = { ...updated[idx], colour: e.target.value };
+                                  setEditedOrder({ ...editedOrder, sizeBreakdown: updated });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8px] text-gray-400 block mb-0.5">Print</label>
+                              <input
+                                type="text"
+                                className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold"
+                                value={item.printType || ''}
+                                onChange={e => {
+                                  const updated = [...editedOrder.sizeBreakdown];
+                                  updated[idx] = { ...updated[idx], printType: e.target.value };
+                                  setEditedOrder({ ...editedOrder, sizeBreakdown: updated });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8px] text-gray-400 block mb-0.5">Model</label>
+                              <input
+                                type="text"
+                                className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold"
+                                value={item.model || ''}
+                                onChange={e => {
+                                  const updated = [...editedOrder.sizeBreakdown];
+                                  updated[idx] = { ...updated[idx], model: e.target.value };
+                                  setEditedOrder({ ...editedOrder, sizeBreakdown: updated });
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-xs font-black text-gray-900">Total: ₹{(item.quantity * (item.price || 0)).toLocaleString()}</span>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-400 italic text-xs bg-gray-50 rounded-[24px]">
+                        No specific size breakdown available to edit.
                       </div>
-                    </div>
-                  ))}
-                  {!order.sizeBreakdown?.length && (
-                    <div className="p-8 text-center text-gray-400 italic text-xs bg-gray-50 rounded-[24px]">
-                      No specific size breakdown available for this record.
-                    </div>
+                    )
+                  ) : (
+                    order.sizeBreakdown?.length ? (
+                      order.sizeBreakdown.map((item, idx) => (
+                        <div key={idx} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-brand-primary/20 transition-all">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-black text-brand-primary uppercase tracking-tight">{item.category}</span>
+                            <span className="text-xs font-black text-gray-900 bg-white px-2 py-1 rounded-lg border border-gray-100 shadow-sm">{item.size}</span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                            {item.material && <div><span className="text-[8px] text-gray-400 block mb-0.5">Material</span>{item.material}</div>}
+                            {item.colour && <div><span className="text-[8px] text-gray-400 block mb-0.5">Colour</span>{item.colour}</div>}
+                            {item.printType && <div><span className="text-[8px] text-gray-400 block mb-0.5">Print</span>{item.printType}</div>}
+                            {item.model && <div><span className="text-[8px] text-gray-400 block mb-0.5">Model</span>{item.model}</div>}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-end">
+                            <div className="flex items-center gap-4">
+                              <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
+                              <span className="text-[10px] font-black text-brand-primary">Rate: ₹{item.price}</span>
+                            </div>
+                            <span className="text-xs font-black text-gray-900">Total: ₹{(item.quantity * (item.price || 0)).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-400 italic text-xs bg-gray-50 rounded-[24px]">
+                        No specific size breakdown available for this record.
+                      </div>
+                    )
                   )}
                 </div>
               </div>

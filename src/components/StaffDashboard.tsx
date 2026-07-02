@@ -130,9 +130,10 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
       } else {
         await onCreateOrder({
           ...finalOrderData,
+          status: OrderStatus.ACCOUNTS,
           createdAt: Date.now(),
         });
-        alert("Success: Order created. Use the [Send to Accounts] manual button next to the order to move it when ready.");
+        alert("Success: Order created and automatically sent to Accounts.");
       }
       setIsCreating(false);
       setEditingOrderId(null);
@@ -277,10 +278,13 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     if (selectedSection === 'completed') {
       return o.status === OrderStatus.DELIVERED;
     }
+    if (selectedSection === 'total') {
+      return o.status !== OrderStatus.DELIVERED;
+    }
     return true;
   });
 
-  const totalOrdersCount = orders.length;
+  const totalOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
@@ -474,8 +478,14 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="text-[10px] tabular-nums">{new Date(order.createdAt).toLocaleDateString()}</span>
+                      <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-[10px] tabular-nums mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
+                        <button
+                          onClick={() => startEdit(order)}
+                          className="px-3 py-1.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                        >
+                          Edit
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -960,6 +970,10 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
               onUpdateOrder(selectedHubOrder.id, { status });
               setSelectedHubOrder(prev => prev ? { ...prev, status } : null);
             }
+          }}
+          onEdit={(ord) => {
+            setSelectedHubOrder(null);
+            startEdit(ord);
           }}
         />
       )}
