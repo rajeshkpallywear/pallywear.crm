@@ -2,7 +2,11 @@
   RewriteEngine On
   RewriteBase /
 
-  # Automatically and transparently route all requests to the compiled dist folder
+  # Route API requests to the PHP proxy inside dist/
+  RewriteCond %{REQUEST_URI} ^/api/(.*)$
+  RewriteRule ^api/(.*)$ dist/api/proxy.php?route=$1 [QSA,L]
+
+  # Route all other traffic to the dist folder
   RewriteCond %{REQUEST_URI} !^/dist/
   RewriteRule ^(.*)$ dist/$1 [L]
 </IfModule>
