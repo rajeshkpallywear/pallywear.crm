@@ -33,7 +33,7 @@ interface OrderManagementDashboardProps {
 
 export default function OrderManagementDashboard({ orders, inventory = [], onUpdateOrder, onDeleteOrder, isAdmin }: OrderManagementDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'total' | 'process' | 'hold' | 'completed'>('total');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [managementFiles, setManagementFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -51,10 +51,10 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     if (selectedSection === 'process') {
       return o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD;
     }
-    return true;
+    return o.status !== OrderStatus.DELIVERED;
   });
 
-  const totalOrdersCount = orders.length;
+  const recentOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED).length;
   const processOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
@@ -543,24 +543,24 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
       {/* Summary Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
-          onClick={() => setSelectedSection('total')}
+          onClick={() => setSelectedSection('recent')}
           className={cn(
             "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
-            selectedSection === 'total' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+            selectedSection === 'recent' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
           )}
         >
           <div className={cn(
             "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'total' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+            selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
           )}>
             <Package size={24} />
           </div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'total' ? "text-white/70" : "text-gray-500")}>
-              Total Orders
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'recent' ? "text-white/70" : "text-gray-500")}>
+              Recent Orders
             </p>
-            <p className="text-2xl font-black">{totalOrdersCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'total' ? "text-white/60" : "text-gray-400")}>
+            <p className="text-2xl font-black">{recentOrdersCount}</p>
+            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
               All system orders
             </span>
           </div>
@@ -643,7 +643,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
         <div className="lg:col-span-1 space-y-4">
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
             <Layers className="text-blue-500" size={16} />
-            {selectedSection === 'total' ? 'All Managed Orders' : selectedSection === 'hold' ? 'On Hold Orders' : 'Delivered Catalog'} ({filteredOrders.length})
+            {selectedSection === 'recent' ? 'All Managed Orders' : selectedSection === 'hold' ? 'On Hold Orders' : 'Delivered Catalog'} ({filteredOrders.length})
           </h3>
           <div className="space-y-3">
             {filteredOrders.length > 0 ? (

@@ -55,8 +55,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'staff' for Staff/Sales desk pipeline, 'order_management' for Backoffice pipeline
   const [activeChannel, setActiveChannel] = useState<'staff' | 'order_management'>('staff');
 
-  // Subsection filters: 'total', 'process', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'total' | 'process' | 'hold' | 'completed'>('total');
+  // Subsection filters: 'recent', 'process', 'hold', 'completed'
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -256,6 +256,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => item.isCompleted);
     } else if (selectedSection === 'process') {
       baseList = baseList.filter(item => !item.isCompleted && !item.isHold);
+    } else if (selectedSection === 'recent') {
+      baseList = baseList.filter(item => !item.isCompleted);
     }
 
     // Search term matching
@@ -269,12 +271,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'staff' | 'order_management') => {
     const baseList = channel === 'staff' ? staffCombinedList : omOrderItems;
-    const totalCount = baseList.length;
+    const recentCount = baseList.filter(item => !item.isCompleted).length;
     const processCount = baseList.filter(item => !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
 
-    return { totalCount, processCount, holdCount, completedCount };
+    return { recentCount, processCount, holdCount, completedCount };
   };
 
   const handleClaimItem = async (item: any) => {
@@ -546,7 +548,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('staff');
-            setSelectedSection('total');
+            setSelectedSection('recent');
           }}
           className={cn(
             "pb-4 text-sm font-black transition-all relative flex items-center gap-2 cursor-pointer border-none bg-transparent",
@@ -563,7 +565,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('order_management');
-            setSelectedSection('total');
+            setSelectedSection('recent');
           }}
           className={cn(
             "pb-4 text-sm font-black transition-all relative flex items-center gap-2 cursor-pointer border-none bg-transparent",
@@ -580,28 +582,28 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
       {/* Summary Columns Counters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Card: Total */}
+        {/* Card: Recent */}
         <button
-          onClick={() => setSelectedSection('total')}
+          onClick={() => setSelectedSection('recent')}
           className={cn(
             "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer border-dashed",
-            selectedSection === 'total'
+            selectedSection === 'recent'
               ? "bg-black text-white border-black shadow-lg"
               : "bg-white border-gray-200 hover:border-gray-400 shadow-sm"
           )}
         >
           <div className={cn(
             "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'total' ? "bg-white/10 text-white" : "bg-gray-100 text-gray-700"
+            selectedSection === 'recent' ? "bg-white/10 text-white" : "bg-gray-100 text-gray-700"
           )}>
             <Package size={24} />
           </div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'total' ? "text-white/70" : "text-gray-500")}>
-              Total / Active Designs
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'recent' ? "text-white/70" : "text-gray-500")}>
+              Recent / Active Designs
             </p>
-            <p className="text-2xl font-black mt-0.5">{activeStats.totalCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'total' ? "text-white/60" : "text-gray-400")}>
+            <p className="text-2xl font-black mt-0.5">{activeStats.recentCount}</p>
+            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
               Active requests needing output
             </span>
           </div>

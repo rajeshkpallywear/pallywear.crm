@@ -21,7 +21,7 @@ interface AccountsDashboardProps {
 
 export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin }: AccountsDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'total' | 'process' | 'hold' | 'completed'>('total');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -31,21 +31,21 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
-      return o.status === OrderStatus.HOLD;
+      return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
     if (selectedSection === 'completed') {
-      return o.status === OrderStatus.DELIVERED;
+      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
     }
     if (selectedSection === 'process') {
-      return o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD;
+      return o.status === OrderStatus.ACCOUNTS;
     }
-    return true;
+    return o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
   });
 
-  const totalOrdersCount = orders.length;
-  const processOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length;
-  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
-  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
+  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
+  const processOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
+  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
+  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
@@ -144,24 +144,24 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       {/* Summary Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
-          onClick={() => setSelectedSection('total')}
+          onClick={() => setSelectedSection('recent')}
           className={cn(
             "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
-            selectedSection === 'total' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
+            selectedSection === 'recent' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
           )}
         >
           <div className={cn(
             "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'total' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+            selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
           )}>
             <Package size={24} />
           </div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'total' ? "text-white/70" : "text-gray-500")}>
-              Total Orders
+            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'recent' ? "text-white/70" : "text-gray-500")}>
+              Recent Orders
             </p>
-            <p className="text-2xl font-black">{totalOrdersCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'total' ? "text-white/60" : "text-gray-400")}>
+            <p className="text-2xl font-black">{recentOrdersCount}</p>
+            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
               All received orders
             </span>
           </div>
