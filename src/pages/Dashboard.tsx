@@ -31,6 +31,9 @@ import DesignDashboard from '../components/DesignDashboard';
 import DigitizingDashboard from '../components/DigitizingDashboard';
 import DigitizerCommunication from '../components/DigitizerCommunication';
 import CalendarView from '../components/CalendarView';
+import TelecallerDashboard from '../components/TelecallerDashboard';
+import VendorDashboard from '../components/VendorDashboard';
+import OrdersChart from '../components/OrdersChart';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -551,79 +554,91 @@ export default function Dashboard() {
             </div>
           ) : activeTab === 'calendar' ? (
             <CalendarView user={user} />
-          ) : [UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
-            <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
-          ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
-            <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
-            <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
-          ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
-            <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
-            <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.DIGITIZER || user?.role === 'digitizer' ? (
-            <DigitizingDashboard orders={orders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
-          ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
-            <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
           ) : activeTab === 'digitizer_comm' ? (
             <DigitizerCommunication orders={orders} onUpdateOrder={handleUpdateOrder} />
+          ) : activeTab === 'dashboard' ? (
+            <div className="space-y-8">
+              {[UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
+                <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+              ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
+                <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+              ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
+                <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
+              ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
+                <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+              ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
+                <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+              ) : user?.role === UserRole.DIGITIZER || user?.role === 'digitizer' ? (
+                <DigitizingDashboard orders={orders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
+              ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
+                <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+              ) : user?.role === UserRole.TELECALLER || user?.role === 'telecaller' ? (
+                <TelecallerDashboard user={user} />
+              ) : user?.role === UserRole.VENDOR || user?.role === 'vendor' ? (
+                <VendorDashboard user={user} />
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {[
+                      { label: 'Total Leads', val: filteredLeads.length, icon: TrendingUp, color: 'text-white', bg: 'bg-brand-primary' },
+                      { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-brand-secondary' },
+                      { label: 'Conversion', val: `${filteredLeads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-white', bg: 'bg-brand-dark' }
+                    ].map((stat, i) => (
+                      <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className={`w-12 h-12 ${stat.bg} rounded-full flex items-center justify-center ${stat.color} shadow-lg shadow-brand-primary/10`}>
+                          <stat.icon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{stat.label}</p>
+                          <p className="text-2xl font-bold text-gray-900">{stat.val}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                      <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
+                      <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart data={filteredLeads.slice(0, 7).map(l => ({ ...l, displayValue: l.netTotal || l.totalOrderValue }))}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="name" hide />
+                            <YAxis hide />
+                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                            <Bar dataKey="displayValue" fill="#1A0B91" radius={[6, 6, 0, 0]} barSize={40} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                      <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
+                      <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <FunnelChart>
+                            <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                              <LabelList position="right" fill="#888" stroke="none" dataKey="name" />
+                            </Funnel>
+                          </FunnelChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                      <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+                      Marketing Dashboard
+                    </h2>
+                    <LeadManager />
+                  </div>
+                </>
+              )}
+              {/* Performance Graph under all dashboards */}
+              <OrdersChart orders={orders} />
+            </div>
           ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {[
-                  { label: 'Total Leads', val: filteredLeads.length, icon: TrendingUp, color: 'text-white', bg: 'bg-brand-primary' },
-                  { label: 'Total Forecast', val: `₹${totalForecast.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-brand-secondary' },
-                  { label: 'Conversion', val: `${filteredLeads.length > 0 ? Math.round((totalConverted / totalForecast || 0) * 100) : 0}%`, icon: Activity, color: 'text-white', bg: 'bg-brand-dark' }
-                ].map((stat, i) => (
-                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className={`w-12 h-12 ${stat.bg} rounded-full flex items-center justify-center ${stat.color} shadow-lg shadow-brand-primary/10`}>
-                      <stat.icon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{stat.label}</p>
-                      <p className="text-2xl font-bold text-gray-900">{stat.val}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-sm text-gray-800 mb-6">Value Overview</h3>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <BarChart data={filteredLeads.slice(0, 7).map(l => ({ ...l, displayValue: l.netTotal || l.totalOrderValue }))}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="name" hide />
-                        <YAxis hide />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                        <Bar dataKey="displayValue" fill="#1A0B91" radius={[6, 6, 0, 0]} barSize={40} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-sm text-gray-800 mb-6">Funnel</h3>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <FunnelChart>
-                        <Funnel dataKey="value" data={funnelData} isAnimationActive>
-                          <LabelList position="right" fill="#888" stroke="none" dataKey="name" />
-                        </Funnel>
-                      </FunnelChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
-                  Marketing Dashboard
-                </h2>
-                <LeadManager />
-              </div>
-            </>
+            <div className="text-gray-500">Page not found.</div>
           )}
         </div>
       </main>

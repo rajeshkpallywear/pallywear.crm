@@ -203,6 +203,31 @@ router.post('/leads/clear', async (req, res) => {
   }
 });
 
+router.patch('/leads/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status, assignedTo, assignedToName, isTaken, description } = req.body;
+  try {
+    const fields: string[] = [];
+    const params: any[] = [];
+    if (status !== undefined) { fields.push('status = ?'); params.push(status); }
+    if (assignedTo !== undefined) { fields.push('assignedTo = ?'); params.push(assignedTo); }
+    if (assignedToName !== undefined) { fields.push('assignedToName = ?'); params.push(assignedToName); }
+    if (isTaken !== undefined) { fields.push('isTaken = ?'); params.push(isTaken ? 1 : 0); }
+    if (description !== undefined) { fields.push('description = ?'); params.push(description); }
+    
+    if (fields.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+    
+    params.push(id);
+    await query(`UPDATE leads SET ${fields.join(', ')} WHERE id = ?`, params);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating lead status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ----------------------------------------------------
 // ORDERS ENDPOINTS
 // ----------------------------------------------------
@@ -504,6 +529,56 @@ router.patch('/leaves/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error updating leave:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ----------------------------------------------------
+// EXPENSE ENDPOINTS
+// ----------------------------------------------------
+
+router.get('/expenses', async (req, res) => {
+  try {
+    const { type } = req.query;
+    let sql = 'SELECT * FROM expenses';
+    const params: any[] = [];
+    if (type) {
+      sql += ' WHERE type = ?';
+      params.push(type);
+    }
+    sql += ' ORDER BY createdAt DESC';
+    const rows = await query(sql, params);
+    res.json({ success: true, expenses: rows });
+  } catch (error: any) {
+    console.error('Error fetching expenses:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/expenses', async (req, res) => {
+  const { id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month } = req.body;
+  if (!id || !type || !userId || !amount || !date) {
+    return res.status(400).json({ success: false, message: 'Missing required fields.' });
+  }
+  try {
+    await query(
+      'INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, type, userId, userName, vendorName || null, productName || null, qty || null, colour || null, size || null, amount, date, billFile || null, notes || null, recipientName || null, month || null, Date.now()]
+    );
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error creating expense:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/expenses/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await query('DELETE FROM expenses WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting expense:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -233,7 +233,30 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
-    // 7. Run migrations to modify column types to LONGTEXT to support large attachments/files
+    // 7. Create expenses table if not exists
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`expenses\` (
+        \`id\` varchar(50) NOT NULL,
+        \`type\` varchar(50) NOT NULL COMMENT 'vendor|office|salary|delivery|revenue',
+        \`userId\` varchar(50) NOT NULL,
+        \`userName\` varchar(100) NOT NULL,
+        \`vendorName\` varchar(200) DEFAULT NULL,
+        \`productName\` varchar(200) DEFAULT NULL,
+        \`qty\` varchar(50) DEFAULT NULL,
+        \`colour\` varchar(100) DEFAULT NULL,
+        \`size\` varchar(100) DEFAULT NULL,
+        \`amount\` decimal(12,2) NOT NULL DEFAULT 0,
+        \`date\` varchar(50) NOT NULL,
+        \`billFile\` LONGTEXT DEFAULT NULL,
+        \`notes\` text DEFAULT NULL,
+        \`recipientName\` varchar(200) DEFAULT NULL,
+        \`month\` varchar(50) DEFAULT NULL,
+        \`createdAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
+    // 8. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [
       "ALTER TABLE `orders` MODIFY COLUMN `details` LONGTEXT DEFAULT NULL",

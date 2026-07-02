@@ -5,27 +5,34 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { ClipboardCheck, CreditCard, ChevronRight, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock } from 'lucide-react';
+import { ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
+import VendorExpensePage from './VendorExpensePage';
+import OtherExpensePage from './OtherExpensePage';
+
+type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue';
 
 interface AccountsDashboardProps {
   orders: Order[];
   onUpdateOrder: (id: string, updates: Partial<Order>) => Promise<void>;
   onDeleteOrder?: (id: string) => void;
   isAdmin?: boolean;
+  user?: any;
 }
 
-export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin }: AccountsDashboardProps) {
+export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin, user }: AccountsDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [sidebarView, setSidebarView] = useState<SidebarView>('orders');
+  const [expenseExpanded, setExpenseExpanded] = useState(true);
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
 
@@ -134,8 +141,74 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
   };
 
+  const renderSidebarContent = () => {
+    if (sidebarView === 'vendor-expense') return <VendorExpensePage user={user} />;
+    if (sidebarView === 'office-expense') return <OtherExpensePage user={user} expenseType="office" title="Office Expense" description="Track day-to-day office expenses" icon={<Building2 size={20}/>} color="#8b5cf6" />;
+    if (sidebarView === 'salary') return <OtherExpensePage user={user} expenseType="salary" title="Salary" description="Monthly salary payments to staff" icon={<Users size={20}/>} color="#0ea5e9" extraFields="salary" />;
+    if (sidebarView === 'delivery-expense') return <OtherExpensePage user={user} expenseType="delivery" title="Delivery Expense" description="Courier and logistics costs" icon={<Truck size={20}/>} color="#f59e0b" extraFields="delivery" />;
+    if (sidebarView === 'revenue') return <OtherExpensePage user={user} expenseType="revenue" title="Revenue" description="Income and revenue records" icon={<IndianRupee size={20}/>} color="#16a34a" extraFields="revenue" />;
+    return null;
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="flex gap-0 min-h-screen -mx-6 -mt-6">
+      {/* Sidebar */}
+      <div className="w-60 shrink-0 bg-white border-r border-gray-100 shadow-sm flex flex-col py-6 px-3 gap-1">
+        <div className="px-3 mb-4">
+          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Accounts</h3>
+        </div>
+
+        {/* Orders */}
+        <button onClick={() => setSidebarView('orders')}
+          className={cn('flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'orders' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
+          <ClipboardCheck size={17} /> Orders
+        </button>
+
+        {/* Expense Section */}
+        <div className="mt-3">
+          <button onClick={() => setExpenseExpanded(!expenseExpanded)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 transition-all">
+            <span>Expense</span>
+            {expenseExpanded ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+          </button>
+          {expenseExpanded && (
+            <div className="ml-2 mt-1 space-y-0.5">
+              <button onClick={() => setSidebarView('vendor-expense')}
+                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'vendor-expense' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
+                <Store size={16}/> Vendor Expense
+              </button>
+              <button onClick={() => setSidebarView('office-expense')}
+                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'office-expense' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
+                <Building2 size={16}/> Office Expense
+              </button>
+              <button onClick={() => setSidebarView('salary')}
+                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'salary' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
+                <Users size={16}/> Salary
+              </button>
+              <button onClick={() => setSidebarView('delivery-expense')}
+                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'delivery-expense' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
+                <Truck size={16}/> Delivery
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Revenue Section */}
+        <div className="mt-3">
+          <p className="px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-400">Revenue</p>
+          <button onClick={() => setSidebarView('revenue')}
+            className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'revenue' ? 'bg-green-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
+            <IndianRupee size={16}/> Revenue
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-6 space-y-8 overflow-auto">
+        {sidebarView !== 'orders' ? (
+          <>{renderSidebarContent()}</>
+        ) : (
+        <>
       <div>
         <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Accounts Dashboard</h2>
         <p className="text-gray-500 mt-1">Review and attach billing documentation</p>
@@ -469,6 +542,9 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           }}
         />
       )}
+        </>
+      )}
+      </div>
     </div>
   );
 }

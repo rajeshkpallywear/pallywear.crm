@@ -61,7 +61,9 @@ const getRoleFromEmail = (email: string): UserRole => {
   if (lower.startsWith('order') || lower.startsWith('hub')) return UserRole.ORDER_MANAGEMENT;
   if (lower.startsWith('prod') || lower.startsWith('factory')) return UserRole.PRODUCTION;
   if (lower.startsWith('del') || lower.startsWith('delyvery')) return UserRole.DELIVERY;
-  return UserRole.STAFF;
+  if (lower.startsWith('tele')) return UserRole.TELECALLER;
+  if (lower.startsWith('vendor') || lower.startsWith('supp')) return UserRole.VENDOR;
+  return UserRole.MARKETING;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
