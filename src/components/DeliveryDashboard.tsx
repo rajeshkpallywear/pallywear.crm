@@ -82,108 +82,40 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
       </div>
 
       {/* Summary Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <button
-          onClick={() => setSelectedSection('recent')}
-          className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
-            selectedSection === 'recent' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
-          )}
-        >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
-          )}>
-            <Package size={24} />
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <button onClick={() => setSelectedSection('recent')} className={cn("relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden", selectedSection === 'recent' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]")}>
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100")}><Package size={22} /></div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'recent' ? "text-white/70" : "text-gray-500")}>
-              Recent Orders
-            </p>
-            <p className="text-2xl font-black text-gray-900 leading-tight">
-              <span className={cn(selectedSection === 'recent' ? "text-white" : "text-gray-900")}>{recentOrdersCount}</span>
-            </p>
-            <span className={cn("text-[9px] font-semibold block mt-1", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
-              All shipments
-            </span>
+            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'recent' ? "text-white/70" : "text-gray-400")}>Recent Orders</p>
+            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'recent' ? "text-white" : "text-gray-900")}>{recentOrdersCount}</p>
+            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>All shipments</span>
           </div>
         </button>
 
-        <button
-          onClick={() => setSelectedSection('process')}
-          className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
-            selectedSection === 'process' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
-          )}
-        >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100"
-          )}>
-            <Clock size={24} />
-          </div>
+        <button onClick={() => setSelectedSection('process')} className={cn("relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden", selectedSection === 'process' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]")}>
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100")}><Clock size={22} /></div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'process' ? "text-white/70" : "text-gray-500")}>
-              Process Orders
-            </p>
-            <p className="text-2xl font-black text-gray-900 leading-tight">
-              <span className={cn(selectedSection === 'process' ? "text-white" : "text-gray-900")}>{processOrdersCount}</span>
-            </p>
-            <span className={cn("text-[9px] font-semibold block mt-1", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
-              Active in-progress orders
-            </span>
+            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'process' ? "text-white/70" : "text-gray-400")}>Process Orders</p>
+            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'process' ? "text-white" : "text-gray-900")}>{processOrdersCount}</p>
+            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>Active in-progress orders</span>
           </div>
         </button>
 
-        <button
-          onClick={() => setSelectedSection('hold')}
-          className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
-            selectedSection === 'hold' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
-          )}
-        >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-600 group-hover:bg-red-100"
-          )}>
-            <AlertCircle size={24} />
-          </div>
+        <button onClick={() => setSelectedSection('hold')} className={cn("relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden", selectedSection === 'hold' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]")}>
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500 group-hover:bg-red-100")}><AlertCircle size={22} /></div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'hold' ? "text-white/70" : "text-gray-500")}>
-              Hold Orders
-            </p>
-            <p className="text-2xl font-black text-gray-900 leading-tight">
-              <span className={cn(selectedSection === 'hold' ? "text-white" : "text-gray-900")}>{holdOrdersCount}</span>
-            </p>
-            <span className={cn("text-[9px] font-semibold block mt-1", selectedSection === 'hold' ? "text-white/60" : "text-gray-400")}>
-              Blocked shipments
-            </span>
+            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'hold' ? "text-white/70" : "text-gray-400")}>Hold Orders</p>
+            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'hold' ? "text-white" : "text-gray-900")}>{holdOrdersCount}</p>
+            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'hold' ? "text-white/60" : "text-gray-400")}>Blocked shipments</span>
           </div>
         </button>
 
-        <button
-          onClick={() => setSelectedSection('completed')}
-          className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer",
-            selectedSection === 'completed' ? "bg-brand-primary text-white border-brand-primary shadow-xl" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/50"
-          )}
-        >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600 group-hover:bg-green-100"
-          )}>
-            <TrendingUp size={24} />
-          </div>
+        <button onClick={() => setSelectedSection('completed')} className={cn("relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden", selectedSection === 'completed' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]")}>
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600 group-hover:bg-green-100")}><TrendingUp size={22} /></div>
           <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'completed' ? "text-white/70" : "text-gray-500")}>
-              Completed Orders
-            </p>
-            <p className="text-2xl font-black text-gray-900 leading-tight">
-              <span className={cn(selectedSection === 'completed' ? "text-white" : "text-gray-900")}>{completedOrdersCount}</span>
-            </p>
-            <span className={cn("text-[9px] font-semibold block mt-1", selectedSection === 'completed' ? "text-white/60" : "text-gray-400")}>
-              Successfully Delivered
-            </span>
+            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'completed' ? "text-white/70" : "text-gray-400")}>Completed Orders</p>
+            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'completed' ? "text-white" : "text-gray-900")}>{completedOrdersCount}</p>
+            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'completed' ? "text-white/60" : "text-gray-400")}>Successfully Delivered</span>
           </div>
         </button>
       </div>

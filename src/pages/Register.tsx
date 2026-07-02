@@ -13,7 +13,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<UserRole>(UserRole.STAFF);
+  const [role, setRole] = useState<UserRole>(UserRole.MARKETING);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { register, googleLogin, logout } = useAuth();
@@ -145,12 +145,12 @@ export default function Register() {
               className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm bg-white"
             >
               <option value={UserRole.MARKETING}>Marketing</option>
-              <option value={UserRole.STAFF}>Staff (Front Desk)</option>
               <option value={UserRole.DESIGNER}>Designer (Art Studio)</option>
               <option value={UserRole.ACCOUNTS}>Accounts</option>
               <option value={UserRole.ORDER_MANAGEMENT}>Order Management</option>
               <option value={UserRole.PRODUCTION}>Production (Factory)</option>
               <option value={UserRole.DIGITIZER}>Digitizing & Embroidery</option>
+              <option value={UserRole.DELIVERY}>Delivery</option>
               <option value={UserRole.ADMIN}>Administrator</option>
             </select>
           </div>
