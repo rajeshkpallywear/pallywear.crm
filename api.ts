@@ -262,8 +262,15 @@ router.get('/orders', async (req, res) => {
       staffPdfs: safeJSONParse(r.staffPdfs, []),
       accountsAttachments: safeJSONParse(r.accountsAttachments, []),
       orderManagementAttachments: safeJSONParse(r.orderManagementAttachments, []),
+      designAttachments: safeJSONParse(r.designAttachments, []),
+      machineFiles: safeJSONParse(r.machineFiles, []),
       createdAt: Number(r.createdAt || 0),
       updatedAt: Number(r.updatedAt || 0),
+      designName: r.designName || '',
+      designAmount: Number(r.designAmount || 0),
+      designGst: Number(r.designGst || 0),
+      designDiscount: Number(r.designDiscount || 0),
+      designNotes: r.designNotes || '',
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -288,7 +295,8 @@ router.post('/orders', async (req, res) => {
         `UPDATE orders SET customerName=?, customerCompany=?, customerPhone=?, customerAddress=?, 
         category=?, quantity=?, details=?, sizeBreakdown=?, totalAmount=?, advancePay=?, balanceAmount=?, 
         gstAmount=?, discountAmount=?, shippingCharges=?, status=?, isUrgent=?, notes=?, staffImages=?, 
-        staffPdfs=?, accountsAttachments=?, orderManagementAttachments=?, updatedAt=? WHERE id=?`,
+        staffPdfs=?, accountsAttachments=?, orderManagementAttachments=?, designAttachments=?, machineFiles=?,
+        designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=?, updatedAt=? WHERE id=?`,
         [
           customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -296,7 +304,9 @@ router.post('/orders', async (req, res) => {
           financials.gstAmount, financials.discountAmount, financials.shippingCharges,
           order.status, order.isUrgent ? 1 : 0, order.notes, JSON.stringify(order.staffImages || []),
           JSON.stringify(order.staffPdfs || []), JSON.stringify(order.accountsAttachments || []),
-          JSON.stringify(order.orderManagementAttachments || []), Date.now(), order.id
+          JSON.stringify(order.orderManagementAttachments || []), JSON.stringify(order.designAttachments || []),
+          JSON.stringify(order.machineFiles || []), order.designName || null, Number(order.designAmount || 0),
+          Number(order.designGst || 0), Number(order.designDiscount || 0), order.designNotes || null, Date.now(), order.id
         ]
       );
     } else {
@@ -304,8 +314,9 @@ router.post('/orders', async (req, res) => {
         `INSERT INTO orders (id, customerName, customerCompany, customerPhone, customerAddress, 
         category, quantity, details, sizeBreakdown, totalAmount, advancePay, balanceAmount, 
         gstAmount, discountAmount, shippingCharges, status, isUrgent, notes, staffImages, 
-        staffPdfs, accountsAttachments, orderManagementAttachments, createdAt, updatedAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        staffPdfs, accountsAttachments, orderManagementAttachments, designAttachments, machineFiles,
+        designName, designAmount, designGst, designDiscount, designNotes, createdAt, updatedAt) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.id, customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -313,7 +324,9 @@ router.post('/orders', async (req, res) => {
           financials.gstAmount, financials.discountAmount, financials.shippingCharges,
           order.status, order.isUrgent ? 1 : 0, order.notes, JSON.stringify(order.staffImages || []),
           JSON.stringify(order.staffPdfs || []), JSON.stringify(order.accountsAttachments || []),
-          JSON.stringify(order.orderManagementAttachments || []), Date.now(), Date.now()
+          JSON.stringify(order.orderManagementAttachments || []), JSON.stringify(order.designAttachments || []),
+          JSON.stringify(order.machineFiles || []), order.designName || null, Number(order.designAmount || 0),
+          Number(order.designGst || 0), Number(order.designDiscount || 0), order.designNotes || null, Date.now(), Date.now()
         ]
       );
     }
@@ -352,6 +365,9 @@ router.get('/invoices', async (req, res) => {
       total: Number(r.total || 0),
       amountPaid: Number(r.amountPaid || 0),
       balanceDue: Number(r.balanceDue || 0),
+      designAmount: Number(r.designAmount || 0),
+      designGst: Number(r.designGst || 0),
+      designDiscount: Number(r.designDiscount || 0),
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -374,14 +390,16 @@ router.post('/invoices', async (req, res) => {
         discountTotal=?, shippingCost=?, salesTax=?, total=?, amountPaid=?, balanceDue=?, notes=?, 
         paymentInstructions=?, paymentMethod=?, productType=?, productSubCategory=?, customerPhoneNumber=?, 
         companySignature=?, bankName=?, bankAccountName=?, bankIfscCode=?, bankAccountNumber=?, createdBy=?, 
-        createdByName=?, leadId=? WHERE id=?`,
+        createdByName=?, leadId=?, designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=? WHERE id=?`,
         [
           inv.invoiceNumber, inv.date, inv.createdAt, inv.dueDate, inv.billToName, inv.billToEmail,
           inv.billToPhone, inv.billToAddress, inv.shipToAddress, inv.trackingNumber, JSON.stringify(inv.items || []),
           inv.subtotal, inv.discountTotal, inv.shippingCost, inv.salesTax, inv.total, inv.amountPaid, inv.balanceDue,
           inv.notes, inv.paymentInstructions, inv.paymentMethod, inv.productType, inv.productSubCategory,
           inv.customerPhoneNumber, inv.companySignature, inv.bankName, inv.bankAccountName, inv.bankIfscCode,
-          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId, inv.id
+          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId,
+          inv.designName || null, Number(inv.designAmount || 0), Number(inv.designGst || 0), Number(inv.designDiscount || 0),
+          inv.designNotes || null, inv.id
         ]
       );
     } else {
@@ -390,15 +408,18 @@ router.post('/invoices', async (req, res) => {
         billToPhone, billToAddress, shipToAddress, trackingNumber, items, subtotal, discountTotal, 
         shippingCost, salesTax, total, amountPaid, balanceDue, notes, paymentInstructions, 
         paymentMethod, productType, productSubCategory, customerPhoneNumber, companySignature, 
-        bankName, bankAccountName, bankIfscCode, bankAccountNumber, createdBy, createdByName, leadId) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        bankName, bankAccountName, bankIfscCode, bankAccountNumber, createdBy, createdByName, leadId,
+        designName, designAmount, designGst, designDiscount, designNotes) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           inv.id, inv.invoiceNumber, inv.date, inv.createdAt, inv.dueDate, inv.billToName, inv.billToEmail,
           inv.billToPhone, inv.billToAddress, inv.shipToAddress, inv.trackingNumber, JSON.stringify(inv.items || []),
           inv.subtotal, inv.discountTotal, inv.shippingCost, inv.salesTax, inv.total, inv.amountPaid, inv.balanceDue,
           inv.notes, inv.paymentInstructions, inv.paymentMethod, inv.productType, inv.productSubCategory,
           inv.customerPhoneNumber, inv.companySignature, inv.bankName, inv.bankAccountName, inv.bankIfscCode,
-          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId
+          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId,
+          inv.designName || null, Number(inv.designAmount || 0), Number(inv.designGst || 0), Number(inv.designDiscount || 0),
+          inv.designNotes || null
         ]
       );
     }

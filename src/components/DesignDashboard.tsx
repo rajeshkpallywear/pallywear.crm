@@ -73,6 +73,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Local File Assemble State
   const [designFiles, setDesignFiles] = useState<string[]>([]);
   const [machineFiles, setMachineFiles] = useState<string[]>([]);
+  const [designNotesText, setDesignNotesText] = useState('');
 
   // Local Conversations List (Staff Conversations)
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -331,6 +332,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         setSelectedOrder(fullOrder);
         setDesignFiles(fullOrder.designAttachments || []);
         setMachineFiles(fullOrder.machineFiles || []);
+        setDesignNotesText(fullOrder.designNotes || '');
       }
     } else {
       setSelectedItemIdForStaffChat(item.id);
@@ -338,13 +340,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
   };
 
-  const handleSendToOrderManagement = async () => {
+  const handleSendToMarketing = async () => {
     if (!selectedOrder || isProcessing) return;
 
     const nextOrderState = {
       ...selectedOrder,
       designAttachments: designFiles,
-      machineFiles: machineFiles
+      machineFiles: machineFiles,
+      designNotes: designNotesText
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
@@ -355,15 +358,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     setIsProcessing(true);
     try {
       await onUpdateOrder(selectedOrder.id, {
-        status: OrderStatus.ORDER_MANAGEMENT,
+        status: OrderStatus.PENDING,
         designAttachments: designFiles,
         machineFiles: machineFiles,
+        designNotes: designNotesText,
         updatedAt: Date.now()
       });
       setSelectedOrder(null);
       setDesignFiles([]);
       setMachineFiles([]);
-      alert("Success: Artwork output submitted and order sent to Order Management.");
+      setDesignNotesText('');
+      alert("Success: Artwork output submitted and order sent to Marketing for review.");
     } catch (e) {
       console.error(e);
       alert("An error occurred while moving the order.");
@@ -581,113 +586,121 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       </div>
 
       {/* Summary Columns Counters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card: Recent */}
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer border-dashed",
+            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
             selectedSection === 'recent'
-              ? "bg-black text-white border-black shadow-lg"
-              : "bg-white border-gray-200 hover:border-gray-400 shadow-sm"
+              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
+              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
           )}
         >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'recent' ? "bg-white/10 text-white" : "bg-gray-100 text-gray-700"
-          )}>
-            <Package size={24} />
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
+              selectedSection === 'recent' ? "bg-white/10 text-white" : "bg-blue-50 text-blue-600"
+            )}>
+              <Package size={22} />
+            </div>
+            <div className="text-right">
+              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'recent' ? "text-white/70" : "text-gray-400")}>
+                Recent Orders
+              </p>
+              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.recentCount}</p>
+            </div>
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'recent' ? "text-white/70" : "text-gray-500")}>
-              Recent / Active Designs
-            </p>
-            <p className="text-2xl font-black mt-0.5">{activeStats.recentCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
-              Active requests needing output
-            </span>
-          </div>
+          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
+            All received intakes
+          </span>
         </button>
 
         {/* Card: Process */}
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer border-dashed",
+            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
             selectedSection === 'process'
-              ? "bg-black text-white border-black shadow-lg"
-              : "bg-white border-gray-200 hover:border-gray-400 shadow-sm"
+              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
+              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
           )}
         >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'process' ? "bg-white/10 text-white" : "bg-indigo-50 text-indigo-600"
-          )}>
-            <Clock size={24} />
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
+              selectedSection === 'process' ? "bg-white/10 text-white" : "bg-indigo-50 text-indigo-600"
+            )}>
+              <Clock size={22} />
+            </div>
+            <div className="text-right">
+              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'process' ? "text-white/70" : "text-gray-400")}>
+                Process Orders
+              </p>
+              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.processCount}</p>
+            </div>
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'process' ? "text-white/70" : "text-gray-500")}>
-              Process Designs
-            </p>
-            <p className="text-2xl font-black mt-0.5">{activeStats.processCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
-              Active in-progress designs
-            </span>
-          </div>
+          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
+            Active in-progress orders
+          </span>
         </button>
 
         {/* Card: Hold */}
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer border-dashed",
+            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
             selectedSection === 'hold'
-              ? "bg-red-600 text-white border-red-600 shadow-lg"
-              : "bg-white border-gray-200 hover:border-red-400 shadow-sm"
+              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
+              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
           )}
         >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'hold' ? "bg-white/10 text-white" : "bg-red-50 text-red-600"
-          )}>
-            <AlertCircle size={24} />
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
+              selectedSection === 'hold' ? "bg-white/10 text-white" : "bg-red-50 text-red-600"
+            )}>
+              <AlertCircle size={22} />
+            </div>
+            <div className="text-right">
+              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'hold' ? "text-white/70" : "text-gray-400")}>
+                Hold Orders
+              </p>
+              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.holdCount}</p>
+            </div>
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'hold' ? "text-white/70" : "text-gray-500")}>
-              On Hold Designs
-            </p>
-            <p className="text-2xl font-black mt-0.5">{activeStats.holdCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'hold' ? "text-white/60" : "text-gray-400")}>
-              Blocked pending verification
-            </span>
-          </div>
+          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'hold' ? "text-white/60" : "text-gray-400")}>
+            Awaiting clarification
+          </span>
         </button>
 
         {/* Card: Completed */}
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group cursor-pointer border-dashed",
+            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
             selectedSection === 'completed'
-              ? "bg-green-600 text-white border-green-600 shadow-lg"
-              : "bg-white border-gray-200 hover:border-green-400 shadow-sm"
+              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
+              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
           )}
         >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center shadow-inner transition-colors",
-            selectedSection === 'completed' ? "bg-white/10 text-white" : "bg-green-50 text-green-600"
-          )}>
-            <CheckCircle size={24} />
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
+              selectedSection === 'completed' ? "bg-white/10 text-white" : "bg-green-50 text-green-600"
+            )}>
+              <CheckCircle size={22} />
+            </div>
+            <div className="text-right">
+              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'completed' ? "text-white/70" : "text-gray-400")}>
+                Completed Orders
+              </p>
+              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.completedCount}</p>
+            </div>
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-widest", selectedSection === 'completed' ? "text-white/70" : "text-gray-500")}>
-              Completed Designs
-            </p>
-            <p className="text-2xl font-black mt-0.5">{activeStats.completedCount}</p>
-            <span className={cn("text-[9px] font-semibold block mt-0.5", selectedSection === 'completed' ? "text-white/60" : "text-gray-400")}>
-              Traces and machine files delivered
-            </span>
-          </div>
+          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'completed' ? "text-white/60" : "text-gray-400")}>
+            Delivered and finalized
+          </span>
         </button>
       </div>
 
@@ -892,7 +905,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
                     <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5 border-b border-gray-200 pb-2">
                       <User size={13} />
-                      Customer Requirements Spec
+                      Order Details
                     </h4>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-black text-sm shadow-sm">
@@ -900,34 +913,19 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo.name}</p>
-                        <p className="text-xs text-gray-500">{selectedOrder.customerInfo.phone}</p>
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Specifications Checklist</p>
-                      <p className="text-xs font-semibold text-gray-700 leading-relaxed bg-white p-3 rounded-lg border border-gray-100 italic">
-                        "{selectedOrder.notes || 'No notes specified.'}"
-                      </p>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Notes / Instructions</label>
+                      <textarea
+                        value={designNotesText}
+                        onChange={(e) => setDesignNotesText(e.target.value)}
+                        rows={4}
+                        placeholder="Write down any notes or details for the design here..."
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none"
+                      />
                     </div>
-
-                    {/* Sizing & model specs */}
-                    {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Model Dimensions & Colors</p>
-                        <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 text-xs">
-                          {selectedOrder.sizeBreakdown.map((item, i) => (
-                            <div key={i} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-150">
-                              <div>
-                                <span className="font-bold text-gray-950 pr-2">{item.size}</span>
-                                <span className="text-gray-500 font-medium">{item.colour || 'Default'}</span>
-                              </div>
-                              <span className="font-black italic text-brand-primary">Qty x {item.quantity}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </section>
 
                   {/* Reference Attachments from Sales Desk */}
@@ -1159,10 +1157,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               {/* Primary Move forward command */}
               <button
                 disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD || (designFiles.length === 0 && machineFiles.length === 0)}
-                onClick={handleSendToOrderManagement}
+                onClick={handleSendToMarketing}
                 className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                {isProcessing ? 'Processing files...' : 'Finish & Send to Order Management'}
+                {isProcessing ? 'Processing files...' : 'Finish & Send to Marketing'}
                 <CheckCircle size={15} />
               </button>
             </div>

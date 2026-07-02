@@ -269,6 +269,16 @@ export async function initDB() {
       "ALTER TABLE `orders` MODIFY COLUMN `designAttachments` LONGTEXT DEFAULT NULL",
       "ALTER TABLE `orders` MODIFY COLUMN `machineFiles` LONGTEXT DEFAULT NULL",
       "ALTER TABLE `invoices` MODIFY COLUMN `items` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `designName` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `designAmount` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `orders` ADD COLUMN `designGst` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `orders` ADD COLUMN `designDiscount` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `orders` ADD COLUMN `designNotes` text DEFAULT NULL",
+      "ALTER TABLE `invoices` ADD COLUMN `designName` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `invoices` ADD COLUMN `designAmount` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `invoices` ADD COLUMN `designGst` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `invoices` ADD COLUMN `designDiscount` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `invoices` ADD COLUMN `designNotes` text DEFAULT NULL",
     ];
 
     for (const q of alterQueries) {

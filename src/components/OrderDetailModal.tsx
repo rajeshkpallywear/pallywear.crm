@@ -461,20 +461,52 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                       </div>
                     </div>
                   )}
-                  {order.designAttachments?.length > 0 && (
+                  {order.designAttachments && order.designAttachments.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-bold text-purple-500 uppercase mb-2">Art Studio Files</p>
-                      <div className="flex flex-wrap gap-2">
-                        {order.designAttachments.map((file, i) => (
-                          <div
-                            key={i}
-                            onClick={() => setViewingImage(file)}
-                            className="w-16 h-16 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-purple-500"
-                          >
-                            {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
-                          </div>
-                        ))}
+                      <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-2">Design Output / Deliverables</p>
+                      <div className="flex flex-wrap gap-3">
+                        {order.designAttachments.map((file, i) => {
+                          const isImage = file.startsWith('data:image/') || file.includes('image/');
+                          return (
+                            <div key={i} className="flex flex-col gap-2 p-2 bg-purple-50/50 rounded-2xl border border-purple-100 group relative">
+                              <div className="w-16 h-16 rounded-xl overflow-hidden relative bg-white flex items-center justify-center border border-purple-200">
+                                {isImage ? (
+                                  <img src={file} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="flex flex-col items-center gap-1 text-purple-600">
+                                    <FileText size={20} />
+                                    <span className="text-[7px] font-black uppercase">ZIP / FILE</span>
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                  {isImage && (
+                                    <button
+                                      onClick={() => setViewingImage(file)}
+                                      className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all border-none cursor-pointer"
+                                    >
+                                      <ZoomIn size={12} />
+                                    </button>
+                                  )}
+                                  <a
+                                    href={file}
+                                    download={`Design_Output_${i + 1}_Order_${order.id.slice(-6)}`}
+                                    className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer"
+                                  >
+                                    <Download size={12} />
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
+                    </div>
+                  )}
+
+                  {order.designNotes && (
+                    <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-left">
+                      <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest block mb-1">Design Studio Notes</span>
+                      <p className="text-xs font-semibold text-purple-900 italic">"{order.designNotes}"</p>
                     </div>
                   )}
                   {order.machineFiles?.length > 0 && (

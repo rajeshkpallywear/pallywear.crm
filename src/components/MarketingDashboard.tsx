@@ -130,10 +130,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       } else {
         await onCreateOrder({
           ...finalOrderData,
-          status: OrderStatus.ACCOUNTS,
+          status: OrderStatus.DESIGN,
           createdAt: Date.now(),
         });
-        alert("Success: Order created and automatically sent to Accounts.");
+        alert("Success: Order created and sent to Design.");
       }
       setIsCreating(false);
       setEditingOrderId(null);

@@ -66,6 +66,11 @@ export interface Invoice {
   createdBy: string;
   createdByName: string;
   leadId: string;
+  designName?: string;
+  designAmount?: number;
+  designGst?: number;
+  designDiscount?: number;
+  designNotes?: string;
 }
 
 export enum UserRole {
@@ -150,6 +155,11 @@ export interface Order {
   assignedDesigner?: string;
   createdBy?: string;
   createdByName?: string;
+  designName?: string;
+  designAmount?: number;
+  designGst?: number;
+  designDiscount?: number;
+  designNotes?: string;
 }
 
 export interface InventoryMovement {

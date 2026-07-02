@@ -33,12 +33,17 @@ export default function InvoiceManager() {
         quantity: 1,
         taxRate: 5,
         shippingCost: 0,
-        discountRate: 20,
+        discountRate: 0,
         companySignature: 'Rajesh K.',
         bankName: 'HDFC BANK',
         bankAccountName: 'PALLYWEAR PVT LTD',
         bankIfscCode: 'HDFC0008964',
         bankAccountNumber: '50202110682524',
+        designName: '',
+        designAmount: 0,
+        designGst: 0,
+        designDiscount: 0,
+        designNotes: '',
     });
 
     const products = ['tshirt', 'jersey', 'hoodie', 'bottle', 'pen', 'mug', 'diary', 'keychain', 'cap', 'corporate gift', 'paint', 'shirt'];
@@ -132,10 +137,13 @@ export default function InvoiceManager() {
         e.preventDefault();
         if (!user) return;
 
-        const subtotal = newInvoiceData.unitPrice * newInvoiceData.quantity;
-        const discountTotal = (subtotal * newInvoiceData.discountRate) / 100;
-        const itemTotalAfterDiscount = subtotal - discountTotal;
-        const salesTax = (itemTotalAfterDiscount * newInvoiceData.taxRate) / 100;
+        const subtotal = (newInvoiceData.unitPrice * newInvoiceData.quantity) + (Number(newInvoiceData.designAmount) || 0);
+        const discountTotal = (Number(newInvoiceData.discountRate) || 0) + (Number(newInvoiceData.designDiscount) || 0);
+        const itemTotalAfterDiscount = Math.max(0, subtotal - discountTotal);
+        // We calculate GST on the unit price portion and design portion
+        const baseGst = ((newInvoiceData.unitPrice * newInvoiceData.quantity - (Number(newInvoiceData.discountRate) || 0)) * newInvoiceData.taxRate) / 100;
+        const designGstVal = ((Number(newInvoiceData.designAmount) - Number(newInvoiceData.designDiscount)) * Number(newInvoiceData.designGst)) / 100;
+        const salesTax = Math.max(0, baseGst) + Math.max(0, designGstVal);
         const shippingCost = newInvoiceData.shippingCost;
         const total = itemTotalAfterDiscount + salesTax + shippingCost;
 
@@ -160,7 +168,7 @@ export default function InvoiceManager() {
                     quantity: newInvoiceData.quantity,
                     tax: newInvoiceData.taxRate,
                     discount: newInvoiceData.discountRate,
-                    amount: subtotal
+                    amount: newInvoiceData.unitPrice * newInvoiceData.quantity
                 }
             ],
             subtotal,
@@ -183,6 +191,11 @@ export default function InvoiceManager() {
             bankAccountName: newInvoiceData.bankAccountName || 'PALLYWEAR PVT LTD',
             bankIfscCode: newInvoiceData.bankIfscCode || 'HDFC0008964',
             bankAccountNumber: newInvoiceData.bankAccountNumber || '50202110682524',
+            designName: newInvoiceData.designName,
+            designAmount: Number(newInvoiceData.designAmount),
+            designGst: Number(newInvoiceData.designGst),
+            designDiscount: Number(newInvoiceData.designDiscount),
+            designNotes: newInvoiceData.designNotes,
         };
 
         try {
@@ -204,12 +217,17 @@ export default function InvoiceManager() {
                 quantity: 1,
                 taxRate: 5,
                 shippingCost: 0,
-                discountRate: 20,
+                discountRate: 0,
                 companySignature: 'Rajesh K.',
                 bankName: 'HDFC BANK',
                 bankAccountName: 'PALLYWEAR PVT LTD',
                 bankIfscCode: 'HDFC0008964',
                 bankAccountNumber: '50202110682524',
+                designName: '',
+                designAmount: 0,
+                designGst: 0,
+                designDiscount: 0,
+                designNotes: '',
             });
         } catch (err: any) {
             console.error("Failed to save invoice:", err);
@@ -466,7 +484,7 @@ export default function InvoiceManager() {
                                                 </select>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount (%)</label>
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount (₹)</label>
                                                 <input
                                                     type="number"
                                                     value={newInvoiceData.discountRate}
@@ -474,6 +492,62 @@ export default function InvoiceManager() {
                                                     className="w-full bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                     placeholder="0"
                                                 />
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t border-gray-100 pt-4 mt-2">
+                                            <h4 className="text-xs font-black uppercase tracking-widest text-brand-primary mb-3">Design Services</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1.5 col-span-2">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Scope / Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newInvoiceData.designName}
+                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designName: e.target.value })}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                        placeholder="e.g. Logo vectorization / Custom art setup"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Charge (₹)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newInvoiceData.designAmount}
+                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designAmount: Number(e.target.value) })}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design GST (%)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newInvoiceData.designGst}
+                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designGst: Number(e.target.value) })}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                        placeholder="18"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Discount (₹)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newInvoiceData.designDiscount}
+                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designDiscount: Number(e.target.value) })}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5 col-span-2">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Notes</label>
+                                                    <textarea
+                                                        value={newInvoiceData.designNotes}
+                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designNotes: e.target.value })}
+                                                        rows={2}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none resize-none"
+                                                        placeholder="Internal designer guidance notes..."
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
