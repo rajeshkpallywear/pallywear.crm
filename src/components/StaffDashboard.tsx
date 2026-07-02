@@ -117,7 +117,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
     };
 
     if (!isOrderSizeValid(finalOrderData)) {
-      alert("Error: Total order data limit exceeded (Max 1MB). Please use fewer images or smaller files. Your current attempt is too large for the cloud.");
+      alert("Error: Total order data limit exceeded (Max 100MB). Please use fewer images or smaller files. Your current attempt is too large for the cloud.");
       return;
     }
 
@@ -141,7 +141,7 @@ export default function StaffDashboard({ orders, inventory = [], onCreateOrder, 
       console.error("Order submission failed:", error);
       const errorMessage = error?.message || "";
       if (errorMessage.includes("ORDER_TOO_LARGE") || errorMessage.includes("exceeds the maximum allowed size") || errorMessage.includes("size")) {
-        alert("Failed to submit: Attachments are too large for the database (Max 1MB per order total). Please use fewer or smaller files.");
+        alert("Failed to submit: Attachments are too large for the database (Max 100MB per order total). Please use fewer or smaller files.");
       } else {
         alert("Failed to submit order. Please check all fields. Error: " + (errorMessage.slice(0, 100)));
       }

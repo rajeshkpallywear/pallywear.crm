@@ -216,6 +216,29 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // 6. Run migrations to modify column types to LONGTEXT to support large attachments/files
+    console.log('Running schema migrations...');
+    const alterQueries = [
+      "ALTER TABLE `orders` MODIFY COLUMN `details` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `sizeBreakdown` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `staffImages` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `staffPdfs` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `staffAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `accountsAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `orderManagementAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `designAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` MODIFY COLUMN `machineFiles` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `invoices` MODIFY COLUMN `items` LONGTEXT DEFAULT NULL",
+    ];
+
+    for (const q of alterQueries) {
+      try {
+        await pool.execute(q);
+      } catch (err: any) {
+        console.warn(`Migration query failed or not needed: ${q}. Error: ${err.message}`);
+      }
+    }
+
     console.log('Database initialization completed successfully.');
   } catch (error) {
     console.error('Error initializing database:', error);

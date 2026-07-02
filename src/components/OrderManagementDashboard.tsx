@@ -102,7 +102,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 1MB). Please remove some existing attachments before adding management files.");
+      alert("Error: Total order data limit exceeded (Max 100MB). Please remove some existing attachments before adding management files.");
       return;
     }
 
@@ -120,7 +120,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     } catch (e: any) {
       console.error("Order Management process failed:", e);
       if (e?.message?.includes("exceeds the maximum allowed size")) {
-        alert("Failed to share: The total attachment size is too large for Firestore (Limit: 1MB total). Please remove some images or use smaller files.");
+        alert("Failed to share: The total attachment size is too large for database (Limit: 100MB total). Please remove some images or use smaller files.");
       } else {
         alert("Failed to share order. Error: " + (e?.message?.slice(0, 50)));
       }
@@ -266,7 +266,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 1MB total across all cloud-saved attachments on this order). Please use smaller or fewer images, or clear some existing files first.");
+      alert("Error: Total order data limit exceeded (Max 100MB total across all cloud-saved attachments on this order). Please use smaller or fewer images, or clear some existing files first.");
       return;
     }
 
@@ -398,7 +398,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 1MB total across all cloud-saved attachments on this order). Please use smaller or fewer images, or clear some existing files first.");
+      alert("Error: Total order data limit exceeded (Max 100MB total across all cloud-saved attachments on this order). Please use smaller or fewer images, or clear some existing files first.");
       return;
     }
 

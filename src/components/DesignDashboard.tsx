@@ -346,7 +346,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 1MB). Please use fewer design files or smaller images.");
+      alert("Error: Total order data limit exceeded (Max 100MB). Please use fewer design files or smaller images.");
       return;
     }
 

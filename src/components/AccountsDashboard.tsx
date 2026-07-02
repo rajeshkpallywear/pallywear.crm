@@ -53,7 +53,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 1MB). Please reduce the number of attachments or compress images in accounts.");
+      alert("Error: Total order data limit exceeded (Max 100MB). Please reduce the number of attachments or compress images in accounts.");
       return;
     }
 
@@ -70,7 +70,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     } catch (e: any) {
       console.error(e);
       if (e?.message?.includes("exceeds the maximum allowed size")) {
-        alert("Action failed: The order document is now too large (Max 1MB). Please reduce the number of attachments.");
+        alert("Action failed: The order document is now too large (Max 100MB). Please reduce the number of attachments.");
       } else {
         alert("An error occurred while moving the order.");
       }

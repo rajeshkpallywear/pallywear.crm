@@ -50,7 +50,7 @@ export default function Dashboard() {
       await updateOrder(id, updates);
     } catch (error) {
       console.error("Failed to update order:", error);
-      alert("Sync failed: Data might be too large (Max 1MB per order in current setup). Try using smaller images.");
+      alert("Sync failed: Data might be too large (Max 100MB per order in current setup). Try using smaller images.");
       throw error;
     }
   };

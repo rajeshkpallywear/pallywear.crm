@@ -27,7 +27,7 @@ export function calculateOrderSize(order: any): number {
 export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
   const currentSize = calculateOrderSize(order);
   const totalSize = currentSize + extraSize;
-  const limit = 1000000; // 1MB Firestore limit
+  const limit = 100000000; // 100MB MySQL limit
 
   if (totalSize > limit) {
     console.warn(`Order size validation failed: ${(totalSize / 1024).toFixed(0)}KB exceeds ${limit / 1024}KB limit`);
