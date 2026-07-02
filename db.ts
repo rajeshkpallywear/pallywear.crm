@@ -15,7 +15,8 @@ const pool = mysql.createPool({
 });
 
 export async function query(sql: string, params?: any[]) {
-  const [rows] = await pool.execute(sql, params);
+  const sanitizedParams = params ? params.map(p => p === undefined ? null : p) : undefined;
+  const [rows] = await pool.execute(sql, sanitizedParams);
   return rows;
 }
 
