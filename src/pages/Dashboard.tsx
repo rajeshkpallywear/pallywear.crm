@@ -4,7 +4,8 @@ import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
-  ChevronLeft, ChevronRight, Menu, Plus, MessageSquare, Calendar as CalendarIcon
+  ChevronLeft, ChevronRight, Menu, Plus, MessageSquare, Calendar as CalendarIcon,
+  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -43,6 +44,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue'>('orders');
+  const [expenseExpanded, setExpenseExpanded] = React.useState(true);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -225,7 +228,7 @@ export default function Dashboard() {
           )}
 
           {/* Department Portals */}
-          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, 'user', 'admin'].includes(user.role as any) && (
+          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, UserRole.ACCOUNTS, 'accounts', 'user', 'admin'].includes(user.role as any) && (
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
               <p className={cn(
                 "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
@@ -242,6 +245,98 @@ export default function Dashboard() {
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{String(user.role).replace('_', ' ')} Portal</span>}
               </button>
+            </div>
+          )}
+
+          {/* Accounts Portal Sidebar Navigation */}
+          {(user?.role === UserRole.ACCOUNTS || user?.role === 'accounts') && (
+            <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
+              <p className={cn(
+                "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",
+                isSidebarCollapsed && "md:hidden"
+              )}>Accounts Portal</p>
+              
+              <div className="space-y-1">
+                {/* Orders */}
+                <button
+                  onClick={() => {
+                    selectTab('dashboard');
+                    setAccountsSidebarView('orders');
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
+                    activeTab === 'dashboard' && accountsSidebarView === 'orders' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
+                  )}
+                  title={isSidebarCollapsed ? "Orders" : ""}
+                >
+                  <ClipboardCheck className="w-4 h-4 flex-shrink-0 text-brand-primary" />
+                  {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Orders</span>}
+                </button>
+
+                {/* Expense Section */}
+                <div className="pt-1">
+                  {(!isSidebarCollapsed || isMobileOpen) ? (
+                    <button
+                      onClick={() => setExpenseExpanded(!expenseExpanded)}
+                      className="w-full flex items-center justify-between px-2 py-1 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 transition-all rounded"
+                    >
+                      <span>Expense</span>
+                      {expenseExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    </button>
+                  ) : (
+                    <div className="border-t border-gray-100 my-1" />
+                  )}
+
+                  {((!isSidebarCollapsed || isMobileOpen) ? expenseExpanded : true) && (
+                    <div className={cn("space-y-1", (!isSidebarCollapsed || isMobileOpen) && "pl-2 mt-1")}>
+                      {[
+                        { view: 'vendor-expense', label: 'Vendor Exp', icon: Store },
+                        { view: 'office-expense', label: 'Office Exp', icon: Building2 },
+                        { view: 'salary', label: 'Salary', icon: Users },
+                        { view: 'delivery-expense', label: 'Delivery', icon: Truck },
+                      ].map((item) => {
+                        const IconComp = item.icon;
+                        return (
+                          <button
+                            key={item.view}
+                            onClick={() => {
+                              selectTab('dashboard');
+                              setAccountsSidebarView(item.view as any);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all",
+                              isSidebarCollapsed && "md:justify-center md:px-0",
+                              activeTab === 'dashboard' && accountsSidebarView === item.view ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
+                            )}
+                            title={isSidebarCollapsed ? item.label : ""}
+                          >
+                            <IconComp className="w-3.5 h-3.5 flex-shrink-0 text-brand-primary" />
+                            {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[9px] font-extrabold text-gray-700 uppercase tracking-widest">{item.label}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Revenue */}
+                <button
+                  onClick={() => {
+                    selectTab('dashboard');
+                    setAccountsSidebarView('revenue');
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
+                    activeTab === 'dashboard' && accountsSidebarView === 'revenue' ? "border-green-500 shadow-md" : "border-green-200 opacity-80 hover:opacity-100"
+                  )}
+                  title={isSidebarCollapsed ? "Revenue" : ""}
+                >
+                  <IndianRupee className="w-4 h-4 flex-shrink-0 text-green-600" />
+                  {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Revenue</span>}
+                </button>
+              </div>
             </div>
           )}
 
@@ -561,7 +656,7 @@ export default function Dashboard() {
               {[UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
                 <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
               ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
-                <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+                <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} sidebarView={accountsSidebarView} />
               ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
                 <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
               ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (

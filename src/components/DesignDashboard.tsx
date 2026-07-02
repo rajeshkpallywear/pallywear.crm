@@ -586,121 +586,65 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       </div>
 
       {/* Summary Columns Counters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Card: Recent */}
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
-            selectedSection === 'recent'
-              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
-              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Recent Orders: All received intakes"
         >
-          <div className="flex items-center justify-between">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
-              selectedSection === 'recent' ? "bg-white/10 text-white" : "bg-blue-50 text-blue-600"
-            )}>
-              <Package size={22} />
-            </div>
-            <div className="text-right">
-              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'recent' ? "text-white/70" : "text-gray-400")}>
-                Recent Orders
-              </p>
-              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.recentCount}</p>
-            </div>
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600")}>
+            <Package size={18} />
           </div>
-          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>
-            All received intakes
-          </span>
+          <span className="text-xl font-black leading-none">{activeStats.recentCount}</span>
         </button>
 
         {/* Card: Process */}
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
-            selectedSection === 'process'
-              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
-              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'process' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Process Orders: Active in-progress orders"
         >
-          <div className="flex items-center justify-between">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
-              selectedSection === 'process' ? "bg-white/10 text-white" : "bg-indigo-50 text-indigo-600"
-            )}>
-              <Clock size={22} />
-            </div>
-            <div className="text-right">
-              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'process' ? "text-white/70" : "text-gray-400")}>
-                Process Orders
-              </p>
-              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.processCount}</p>
-            </div>
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600")}>
+            <Clock size={18} />
           </div>
-          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>
-            Active in-progress orders
-          </span>
+          <span className="text-xl font-black leading-none">{activeStats.processCount}</span>
         </button>
 
         {/* Card: Hold */}
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
-            selectedSection === 'hold'
-              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
-              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'hold' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Hold Orders: Awaiting clarification"
         >
-          <div className="flex items-center justify-between">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
-              selectedSection === 'hold' ? "bg-white/10 text-white" : "bg-red-50 text-red-600"
-            )}>
-              <AlertCircle size={22} />
-            </div>
-            <div className="text-right">
-              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'hold' ? "text-white/70" : "text-gray-400")}>
-                Hold Orders
-              </p>
-              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.holdCount}</p>
-            </div>
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500")}>
+            <AlertCircle size={18} />
           </div>
-          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'hold' ? "text-white/60" : "text-gray-400")}>
-            Awaiting clarification
-          </span>
+          <span className="text-xl font-black leading-none">{activeStats.holdCount}</span>
         </button>
 
         {/* Card: Completed */}
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer active:scale-95",
-            selectedSection === 'completed'
-              ? "bg-[#120485] text-white border-[#120485] shadow-lg shadow-indigo-900/10"
-              : "bg-white border-gray-100 shadow-sm hover:border-gray-200"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Completed Orders: Delivered and finalized"
         >
-          <div className="flex items-center justify-between">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md",
-              selectedSection === 'completed' ? "bg-white/10 text-white" : "bg-green-50 text-green-600"
-            )}>
-              <CheckCircle size={22} />
-            </div>
-            <div className="text-right">
-              <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'completed' ? "text-white/70" : "text-gray-400")}>
-                Completed Orders
-              </p>
-              <p className="text-3xl font-black mt-0.5 leading-none">{activeStats.completedCount}</p>
-            </div>
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600")}>
+            <CheckCircle size={18} />
           </div>
-          <span className={cn("text-[10px] font-medium block mt-1", selectedSection === 'completed' ? "text-white/60" : "text-gray-400")}>
-            Delivered and finalized
-          </span>
+          <span className="text-xl font-black leading-none">{activeStats.completedCount}</span>
         </button>
       </div>
 

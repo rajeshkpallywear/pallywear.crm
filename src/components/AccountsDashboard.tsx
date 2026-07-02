@@ -22,17 +22,16 @@ interface AccountsDashboardProps {
   onDeleteOrder?: (id: string) => void;
   isAdmin?: boolean;
   user?: any;
+  sidebarView?: SidebarView;
 }
 
-export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin, user }: AccountsDashboardProps) {
+export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin, user, sidebarView = 'orders' }: AccountsDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [sidebarView, setSidebarView] = useState<SidebarView>('orders');
-  const [expenseExpanded, setExpenseExpanded] = useState(true);
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
 
@@ -151,137 +150,74 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   };
 
   return (
-    <div className="flex gap-0 min-h-screen -mx-6 -mt-6">
-      {/* Sidebar */}
-      <div className="w-60 shrink-0 bg-white border-r border-gray-100 shadow-sm flex flex-col py-6 px-3 gap-1">
-        <div className="px-3 mb-4">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Accounts</h3>
+    <div className="space-y-6">
+      {sidebarView !== 'orders' ? (
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          {renderSidebarContent()}
         </div>
-
-        {/* Orders */}
-        <button onClick={() => setSidebarView('orders')}
-          className={cn('flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'orders' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
-          <ClipboardCheck size={17} /> Orders
-        </button>
-
-        {/* Expense Section */}
-        <div className="mt-3">
-          <button onClick={() => setExpenseExpanded(!expenseExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 transition-all">
-            <span>Expense</span>
-            {expenseExpanded ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-          </button>
-          {expenseExpanded && (
-            <div className="ml-2 mt-1 space-y-0.5">
-              <button onClick={() => setSidebarView('vendor-expense')}
-                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'vendor-expense' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
-                <Store size={16}/> Vendor Expense
-              </button>
-              <button onClick={() => setSidebarView('office-expense')}
-                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'office-expense' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
-                <Building2 size={16}/> Office Expense
-              </button>
-              <button onClick={() => setSidebarView('salary')}
-                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'salary' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
-                <Users size={16}/> Salary
-              </button>
-              <button onClick={() => setSidebarView('delivery-expense')}
-                className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'delivery-expense' ? 'bg-brand-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
-                <Truck size={16}/> Delivery
-              </button>
-            </div>
-          )}
+      ) : (
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Accounts Dashboard</h2>
+          <p className="text-gray-500 mt-1">Review and attach billing documentation</p>
         </div>
-
-        {/* Revenue Section */}
-        <div className="mt-3">
-          <p className="px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-400">Revenue</p>
-          <button onClick={() => setSidebarView('revenue')}
-            className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all', sidebarView === 'revenue' ? 'bg-green-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100')}>
-            <IndianRupee size={16}/> Revenue
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-6 space-y-8 overflow-auto">
-        {sidebarView !== 'orders' ? (
-          <>{renderSidebarContent()}</>
-        ) : (
-        <>
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Accounts Dashboard</h2>
-        <p className="text-gray-500 mt-1">Review and attach billing documentation</p>
-      </div>
 
       {/* Summary Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden",
-            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Recent Orders: All received orders"
         >
-          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600 group-hover:bg-blue-100")}>
-            <Package size={22} />
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600")}>
+            <Package size={18} />
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'recent' ? "text-white/70" : "text-gray-400")}>Recent Orders</p>
-            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'recent' ? "text-white" : "text-gray-900")}>{recentOrdersCount}</p>
-            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'recent' ? "text-white/60" : "text-gray-400")}>All received orders</span>
-          </div>
+          <span className="text-xl font-black leading-none">{recentOrdersCount}</span>
         </button>
 
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden",
-            selectedSection === 'process' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'process' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Process Orders: Active in-progress orders"
         >
-          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100")}>
-            <Clock size={22} />
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600")}>
+            <Clock size={18} />
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'process' ? "text-white/70" : "text-gray-400")}>Process Orders</p>
-            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'process' ? "text-white" : "text-gray-900")}>{processOrdersCount}</p>
-            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'process' ? "text-white/60" : "text-gray-400")}>Active in-progress orders</span>
-          </div>
+          <span className="text-xl font-black leading-none">{processOrdersCount}</span>
         </button>
 
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden",
-            selectedSection === 'hold' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'hold' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Hold Orders: Blocked/Payment issues"
         >
-          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500 group-hover:bg-red-100")}>
-            <Activity size={22} />
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500")}>
+            <Activity size={18} />
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'hold' ? "text-white/70" : "text-gray-400")}>Hold Orders</p>
-            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'hold' ? "text-white" : "text-gray-900")}>{holdOrdersCount}</p>
-            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'hold' ? "text-white/60" : "text-gray-400")}>Blocked/Payment issues</span>
-          </div>
+          <span className="text-xl font-black leading-none">{holdOrdersCount}</span>
         </button>
 
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "relative p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-3 group cursor-pointer overflow-hidden",
-            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary shadow-2xl shadow-brand-primary/30 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:shadow-lg hover:scale-[1.01]"
+            "flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all cursor-pointer",
+            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-sm hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
+          title="Completed Orders: Fully delivered and paid"
         >
-          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600 group-hover:bg-green-100")}>
-            <TrendingUp size={22} />
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-sm", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600")}>
+            <TrendingUp size={18} />
           </div>
-          <div>
-            <p className={cn("text-[10px] font-black uppercase tracking-[0.15em]", selectedSection === 'completed' ? "text-white/70" : "text-gray-400")}>Completed Orders</p>
-            <p className={cn("text-4xl font-black mt-0.5 leading-none", selectedSection === 'completed' ? "text-white" : "text-gray-900")}>{completedOrdersCount}</p>
-            <span className={cn("text-[10px] font-medium block mt-2", selectedSection === 'completed' ? "text-white/60" : "text-gray-400")}>Fully delivered and paid</span>
-          </div>
+          <span className="text-xl font-black leading-none">{completedOrdersCount}</span>
         </button>
       </div>
 
@@ -542,9 +478,8 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           }}
         />
       )}
-        </>
-      )}
       </div>
+      )}
     </div>
   );
 }
