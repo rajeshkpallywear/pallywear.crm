@@ -4,7 +4,7 @@ import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
-  ChevronLeft, ChevronRight, Menu, Plus, MessageSquare
+  ChevronLeft, ChevronRight, Menu, Plus, MessageSquare, Calendar as CalendarIcon
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -30,13 +30,14 @@ import MarketingDashboard from '../components/MarketingDashboard';
 import DesignDashboard from '../components/DesignDashboard';
 import DigitizingDashboard from '../components/DigitizingDashboard';
 import DigitizerCommunication from '../components/DigitizerCommunication';
+import CalendarView from '../components/CalendarView';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { leads, orders, inventory, addOrder, updateOrder, deleteOrder } = useLeads();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
@@ -313,7 +314,24 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Security & Users link removed as requested */}
+          {/* Calendar Section (Visible to everyone) */}
+          <div className="pt-2 space-y-1 border-t border-gray-100 mt-2">
+            <p className={cn(
+              "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+              isSidebarCollapsed && "md:hidden"
+            )}>Leave Calendar</p>
+            <button
+              onClick={() => selectTab('calendar')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'calendar' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Calendar" : ""}
+            >
+              <CalendarIcon className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Calendar</span>}
+            </button>
+          </div>
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
@@ -531,6 +549,8 @@ export default function Dashboard() {
               </div>
               <InvoiceManager />
             </div>
+          ) : activeTab === 'calendar' ? (
+            <CalendarView user={user} />
           ) : [UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
             <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
           ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (

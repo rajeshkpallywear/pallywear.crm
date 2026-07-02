@@ -216,7 +216,24 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
-    // 6. Run migrations to modify column types to LONGTEXT to support large attachments/files
+    // 6. Create leaves table if not exists
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`leaves\` (
+        \`id\` varchar(50) NOT NULL,
+        \`userId\` varchar(50) NOT NULL,
+        \`userName\` varchar(100) NOT NULL,
+        \`userRole\` varchar(50) NOT NULL,
+        \`startDate\` varchar(50) NOT NULL,
+        \`endDate\` varchar(50) NOT NULL,
+        \`leaveType\` varchar(50) NOT NULL,
+        \`reason\` text DEFAULT NULL,
+        \`status\` varchar(50) DEFAULT 'Pending',
+        \`createdAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
+    // 7. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [
       "ALTER TABLE `orders` MODIFY COLUMN `details` LONGTEXT DEFAULT NULL",

@@ -461,5 +461,51 @@ router.delete('/inventory/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// ----------------------------------------------------
+// LEAVE CALENDAR ENDPOINTS
+// ----------------------------------------------------
+
+router.get('/leaves', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM leaves ORDER BY createdAt DESC') as any[];
+    res.json(rows);
+  } catch (error: any) {
+    console.error('Error fetching leaves:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/leaves', async (req, res) => {
+  const { id, userId, userName, userRole, startDate, endDate, leaveType, reason } = req.body;
+  if (!id || !userId || !userName || !startDate || !endDate || !leaveType) {
+    return res.status(400).json({ success: false, message: 'Missing required leave parameters.' });
+  }
+  try {
+    await query(
+      `INSERT INTO leaves (id, userId, userName, userRole, startDate, endDate, leaveType, reason, status, createdAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?)`,
+      [id, userId, userName, userRole || 'staff', startDate, endDate, leaveType, reason || null, Date.now()]
+    );
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error creating leave:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch('/leaves/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!status || !['Approved', 'Rejected'].includes(status)) {
+    return res.status(400).json({ success: false, message: 'Invalid leave status.' });
+  }
+  try {
+    await query('UPDATE leaves SET status = ? WHERE id = ?', [status, id]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating leave:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;
