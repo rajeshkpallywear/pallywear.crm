@@ -1,0 +1,8 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Automatically and transparently route all requests to the compiled dist folder
+  RewriteCond %{REQUEST_URI} !^/dist/
+  RewriteRule ^(.*)$ dist/$1 [L]
+</IfModule>
