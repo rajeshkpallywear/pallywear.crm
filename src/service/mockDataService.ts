@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Order, OrderStatus, UserRole, UserProfile, Lead, Invoice, InventoryMovement } from '../types';
+import { Order, OrderStatus, UserRole, UserProfile, Lead, Invoice, InventoryMovement, SidebarMessage } from '../types';
 
 function notifyUpdate() {
   window.dispatchEvent(new Event('pallywear-data-updated'));
@@ -193,6 +193,22 @@ export const mockDataService = {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete user');
+    notifyUpdate();
+  },
+
+  getMessages: async (): Promise<SidebarMessage[]> => {
+    const res = await fetch('/api/messages');
+    if (!res.ok) throw new Error('Failed to fetch sidebar messages');
+    return res.json();
+  },
+
+  saveMessage: async (msg: Omit<SidebarMessage, 'id' | 'createdAt'>): Promise<void> => {
+    const res = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(msg)
+    });
+    if (!res.ok) throw new Error('Failed to save sidebar message');
     notifyUpdate();
   }
 };

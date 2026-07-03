@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">pallywear</string>
+    <string name="title_activity_main">pallywear</string>
+    <string name="package_name">pallywear.com</string>
+    <string name="custom_url_scheme">pallywear.com</string>
+</resources>

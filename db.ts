@@ -256,6 +256,20 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // 7.5. Create sidebar_messages table if not exists
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`sidebar_messages\` (
+        \`id\` varchar(50) NOT NULL,
+        \`senderId\` varchar(50) NOT NULL,
+        \`senderName\` varchar(100) NOT NULL,
+        \`senderRole\` varchar(50) NOT NULL,
+        \`message\` text NOT NULL,
+        \`attachment\` longtext DEFAULT NULL,
+        \`createdAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // 8. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [

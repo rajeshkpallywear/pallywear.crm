@@ -343,6 +343,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const handleSendToMarketing = async () => {
     if (!selectedOrder || isProcessing) return;
 
+    if (designFiles.length === 0) {
+      alert("Validation Error: Please upload at least one Vector Tracing Output file (PDF/Image) before sending to Marketing.");
+      return;
+    }
+
+    if (!designNotesText.trim()) {
+      alert("Validation Error: Please fill in the Design Notes before sending to Marketing.");
+      return;
+    }
+
     const nextOrderState = {
       ...selectedOrder,
       designAttachments: designFiles,
@@ -861,13 +871,21 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Notes / Instructions</label>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Notes / Instructions</label>
+                        {!designNotesText.trim() && (
+                          <span className="text-[10px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
+                        )}
+                      </div>
                       <textarea
                         value={designNotesText}
                         onChange={(e) => setDesignNotesText(e.target.value)}
                         rows={4}
                         placeholder="Write down any notes or details for the design here..."
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none"
+                        className={cn(
+                          "w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none",
+                          !designNotesText.trim() ? "border-red-300 focus:border-red-500 bg-red-50/10" : "border-gray-200"
+                        )}
                       />
                     </div>
                   </section>
@@ -939,8 +957,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Upload 1: Artwork Graphics */}
-                      <div className="space-y-2 bg-white p-3.5 rounded-lg border border-purple-100">
-                        <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">1. Vector Tracing Output (PDF)</p>
+                      <div className={cn(
+                        "space-y-2 bg-white p-3.5 rounded-lg border",
+                        designFiles.length === 0 ? "border-red-200" : "border-purple-100"
+                      )}>
+                        <div className="flex justify-between items-center">
+                          <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">1. Vector Tracing Output (PDF)</p>
+                          {designFiles.length === 0 && (
+                            <span className="text-[9px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
+                          )}
+                        </div>
                         <FileUpload
                           label=""
                           accept=".pdf,image/*"
@@ -1100,7 +1126,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
               {/* Primary Move forward command */}
               <button
-                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD || (designFiles.length === 0 && machineFiles.length === 0)}
+                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
                 onClick={handleSendToMarketing}
                 className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >

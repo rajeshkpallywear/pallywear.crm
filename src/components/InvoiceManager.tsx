@@ -108,10 +108,12 @@ export default function InvoiceManager() {
         });
     };
 
-    const filteredInvoices = invoices.filter(inv =>
-        inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.billToName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredInvoices = invoices
+        .filter(inv => user?.role === 'admin' || user?.role === 'staff' || inv.createdBy === user?.id || inv.createdBy === user?.uid)
+        .filter(inv =>
+            inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.billToName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
     const handleOpenInvoice = (invoice: Invoice) => {
         setSelectedInvoice(invoice);

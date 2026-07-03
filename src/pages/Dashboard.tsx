@@ -5,7 +5,7 @@ import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
   ChevronLeft, ChevronRight, Menu, Plus, MessageSquare, Calendar as CalendarIcon,
-  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown
+  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown, Monitor, Smartphone
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -35,17 +35,38 @@ import CalendarView from '../components/CalendarView';
 import TelecallerDashboard from '../components/TelecallerDashboard';
 import VendorDashboard from '../components/VendorDashboard';
 import OrdersChart from '../components/OrdersChart';
+import SidebarChat from '../components/SidebarChat';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { leads, orders, inventory, addOrder, updateOrder, deleteOrder } = useLeads();
   const navigate = useNavigate();
+
+  const filteredOrders = React.useMemo(() => {
+    return user?.role === 'admin'
+      ? orders
+      : orders.filter(o => o.createdBy === user?.id || o.createdBy === user?.uid);
+  }, [orders, user]);
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue'>('orders');
   const [expenseExpanded, setExpenseExpanded] = React.useState(true);
+  const [layoutMode, setLayoutMode] = React.useState<'system' | 'mobile'>('system');
+
+  React.useEffect(() => {
+    const checkScreen = () => {
+      if (window.innerWidth < 768) {
+        setLayoutMode('mobile');
+      } else {
+        setLayoutMode('system');
+      }
+    };
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -109,7 +130,7 @@ export default function Dashboard() {
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Mobile Sidebar Backdrop */}
-      {isMobileOpen && (
+      {layoutMode === 'system' && isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
           onClick={() => setIsMobileOpen(false)}
@@ -117,12 +138,13 @@ export default function Dashboard() {
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full overflow-hidden shadow-sm z-40 transition-all duration-300",
-        isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        isSidebarCollapsed ? "md:w-20" : "md:w-64",
-        "w-64"
-      )}>
+      {layoutMode === 'system' && (
+        <aside className={cn(
+          "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full overflow-hidden shadow-sm z-40 transition-all duration-300",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          isSidebarCollapsed ? "md:w-20" : "md:w-64",
+          "w-64"
+        )}>
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
           {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
           <button
@@ -458,26 +480,54 @@ export default function Dashboard() {
           </div>
         </div>
       </aside>
+      )}
 
       <main className={cn(
         "flex-1 min-h-screen transition-all duration-300",
-        isSidebarCollapsed ? "md:ml-20" : "md:ml-64",
+        layoutMode === 'mobile' ? "ml-0 pb-20" : (isSidebarCollapsed ? "md:ml-20" : "md:ml-64"),
         "ml-0"
       )}>
         <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsMobileOpen(true)}
-              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
-              aria-label="Toggle menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="text-xs md:text-sm font-medium text-gray-500">
+            {layoutMode === 'system' && (
+              <button
+                onClick={() => setIsMobileOpen(true)}
+                className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+            <div className="text-xs md:text-sm font-medium text-gray-500 flex items-center gap-2">
               {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
+              <span className={cn(
+                "text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ml-2 hidden sm:inline-block",
+                layoutMode === 'mobile' ? "bg-green-50 text-green-700 border-green-200" : "bg-blue-50 text-blue-700 border-blue-200"
+              )}>
+                {layoutMode}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
+            {/* Layout mode switcher inside header */}
+            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200/50 text-[10px] font-bold">
+              <button
+                onClick={() => setLayoutMode('system')}
+                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'system' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
+                title="Switch to System Layout"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">System</span>
+              </button>
+              <button
+                onClick={() => setLayoutMode('mobile')}
+                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'mobile' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
+                title="Switch to Mobile Layout"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Mobile</span>
+              </button>
+            </div>
             {user?.role === 'admin' && (
               <Button
                 variant="outline"
@@ -493,7 +543,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className="p-8">
+        <div className={cn(layoutMode === 'mobile' ? "p-4 pb-24" : "p-8")}>
           {activeTab === 'inventory' ? (
             <InventoryManagement userRole={user?.role as any} />
           ) : activeTab === 'history' ? (
@@ -505,45 +555,74 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100 font-bold text-[10px] text-gray-400 uppercase tracking-widest">
-                    <tr>
-                      <th className="px-6 py-4">Order ID</th>
-                      <th className="px-6 py-4">Customer</th>
-                      <th className="px-6 py-4">Category</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Last Update</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {orders.length > 0 ? (
-                      orders.map(order => (
-                        <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-xs">#{order.id.slice(-8)}</td>
-                          <td className="px-6 py-4 font-bold text-gray-900">{order.customerInfo.name}</td>
-                          <td className="px-6 py-4 text-xs font-semibold">{order.category}</td>
-                          <td className="px-6 py-4">
-                            <span className={cn(
-                              "px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                              order.status === 'HOLD' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                            )}>
-                              {order.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-gray-400 text-xs">
-                            {new Date(order.updatedAt).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
+              {layoutMode === 'mobile' ? (
+                <div className="space-y-4">
+                  {filteredOrders.length > 0 ? (
+                    filteredOrders.map(order => (
+                      <div key={order.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-mono text-xs text-indigo-600 font-bold">#{order.id.slice(-8)}</span>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border",
+                            order.status === 'HOLD' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                          )}>{order.status}</span>
+                        </div>
+                        <div className="flex justify-between items-end border-t border-gray-50 pt-2.5">
+                          <div>
+                            <p className="text-xs font-black text-gray-900">{order.customerInfo.name}</p>
+                            <span className="text-[9px] text-gray-400 font-bold uppercase">{order.category}</span>
+                          </div>
+                          <span className="text-[9px] text-gray-400">{new Date(order.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 italic text-xs">
+                      No history found.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100 font-bold text-[10px] text-gray-400 uppercase tracking-widest">
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">No history found.</td>
+                        <th className="px-6 py-4">Order ID</th>
+                        <th className="px-6 py-4">Customer</th>
+                        <th className="px-6 py-4">Category</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Last Update</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredOrders.length > 0 ? (
+                        filteredOrders.map(order => (
+                          <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 font-mono text-xs">#{order.id.slice(-8)}</td>
+                            <td className="px-6 py-4 font-bold text-gray-900">{order.customerInfo.name}</td>
+                            <td className="px-6 py-4 text-xs font-semibold">{order.category}</td>
+                            <td className="px-6 py-4">
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                order.status === 'HOLD' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                              )}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-gray-400 text-xs">
+                              {new Date(order.updatedAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">No history found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : activeTab === 'marketing_orders' ? (
             <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
@@ -596,45 +675,75 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-bold text-gray-900">My Clients</h2>
                 <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Active Portfolios</span>
               </div>
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-500 font-medium">
-                    <tr>
-                      <th className="px-6 py-4 border-b border-gray-100">Client Info</th>
-                      <th className="px-6 py-4 border-b border-gray-100">Company</th>
-                      <th className="px-6 py-4 border-b border-gray-100">Total Value</th>
-                      <th className="px-6 py-4 border-b border-gray-100">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredLeads.map((l, i) => (
-                      <tr key={i} className="hover:bg-gray-50/50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
-                              {l.name.charAt(0)}
-                            </div>
-                            <span className="font-bold text-gray-800">{l.name}</span>
+              {layoutMode === 'mobile' ? (
+                <div className="space-y-3">
+                  {filteredLeads.length > 0 ? (
+                    filteredLeads.map((l, i) => (
+                      <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
+                            {l.name.charAt(0)}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">{l.companyName}</td>
-                        <td className="px-6 py-4 font-bold text-brand-primary">₹{l.totalOrderValue.toLocaleString()}</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase rounded-full border border-green-100">
-                            <div className="w-1 h-1 bg-green-500 rounded-full" />
+                          <div>
+                            <p className="text-xs font-black text-gray-800">{l.name}</p>
+                            <span className="text-[10px] text-gray-400">{l.companyName}</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex flex-col items-end">
+                          <span className="text-xs font-black text-brand-primary">₹{l.totalOrderValue.toLocaleString()}</span>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 text-[8px] font-black uppercase rounded border border-green-100 mt-1">
                             Active
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredLeads.length === 0 && (
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 italic text-xs">
+                      No clients assigned yet.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-medium">
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">No clients assigned yet.</td>
+                        <th className="px-6 py-4 border-b border-gray-100">Client Info</th>
+                        <th className="px-6 py-4 border-b border-gray-100">Company</th>
+                        <th className="px-6 py-4 border-b border-gray-100">Total Value</th>
+                        <th className="px-6 py-4 border-b border-gray-100">Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredLeads.map((l, i) => (
+                        <tr key={i} className="hover:bg-gray-50/50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
+                                {l.name.charAt(0)}
+                              </div>
+                              <span className="font-bold text-gray-800">{l.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-500">{l.companyName}</td>
+                          <td className="px-6 py-4 font-bold text-brand-primary">₹{l.totalOrderValue.toLocaleString()}</td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase rounded-full border border-green-100">
+                              <div className="w-1 h-1 bg-green-500 rounded-full" />
+                              Active
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredLeads.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">No clients assigned yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : activeTab === 'invoices' ? (
             <div className="space-y-6">
@@ -650,23 +759,23 @@ export default function Dashboard() {
           ) : activeTab === 'calendar' ? (
             <CalendarView user={user} />
           ) : activeTab === 'digitizer_comm' ? (
-            <DigitizerCommunication orders={orders} onUpdateOrder={handleUpdateOrder} />
+            <DigitizerCommunication orders={filteredOrders} onUpdateOrder={handleUpdateOrder} />
           ) : activeTab === 'dashboard' ? (
             <div className="space-y-8">
               {[UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
-                <MarketingDashboard orders={orders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+                <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
               ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
-                <AccountsDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} sidebarView={accountsSidebarView} />
+                <AccountsDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} sidebarView={accountsSidebarView} />
               ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
-                <DesignDashboard orders={orders} onUpdateOrder={handleUpdateOrder} user={user} />
+                <DesignDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} user={user} />
               ) : user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' ? (
-                <OrderManagementDashboard orders={orders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+                <OrderManagementDashboard orders={filteredOrders} inventory={inventory} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
               ) : user?.role === UserRole.PRODUCTION || user?.role === 'production' ? (
-                <ProductionDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+                <ProductionDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
               ) : user?.role === UserRole.DIGITIZER || user?.role === 'digitizer' ? (
-                <DigitizingDashboard orders={orders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
+                <DigitizingDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
               ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
-                <DeliveryDashboard orders={orders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
+                <DeliveryDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
               ) : user?.role === UserRole.TELECALLER || user?.role === 'telecaller' ? (
                 <TelecallerDashboard user={user} />
               ) : user?.role === UserRole.VENDOR || user?.role === 'vendor' ? (
@@ -730,14 +839,95 @@ export default function Dashboard() {
                 </>
               )}
               {/* Performance Graph under all dashboards */}
-              <OrdersChart orders={orders} />
+              <OrdersChart orders={filteredOrders} />
             </div>
           ) : (
             <div className="text-gray-500">Page not found.</div>
           )}
         </div>
       </main>
+      
+      {layoutMode === 'mobile' && (
+        <nav className="fixed bottom-0 inset-x-0 h-16 bg-white border-t border-gray-200 px-2 py-1 flex justify-around items-center z-40 shadow-lg shadow-gray-200/50">
+          <button
+            onClick={() => selectTab('dashboard')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+              activeTab === 'dashboard' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Layout className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Home</span>
+          </button>
+          {['admin', 'marketing', 'staff', 'user'].includes(user?.role || '') ? (
+            <>
+              <button
+                onClick={() => selectTab('clients')}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                  activeTab === 'clients' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Users className="w-5 h-5" />
+                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Clients</span>
+              </button>
+              <button
+                onClick={() => selectTab('invoices')}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                  activeTab === 'invoices' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Invoices</span>
+              </button>
+              <button
+                onClick={() => selectTab('marketing_orders')}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                  activeTab === 'marketing_orders' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Plus className="w-5 h-5" />
+                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Orders</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => selectTab('history')}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                  activeTab === 'history' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Activity className="w-5 h-5" />
+                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">History</span>
+              </button>
+              <button
+                onClick={() => selectTab('inventory')}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                  activeTab === 'inventory' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Package className="w-5 h-5" />
+                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Inventory</span>
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="flex flex-col items-center justify-center flex-1 py-1 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Profile</span>
+          </button>
+        </nav>
+      )}
+
       <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <SidebarChat />
     </div>
   );
 }

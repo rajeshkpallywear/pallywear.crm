@@ -178,3 +178,13 @@ export interface InventoryMovement {
   quantity: number;
   createdAt: number;
 }
+
+export interface SidebarMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  message: string;
+  attachment?: string;
+  createdAt: number;
+}

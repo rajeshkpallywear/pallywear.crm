@@ -5,7 +5,7 @@ import {
   Layout, Bell, Settings, BarChart3,
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2,
-  LogOut, Trash2, Download, ChevronLeft, Menu, Zap
+  LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -22,6 +22,7 @@ import { Order, OrderStatus } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { mockDataService } from '../service/mockDataService';
+import SidebarChat from '../components/SidebarChat';
 
 const COLORS = ['#3291B6', '#5CBFD4', '#EAF4F7', '#1F2937'];
 
@@ -45,6 +46,20 @@ export default function AdminDashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'system' | 'mobile'>('system');
+
+  React.useEffect(() => {
+    const checkScreen = () => {
+      if (window.innerWidth < 768) {
+        setLayoutMode('mobile');
+      } else {
+        setLayoutMode('system');
+      }
+    };
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -242,7 +257,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Mobile Sidebar Backdrop */}
-      {isMobileOpen && (
+      {layoutMode === 'system' && isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
           onClick={() => setIsMobileOpen(false)}
@@ -250,12 +265,13 @@ export default function AdminDashboard() {
       )}
 
       {/* Sidebar */}
-      <aside className={cn(
-        "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full z-40 shadow-sm transition-all duration-300",
-        isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        isSidebarCollapsed ? "md:w-20" : "md:w-64",
-        "w-64"
-      )}>
+      {layoutMode === 'system' && (
+        <aside className={cn(
+          "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full z-40 shadow-sm transition-all duration-300",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          isSidebarCollapsed ? "md:w-20" : "md:w-64",
+          "w-64"
+        )}>
         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
           {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
           <button
@@ -363,26 +379,56 @@ export default function AdminDashboard() {
           </button>
         </div>
       </aside>
+      )}
 
       {/* Main Content */}
       <main className={cn(
         "flex-1 min-h-screen transition-all duration-300",
-        isSidebarCollapsed ? "md:ml-20" : "md:ml-64",
+        layoutMode === 'mobile' ? "ml-0 pb-20" : (isSidebarCollapsed ? "md:ml-20" : "md:ml-64"),
         "ml-0"
       )}>
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-3 text-gray-400">
-            <button
-              onClick={() => setIsMobileOpen(true)}
-              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
-              aria-label="Toggle menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Admin Control Panel</span>
+            {layoutMode === 'system' && (
+              <button
+                onClick={() => setIsMobileOpen(true)}
+                className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              Admin Control Panel
+              <span className={cn(
+                "text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ml-2 hidden sm:inline-block",
+                layoutMode === 'mobile' ? "bg-green-50 text-green-700 border-green-200" : "bg-blue-50 text-blue-700 border-blue-200"
+              )}>
+                {layoutMode}
+              </span>
+            </span>
           </div>
           <div className="flex items-center gap-4">
+            {/* Layout mode switcher inside header */}
+            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200/50 text-[10px] font-bold">
+              <button
+                onClick={() => setLayoutMode('system')}
+                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'system' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
+                title="Switch to System Layout"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">System</span>
+              </button>
+              <button
+                onClick={() => setLayoutMode('mobile')}
+                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'mobile' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
+                title="Switch to Mobile Layout"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Mobile</span>
+              </button>
+            </div>
             <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"><Bell className="w-5 h-5" /></button>
             <button
               className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"
@@ -393,7 +439,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className={cn("max-w-7xl mx-auto", layoutMode === 'mobile' ? "p-4 pb-24" : "p-8")}>
           {/* Header Action Row */}
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -601,81 +647,137 @@ export default function AdminDashboard() {
                   <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Total Users: {registeredUsers.length}</span>
                 </div>
               </div>
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-medium">
-                  <tr>
-                    <th className="px-6 py-4">User Details</th>
-                    <th className="px-6 py-4">System Role</th>
-                    <th className="px-6 py-4">Join Date</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Settings</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {registeredUsers.map((u, i) => (
-                    <tr key={u.id} className="hover:bg-gray-50/50 group">
-                      <td className="px-6 py-4">
+              {layoutMode === 'mobile' ? (
+                <div className="p-4 space-y-4">
+                  {registeredUsers.length > 0 ? (
+                    registeredUsers.map((u, i) => (
+                      <div key={u.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden shadow-md shadow-brand-primary/20">
                             {u.avatar ? (
-                              <img src={u.avatar} alt={u.name} />
+                              <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
                             ) : (
                               <span>{u.name.charAt(0)}</span>
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-gray-800">{u.name}</p>
+                            <p className="font-bold text-gray-800 text-sm leading-none mb-1">{u.name}</p>
                             <p className="text-[10px] text-gray-400">{u.email}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={cn(
-                            "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shadow-sm",
-                            u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
-                              u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
-                                u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
-                                  u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
-                                    u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
-                                      u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
-                                        u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
-                                          u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
-                                            "text-gray-600 border-gray-100 bg-gray-50"
-                          )}
-                        >
-                          {u.role?.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
-                        {new Date(u.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          <span className="text-[11px] text-gray-600">Active</span>
+                        <div className="flex justify-between items-center border-t border-gray-50 pt-2.5">
+                          <span
+                            className={cn(
+                              "text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-sm",
+                              u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
+                                u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
+                                  u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
+                                    u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                                      u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                                        u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
+                                          u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
+                                            u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
+                                              "text-gray-600 border-gray-100 bg-gray-50"
+                            )}
+                          >
+                            {u.role?.replace('_', ' ')}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {u.id !== user?.id && (
+                              <button
+                                onClick={() => handleRemoveUser(u.id)}
+                                className="p-1 hover:bg-red-50 text-red-500 rounded border border-transparent hover:border-red-100 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {u.id !== user?.id && (
-                            <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {registeredUsers.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
-                        No team members registered yet or sync in progress.
-                      </td>
-                    </tr>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-400 italic text-xs p-8">
+                      No team members registered yet.
+                    </div>
                   )}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-500 font-medium">
+                    <tr>
+                      <th className="px-6 py-4">User Details</th>
+                      <th className="px-6 py-4">System Role</th>
+                      <th className="px-6 py-4">Join Date</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Settings</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {registeredUsers.map((u, i) => (
+                      <tr key={u.id} className="hover:bg-gray-50/50 group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden shadow-md shadow-brand-primary/20">
+                              {u.avatar ? (
+                                <img src={u.avatar} alt={u.name} />
+                              ) : (
+                                <span>{u.name.charAt(0)}</span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800">{u.name}</p>
+                              <p className="text-[10px] text-gray-400">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shadow-sm",
+                              u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
+                                u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
+                                  u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
+                                    u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                                      u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                                        u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
+                                          u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
+                                            u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
+                                              "text-gray-600 border-gray-100 bg-gray-50"
+                            )}
+                          >
+                            {u.role?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            <span className="text-[11px] text-gray-600">Active</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {u.id !== user?.id && (
+                              <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {registeredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                          No team members registered yet or sync in progress.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           ) : activeTab === 'orders' ? (
             <div className="space-y-8 animate-fadeIn">
@@ -964,6 +1066,58 @@ export default function AdminDashboard() {
         </div>
       </main>
 
+      {layoutMode === 'mobile' && (
+        <nav className="fixed bottom-0 inset-x-0 h-16 bg-white border-t border-gray-200 px-2 py-1 flex justify-around items-center z-40 shadow-lg shadow-gray-200/50">
+          <button
+            onClick={() => selectTab('overview')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+              activeTab === 'overview' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Layout className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Overview</span>
+          </button>
+          <button
+            onClick={() => selectTab('users')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+              activeTab === 'users' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Users className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Users</span>
+          </button>
+          <button
+            onClick={() => selectTab('invoices')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+              activeTab === 'invoices' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Invoices</span>
+          </button>
+          <button
+            onClick={() => selectTab('orders')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+              activeTab === 'orders' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Shield className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Workflow</span>
+          </button>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="flex flex-col items-center justify-center flex-1 py-1 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Profile</span>
+          </button>
+        </nav>
+      )}
+
       {/* Invite Modal */}
       <AnimatePresence>
         {showInviteModal && (
@@ -1061,6 +1215,7 @@ export default function AdminDashboard() {
           isAdmin={true}
         />
       )}
+      <SidebarChat />
     </div>
   );
 }

@@ -604,4 +604,36 @@ router.delete('/expenses/:id', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// SIDEBAR MESSAGES ENDPOINTS
+// ----------------------------------------------------
+
+router.get('/messages', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM sidebar_messages ORDER BY createdAt ASC') as any[];
+    res.json(rows);
+  } catch (error: any) {
+    console.error('Error fetching sidebar messages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/messages', async (req, res) => {
+  const { id, senderId, senderName, senderRole, message, attachment } = req.body;
+  if (!senderId || !senderName || !senderRole || !message) {
+    return res.status(400).json({ success: false, message: 'Missing required message parameters.' });
+  }
+  const msgId = id || `msg_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+  try {
+    await query(
+      'INSERT INTO sidebar_messages (id, senderId, senderName, senderRole, message, attachment, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [msgId, senderId, senderName, senderRole, message, attachment || null, Date.now()]
+    );
+    res.json({ success: true, messageId: msgId });
+  } catch (error: any) {
+    console.error('Error creating sidebar message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
