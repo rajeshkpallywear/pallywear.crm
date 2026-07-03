@@ -27,7 +27,9 @@ interface OtherExpensePageProps {
   extraFields?: 'salary' | 'delivery' | 'revenue';
 }
 
-const API_BASE = '/api';
+import { getApiBaseUrl } from '../lib/apiConfig';
+
+const API_BASE = getApiBaseUrl() + '/api';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 

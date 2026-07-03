@@ -20,7 +20,9 @@ interface VendorDashboardProps {
   user: any;
 }
 
-const API_BASE = '/api';
+import { getApiBaseUrl } from '../lib/apiConfig';
+
+const API_BASE = getApiBaseUrl() + '/api';
 
 export default function VendorDashboard({ user }: VendorDashboardProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);

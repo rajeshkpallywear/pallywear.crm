@@ -21,7 +21,9 @@ interface VendorExpensePageProps {
   user: any;
 }
 
-const API_BASE = '/api';
+import { getApiBaseUrl } from '../lib/apiConfig';
+
+const API_BASE = getApiBaseUrl() + '/api';
 
 export default function VendorExpensePage({ user }: VendorExpensePageProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);

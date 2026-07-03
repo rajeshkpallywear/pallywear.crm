@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { Layout, Mail, Lock, ArrowRight, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Layout, Mail, Lock, ArrowRight, CheckCircle2, Eye, EyeOff, Settings } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../components/Logo';
 import { UserRole } from '../types';
 import { cn } from '../lib/utils';
@@ -19,6 +19,19 @@ export default function Login() {
   const { login, googleLogin, user: authUser, adminOnlyRegistration } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || '');
+
+  const saveSettings = () => {
+    if (tempApiUrl.trim()) {
+      localStorage.setItem('pallywear_api_url', tempApiUrl.trim());
+    } else {
+      localStorage.removeItem('pallywear_api_url');
+    }
+    setShowSettings(false);
+    window.location.reload();
+  };
 
 
 
@@ -76,10 +89,20 @@ export default function Login() {
         animate={{ opacity: 1, scale: 1 }}
         className="glass-card p-8 rounded-2xl w-full max-w-md border-white/50"
       >
-        <div className="flex flex-col items-center mb-8">
-          <Logo iconOnly className="mb-4 scale-125" />
-          <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Welcome back</h2>
-          <p className="text-gray-500 text-sm mt-1">Please enter your details to sign in</p>
+        <div className="flex justify-between items-start mb-8 relative">
+          <div className="flex flex-col items-center flex-1">
+            <Logo iconOnly className="mb-4 scale-125" />
+            <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Welcome back</h2>
+            <p className="text-gray-500 text-sm mt-1">Please enter your details to sign in</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="absolute top-0 right-0 p-2 text-gray-400 hover:text-brand-primary transition-colors cursor-pointer"
+            title="Server Connection Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
         </div>
 
 
@@ -177,6 +200,62 @@ export default function Login() {
             </Link>
           </p>
         )}
+
+        {/* Connection Settings Modal */}
+        <AnimatePresence>
+          {showSettings && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white p-6 rounded-2xl w-full max-w-sm border border-gray-100 shadow-2xl relative text-left"
+              >
+                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-indigo-600 animate-spin-slow" />
+                  Connection Settings
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Configure backend server endpoint for mobile (APK) or external host environments.
+                </p>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                      Backend API Base URL
+                    </label>
+                    <input
+                      type="text"
+                      value={tempApiUrl}
+                      onChange={(e) => setTempApiUrl(e.target.value)}
+                      placeholder="e.g. http://192.168.1.100:3000"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-400">
+                    Leave blank to use default relative paths (browser default).
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                      onClick={() => setShowSettings(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="flex-1 text-xs"
+                      onClick={saveSettings}
+                    >
+                      Save Settings
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

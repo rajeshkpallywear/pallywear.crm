@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, Users, CheckCircle2, AlertCircle, Search, HelpCircle, Save, Calendar, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getApiUrl } from '../lib/apiConfig';
 
 interface Lead {
   id: string;
@@ -29,7 +30,7 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
 
   const fetchLeads = async () => {
     try {
-      const res = await fetch('/api/leads');
+      const res = await fetch(getApiUrl('/api/leads'));
       const data = await res.json();
       if (Array.isArray(data)) {
         setLeads(data);
@@ -50,7 +51,7 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
     if (!editingLead) return;
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/leads/${editingLead.id}`, {
+      const res = await fetch(getApiUrl(`/api/leads/${editingLead.id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

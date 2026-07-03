@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, Check, X, AlertCircle, Plus, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getApiUrl } from '../lib/apiConfig';
 
 interface Leave {
   id: string;
@@ -39,7 +40,7 @@ export default function CalendarView({ user }: CalendarViewProps) {
   const fetchLeaves = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/leaves');
+      const res = await fetch(getApiUrl('/api/leaves'));
       if (res.ok) {
         const data = await res.json();
         setLeaves(data);
@@ -73,7 +74,7 @@ export default function CalendarView({ user }: CalendarViewProps) {
     setSubmitting(true);
     const leaveId = 'leave-' + Math.random().toString(36).substr(2, 9);
     try {
-      const res = await fetch('/api/leaves', {
+      const res = await fetch(getApiUrl('/api/leaves'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,7 +109,7 @@ export default function CalendarView({ user }: CalendarViewProps) {
   const handleUpdateStatus = async (id: string, status: 'Approved' | 'Rejected') => {
     setActioningId(id);
     try {
-      const res = await fetch(`/api/leaves/${id}`, {
+      const res = await fetch(getApiUrl(`/api/leaves/${id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
