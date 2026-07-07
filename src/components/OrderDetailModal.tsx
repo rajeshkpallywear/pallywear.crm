@@ -21,6 +21,10 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
   const [editedOrder, setEditedOrder] = useState<Order>(order);
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [noteModal, setNoteModal] = useState<{
+    target: 'design' | 'accounts';
+    noteText: string;
+  } | null>(null);
 
   useEffect(() => {
     setEditedOrder(order);
@@ -509,6 +513,12 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                       <p className="text-xs font-semibold text-purple-900 italic">"{order.designNotes}"</p>
                     </div>
                   )}
+                  {order.accountsNotes && (
+                    <div className="mt-4 p-4 bg-amber-50/50 rounded-2xl border border-amber-100 text-left">
+                      <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest block mb-1">Accounts Notes</span>
+                      <p className="text-xs font-semibold text-amber-900 italic">"{order.accountsNotes}"</p>
+                    </div>
+                  )}
                   {order.machineFiles?.length > 0 && (
                     <div>
                       <p className="text-[10px] font-bold text-indigo-500 uppercase mb-2">Machine Language (ZIP)</p>
@@ -586,32 +596,32 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                     ) : (
                       <div className="space-y-2">
                         {order.status === OrderStatus.PENDING && (
-                          <button
-                            disabled={isProcessingAction}
-                            onClick={async () => {
-                              if (window.confirm("Send this order manually to Accounts?")) {
-                                setIsProcessingAction(true);
-                                try {
-                                  if (onUpdateOrder) {
-                                    await onUpdateOrder(order.id, {
-                                      status: OrderStatus.ACCOUNTS,
-                                      updatedAt: Date.now()
-                                    });
-                                  } else if (onUpdateStatus) {
-                                    onUpdateStatus(OrderStatus.ACCOUNTS);
-                                  }
-                                  alert("Order successfully sent to Accounts.");
-                                } catch (e) {
-                                  alert("Failed to send order.");
-                                } finally {
-                                  setIsProcessingAction(false);
-                                }
-                              }
-                            }}
-                            className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
-                          >
-                            <CheckCircle size={14} /> Send to Accounts
-                          </button>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              disabled={isProcessingAction}
+                              onClick={() => {
+                                setNoteModal({
+                                  target: 'design',
+                                  noteText: ''
+                                });
+                              }}
+                              className="w-full py-3 bg-purple-600 hover:bg-purple-750 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
+                            >
+                              <CheckCircle size={14} /> Send to Designs
+                            </button>
+                            <button
+                              disabled={isProcessingAction}
+                              onClick={() => {
+                                setNoteModal({
+                                  target: 'accounts',
+                                  noteText: ''
+                                });
+                              }}
+                              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
+                            >
+                              <CheckCircle size={14} /> Send to Accounts
+                            </button>
+                          </div>
                         )}
                         <button
                           disabled={isProcessingAction}
@@ -684,6 +694,84 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
 
         {viewingImage && (
           <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${order.id}`} />
+        )}
+        {noteModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">
+                  {noteModal.target === 'design' ? 'Send to Designs' : 'Send to Accounts'}
+                </h3>
+                <button
+                  onClick={() => setNoteModal(null)}
+                  className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Instructions / Notes (Required)
+                  </label>
+                  <textarea
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all resize-none"
+                    rows={4}
+                    placeholder={
+                      noteModal.target === 'design' 
+                        ? "Enter design requirements, dimensions, logo placement..." 
+                        : "Enter billing instructions, payment terms, advance details..."
+                    }
+                    value={noteModal.noteText}
+                    onChange={(e) => setNoteModal({ ...noteModal, noteText: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setNoteModal(null)}
+                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={!noteModal.noteText.trim() || isProcessingAction}
+                    onClick={async () => {
+                      if (!noteModal.noteText.trim()) return;
+                      setIsProcessingAction(true);
+                      try {
+                        const updates: Partial<Order> = {
+                          status: noteModal.target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
+                          updatedAt: Date.now()
+                        };
+                        if (noteModal.target === 'design') {
+                          updates.designNotes = noteModal.noteText.trim();
+                        } else {
+                          updates.accountsNotes = noteModal.noteText.trim();
+                        }
+                        
+                        if (onUpdateOrder) {
+                          await onUpdateOrder(order.id, updates);
+                        } else if (onUpdateStatus) {
+                          onUpdateStatus(updates.status);
+                        }
+                        
+                        alert(`Success: Order sent to ${noteModal.target === 'design' ? 'Designs' : 'Accounts'}.`);
+                        setNoteModal(null);
+                        onClose();
+                      } catch (err) {
+                        alert("Failed to update order.");
+                      } finally {
+                        setIsProcessingAction(false);
+                      }
+                    }}
+                    className="flex-1 py-3 bg-brand-primary hover:bg-opacity-95 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-md text-center"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </motion.div>
     </div>

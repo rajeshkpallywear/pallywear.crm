@@ -68,6 +68,14 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
 
+  React.useEffect(() => {
+    if (user && (user.role === 'marketing' || user.role === 'staff' || user.role === UserRole.MARKETING || user.role === UserRole.STAFF)) {
+      if (activeTab === 'dashboard') {
+        setActiveTab('marketing_orders');
+      }
+    }
+  }, [user, activeTab]);
+
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setIsMobileOpen(false);
@@ -162,9 +170,8 @@ export default function Dashboard() {
         </div>
 
         <nav className="p-4 space-y-1">
-          {/* Main Dashboard - Only for Marketing/Staff/Admin or generic view */}
-          {/* Marketing & Admin Tabs */}
-          {(user?.role === UserRole.ADMIN || user?.role === UserRole.MARKETING || user?.role === 'admin' || user?.role === 'user') && (
+          {/* Admin Lead Management Tabs */}
+          {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
@@ -192,6 +199,49 @@ export default function Dashboard() {
               >
                 <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Reports</span>}
               </button>
+              <button
+                onClick={() => selectTab('clients')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'clients' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Clients" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Clients</span>}
+              </button>
+              <button
+                onClick={() => selectTab('invoices')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Invoices" : ""}
+              >
+                <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
+              </button>
+              <button
+                onClick={() => selectTab('marketing_orders')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'marketing_orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Create Order" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+              </button>
+            </div>
+          )}
+
+          {/* Marketing/Staff Lead Management Tabs (No Dashboard/Reports) */}
+          {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === 'user') && (
+            <div className="space-y-1">
+              <p className={cn(
+                "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+                isSidebarCollapsed && "md:hidden"
+              )}>Lead Management</p>
               <button
                 onClick={() => selectTab('clients')}
                 className={cn(
@@ -270,7 +320,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Accounts Portal Sidebar Navigation */}
+          {/* Accounts Portal Sidebar Navigation (Orders Only) */}
           {(user?.role === UserRole.ACCOUNTS || user?.role === 'accounts') && (
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
               <p className={cn(
@@ -294,69 +344,6 @@ export default function Dashboard() {
                 >
                   <ClipboardCheck className="w-4 h-4 flex-shrink-0 text-brand-primary" />
                   {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Orders</span>}
-                </button>
-
-                {/* Expense Section */}
-                <div className="pt-1">
-                  {(!isSidebarCollapsed || isMobileOpen) ? (
-                    <button
-                      onClick={() => setExpenseExpanded(!expenseExpanded)}
-                      className="w-full flex items-center justify-between px-2 py-1 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:bg-gray-50 transition-all rounded"
-                    >
-                      <span>Expense</span>
-                      {expenseExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                    </button>
-                  ) : (
-                    <div className="border-t border-gray-100 my-1" />
-                  )}
-
-                  {((!isSidebarCollapsed || isMobileOpen) ? expenseExpanded : true) && (
-                    <div className={cn("space-y-1", (!isSidebarCollapsed || isMobileOpen) && "pl-2 mt-1")}>
-                      {[
-                        { view: 'vendor-expense', label: 'Vendor Exp', icon: Store },
-                        { view: 'office-expense', label: 'Office Exp', icon: Building2 },
-                        { view: 'salary', label: 'Salary', icon: Users },
-                        { view: 'delivery-expense', label: 'Delivery', icon: Truck },
-                      ].map((item) => {
-                        const IconComp = item.icon;
-                        return (
-                          <button
-                            key={item.view}
-                            onClick={() => {
-                              selectTab('dashboard');
-                              setAccountsSidebarView(item.view as any);
-                            }}
-                            className={cn(
-                              "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all",
-                              isSidebarCollapsed && "md:justify-center md:px-0",
-                              activeTab === 'dashboard' && accountsSidebarView === item.view ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
-                            )}
-                            title={isSidebarCollapsed ? item.label : ""}
-                          >
-                            <IconComp className="w-3.5 h-3.5 flex-shrink-0 text-brand-primary" />
-                            {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[9px] font-extrabold text-gray-700 uppercase tracking-widest">{item.label}</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Revenue */}
-                <button
-                  onClick={() => {
-                    selectTab('dashboard');
-                    setAccountsSidebarView('revenue');
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all",
-                    isSidebarCollapsed && "md:justify-center md:px-0",
-                    activeTab === 'dashboard' && accountsSidebarView === 'revenue' ? "border-green-500 shadow-md" : "border-green-200 opacity-80 hover:opacity-100"
-                  )}
-                  title={isSidebarCollapsed ? "Revenue" : ""}
-                >
-                  <IndianRupee className="w-4 h-4 flex-shrink-0 text-green-600" />
-                  {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Revenue</span>}
                 </button>
               </div>
             </div>
@@ -389,8 +376,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Logistics & Inventory Section */}
-          {(user?.role === UserRole.ADMIN || user?.role === 'admin' || user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === UserRole.PRODUCTION || user?.role === 'production') && (
+          {/* Logistics & Inventory Section (Admin Only) */}
+          {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (
             <div className="pt-2 space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
@@ -418,40 +405,40 @@ export default function Dashboard() {
               >
                 <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Order History</span>}
               </button>
-              {(user?.role === UserRole.ORDER_MANAGEMENT || user?.role === 'order_management' || user?.role === 'admin' || user?.role === UserRole.ADMIN) && (
-                <button
-                  onClick={() => selectTab('digitizer_comm')}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                    isSidebarCollapsed && "md:justify-center md:px-0",
-                    activeTab === 'digitizer_comm' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                  )}
-                  title={isSidebarCollapsed ? "Digitizer Comm" : ""}
-                >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span className="truncate">Digitizer Comm</span>}
-                </button>
-              )}
+              <button
+                onClick={() => selectTab('digitizer_comm')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'digitizer_comm' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Digitizer Comm" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span className="truncate">Digitizer Comm</span>}
+              </button>
             </div>
           )}
 
-          {/* Calendar Section (Visible to everyone) */}
-          <div className="pt-2 space-y-1 border-t border-gray-100 mt-2">
-            <p className={cn(
-              "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
-              isSidebarCollapsed && "md:hidden"
-            )}>Leave Calendar</p>
-            <button
-              onClick={() => selectTab('calendar')}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                isSidebarCollapsed && "md:justify-center md:px-0",
-                activeTab === 'calendar' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-              )}
-              title={isSidebarCollapsed ? "Calendar" : ""}
-            >
-              <CalendarIcon className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Calendar</span>}
-            </button>
-          </div>
+          {/* Calendar Section (Admin Only) */}
+          {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (
+            <div className="pt-2 space-y-1 border-t border-gray-100 mt-2">
+              <p className={cn(
+                "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+                isSidebarCollapsed && "md:hidden"
+              )}>Leave Calendar</p>
+              <button
+                onClick={() => selectTab('calendar')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'calendar' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Calendar" : ""}
+              >
+                <CalendarIcon className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Calendar</span>}
+              </button>
+            </div>
+          )}
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
@@ -849,17 +836,19 @@ export default function Dashboard() {
       
       {layoutMode === 'mobile' && (
         <nav className="fixed bottom-0 inset-x-0 h-16 bg-white border-t border-gray-200 px-2 py-1 flex justify-around items-center z-40 shadow-lg shadow-gray-200/50">
-          <button
-            onClick={() => selectTab('dashboard')}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-              activeTab === 'dashboard' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
-            )}
-          >
-            <Layout className="w-5 h-5" />
-            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Home</span>
-          </button>
-          {['admin', 'marketing', 'staff', 'user'].includes(user?.role || '') ? (
+          {(user?.role === 'admin' || user?.role === UserRole.ADMIN) && (
+            <button
+              onClick={() => selectTab('dashboard')}
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                activeTab === 'dashboard' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <Layout className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Home</span>
+            </button>
+          )}
+          {['admin', 'marketing', 'staff', 'user', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF].includes(user?.role || '') ? (
             <>
               <button
                 onClick={() => selectTab('clients')}
@@ -893,28 +882,16 @@ export default function Dashboard() {
               </button>
             </>
           ) : (
-            <>
-              <button
-                onClick={() => selectTab('history')}
-                className={cn(
-                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                  activeTab === 'history' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
-                )}
-              >
-                <Activity className="w-5 h-5" />
-                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">History</span>
-              </button>
-              <button
-                onClick={() => selectTab('inventory')}
-                className={cn(
-                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                  activeTab === 'inventory' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
-                )}
-              >
-                <Package className="w-5 h-5" />
-                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Inventory</span>
-              </button>
-            </>
+            <button
+              onClick={() => selectTab('dashboard')}
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+                activeTab === 'dashboard' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <Layout className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Portal</span>
+            </button>
           )}
           <button
             onClick={() => setShowProfileModal(true)}

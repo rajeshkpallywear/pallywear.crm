@@ -59,6 +59,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
 
+  const [noteModal, setNoteModal] = useState<{
+    isOpen: boolean;
+    orderId: string;
+    target: 'design' | 'accounts';
+    noteText: string;
+  } | null>(null);
+
   useEffect(() => {
     const handleOpenFeed = () => {
       setIsDesignSidebarOpen(true);
@@ -130,10 +137,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       } else {
         await onCreateOrder({
           ...finalOrderData,
-          status: OrderStatus.DESIGN,
+          status: OrderStatus.PENDING,
           createdAt: Date.now(),
         });
-        alert("Success: Order created and sent to Design.");
+        alert("Success: Order created successfully.");
       }
       setIsCreating(false);
       setEditingOrderId(null);
@@ -261,7 +268,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     const { id, createdAt, updatedAt, ...rest } = order;
     onCreateOrder({
       ...rest,
-      status: OrderStatus.DESIGN,
+      status: OrderStatus.PENDING,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -436,25 +443,36 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           {order.status.replace('_', ' ')}
                         </span>
                         {order.status === OrderStatus.PENDING && (
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (window.confirm("Send this order manually to Accounts?")) {
-                                try {
-                                  await onUpdateOrder(order.id, {
-                                    status: OrderStatus.ACCOUNTS,
-                                    updatedAt: Date.now()
-                                  });
-                                  alert("Success: Order sent to Accounts.");
-                                } catch (err) {
-                                  alert("Failed to send order.");
-                                }
-                              }
-                            }}
-                            className="text-[10px] font-black text-amber-600 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-300 rounded px-2.5 py-1 tracking-widest uppercase transition-all duration-200 w-fit cursor-pointer"
-                          >
-                            Send to Accounts
-                          </button>
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNoteModal({
+                                  isOpen: true,
+                                  orderId: order.id,
+                                  target: 'design',
+                                  noteText: ''
+                                });
+                              }}
+                              className="text-[10px] font-black text-purple-600 hover:text-white bg-purple-50 hover:bg-purple-600 border border-purple-300 rounded px-2.5 py-1 tracking-widest uppercase transition-all duration-200 w-fit cursor-pointer font-bold"
+                            >
+                              Send to Designs
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNoteModal({
+                                  isOpen: true,
+                                  orderId: order.id,
+                                  target: 'accounts',
+                                  noteText: ''
+                                });
+                              }}
+                              className="text-[10px] font-black text-amber-600 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-300 rounded px-2.5 py-1 tracking-widest uppercase transition-all duration-200 w-fit cursor-pointer font-bold shadow-sm"
+                            >
+                              Send to Accounts
+                            </button>
+                          </>
                         )}
                       </div>
                       {order.status === OrderStatus.HOLD && order.holdReason && (
@@ -962,6 +980,77 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             startEdit(ord);
           }}
         />
+      )}
+      {noteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">
+                {noteModal.target === 'design' ? 'Send to Designs' : 'Send to Accounts'}
+              </h3>
+              <button
+                onClick={() => setNoteModal(null)}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Instructions / Notes (Required)
+                </label>
+                <textarea
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all resize-none"
+                  rows={4}
+                  placeholder={
+                    noteModal.target === 'design' 
+                      ? "Enter design requirements, dimensions, logo placement..." 
+                      : "Enter billing instructions, payment terms, advance details..."
+                  }
+                  value={noteModal.noteText}
+                  onChange={(e) => setNoteModal({ ...noteModal, noteText: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setNoteModal(null)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!noteModal.noteText.trim() || isProcessing}
+                  onClick={async () => {
+                    if (!noteModal.noteText.trim()) return;
+                    setIsProcessing(true);
+                    try {
+                      const updates: Partial<Order> = {
+                        status: noteModal.target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
+                        updatedAt: Date.now()
+                      };
+                      if (noteModal.target === 'design') {
+                        updates.designNotes = noteModal.noteText.trim();
+                      } else {
+                        updates.accountsNotes = noteModal.noteText.trim();
+                      }
+                      await onUpdateOrder(noteModal.orderId, updates);
+                      alert(`Success: Order sent to ${noteModal.target === 'design' ? 'Designs' : 'Accounts'}.`);
+                      setNoteModal(null);
+                    } catch (err) {
+                      alert("Failed to update order.");
+                    } finally {
+                      setIsProcessing(false);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-opacity-95 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-md text-center"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

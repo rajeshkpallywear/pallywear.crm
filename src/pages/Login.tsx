@@ -95,14 +95,6 @@ export default function Login() {
             <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Welcome back</h2>
             <p className="text-gray-500 text-sm mt-1">Please enter your details to sign in</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className="absolute top-0 right-0 p-2 text-gray-400 hover:text-brand-primary transition-colors cursor-pointer"
-            title="Server Connection Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
         </div>
 
 

@@ -160,6 +160,7 @@ export interface Order {
   designGst?: number;
   designDiscount?: number;
   designNotes?: string;
+  accountsNotes?: string;
 }
 
 export interface InventoryMovement {
