@@ -90,6 +90,14 @@ export default function Login() {
         className="glass-card p-8 rounded-2xl w-full max-w-md border-white/50"
       >
         <div className="flex justify-between items-start mb-8 relative">
+          <button 
+            type="button" 
+            onClick={() => setShowSettings(true)} 
+            className="absolute top-0 right-0 p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer"
+            title="Connection Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <div className="flex flex-col items-center flex-1">
             <Logo iconOnly className="mb-4 scale-125" />
             <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Welcome back</h2>

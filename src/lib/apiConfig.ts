@@ -8,6 +8,17 @@ export const getApiBaseUrl = (): string => {
   if (savedUrl) {
     return savedUrl.replace(/\/$/, ''); // strip trailing slash
   }
+  
+  // If running in Capacitor/Android native app environment, default to production API server
+  if (
+    (window as any).Capacitor || 
+    window.location.protocol === 'file:' || 
+    (window.location.hostname === 'localhost' && !window.location.port) ||
+    window.location.hostname === ''
+  ) {
+    return 'https://pallywear.in';
+  }
+  
   return '';
 };
 
