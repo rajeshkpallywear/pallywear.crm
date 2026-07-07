@@ -3,17 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeadProvider } from './context/LeadContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import Store from './pages/Store';
+
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Store = lazy(() => import('./pages/Store'));
 
 import { UserRole } from './types';
+
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center min-h-screen bg-brand-light">
+    <div className="relative w-16 h-16">
+      <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20"></div>
+      <div className="absolute inset-0 rounded-full border-4 border-t-brand-primary border-r-brand-primary animate-spin"></div>
+    </div>
+    <p className="mt-4 text-brand-dark font-medium animate-pulse">Loading Pallywear CRM...</p>
+  </div>
+);
 
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
   const { user } = useAuth();
@@ -37,49 +48,51 @@ function AppRoutes() {
 
   return (
     <Router>
-      <Routes>
-        {/* Landing Page */}
-        <Route path="/Pallywear" element={<Store />} />
-        <Route path="/store" element={<Navigate to="/Pallywear" />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Landing Page */}
+          <Route path="/Pallywear" element={<Store />} />
+          <Route path="/store" element={<Navigate to="/Pallywear" />} />
 
-        {/* Auth */}
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/register"
-          element={
-            adminOnlyRegistration ? (
-              <ProtectedRoute adminOnly={true}>
+          {/* Auth */}
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/register"
+            element={
+              adminOnlyRegistration ? (
+                <ProtectedRoute adminOnly={true}>
+                  <Register />
+                </ProtectedRoute>
+              ) : (
                 <Register />
+              )
+            }
+          />
+
+          {/* Protected Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
               </ProtectedRoute>
-            ) : (
-              <Register />
-            )
-          }
-        />
+            }
+          />
 
-        {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute adminOnly={true}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Redirects */}
-        <Route path="/" element={<Navigate to="/Pallywear" />} />
-        <Route path="*" element={<Navigate to="/dashboard" />} />
-      </Routes>
+          {/* Redirects */}
+          <Route path="/" element={<Navigate to="/Pallywear" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
