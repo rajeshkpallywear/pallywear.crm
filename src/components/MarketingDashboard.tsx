@@ -285,13 +285,21 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       return o.status === OrderStatus.DELIVERED;
     }
     if (selectedSection === 'process') {
-      return o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD;
+      return o.status !== OrderStatus.DELIVERED && 
+             o.status !== OrderStatus.HOLD && 
+             o.status !== OrderStatus.PENDING && 
+             o.status !== OrderStatus.DRAFT;
     }
-    return o.status !== OrderStatus.DELIVERED;
+    return o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT;
   });
 
-  const recentOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED).length;
-  const processOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length;
+  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
+  const processOrdersCount = orders.filter(o => 
+    o.status !== OrderStatus.DELIVERED && 
+    o.status !== OrderStatus.HOLD && 
+    o.status !== OrderStatus.PENDING && 
+    o.status !== OrderStatus.DRAFT
+  ).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
