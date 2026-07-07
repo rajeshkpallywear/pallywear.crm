@@ -157,10 +157,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
         </div>
       ) : (
       <div className="space-y-8">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Accounts Dashboard</h2>
-          <p className="text-gray-500 mt-1">Review and attach billing documentation</p>
-        </div>
+
 
       {/* Summary Stats Section */}
       <div className="flex flex-wrap items-center gap-3">

@@ -16,10 +16,34 @@ export default function SidebarChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessagesLengthRef = useRef(0);
 
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [activeChat, setActiveChat] = useState<{ id: string; name: string; role?: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const loadUsers = async () => {
+    try {
+      const data = await mockDataService.getUsers();
+      setUsersList(data);
+    } catch (e) {
+      console.error('Failed to load users for chat:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadUsers();
+    }
+  }, [isOpen]);
+
   const loadMessages = async (silent = false) => {
     if (!user) return;
     try {
-      const data = await mockDataService.getMessages();
+      if (!activeChat) return;
+
+      const data = await mockDataService.getMessages(
+        activeChat.id === 'global' ? undefined : (user.id || user.uid),
+        activeChat.id === 'global' ? undefined : activeChat.id
+      );
       setMessages(data);
 
       if (isOpen) {
@@ -28,7 +52,7 @@ export default function SidebarChat() {
         // If not open, increment unread messages count
         const newMsgsCount = data.length - lastMessagesLengthRef.current;
         if (lastMessagesLengthRef.current > 0) {
-          setUnreadCount(prev => prev + newMsgsCount);
+          setUnreadCount(prev => prev + prev + newMsgsCount);
         }
       }
       lastMessagesLengthRef.current = data.length;
@@ -39,19 +63,21 @@ export default function SidebarChat() {
 
   // Poll for new messages every 3 seconds
   useEffect(() => {
-    loadMessages();
-    const interval = setInterval(() => {
-      loadMessages(true);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isOpen, user]);
+    if (activeChat) {
+      loadMessages();
+      const interval = setInterval(() => {
+        loadMessages(true);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, user, activeChat]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && activeChat) {
       setUnreadCount(0);
       scrollToBottom();
     }
-  }, [isOpen, messages]);
+  }, [isOpen, messages, activeChat]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -75,7 +101,7 @@ export default function SidebarChat() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || (!inputText.trim() && !attachment)) return;
+    if (!user || (!inputText.trim() && !attachment) || !activeChat) return;
 
     setLoading(true);
     try {
@@ -84,7 +110,8 @@ export default function SidebarChat() {
         senderName: user.name,
         senderRole: user.role,
         message: inputText.trim(),
-        attachment: attachment || undefined
+        attachment: attachment || undefined,
+        recipientId: activeChat.id === 'global' ? 'global' : activeChat.id
       });
       setInputText('');
       setAttachment(null);
@@ -120,116 +147,205 @@ export default function SidebarChat() {
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* WhatsApp-themed Header */}
-        <div className="bg-emerald-800 text-white px-5 py-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-700 text-white rounded-full flex items-center justify-center font-bold text-sm border-2 border-emerald-500/20">
-              P
-            </div>
-            <div>
-              <h3 className="font-bold text-sm tracking-tight">Pallywear Team Room</h3>
-              <p className="text-[10px] text-emerald-300 font-semibold flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping" />
-                Active Communication Portal
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-1.5 hover:bg-emerald-700/50 rounded-full transition-colors border-none bg-transparent cursor-pointer"
-          >
-            <X className="w-5 h-5 text-emerald-100" />
-          </button>
-        </div>
-
-        {/* WhatsApp Background Chat Pane */}
-        <div 
-          className="flex-1 overflow-y-auto p-4 space-y-3 relative"
-          style={{
-            backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")',
-            backgroundBlendMode: 'overlay',
-            backgroundColor: '#efeae2'
-          }}
-        >
-          {messages.map((msg, idx) => {
-            const isMe = msg.senderId === (user?.id || user?.uid);
-            return (
-              <div
-                key={msg.id || idx}
-                className={cn(
-                  "flex flex-col max-w-[80%] rounded-2xl p-2.5 shadow-sm text-left relative",
-                  isMe 
-                    ? "bg-[#d9fdd3] text-gray-800 ml-auto rounded-tr-none border border-[#c6ebbf]"
-                    : "bg-white text-gray-800 mr-auto rounded-tl-none border border-gray-200"
-                )}
-              >
-                {!isMe && (
-                  <div className="flex items-center gap-1.5 mb-1 shrink-0">
-                    <span className="text-[10px] font-black text-emerald-800">{msg.senderName}</span>
-                    <span className="text-[8px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100/50 rounded px-1 uppercase tracking-wider">{msg.senderRole?.replace('_', ' ')}</span>
-                  </div>
-                )}
-                {msg.attachment && (
-                  <div className="rounded-lg overflow-hidden max-h-[160px] mb-1.5 border border-black/5 bg-black/5 flex items-center justify-center">
-                    <img src={msg.attachment} className="w-full h-full object-cover max-w-full" alt="Attachment" referrerPolicy="no-referrer" />
-                  </div>
-                )}
-                <p className="text-[12px] font-medium leading-relaxed break-words">{msg.message}</p>
-                <span className="text-[8px] font-bold text-gray-400 text-right mt-1 block">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input Bar */}
-        <form onSubmit={handleSend} className="bg-[#f0f2f5] p-3 border-t border-gray-200 shrink-0 space-y-2">
-          {attachment && (
-            <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-500">
-              <div className="flex items-center gap-2 truncate">
-                <ImageIcon className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="truncate">Image Attached (Max 2MB)</span>
+        {!activeChat ? (
+          <>
+            {/* Contacts View Header */}
+            <div className="bg-emerald-800 text-white px-5 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-700 text-white rounded-full flex items-center justify-center font-bold text-sm border-2 border-emerald-500/20">
+                  P
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm tracking-tight">Pallywear Chat</h3>
+                  <p className="text-[10px] text-emerald-300 font-semibold">Select a team member to message</p>
+                </div>
               </div>
               <button
-                type="button"
-                onClick={() => setAttachment(null)}
-                className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 hover:bg-emerald-700/50 rounded-full transition-colors border-none bg-transparent cursor-pointer"
               >
-                Remove
+                <X className="w-5 h-5 text-emerald-100" />
               </button>
             </div>
-          )}
 
-          <div className="flex items-center gap-2">
-            <label className="p-2 hover:bg-gray-200 rounded-full transition-colors cursor-pointer shrink-0">
-              <ImageIcon className="w-5 h-5 text-gray-600" />
+            {/* Search Bar */}
+            <div className="p-3 bg-white border-b border-gray-200 shrink-0">
               <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
+                type="text"
+                placeholder="Search team members..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:bg-white text-gray-800"
               />
-            </label>
+            </div>
 
-            <input
-              type="text"
-              placeholder="Type a message..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              className="flex-1 bg-white border border-gray-100 rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-gray-800"
-            />
+            {/* Contacts List */}
+            <div className="flex-1 overflow-y-auto bg-white divide-y divide-gray-100">
+              {/* Global Room option */}
+              {searchQuery === '' && (
+                <button
+                  onClick={() => {
+                    setActiveChat({ id: 'global', name: 'Pallywear Team Room' });
+                    setMessages([]);
+                    lastMessagesLengthRef.current = 0;
+                  }}
+                  className="w-full px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-none bg-transparent cursor-pointer"
+                >
+                  <div className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-xs shadow-sm">
+                    GRP
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-xs text-gray-900 leading-none">Pallywear Team Room</h4>
+                    <p className="text-[10px] text-emerald-600 font-semibold mt-1">Global Workspace Group Chat</p>
+                  </div>
+                </button>
+              )}
 
-            <button
-              type="submit"
-              disabled={loading || (!inputText.trim() && !attachment)}
-              className="p-2.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-800 disabled:opacity-50 border-none flex items-center justify-center shrink-0 cursor-pointer"
+              {usersList
+                .filter(u => u.uid !== (user?.id || user?.uid))
+                .filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map(u => (
+                  <button
+                    key={u.uid}
+                    onClick={() => {
+                      setActiveChat({ id: u.uid, name: u.name, role: u.role });
+                      setMessages([]);
+                      lastMessagesLengthRef.current = 0;
+                    }}
+                    className="w-full px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-none bg-transparent cursor-pointer"
+                  >
+                    <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                      {u.name.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-xs text-gray-900 leading-none">{u.name}</h4>
+                      <span className="inline-block text-[8px] font-black uppercase text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 mt-1.5 tracking-wider">
+                        {u.role?.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* WhatsApp-themed Header */}
+            <div className="bg-emerald-800 text-white px-4 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveChat(null)}
+                  className="p-1 hover:bg-emerald-700/50 rounded-full transition-colors border-none bg-transparent cursor-pointer text-white font-bold"
+                >
+                  ←
+                </button>
+                <div className="w-9 h-9 bg-emerald-700 text-white rounded-full flex items-center justify-center font-bold text-xs border-2 border-emerald-500/20 uppercase">
+                  {activeChat.name.charAt(0)}
+                </div>
+                <div className="text-left">
+                  <h3 className="font-bold text-xs tracking-tight truncate max-w-[180px]">{activeChat.name}</h3>
+                  <p className="text-[9px] text-emerald-300 font-semibold uppercase tracking-wider mt-0.5">
+                    {activeChat.role ? activeChat.role.replace('_', ' ') : 'Workspace Room'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 hover:bg-emerald-700/50 rounded-full transition-colors border-none bg-transparent cursor-pointer"
+              >
+                <X className="w-5 h-5 text-emerald-100" />
+              </button>
+            </div>
+
+            {/* WhatsApp Background Chat Pane */}
+            <div 
+              className="flex-1 overflow-y-auto p-4 space-y-3 relative"
+              style={{
+                backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")',
+                backgroundBlendMode: 'overlay',
+                backgroundColor: '#efeae2'
+              }}
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
-          </div>
-        </form>
+              {messages.map((msg, idx) => {
+                const isMe = msg.senderId === (user?.id || user?.uid);
+                return (
+                  <div
+                    key={msg.id || idx}
+                    className={cn(
+                      "flex flex-col max-w-[80%] rounded-2xl p-2.5 shadow-sm text-left relative",
+                      isMe 
+                        ? "bg-[#d9fdd3] text-gray-800 ml-auto rounded-tr-none border border-[#c6ebbf]"
+                        : "bg-white text-gray-800 mr-auto rounded-tl-none border border-gray-200"
+                    )}
+                  >
+                    {!isMe && activeChat.id === 'global' && (
+                      <div className="flex items-center gap-1.5 mb-1 shrink-0">
+                        <span className="text-[10px] font-black text-emerald-800">{msg.senderName}</span>
+                        <span className="text-[8px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100/50 rounded px-1 uppercase tracking-wider">{msg.senderRole?.replace('_', ' ')}</span>
+                      </div>
+                    )}
+                    {msg.attachment && (
+                      <div className="rounded-lg overflow-hidden max-h-[160px] mb-1.5 border border-black/5 bg-black/5 flex items-center justify-center">
+                        <img src={msg.attachment} className="w-full h-full object-cover max-w-full" alt="Attachment" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+                    <p className="text-[12px] font-medium leading-relaxed break-words">{msg.message}</p>
+                    <span className="text-[8px] font-bold text-gray-400 text-right mt-1 block">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Bar */}
+            <form onSubmit={handleSend} className="bg-[#f0f2f5] p-3 border-t border-gray-200 shrink-0 space-y-2">
+              {attachment && (
+                <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 truncate">
+                    <ImageIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="truncate">Image Attached (Max 2MB)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAttachment(null)}
+                    className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="p-2 hover:bg-gray-200 rounded-full transition-colors cursor-pointer shrink-0">
+                  <ImageIcon className="w-5 h-5 text-gray-600" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  className="flex-1 bg-white border border-gray-100 rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-gray-800"
+                />
+
+                <button
+                  type="submit"
+                  disabled={loading || (!inputText.trim() && !attachment)}
+                  className="p-2.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-800 disabled:opacity-50 border-none flex items-center justify-center shrink-0 cursor-pointer"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </>
   );

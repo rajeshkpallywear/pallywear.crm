@@ -270,6 +270,19 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // Create invitations table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`invitations\` (
+        \`id\` varchar(50) NOT NULL,
+        \`email\` varchar(100) NOT NULL,
+        \`role\` varchar(50) NOT NULL,
+        \`status\` varchar(50) DEFAULT 'pending',
+        \`createdAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`email\` (\`email\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // 8. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [
@@ -293,6 +306,7 @@ export async function initDB() {
       "ALTER TABLE `invoices` ADD COLUMN `designGst` decimal(15,2) DEFAULT 0.00",
       "ALTER TABLE `invoices` ADD COLUMN `designDiscount` decimal(15,2) DEFAULT 0.00",
       "ALTER TABLE `invoices` ADD COLUMN `designNotes` text DEFAULT NULL",
+      "ALTER TABLE `sidebar_messages` ADD COLUMN `recipientId` varchar(50) DEFAULT NULL",
     ];
 
     for (const q of alterQueries) {

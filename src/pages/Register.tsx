@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { Layout, Mail, Lock, User, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Layout, Mail, Lock, User, CheckCircle2, Eye, EyeOff, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'motion/react';
 import Logo from '../components/Logo';
 import { UserRole } from '../types';
-import { Shield } from 'lucide-react';
+import { mockDataService } from '../service/mockDataService';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -16,8 +16,29 @@ export default function Register() {
   const [role, setRole] = useState<UserRole>(UserRole.MARKETING);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [inviteId, setInviteId] = useState('');
+  const [isInviteLocked, setIsInviteLocked] = useState(false);
   const { register, googleLogin, logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite');
+    if (invite) {
+      setInviteId(invite);
+      mockDataService.getInvitationDetails(invite).then(details => {
+        if (details && details.status === 'pending') {
+          setEmail(details.email);
+          setRole(details.role as UserRole);
+          setIsInviteLocked(true);
+        } else {
+          setError('This invitation link has expired or is invalid.');
+        }
+      }).catch(err => {
+        setError('Error loading invitation details.');
+      });
+    }
+  }, []);
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -45,7 +66,7 @@ export default function Register() {
     }
 
     try {
-      const result = await register(name, email, password, role);
+      const result = await register(name, email, password, role, inviteId);
       if (result.success) {
         await logout();
         navigate('/login', { state: { message: `Successfully registered ${email}! Please sign in with the new credentials.` } });
@@ -106,9 +127,10 @@ export default function Register() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm read-only:bg-gray-50 read-only:text-gray-500 read-only:cursor-not-allowed"
               placeholder="name@company.com"
               required
+              readOnly={isInviteLocked}
             />
           </div>
 
@@ -142,7 +164,8 @@ export default function Register() {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm bg-white"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm bg-white disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+              disabled={isInviteLocked}
             >
               <option value={UserRole.MARKETING}>Marketing</option>
               <option value={UserRole.DESIGNER}>Designer (Art Studio)</option>

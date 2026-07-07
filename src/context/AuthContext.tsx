@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true, user: nextUser };
   };
 
-  const register = async (name: string, email: string, password: string, role?: UserRole) => {
+  const register = async (name: string, email: string, password: string, role?: UserRole, inviteId?: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const users = await mockDataService.getUsers();
     const existing = users.find((user) => user.email === normalizedEmail);
@@ -147,12 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: 'This email is already registered.' };
     }
 
-    const newUserProfile: UserProfile = {
+    const newUserProfile: UserProfile & { inviteId?: string } = {
       uid: Math.random().toString(36).substring(2, 9),
       email: normalizedEmail,
       role: role || getRoleFromEmail(normalizedEmail),
       name: name.trim() || normalizedEmail.split('@')[0],
-      password: password
+      password: password,
+      inviteId
     };
 
     await mockDataService.register(newUserProfile);

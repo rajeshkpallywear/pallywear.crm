@@ -93,10 +93,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Production Team</h2>
-          <p className="text-gray-500 mt-1">Download production files and move to delivery</p>
-        </div>
+
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"

@@ -4,7 +4,7 @@ import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3,
   Users, Shield, Globe, TrendingUp, DollarSign,
-  UserPlus, X, Clock, FileText, CheckCircle2,
+  UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone
 } from 'lucide-react';
 import {
@@ -42,6 +42,25 @@ export default function AdminDashboard() {
   const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('marketing');
+  const [inviteGeneratedLink, setInviteGeneratedLink] = useState('');
+  const [invitesLoading, setInvitesLoading] = useState(false);
+
+  const fetchInvitations = async () => {
+    try {
+      const data = await mockDataService.getInvitations();
+      setInvitations(data);
+    } catch (e) {
+      console.error('Failed to load invitations:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchInvitations();
+  }, []);
+
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -450,6 +469,14 @@ export default function AdminDashboard() {
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="bg-white" onClick={() => setShowLogsModal(true)}>Audit Logs</Button>
+              <Button variant="outline" className="bg-white gap-2" onClick={() => {
+                setInviteEmail('');
+                setInviteRole('marketing');
+                setInviteGeneratedLink('');
+                setShowInviteModal(true);
+              }}>
+                <Mail className="w-4 h-4" /> Invite User
+              </Button>
               <Button variant="secondary" className="shadow-sm" onClick={() => navigate('/register')}>
                 <UserPlus className="w-4 h-4 mr-2" /> Register New User
               </Button>
@@ -640,144 +667,198 @@ export default function AdminDashboard() {
               </div>
             </div>
           ) : activeTab === 'users' ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-bold text-gray-800">Platform Registered Users</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Total Users: {registeredUsers.length}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden h-fit">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-bold text-gray-800">Platform Registered Users</h3>
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Total Users: {registeredUsers.length}</span>
+                  </div>
                 </div>
-              </div>
-              {layoutMode === 'mobile' ? (
-                <div className="p-4 space-y-4">
-                  {registeredUsers.length > 0 ? (
-                    registeredUsers.map((u, i) => (
-                      <div key={u.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden shadow-md shadow-brand-primary/20">
-                            {u.avatar ? (
-                              <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span>{u.name.charAt(0)}</span>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-800 text-sm leading-none mb-1">{u.name}</p>
-                            <p className="text-[10px] text-gray-400">{u.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center border-t border-gray-50 pt-2.5">
-                          <span
-                            className={cn(
-                              "text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-sm",
-                              u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
-                                u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
-                                  u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
-                                    u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
-                                      u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
-                                        u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
-                                          u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
-                                            u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
-                                              "text-gray-600 border-gray-100 bg-gray-50"
-                            )}
-                          >
-                            {u.role?.replace('_', ' ')}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {u.id !== user?.id && (
-                              <button
-                                onClick={() => handleRemoveUser(u.id)}
-                                className="p-1 hover:bg-red-50 text-red-500 rounded border border-transparent hover:border-red-100 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-gray-400 italic text-xs p-8">
-                      No team members registered yet.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-500 font-medium">
-                    <tr>
-                      <th className="px-6 py-4">User Details</th>
-                      <th className="px-6 py-4">System Role</th>
-                      <th className="px-6 py-4">Join Date</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Settings</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {registeredUsers.map((u, i) => (
-                      <tr key={u.id} className="hover:bg-gray-50/50 group">
-                        <td className="px-6 py-4">
+                {layoutMode === 'mobile' ? (
+                  <div className="p-4 space-y-4">
+                    {registeredUsers.length > 0 ? (
+                      registeredUsers.map((u, i) => (
+                        <div key={u.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-left">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden shadow-md shadow-brand-primary/20">
                               {u.avatar ? (
-                                <img src={u.avatar} alt={u.name} />
+                                <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
                               ) : (
                                 <span>{u.name.charAt(0)}</span>
                               )}
                             </div>
                             <div>
-                              <p className="font-bold text-gray-800">{u.name}</p>
+                              <p className="font-bold text-gray-800 text-sm leading-none mb-1">{u.name}</p>
                               <p className="text-[10px] text-gray-400">{u.email}</p>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={cn(
-                              "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shadow-sm",
-                              u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
-                                u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
-                                  u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
-                                    u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
-                                      u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
-                                        u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
-                                          u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
-                                            u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
-                                              "text-gray-600 border-gray-100 bg-gray-50"
-                            )}
-                          >
-                            {u.role?.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
-                          {new Date(u.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            <span className="text-[11px] text-gray-600">Active</span>
+                          <div className="flex justify-between items-center border-t border-gray-50 pt-2.5">
+                            <span
+                              className={cn(
+                                "text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-sm",
+                                u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
+                                  u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
+                                    u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
+                                      u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                                        u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                                          u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
+                                            u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
+                                              u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
+                                                "text-gray-600 border-gray-100 bg-gray-50"
+                              )}
+                            >
+                              {u.role?.replace('_', ' ')}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {u.id !== user?.id && (
+                                <button
+                                  onClick={() => handleRemoveUser(u.id)}
+                                  className="p-1 hover:bg-red-50 text-red-500 rounded border border-transparent hover:border-red-100 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {u.id !== user?.id && (
-                              <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {registeredUsers.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
-                          No team members registered yet or sync in progress.
-                        </td>
-                      </tr>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-gray-400 italic text-xs p-8">
+                        No team members registered yet.
+                      </div>
                     )}
-                  </tbody>
-                </table>
-              )}
+                  </div>
+                ) : (
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-medium">
+                      <tr>
+                        <th className="px-6 py-4">User Details</th>
+                        <th className="px-6 py-4">System Role</th>
+                        <th className="px-6 py-4">Join Date</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Settings</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {registeredUsers.map((u, i) => (
+                        <tr key={u.id} className="hover:bg-gray-50/50 group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden shadow-md shadow-brand-primary/20">
+                                {u.avatar ? (
+                                  <img src={u.avatar} alt={u.name} />
+                                ) : (
+                                  <span>{u.name.charAt(0)}</span>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-800">{u.name}</p>
+                                <p className="text-[10px] text-gray-400">{u.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={cn(
+                                "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shadow-sm",
+                                u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
+                                  u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
+                                    u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
+                                      u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                                        u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                                          u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
+                                            u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
+                                              u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
+                                                "text-gray-600 border-gray-100 bg-gray-50"
+                              )}
+                            >
+                              {u.role?.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
+                            {new Date(u.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                              <span className="text-[11px] text-gray-600">Active</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {u.id !== user?.id && (
+                                <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {registeredUsers.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                            No team members registered yet or sync in progress.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-fit text-left">
+                <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Pending Workspace Invites</h3>
+                {invitations.filter(inv => inv.status === 'pending').length > 0 ? (
+                  <div className="space-y-4">
+                    {invitations.filter(inv => inv.status === 'pending').map((inv) => (
+                      <div key={inv.id} className="p-4 bg-gray-50 rounded-xl border border-gray-200/60 flex flex-col gap-2 relative group transition-all hover:border-brand-primary/25">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-xs font-bold text-gray-900 truncate max-w-[170px]" title={inv.email}>{inv.email}</p>
+                            <span className="inline-block text-[9px] font-black uppercase text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 mt-1.5 tracking-wider">
+                              {inv.role}
+                            </span>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm("Cancel this invitation?")) {
+                                try {
+                                  await mockDataService.deleteInvitation(inv.id);
+                                  await fetchInvitations();
+                                  alert("Invitation cancelled.");
+                                } catch (e) {
+                                  alert("Failed to cancel invitation.");
+                                }
+                              }
+                            }}
+                            className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                            title="Revoke Invitation"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-gray-400 mt-2.5 border-t border-dashed border-gray-200 pt-2.5">
+                          <span className="font-semibold text-[8px]">Token: <span className="font-mono font-bold text-gray-700">{inv.id}</span></span>
+                          <button
+                            onClick={() => {
+                              const registerUrl = `${window.location.origin}/register?invite=${inv.id}`;
+                              navigator.clipboard.writeText(registerUrl);
+                              alert("Invitation link copied!");
+                            }}
+                            className="text-brand-primary font-black hover:underline cursor-pointer border-none bg-transparent text-[8px] uppercase tracking-widest"
+                          >
+                            Copy Link
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic text-center py-6">No pending invitations.</p>
+                )}
+              </div>
             </div>
           ) : activeTab === 'orders' ? (
             <div className="space-y-8 animate-fadeIn">
@@ -1129,23 +1210,93 @@ export default function AdminDashboard() {
                 <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
               </div>
               <p className="text-sm text-gray-500 mb-6">Send an invitation to join your workspace as a user or moderator.</p>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</label>
-                  <input type="email" placeholder="colleague@company.com" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all border-none focus:outline-none" />
+              {inviteGeneratedLink ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 text-green-700 rounded-xl text-xs font-semibold leading-relaxed border border-green-100">
+                    Invitation generated successfully! You can share the link below with your colleague:
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteGeneratedLink}
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none font-mono"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteGeneratedLink);
+                        alert('Copied to clipboard!');
+                      }}
+                      className="px-3 py-2 bg-black text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-colors cursor-pointer border-none"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <Button className="w-full mt-4" onClick={() => {
+                    setInviteGeneratedLink('');
+                    setShowInviteModal(false);
+                  }}>
+                    Close
+                  </Button>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">System Role</label>
-                  <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all border-none focus:outline-none">
-                    <option>Standard User</option>
-                    <option>Administrator</option>
-                    <option>Viewer Only</option>
-                  </select>
+              ) : (
+                <div className="space-y-4 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</label>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="colleague@company.com"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all focus:outline-none text-sm font-semibold"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">System Role</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all focus:outline-none text-sm font-semibold bg-white"
+                    >
+                      <option value="marketing">Marketing</option>
+                      <option value="designer">Designer (Art Studio)</option>
+                      <option value="accounts">Accounts</option>
+                      <option value="order_management">Order Management</option>
+                      <option value="production">Production (Factory)</option>
+                      <option value="digitizer">Digitizing & Embroidery</option>
+                      <option value="delivery">Delivery</option>
+                      <option value="telecaller">Telecaller</option>
+                      <option value="vendor">Vendor</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                  <Button
+                    className="w-full mt-4"
+                    disabled={invitesLoading || !inviteEmail.trim()}
+                    onClick={async () => {
+                      if (!inviteEmail.trim()) return;
+                      setInvitesLoading(true);
+                      try {
+                        const res = await mockDataService.createInvitation(inviteEmail.trim(), inviteRole);
+                        if (res.success) {
+                          const registerUrl = `${window.location.origin}/register?invite=${res.inviteId}`;
+                          setInviteGeneratedLink(registerUrl);
+                          await fetchInvitations();
+                          alert('Invitation successfully created!');
+                        } else {
+                          alert('Failed to create invitation.');
+                        }
+                      } catch (err: any) {
+                        alert(err.message || 'Error creating invitation.');
+                      } finally {
+                        setInvitesLoading(false);
+                      }
+                    }}
+                  >
+                    {invitesLoading ? 'Creating invite...' : 'Send Invitation'}
+                  </Button>
                 </div>
-                <Button className="w-full mt-4" onClick={() => { alert('Invite sent successfully!'); setShowInviteModal(false); }}>
-                  Send Invitation
-                </Button>
-              </div>
+              )}
             </motion.div>
           </div>
         )}

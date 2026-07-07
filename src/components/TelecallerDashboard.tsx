@@ -88,10 +88,7 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Telecaller Dashboard</h2>
-        <p className="text-gray-500 mt-1">Manage leads, log calls, and update conversion status</p>
-      </div>
+
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

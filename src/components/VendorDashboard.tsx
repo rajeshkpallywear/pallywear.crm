@@ -105,10 +105,7 @@ export default function VendorDashboard({ user }: VendorDashboardProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Vendor Dashboard</h2>
-          <p className="text-gray-500 mt-1">Submit invoice copies, upload delivery bills, and track supplier receipts</p>
-        </div>
+
         <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-2xl border border-emerald-100 text-xs font-bold uppercase tracking-wider">
           <ShieldCheck size={16} /> Verified Supplier
         </div>

@@ -63,7 +63,7 @@ router.post('/auth/login', async (req, res) => {
 });
 
 router.post('/auth/register', async (req, res) => {
-  const { id, uid, email, password, name, role } = req.body;
+  const { id, uid, email, password, name, role, inviteId } = req.body;
   const normalizedEmail = (email || '').trim().toLowerCase();
   const userId = id || uid;
 
@@ -81,6 +81,11 @@ router.post('/auth/register', async (req, res) => {
       'INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)',
       [userId, normalizedEmail, password, name, role || 'user']
     );
+
+    if (inviteId) {
+      await query('UPDATE invitations SET status = ? WHERE id = ?', ['accepted', inviteId]);
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error registering user:', error);
@@ -605,12 +610,27 @@ router.delete('/expenses/:id', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// SIDEBAR MESSAGES ENDPOINTS
+// SIDEBAR MESSAGES ENDPOINTS (Filtered by Private Chat channels)
 // ----------------------------------------------------
 
 router.get('/messages', async (req, res) => {
+  const { senderId, recipientId } = req.query;
   try {
-    const rows = await query('SELECT * FROM sidebar_messages ORDER BY createdAt ASC') as any[];
+    let rows;
+    if (senderId && recipientId) {
+      rows = await query(
+        `SELECT * FROM sidebar_messages 
+         WHERE (senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?)
+         ORDER BY createdAt ASC`,
+        [senderId, recipientId, recipientId, senderId]
+      ) as any[];
+    } else {
+      rows = await query(
+        `SELECT * FROM sidebar_messages 
+         WHERE recipientId IS NULL OR recipientId = 'global'
+         ORDER BY createdAt ASC`
+      ) as any[];
+    }
     res.json(rows);
   } catch (error: any) {
     console.error('Error fetching sidebar messages:', error);
@@ -619,19 +639,76 @@ router.get('/messages', async (req, res) => {
 });
 
 router.post('/messages', async (req, res) => {
-  const { id, senderId, senderName, senderRole, message, attachment } = req.body;
+  const { id, senderId, senderName, senderRole, message, attachment, recipientId } = req.body;
   if (!senderId || !senderName || !senderRole || !message) {
     return res.status(400).json({ success: false, message: 'Missing required message parameters.' });
   }
   const msgId = id || `msg_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
   try {
     await query(
-      'INSERT INTO sidebar_messages (id, senderId, senderName, senderRole, message, attachment, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [msgId, senderId, senderName, senderRole, message, attachment || null, Date.now()]
+      'INSERT INTO sidebar_messages (id, senderId, senderName, senderRole, message, attachment, recipientId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [msgId, senderId, senderName, senderRole, message, attachment || null, recipientId || null, Date.now()]
     );
     res.json({ success: true, messageId: msgId });
   } catch (error: any) {
     console.error('Error creating sidebar message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ----------------------------------------------------
+// INVITATIONS ENDPOINTS
+// ----------------------------------------------------
+
+router.post('/invitations', async (req, res) => {
+  const { email, role } = req.body;
+  if (!email || !role) {
+    return res.status(400).json({ success: false, message: 'Email and role are required.' });
+  }
+  const token = 'inv_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  try {
+    await query(
+      'INSERT INTO invitations (id, email, role, status, createdAt) VALUES (?, ?, ?, ?, ?)',
+      [token, email.trim().toLowerCase(), role, 'pending', Date.now()]
+    );
+    res.json({ success: true, inviteId: token });
+  } catch (error: any) {
+    console.error('Error creating invitation:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/invitations', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM invitations ORDER BY createdAt DESC') as any[];
+    res.json(rows);
+  } catch (error: any) {
+    console.error('Error fetching invitations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/invitations/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rows = await query('SELECT * FROM invitations WHERE id = ?', [id]) as any[];
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Invitation not found.' });
+    }
+    res.json(rows[0]);
+  } catch (error: any) {
+    console.error('Error fetching invitation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/invitations/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await query('DELETE FROM invitations WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting invitation:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -197,8 +197,12 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getMessages: async (): Promise<SidebarMessage[]> => {
-    const res = await fetch(getApiUrl('/api/messages'));
+  getMessages: async (senderId?: string, recipientId?: string): Promise<SidebarMessage[]> => {
+    let url = getApiUrl('/api/messages');
+    if (senderId && recipientId) {
+      url += `?senderId=${senderId}&recipientId=${recipientId}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch sidebar messages');
     return res.json();
   },
@@ -210,6 +214,36 @@ export const mockDataService = {
       body: JSON.stringify(msg)
     });
     if (!res.ok) throw new Error('Failed to save sidebar message');
+    notifyUpdate();
+  },
+
+  getInvitations: async (): Promise<any[]> => {
+    const res = await fetch(getApiUrl('/api/invitations'));
+    if (!res.ok) throw new Error('Failed to fetch invitations');
+    return res.json();
+  },
+
+  createInvitation: async (email: string, role: string): Promise<any> => {
+    const res = await fetch(getApiUrl('/api/invitations'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, role })
+    });
+    if (!res.ok) throw new Error('Failed to create invitation');
+    return res.json();
+  },
+
+  getInvitationDetails: async (id: string): Promise<any> => {
+    const res = await fetch(getApiUrl(`/api/invitations/${id}`));
+    if (!res.ok) throw new Error('Failed to fetch invitation details');
+    return res.json();
+  },
+
+  deleteInvitation: async (id: string): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/invitations/${id}`), {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete invitation');
     notifyUpdate();
   }
 };

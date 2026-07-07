@@ -511,10 +511,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Order Management</h2>
-          <p className="text-gray-500 mt-1">Finalize files and share with production team</p>
-        </div>
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMsgSidebarOpen(true)}

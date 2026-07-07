@@ -298,10 +298,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Marketing Dashboard</h2>
-          <p className="text-gray-500 mt-1">Create and manage order intake</p>
-        </div>
+
         <div className="flex items-center gap-4">
           <button
             onClick={() => {

@@ -187,5 +187,6 @@ export interface SidebarMessage {
   senderRole: string;
   message: string;
   attachment?: string;
+  recipientId?: string;
   createdAt: number;
 }

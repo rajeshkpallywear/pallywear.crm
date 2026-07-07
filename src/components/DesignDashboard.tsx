@@ -536,13 +536,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     <div className="space-y-8 animate-fadeIn">
       {/* Header section with synchronized database updates */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Palette className="text-brand-primary" size={28} />
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Artwork & Design Studio</h2>
-          </div>
-          <p className="text-gray-500 mt-1">Manage physical vector traces, machine language digitizing files, and team conversations</p>
-        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => window.location.reload()}
