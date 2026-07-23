@@ -4,9 +4,20 @@
  */
 
 export const getApiBaseUrl = (): string => {
-  const savedUrl = localStorage.getItem('pallywear_api_url');
+  let savedUrl = localStorage.getItem('pallywear_api_url');
+
   if (savedUrl) {
-    return savedUrl.replace(/\/$/, ''); // strip trailing slash
+    savedUrl = savedUrl.trim().replace(/\/$/, ''); // strip trailing slash
+
+    // Auto-fix common typo: dot before port number (e.g. 118.139.167.81.3000 -> 118.139.167.81:3000)
+    savedUrl = savedUrl.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{4,5})/, '$1:$2');
+
+    // Auto-add protocol if missing
+    if (!savedUrl.startsWith('http://') && !savedUrl.startsWith('https://')) {
+      savedUrl = 'http://' + savedUrl;
+    }
+
+    return savedUrl;
   }
   
   // If running in Capacitor/Android native app environment, default to production API server

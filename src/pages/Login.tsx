@@ -24,8 +24,14 @@ export default function Login() {
   const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || '');
 
   const saveSettings = () => {
-    if (tempApiUrl.trim()) {
-      localStorage.setItem('pallywear_api_url', tempApiUrl.trim());
+    let url = tempApiUrl.trim();
+    if (url) {
+      // Auto-fix dot instead of colon before port number (e.g. 118.139.167.81.3000 -> 118.139.167.81:3000)
+      url = url.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{4,5})/, '$1:$2');
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+      }
+      localStorage.setItem('pallywear_api_url', url);
     } else {
       localStorage.removeItem('pallywear_api_url');
     }
