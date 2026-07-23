@@ -54,6 +54,18 @@ export default function Dashboard() {
   const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue'>('orders');
   const [expenseExpanded, setExpenseExpanded] = React.useState(true);
 
+  const [layoutMode, setLayoutMode] = React.useState<'mobile' | 'system'>(
+    window.innerWidth < 768 ? 'mobile' : 'system'
+  );
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setLayoutMode(window.innerWidth < 768 ? 'mobile' : 'system');
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   React.useEffect(() => {
     if (user && (user.role === 'marketing' || user.role === 'staff' || user.role === UserRole.MARKETING || user.role === UserRole.STAFF)) {
       if (activeTab === 'dashboard') {

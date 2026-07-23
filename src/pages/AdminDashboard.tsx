@@ -66,6 +66,18 @@ export default function AdminDashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  const [layoutMode, setLayoutMode] = React.useState<'mobile' | 'system'>(
+    window.innerWidth < 768 ? 'mobile' : 'system'
+  );
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setLayoutMode(window.innerWidth < 768 ? 'mobile' : 'system');
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setIsMobileOpen(false);
