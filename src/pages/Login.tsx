@@ -31,6 +31,10 @@ export default function Login() {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
       }
+      // Force http for this specific IP to avoid SSL errors shown in browser
+      if (url.includes('118.139.167.81')) {
+        url = url.replace('https://', 'http://');
+      }
       localStorage.setItem('pallywear_api_url', url);
     } else {
       localStorage.removeItem('pallywear_api_url');
@@ -76,7 +80,13 @@ export default function Login() {
         navigate(isAdmin ? '/admin' : '/dashboard');
       } else {
         let message = result.message || 'Login failed';
-        if (message.includes('auth/operation-not-allowed')) {
+        if (message.toLowerCase().includes('failed to fetch')) {
+          if (localStorage.getItem('pallywear_api_url')) {
+            localStorage.removeItem('pallywear_api_url');
+            setTempApiUrl('');
+            message = 'Connection to custom server failed. Reset connection to default (https://pallywear.in). Please tap Sign In again.';
+          }
+        } else if (message.includes('auth/operation-not-allowed')) {
           message = 'Email/Password login is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
         } else if (message.includes('auth/invalid-credential') || message.includes('auth/user-not-found') || message.includes('auth/wrong-password')) {
           message = 'Invalid email or password. If you haven\'t registered yet, please contact an administrator.';
@@ -84,7 +94,13 @@ export default function Login() {
         setError(message);
       }
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+      let errMsg = err.message || 'An unexpected error occurred';
+      if (errMsg.toLowerCase().includes('failed to fetch') && localStorage.getItem('pallywear_api_url')) {
+        localStorage.removeItem('pallywear_api_url');
+        setTempApiUrl('');
+        errMsg = 'Connection to custom server failed. Reset connection to default (https://pallywear.in). Please tap Sign In again.';
+      }
+      setError(errMsg);
     }
   };
 
@@ -244,17 +260,30 @@ export default function Login() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="flex-1 text-xs"
+                      className="text-xs text-gray-500"
                       onClick={() => setShowSettings(false)}
                     >
                       Cancel
                     </Button>
                     <Button
                       type="button"
+                      variant="outline"
+                      className="text-xs text-red-500 border-red-200 hover:bg-red-50"
+                      onClick={() => {
+                        localStorage.removeItem('pallywear_api_url');
+                        setTempApiUrl('');
+                        setShowSettings(false);
+                        window.location.reload();
+                      }}
+                    >
+                      Reset Default
+                    </Button>
+                    <Button
+                      type="button"
                       className="flex-1 text-xs"
                       onClick={saveSettings}
                     >
-                      Save Settings
+                      Save
                     </Button>
                   </div>
                 </div>
