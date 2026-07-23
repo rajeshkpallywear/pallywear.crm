@@ -53,20 +53,6 @@ export default function Dashboard() {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue'>('orders');
   const [expenseExpanded, setExpenseExpanded] = React.useState(true);
-  const [layoutMode, setLayoutMode] = React.useState<'system' | 'mobile'>('system');
-
-  React.useEffect(() => {
-    const checkScreen = () => {
-      if (window.innerWidth < 768) {
-        setLayoutMode('mobile');
-      } else {
-        setLayoutMode('system');
-      }
-    };
-    checkScreen();
-    window.addEventListener('resize', checkScreen);
-    return () => window.removeEventListener('resize', checkScreen);
-  }, []);
 
   React.useEffect(() => {
     if (user && (user.role === 'marketing' || user.role === 'staff' || user.role === UserRole.MARKETING || user.role === UserRole.STAFF)) {
@@ -470,51 +456,23 @@ export default function Dashboard() {
       )}
 
       <main className={cn(
-        "flex-1 min-h-screen transition-all duration-300",
-        layoutMode === 'mobile' ? "ml-0 pb-20" : (isSidebarCollapsed ? "md:ml-20" : "md:ml-64"),
-        "ml-0"
+        "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
+        isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
-        <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
-            {layoutMode === 'system' && (
-              <button
-                onClick={() => setIsMobileOpen(true)}
-                className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
-                aria-label="Toggle menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            )}
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="text-xs md:text-sm font-medium text-gray-500 flex items-center gap-2">
               {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
-              <span className={cn(
-                "text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ml-2 hidden sm:inline-block",
-                layoutMode === 'mobile' ? "bg-green-50 text-green-700 border-green-200" : "bg-blue-50 text-blue-700 border-blue-200"
-              )}>
-                {layoutMode}
-              </span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Layout mode switcher inside header */}
-            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200/50 text-[10px] font-bold">
-              <button
-                onClick={() => setLayoutMode('system')}
-                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'system' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
-                title="Switch to System Layout"
-              >
-                <Monitor className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">System</span>
-              </button>
-              <button
-                onClick={() => setLayoutMode('mobile')}
-                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'mobile' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
-                title="Switch to Mobile Layout"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Mobile</span>
-              </button>
-            </div>
             {user?.role === 'admin' && (
               <Button
                 variant="outline"
@@ -530,7 +488,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className={cn(layoutMode === 'mobile' ? "p-4 pb-24" : "p-8")}>
+        <div className="p-4 sm:p-6 md:p-8">
           {activeTab === 'inventory' ? (
             <InventoryManagement userRole={user?.role as any} />
           ) : activeTab === 'history' ? (

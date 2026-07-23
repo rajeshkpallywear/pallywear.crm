@@ -65,20 +65,6 @@ export default function AdminDashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<'system' | 'mobile'>('system');
-
-  React.useEffect(() => {
-    const checkScreen = () => {
-      if (window.innerWidth < 768) {
-        setLayoutMode('mobile');
-      } else {
-        setLayoutMode('system');
-      }
-    };
-    checkScreen();
-    window.addEventListener('resize', checkScreen);
-    return () => window.removeEventListener('resize', checkScreen);
-  }, []);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -402,52 +388,24 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 min-h-screen transition-all duration-300",
-        layoutMode === 'mobile' ? "ml-0 pb-20" : (isSidebarCollapsed ? "md:ml-20" : "md:ml-64"),
-        "ml-0"
+        "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
+        isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
+        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3 text-gray-400">
-            {layoutMode === 'system' && (
-              <button
-                onClick={() => setIsMobileOpen(true)}
-                className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
-                aria-label="Toggle menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            )}
-            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-700 flex items-center gap-2">
               Admin Control Panel
-              <span className={cn(
-                "text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ml-2 hidden sm:inline-block",
-                layoutMode === 'mobile' ? "bg-green-50 text-green-700 border-green-200" : "bg-blue-50 text-blue-700 border-blue-200"
-              )}>
-                {layoutMode}
-              </span>
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            {/* Layout mode switcher inside header */}
-            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200/50 text-[10px] font-bold">
-              <button
-                onClick={() => setLayoutMode('system')}
-                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'system' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
-                title="Switch to System Layout"
-              >
-                <Monitor className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">System</span>
-              </button>
-              <button
-                onClick={() => setLayoutMode('mobile')}
-                className={cn("px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer", layoutMode === 'mobile' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600")}
-                title="Switch to Mobile Layout"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Mobile</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-2 sm:gap-4">
             <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"><Bell className="w-5 h-5" /></button>
             <button
               className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"
@@ -458,37 +416,37 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className={cn("max-w-7xl mx-auto", layoutMode === 'mobile' ? "p-4 pb-24" : "p-8")}>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
           {/* Header Action Row */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight capitalize">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight capitalize">
                 {activeTab === 'overview' ? 'System Performance' : activeTab.replace(/([A-Z])/g, ' $1')}
               </h1>
-              <p className="text-gray-500 text-sm">Managing administrative controls for {user?.name}</p>
+              <p className="text-gray-500 text-xs sm:text-sm mt-0.5">Managing administrative controls for {user?.name}</p>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="bg-white" onClick={() => setShowLogsModal(true)}>Audit Logs</Button>
-              <Button variant="outline" className="bg-white gap-2" onClick={() => {
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3">
+              <Button variant="outline" size="sm" className="bg-white text-xs" onClick={() => setShowLogsModal(true)}>Audit Logs</Button>
+              <Button variant="outline" size="sm" className="bg-white gap-1.5 text-xs" onClick={() => {
                 setInviteEmail('');
                 setInviteRole('marketing');
                 setInviteGeneratedLink('');
                 setShowInviteModal(true);
               }}>
-                <Mail className="w-4 h-4" /> Invite User
+                <Mail className="w-3.5 h-3.5" /> Invite User
               </Button>
-              <Button variant="secondary" className="shadow-sm" onClick={() => navigate('/register')}>
-                <UserPlus className="w-4 h-4 mr-2" /> Register New User
+              <Button variant="secondary" size="sm" className="shadow-sm text-xs" onClick={() => navigate('/register')}>
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Register User
               </Button>
             </div>
           </div>
 
           {activeTab === 'overview' ? (
             <>
-              {/* Overview Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+              {/* Overview Stats - Responsive Grid (2 columns on mobile, 5 on desktop) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 {[
-                  { label: 'Aggregate Value', val: `₹${aggregateTotal.toLocaleString()}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500' },
+                  { label: 'Aggregate Value', val: `₹${Math.round(Number(aggregateTotal) || 0).toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500' },
                   { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-white', bg: 'bg-brand-secondary' },
                   { label: 'Global Orders', val: orders.length, icon: Zap, color: 'text-white', bg: 'bg-orange-500' },
                   { label: 'Registered Team', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
@@ -497,15 +455,17 @@ export default function AdminDashboard() {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
+                    transition={{ delay: i * 0.05 }}
                     key={i}
-                    className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm"
+                    className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between"
                   >
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mb-4 shadow-lg", stat.bg, stat.color)}>
-                      <stat.icon className="w-5 h-5" />
+                    <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mb-2 sm:mb-4 shadow-md", stat.bg, stat.color)}>
+                      <stat.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">{stat.label}</p>
-                    <p className="text-xl font-black text-gray-900 mt-1">{stat.val}</p>
+                    <div>
+                      <p className="text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate">{stat.label}</p>
+                      <p className="text-base sm:text-xl font-black text-gray-900 mt-0.5 truncate">{stat.val}</p>
+                    </div>
                   </motion.div>
                 ))}
               </div>

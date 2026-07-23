@@ -79,7 +79,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
       </div>
 
       {/* Summary Stats Section */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
