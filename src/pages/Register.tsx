@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { Layout, Mail, Lock, User, CheckCircle2, Eye, EyeOff, Shield } from 'lucide-react';
+import { Layout, Mail, Lock, User, CheckCircle2, Eye, EyeOff, Shield, Settings } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../components/Logo';
 import { UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
@@ -20,6 +20,27 @@ export default function Register() {
   const [isInviteLocked, setIsInviteLocked] = useState(false);
   const { register, googleLogin, logout } = useAuth();
   const navigate = useNavigate();
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'http://118.139.167.81:3000');
+
+  const saveSettings = () => {
+    let url = tempApiUrl.trim();
+    if (url) {
+      url = url.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{4,5})/, '$1:$2');
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+      }
+      if (url.includes('118.139.167.81')) {
+        url = url.replace('https://', 'http://');
+      }
+      localStorage.setItem('pallywear_api_url', url);
+    } else {
+      localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
+    }
+    setShowSettings(false);
+    window.location.reload();
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -91,8 +112,16 @@ export default function Register() {
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="glass-card p-8 rounded-2xl w-full max-w-md border-white/50"
+        className="glass-card p-8 rounded-2xl w-full max-w-md border-white/50 relative"
       >
+        <button
+          type="button"
+          onClick={() => setShowSettings(true)}
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer"
+          title="Connection Settings"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
         <div className="flex flex-col items-center mb-8">
           <Logo iconOnly className="mb-4 scale-125" />
           <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Register New User</h2>
@@ -219,6 +248,72 @@ export default function Register() {
             ← Return to Admin Panel
           </Link>
         </div>
+
+        {/* Connection Settings Modal */}
+        <AnimatePresence>
+          {showSettings && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white p-6 rounded-2xl w-full max-w-sm border border-gray-100 shadow-2xl relative text-left"
+              >
+                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-indigo-600 animate-spin-slow" />
+                  Connection Settings
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Configure backend server endpoint.
+                </p>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                      Backend API Base URL
+                    </label>
+                    <input
+                      type="text"
+                      value={tempApiUrl}
+                      onChange={(e) => setTempApiUrl(e.target.value)}
+                      placeholder="e.g. http://118.139.167.81:3000"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="text-xs text-gray-500"
+                      onClick={() => setShowSettings(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="text-xs text-red-500 border-red-200 hover:bg-red-50"
+                      onClick={() => {
+                        localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
+                        setTempApiUrl('http://118.139.167.81:3000');
+                        setShowSettings(false);
+                        window.location.reload();
+                      }}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      className="flex-1 text-xs"
+                      onClick={saveSettings}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

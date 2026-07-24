@@ -51,6 +51,26 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [tempApiUrl, setTempApiUrl] = React.useState(localStorage.getItem('pallywear_api_url') || 'http://118.139.167.81:3000');
+
+  const saveSettings = () => {
+    let url = tempApiUrl.trim();
+    if (url) {
+      url = url.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{4,5})/, '$1:$2');
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+      }
+      if (url.includes('118.139.167.81')) {
+        url = url.replace('https://', 'http://');
+      }
+      localStorage.setItem('pallywear_api_url', url);
+    } else {
+      localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
+    }
+    setShowSettings(false);
+    window.location.reload();
+  };
   const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue'>('orders');
   const [expenseExpanded, setExpenseExpanded] = React.useState(true);
 
@@ -472,6 +492,14 @@ export default function Dashboard() {
         isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
         <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer mr-2"
+            title="Connection Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileOpen(true)}
@@ -637,7 +665,15 @@ export default function Dashboard() {
                   {filteredLeads.length > 0 ? (
                     filteredLeads.map((l, i) => (
                       <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer mr-2"
+            title="Connection Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
                             {l.name.charAt(0)}
                           </div>
@@ -675,7 +711,15 @@ export default function Dashboard() {
                       {filteredLeads.map((l, i) => (
                         <tr key={i} className="hover:bg-gray-50/50">
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
+                            <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer mr-2"
+            title="Connection Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
                                 {l.name.charAt(0)}
                               </div>
@@ -874,6 +918,73 @@ export default function Dashboard() {
       )}
 
       <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+
+      {/* Connection Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white p-6 rounded-2xl w-full max-w-sm border border-gray-100 shadow-2xl relative text-left"
+            >
+              <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-indigo-600 animate-spin-slow" />
+                Connection Settings
+              </h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Configure backend server endpoint.
+              </p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                    Backend API Base URL
+                  </label>
+                  <input
+                    type="text"
+                    value={tempApiUrl}
+                    onChange={(e) => setTempApiUrl(e.target.value)}
+                    placeholder="e.g. http://118.139.167.81:3000"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-xs text-gray-500"
+                    onClick={() => setShowSettings(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-xs text-red-500 border-red-200 hover:bg-red-50"
+                    onClick={() => {
+                      localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
+                      setTempApiUrl('http://118.139.167.81:3000');
+                      setShowSettings(false);
+                      window.location.reload();
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    className="flex-1 text-xs"
+                    onClick={saveSettings}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <SidebarChat />
     </div>
   );

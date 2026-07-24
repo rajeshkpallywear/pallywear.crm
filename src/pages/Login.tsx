@@ -21,7 +21,7 @@ export default function Login() {
   const location = useLocation();
 
   const [showSettings, setShowSettings] = useState(false);
-  const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || '');
+  const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'http://118.139.167.81:3000');
 
   const saveSettings = () => {
     let url = tempApiUrl.trim();
@@ -83,8 +83,8 @@ export default function Login() {
         if (message.toLowerCase().includes('failed to fetch')) {
           if (localStorage.getItem('pallywear_api_url')) {
             localStorage.removeItem('pallywear_api_url');
-            setTempApiUrl('');
-            message = 'Connection to custom server failed. Reset connection to default (https://pallywear.in). Please tap Sign In again.';
+            setTempApiUrl('http://118.139.167.81:3000');
+            message = 'Connection to custom server failed. Reset connection to default (http://118.139.167.81:3000). Please tap Sign In again.';
           }
         } else if (message.includes('auth/operation-not-allowed')) {
           message = 'Email/Password login is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
@@ -97,8 +97,8 @@ export default function Login() {
       let errMsg = err.message || 'An unexpected error occurred';
       if (errMsg.toLowerCase().includes('failed to fetch') && localStorage.getItem('pallywear_api_url')) {
         localStorage.removeItem('pallywear_api_url');
-        setTempApiUrl('');
-        errMsg = 'Connection to custom server failed. Reset connection to default (https://pallywear.in). Please tap Sign In again.';
+        setTempApiUrl('http://118.139.167.81:3000');
+        errMsg = 'Connection to custom server failed. Reset connection to default (http://118.139.167.81:3000). Please tap Sign In again.';
       }
       setError(errMsg);
     }
@@ -270,8 +270,8 @@ export default function Login() {
                       variant="outline"
                       className="text-xs text-red-500 border-red-200 hover:bg-red-50"
                       onClick={() => {
-                        localStorage.removeItem('pallywear_api_url');
-                        setTempApiUrl('');
+                        localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
+                        setTempApiUrl('http://118.139.167.81:3000');
                         setShowSettings(false);
                         window.location.reload();
                       }}
