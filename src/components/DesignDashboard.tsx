@@ -167,6 +167,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         isCompleted = true;
       }
 
+      const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
+        ? o.sizeBreakdown.map(s => [s.category, s.material, s.colour, s.printType, s.model].filter(Boolean).join(' ')).filter(Boolean).join(' | ') 
+        : '') || 'No notes';
+
       return {
         id: o.id,
         isOrder: true,
@@ -174,7 +178,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         phone: o.customerInfo.phone,
         category: o.category,
         quantity: o.quantity,
-        notes: o.notes || 'No notes',
+        notes: orderNotes,
         isUrgent: o.isUrgent || false,
         assignedDesigner: o.assignedDesigner || 'Unassigned',
         status: o.status,
@@ -226,6 +230,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const isCompleted = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status);
       const isHold = o.status === OrderStatus.HOLD;
 
+      const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
+        ? o.sizeBreakdown.map(s => [s.category, s.material, s.colour, s.printType, s.model].filter(Boolean).join(' ')).filter(Boolean).join(' | ') 
+        : '') || 'No notes';
+
       return {
         id: o.id,
         isOrder: true,
@@ -233,7 +241,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         phone: o.customerInfo.phone,
         category: o.category,
         quantity: o.quantity,
-        notes: o.notes || 'No notes',
+        notes: orderNotes,
         isUrgent: o.isUrgent || false,
         assignedDesigner: o.assignedDesigner || 'Unassigned',
         status: o.status,

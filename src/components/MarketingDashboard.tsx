@@ -22,6 +22,7 @@ import ImageViewer from './ImageViewer';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
+import LeadManager from './LeadManager';
 
 interface MarketingDashboardProps {
   orders: Order[];
@@ -59,6 +60,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
+  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
 
   const [noteModal, setNoteModal] = useState<{
     isOpen: boolean;
@@ -312,16 +314,23 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
               resetForm();
               setIsCreating(true);
             }}
-            className="flex items-center justify-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg active:scale-95"
+            className="flex items-center justify-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-md active:scale-95 text-xs sm:text-sm"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             <span>Create Order</span>
+          </button>
+          <button
+            onClick={() => setIsLeadModalOpen(true)}
+            className="flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-100 transition-all shadow-xs active:scale-95 text-xs sm:text-sm cursor-pointer"
+          >
+            <User size={18} />
+            <span>Create Lead / Clients</span>
           </button>
         </div>
       </div>
@@ -1072,6 +1081,20 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isLeadModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative">
+            <button
+              onClick={() => setIsLeadModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors z-10 border-none bg-transparent cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+            <LeadManager />
           </div>
         </div>
       )}
