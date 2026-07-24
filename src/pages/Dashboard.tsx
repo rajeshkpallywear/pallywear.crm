@@ -467,14 +467,6 @@ export default function Dashboard() {
         isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
         <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-          <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer mr-2"
-            title="Connection Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileOpen(true)}
@@ -640,15 +632,7 @@ export default function Dashboard() {
                   {filteredLeads.length > 0 ? (
                     filteredLeads.map((l, i) => (
                       <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                        <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer mr-2"
-            title="Connection Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
                             {l.name.charAt(0)}
                           </div>
@@ -686,15 +670,7 @@ export default function Dashboard() {
                       {filteredLeads.map((l, i) => (
                         <tr key={i} className="hover:bg-gray-50/50">
                           <td className="px-6 py-4">
-                            <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer mr-2"
-            title="Connection Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs shadow-sm shadow-brand-primary/20">
                                 {l.name.charAt(0)}
                               </div>

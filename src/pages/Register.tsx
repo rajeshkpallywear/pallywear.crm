@@ -114,14 +114,6 @@ export default function Register() {
         animate={{ opacity: 1, x: 0 }}
         className="glass-card p-8 rounded-2xl w-full max-w-md border-white/50 relative"
       >
-        <button
-          type="button"
-          onClick={() => setShowSettings(true)}
-          className="absolute top-4 right-4 p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer"
-          title="Connection Settings"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
         <div className="flex flex-col items-center mb-8">
           <Logo iconOnly className="mb-4 scale-125" />
           <h2 className="text-2xl font-bold text-brand-dark tracking-tight">Register New User</h2>

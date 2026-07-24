@@ -116,14 +116,6 @@ export default function Store() {
         </div>
 
         <div className="flex items-center gap-6">
-          <button
-            type="button"
-            onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-gray-100/50 rounded-xl text-gray-400 hover:text-brand-primary transition-all cursor-pointer"
-            title="Connection Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
           <Link to="/login">
             <Button className="bg-gray-900 text-white hover:bg-black rounded-xl px-8 py-2.5 font-bold shadow-xl shadow-gray-200 transition-all hover:scale-105">
               Login
