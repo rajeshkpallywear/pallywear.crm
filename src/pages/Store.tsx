@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 export default function Store() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'system' | 'mobile'>('system');
-  const [activeMobileTab, setActiveMobileTab] = useState<'dashboard' | 'leads' | 'invoices' | 'chat'>('dashboard');
+  const [activeMobileTab, setActiveMobileTab] = useState<'dashboard' | 'orders' | 'leads' | 'invoices' | 'chat'>('dashboard');
   const [showSettings, setShowSettings] = useState(false);
   const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'https://pallywear.in');
 
