@@ -26,7 +26,7 @@ export const getApiBaseUrl = (): string => {
   }
   
   // Default fallback API server IP for mobile / Capacitor app environment
-  return 'http://118.139.167.81:3000';
+  return 'https://pallywear.in';
 };
 
 export const getApiUrl = (path: string): string => {

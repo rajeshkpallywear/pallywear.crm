@@ -14,7 +14,7 @@ export default function Store() {
   const [viewMode, setViewMode] = useState<'system' | 'mobile'>('system');
   const [activeMobileTab, setActiveMobileTab] = useState<'dashboard' | 'leads' | 'invoices' | 'chat'>('dashboard');
   const [showSettings, setShowSettings] = useState(false);
-  const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'http://118.139.167.81:3000');
+  const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'https://pallywear.in');
 
   const saveSettings = () => {
     let url = tempApiUrl.trim();
@@ -28,7 +28,7 @@ export default function Store() {
       }
       localStorage.setItem('pallywear_api_url', url);
     } else {
-      localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
+      localStorage.setItem('pallywear_api_url', 'https://pallywear.in');
     }
     setShowSettings(false);
     window.location.reload();
@@ -681,8 +681,8 @@ export default function Store() {
                     variant="outline"
                     className="text-xs text-red-500 border-red-200 hover:bg-red-50"
                     onClick={() => {
-                      localStorage.setItem('pallywear_api_url', 'http://118.139.167.81:3000');
-                      setTempApiUrl('http://118.139.167.81:3000');
+                      localStorage.setItem('pallywear_api_url', 'https://pallywear.in');
+                      setTempApiUrl('https://pallywear.in');
                       setShowSettings(false);
                       window.location.reload();
                     }}
