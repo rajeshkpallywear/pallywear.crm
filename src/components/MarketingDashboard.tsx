@@ -431,7 +431,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          {/* Desktop Table View */}
+          <table className="hidden md:table w-full text-left">
             <thead>
               <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-50">
                 <th className="px-6 py-4">Order ID</th>
@@ -459,8 +460,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{order.customerInfo.name}</div>
-                      <div className="text-xs text-gray-500">{order.customerInfo.phone}</div>
+                      <div className="font-medium text-gray-900">{order.customerInfo?.name || ''}</div>
+                      <div className="text-xs text-gray-500">{order.customerInfo?.phone || ''}</div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[8px] font-black uppercase tracking-tighter">
@@ -527,19 +528,117 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                    No orders found.
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    No orders found. Use the Create Order panel to add one.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+
+          {/* Mobile Card List View (Flipkart/Amazon style) */}
+          <div className="block md:hidden divide-y divide-gray-150">
+            {filteredOrders.length > 0 ? (
+              filteredOrders.map(order => (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedHubOrder(order)}
+                  className="p-4 bg-white space-y-3 active:bg-gray-50 transition-colors"
+                >
+                  {/* Header: ID, Date, Urgent Badge */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex flex-col">
+                      <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
+                      <span className="text-[9px] text-gray-400 font-bold">{new Date(order.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    {order.isUrgent && (
+                      <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                    )}
+                  </div>
+
+                  {/* Customer details */}
+                  <div className="space-y-1">
+                    <div className="font-black text-gray-900 text-sm">{order.customerInfo?.name || ''}</div>
+                    <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <Phone size={12} className="text-brand-primary" /> {order.customerInfo?.phone || ''}
+                    </a>
+                  </div>
+
+                  {/* Item specs / Category and Quantity */}
+                  <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100/50">
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[9px] font-black uppercase tracking-tight w-fit border border-blue-100 inline-block">
+                      {getDisplayCategory(order)}
+                    </span>
+                    <span className="text-xs font-bold text-gray-900">Qty: {order.quantity || 1}</span>
+                  </div>
+
+                  {/* Status indicator and action buttons */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit ${getStatusStyles(order.status)}`}>
+                        {order.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    {order.status === OrderStatus.HOLD && order.holdReason && (
+                      <div className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded-xl border border-red-100 italic">
+                        Reason: {order.holdReason}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                      {order.status === OrderStatus.PENDING ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setNoteModal({
+                                isOpen: true,
+                                orderId: order.id,
+                                target: 'design',
+                                noteText: ''
+                              });
+                            }}
+                            className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-bold text-[10px] border border-purple-100 transition-colors uppercase cursor-pointer"
+                          >
+                            Send to Designs
+                          </button>
+                          <button
+                            onClick={() => {
+                              setNoteModal({
+                                isOpen: true,
+                                orderId: order.id,
+                                target: 'accounts',
+                                noteText: ''
+                              });
+                            }}
+                            className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-[10px] border border-amber-100 transition-colors uppercase cursor-pointer"
+                          >
+                            Send to Accounts
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => startEdit(order)}
+                          className="col-span-2 py-2 bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-brand-primary rounded-xl font-bold text-xs transition-colors uppercase cursor-pointer"
+                        >
+                          Edit Order
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-500 italic font-medium text-xs">
+                No orders found. Use the Create Order panel to add one.
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Inventory Summary Section - View Only for Staff */}
-      <div className="pt-8 border-t border-gray-100">
-        <div className="space-y-6">
+      <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Package className="text-brand-primary" size={24} />
@@ -629,7 +728,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
           </div>
         </div>
-      </div>
 
       {isCreating && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

@@ -380,7 +380,8 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
           Order History Hub
         </h3>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-left text-sm">
+          {/* Desktop Table View */}
+          <table className="hidden md:table w-full text-left text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
                 <th className="px-6 py-4">Order ID</th>
@@ -406,6 +407,29 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
               ))}
             </tbody>
           </table>
+
+          {/* Mobile Card List View */}
+          <div className="block md:hidden divide-y divide-gray-150">
+            {orders.slice(0, 5).map(order => (
+              <div
+                key={order.id}
+                onClick={() => setSelectedHubOrder(order)}
+                className="p-4 bg-white space-y-3 active:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-mono font-black text-brand-primary">#{order.id.slice(-8)}</span>
+                  <span className="text-[10px] text-gray-400 font-bold">{new Date(order.updatedAt).toLocaleDateString()}</span>
+                </div>
+                <div className="font-black text-gray-900 text-sm">{order.customerInfo.name}</div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit ${getStatusStyles(order.status)}`}>
+                    {order.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

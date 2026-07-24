@@ -264,7 +264,8 @@ export default function InvoiceManager() {
 
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                    {/* Desktop Table View */}
+                    <table className="hidden md:table w-full text-sm text-left">
                         <thead>
                             <tr className="bg-gray-50/50 text-gray-400 font-black uppercase tracking-widest text-[10px]">
                                 <th className="px-6 py-5">Invoice Reference</th>
@@ -339,6 +340,66 @@ export default function InvoiceManager() {
                             )}
                         </tbody>
                     </table>
+
+                    {/* Mobile Card List View */}
+                    <div className="block md:hidden divide-y divide-gray-100">
+                        {filteredInvoices.length > 0 ? (
+                            filteredInvoices.slice().sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()).map((inv) => (
+                                <div key={inv.id} className="p-4 bg-white space-y-3 active:bg-gray-50 transition-colors">
+                                    {/* Header Info */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-2 bg-brand-secondary rounded-lg text-brand-primary">
+                                                <FileText size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-gray-900 text-xs">{inv.invoiceNumber}</p>
+                                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">ID: {inv.id.slice(0, 6)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleOpenInvoice(inv)}
+                                                className="p-2 bg-brand-secondary/40 text-brand-primary hover:bg-brand-primary hover:text-white rounded-lg transition-colors"
+                                                title="View & Download"
+                                            >
+                                                <Eye className="w-4.5 h-4.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => deleteInvoice(inv.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                                                title="Delete Permanently"
+                                            >
+                                                <Trash2 className="w-4.5 h-4.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Details */}
+                                    <div className="space-y-1">
+                                        <p className="font-black text-gray-900 text-sm">{inv.billToName}</p>
+                                        <p className="text-xs text-gray-500 truncate">{inv.billToCompanyName || inv.billToAddress}</p>
+                                    </div>
+
+                                    {/* Financials & Dates */}
+                                    <div className="flex items-center justify-between border-t border-gray-50 pt-2 text-xs">
+                                        <div>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase">Amount</p>
+                                            <p className="font-black text-brand-primary text-base">₹{inv.total.toLocaleString()}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase">Due Date</p>
+                                            <p className="font-bold text-gray-700">{new Date(inv.dueDate).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-8 text-center text-gray-500 italic font-medium text-xs">
+                                No invoices found. Start by clicking the 'Create Invoice' button above.
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
