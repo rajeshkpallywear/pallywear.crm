@@ -368,32 +368,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Design Channel / Pending Art */}
-          {user?.role && ['designer', 'staff', 'admin', UserRole.DESIGNER, UserRole.STAFF, UserRole.ADMIN].includes(user.role as any) && (
-            <div className="bg-purple-50/50 p-3 rounded-2xl border border-purple-100/80 mb-2">
-              <p className={cn(
-                "text-[10px] font-black text-purple-700 uppercase tracking-[0.2em] mb-2 px-1",
-                isSidebarCollapsed && "md:hidden"
-              )}>Design Channel</p>
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('open-conversations-feed'));
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 bg-white text-purple-700 hover:text-purple-800 rounded-xl shadow-sm border border-purple-100/80 hover:border-purple-300 transition-all active:scale-[0.98]",
-                  isSidebarCollapsed && "md:justify-center md:px-0"
-                )}
-                title={['designer', 'DESIGNER', UserRole.DESIGNER].includes(user?.role as any) ? "Pending Art" : "Talk the Designer"}
-              >
-                <MessageSquare className="w-4 h-4 flex-shrink-0 text-purple-600 animate-pulse" />
-                {(!isSidebarCollapsed || isMobileOpen) && (
-                  <span className="text-[10px] font-black uppercase tracking-widest text-left">
-                    {['designer', 'DESIGNER', UserRole.DESIGNER].includes(user?.role as any) ? "Pending Art" : "Talk the Designer"}
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
 
           {/* Logistics & Inventory Section (Admin Only) */}
           {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (

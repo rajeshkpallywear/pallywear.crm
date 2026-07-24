@@ -254,6 +254,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       };
     });
 
+  const isUnclaimedItem = (assigned: string) => {
+    return !assigned || assigned === 'Unassigned' || assigned === 'Designer assigned' || assigned === '';
+  };
+
   // Filter lists based on primary tab and subsection
   const getFilteredItems = () => {
     let baseList = activeChannel === 'staff' ? staffCombinedList : omOrderItems;
@@ -264,9 +268,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } else if (selectedSection === 'completed') {
       baseList = baseList.filter(item => item.isCompleted);
     } else if (selectedSection === 'process') {
-      baseList = baseList.filter(item => !item.isCompleted && !item.isHold);
+      baseList = baseList.filter(item => !isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'recent') {
-      baseList = baseList.filter(item => !item.isCompleted);
+      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold);
     }
 
     // Search term matching
@@ -280,8 +284,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'staff' | 'order_management') => {
     const baseList = channel === 'staff' ? staffCombinedList : omOrderItems;
-    const recentCount = baseList.filter(item => !item.isCompleted).length;
-    const processCount = baseList.filter(item => !item.isCompleted && !item.isHold).length;
+    const recentCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
+    const processCount = baseList.filter(item => !isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
 
@@ -545,16 +549,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     <div className="space-y-8 animate-fadeIn">
       {/* Header section with synchronized database updates */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border-none"
-            title="Reload State"
-          >
-            <RefreshCw size={14} className="animate-spin" />
-            Reload Database
-          </button>
           <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 italic text-xs font-bold">
             🔒 Designer Account: {designerName}
           </div>
@@ -574,7 +569,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           )}
         >
           <MessageSquare size={18} />
-          <span>1. Staff Conversation & Sales Desk</span>
+          <span>1. Marketing Design</span>
           {activeChannel === 'staff' && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-primary rounded-t-full" />
           )}
@@ -591,7 +586,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           )}
         >
           <FolderOpen size={18} />
-          <span>2. Order Management Pipeline</span>
+          <span>2. Order Designs</span>
           {activeChannel === 'order_management' && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-primary rounded-t-full" />
           )}
@@ -695,7 +690,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
         {/* Data list grid */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+          {/* Desktop Table View */}
+          <table className="hidden md:table w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-gray-50/70 border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">
               <tr>
                 <th className="px-6 py-4">Descriptor Code</th>
@@ -715,7 +711,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     item.assignedDesigner === '';
 
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50/30 transition-colors">
+                    <tr key={item.id} className="hover:bg-gray-50/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <span className="font-mono text-xs font-black text-brand-primary">
@@ -808,6 +804,110 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               )}
             </tbody>
           </table>
+
+          {/* Mobile Card List View (Flipkart/Amazon style) */}
+          <div className="block md:hidden divide-y divide-gray-150">
+            {getFilteredItems().length > 0 ? (
+              getFilteredItems().map(item => {
+                const isClaimedByMe = item.assignedDesigner.toLowerCase().includes(designerName.toLowerCase());
+                const isUnclaimed = !item.assignedDesigner ||
+                  item.assignedDesigner === 'Unassigned' ||
+                  item.assignedDesigner === 'Designer assigned' ||
+                  item.assignedDesigner === '';
+
+                return (
+                  <div key={item.id} className="p-4 bg-white space-y-3">
+                    {/* Header: Descriptor code, Date, Urgent Badge */}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex flex-col">
+                        <span className="font-mono font-black text-brand-primary">#{item.id.slice(-8)}</span>
+                        <span className="text-[9px] text-gray-400 font-bold">{new Date(item.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      {item.isUrgent && (
+                        <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                      )}
+                    </div>
+
+                    {/* Customer Spec Info */}
+                    <div className="space-y-1">
+                      <div className="font-black text-gray-900 text-sm">{item.customerName}</div>
+                      <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5">
+                        <Phone size={12} className="text-brand-primary" /> {item.phone}
+                      </a>
+                    </div>
+
+                    {/* Requirement/Category notes */}
+                    <div className="space-y-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100/50">
+                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[9px] font-black uppercase tracking-tight w-fit border border-purple-150 inline-block">
+                        {getDisplayCategory(item as any)}
+                      </span>
+                      <p className="text-xs text-gray-700 font-medium whitespace-pre-line leading-relaxed">{item.notes}</p>
+                    </div>
+
+                    {/* Status & Assigned Handler */}
+                    <div className="flex items-center justify-between text-xs py-1 border-t border-b border-gray-50">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Handler:</span>
+                      <div>
+                        {isUnclaimed ? (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[9.5px] font-black uppercase tracking-widest border border-amber-200">
+                            ⚠️ Unclaimed / Open
+                          </span>
+                        ) : (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-widest border",
+                            isClaimedByMe ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"
+                          )}>
+                            {isClaimedByMe ? "🔒 Assigned to You" : `🔒 ${item.assignedDesigner}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mobile Action Buttons (Permanently visible) */}
+                    <div className="pt-1">
+                      {item.isCompleted ? (
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[10px] text-green-700 bg-green-50 font-black uppercase px-2 py-1.5 rounded-xl border border-green-200 flex-1 text-center">
+                            Completed ✔
+                          </span>
+                          <button
+                            onClick={() => handleOpenWorkspace(item)}
+                            className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                          >
+                            Review Assets
+                          </button>
+                        </div>
+                      ) : isUnclaimed ? (
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => handleClaimItem(item)}
+                          className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md shadow-purple-200"
+                        >
+                          Claim / Take Design
+                        </button>
+                      ) : isClaimedByMe ? (
+                        <button
+                          onClick={() => handleOpenWorkspace(item)}
+                          className="w-full py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                        >
+                          <span>Open Workspace</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      ) : (
+                        <div className="text-center py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-gray-400 italic">
+                          Claimed by partner
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-gray-400 italic font-medium text-xs">
+                All clear! No pending design assets found in this pipeline state.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
