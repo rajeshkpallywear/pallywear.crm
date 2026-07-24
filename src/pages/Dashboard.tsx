@@ -764,7 +764,7 @@ export default function Dashboard() {
           ) : activeTab === 'dashboard' ? (
             <div className="space-y-8">
               {[UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
-                <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+                <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} leadManagerComponent={<LeadManager />} />
               ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
                 <AccountsDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} sidebarView={accountsSidebarView} />
               ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (
