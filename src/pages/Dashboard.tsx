@@ -824,70 +824,66 @@ export default function Dashboard() {
       </main>
       
       {layoutMode === 'mobile' && (
-        <nav className="fixed bottom-0 inset-x-0 h-16 bg-white border-t border-gray-200 px-2 py-1 flex justify-around items-center z-40 shadow-lg shadow-gray-200/50">
-          {(user?.role === 'admin' || user?.role === UserRole.ADMIN) && (
-            <button
-              onClick={() => selectTab('dashboard')}
-              className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'dashboard' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <Layout className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Home</span>
-            </button>
-          )}
+        <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-2 py-1.5 flex justify-around items-center shadow-lg">
           {['admin', 'marketing', 'staff', 'user', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF].includes(user?.role || '') ? (
             <>
               <button
-                onClick={() => selectTab('clients')}
+                onClick={() => selectTab('marketing_orders')}
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                  activeTab === 'clients' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                  activeTab === 'marketing_orders'
+                    ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                    : "text-gray-400 hover:text-gray-600"
                 )}
               >
-                <Users className="w-5 h-5" />
-                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Clients</span>
+                <Plus className="w-4 h-4" />
+                <span>Orders</span>
+              </button>
+              <button
+                onClick={() => selectTab('clients')}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                  activeTab === 'clients'
+                    ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                    : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Users className="w-4 h-4" />
+                <span>Clients</span>
               </button>
               <button
                 onClick={() => selectTab('invoices')}
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                  activeTab === 'invoices' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                  activeTab === 'invoices'
+                    ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                    : "text-gray-400 hover:text-gray-600"
                 )}
               >
-                <BarChart3 className="w-5 h-5" />
-                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Invoices</span>
-              </button>
-              <button
-                onClick={() => selectTab('marketing_orders')}
-                className={cn(
-                  "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                  activeTab === 'marketing_orders' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
-                )}
-              >
-                <Plus className="w-5 h-5" />
-                <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Orders</span>
+                <BarChart3 className="w-4 h-4" />
+                <span>Invoices</span>
               </button>
             </>
           ) : (
             <button
               onClick={() => selectTab('dashboard')}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'dashboard' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                activeTab === 'dashboard'
+                  ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                  : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <Layout className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Portal</span>
+              <Layout className="w-4 h-4" />
+              <span>Portal</span>
             </button>
           )}
           <button
             onClick={() => setShowProfileModal(true)}
-            className="flex flex-col items-center justify-center flex-1 py-1 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-all cursor-pointer"
           >
-            <Settings className="w-5 h-5" />
-            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Profile</span>
+            <Settings className="w-4 h-4" />
+            <span>Profile</span>
           </button>
         </nav>
       )}
