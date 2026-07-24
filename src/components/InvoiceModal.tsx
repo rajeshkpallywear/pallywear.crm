@@ -29,6 +29,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
             const canvas = await html2canvas(element, {
                 scale: 2, // 2 is usually enough for prints
                 useCORS: true,
+                allowTaint: true,
                 logging: false,
                 backgroundColor: '#ffffff',
                 windowWidth: standardWidth, // Virtual window width to prevent responsive shifts

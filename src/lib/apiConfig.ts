@@ -20,17 +20,13 @@ export const getApiBaseUrl = (): string => {
     return savedUrl;
   }
   
-  // If running in Capacitor/Android native app environment, default to production API server
-  if (
-    (window as any).Capacitor || 
-    window.location.protocol === 'file:' || 
-    (window.location.hostname === 'localhost' && !window.location.port) ||
-    window.location.hostname === ''
-  ) {
-    return 'https://pallywear.in';
+  // Auto-detect browser origin if available
+  if (typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null' && window.location.protocol.startsWith('http')) {
+    return window.location.origin;
   }
   
-  return '';
+  // Default fallback API server IP for mobile / Capacitor app environment
+  return 'http://118.139.167.81:3000';
 };
 
 export const getApiUrl = (path: string): string => {
