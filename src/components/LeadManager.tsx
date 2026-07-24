@@ -248,137 +248,244 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
         </div>
       </div>
 
-      {/* Leads Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4">Staff</th>
-              <th className="px-6 py-4">Lead Info</th>
-              <th className="px-6 py-4">Company & GST</th>
-              <th className="px-6 py-4">Type</th>
-              <th className="px-6 py-4">Entry Date</th>
-              <th className="px-6 py-4 text-right">Financials</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredLeads.map((lead) => (
-              <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-brand-primary/20">
+      {/* Responsive Leads View */}
+      <div className="space-y-4">
+        {/* Desktop View (Table) */}
+        <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4">Staff</th>
+                <th className="px-6 py-4">Lead Info</th>
+                <th className="px-6 py-4">Company & GST</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Entry Date</th>
+                <th className="px-6 py-4 text-right">Financials</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredLeads.map((lead) => (
+                <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-brand-primary/20">
+                        {lead.createdByName?.charAt(0) || 'U'}
+                      </div>
+                      <span className="text-xs text-gray-600 font-medium">{lead.createdByName}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-md shadow-black/5",
+                        lead.leadType === 'Hot' ? "bg-red-500" :
+                          lead.leadType === 'Warm' ? "bg-amber-500" :
+                            "bg-blue-500"
+                      )}>
+                        {lead.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{lead.name}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <Phone className="w-3 h-3" /> {lead.number}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-medium text-gray-700">{lead.companyName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-xs text-gray-400 font-mono uppercase">{lead.gst || 'No GST'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={cn(
+                      "px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider",
+                      lead.leadType === 'Hot' ? "bg-red-100 text-red-700" :
+                        lead.leadType === 'Warm' ? "bg-amber-100 text-amber-700" :
+                          "bg-blue-100 text-blue-700"
+                    )}>
+                      {lead.leadType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{lead.entryDate}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="space-y-1">
+                      <p className="text-xs">
+                        <span className="text-gray-400">Total Value:</span>
+                        <span className="font-bold text-gray-700 ml-1">₹{lead.totalOrderValue?.toLocaleString()}</span>
+                      </p>
+                      {lead.discountAmount ? (
+                        <>
+                          <p className="text-[10px] text-green-600 font-bold flex items-center justify-end gap-1">
+                            <Check className="w-3 h-3" /> Discount ({lead.discountCode}): -₹{lead.discountAmount.toLocaleString()}
+                          </p>
+                          <p className="text-sm font-black text-brand-primary">
+                            ₹{lead.netTotal?.toLocaleString()}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-black text-gray-900">
+                          ₹{lead.totalOrderValue?.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canManage(lead) && (
+                        <>
+                          <button
+                            onClick={() => handleConvertOrder(lead)}
+                            className="p-2 hover:bg-green-50 text-green-600 rounded-lg transition-colors"
+                            title="Convert to Order"
+                          >
+                            <Zap className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(lead)}
+                            className="p-2 hover:bg-brand-secondary text-brand-primary rounded-lg transition-colors"
+                            title="Edit Lead"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteLead(lead.id)}
+                            className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredLeads.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">
+                    No leads found. Use "Add Lead" to get started.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile View (Flipkart/Amazon style Card List) */}
+        <div className="block md:hidden space-y-3.5">
+          {filteredLeads.map((lead) => (
+            <div key={lead.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col gap-3 relative">
+              {/* Header: Avatar, Info, Status Badge */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg text-white shadow-sm shrink-0",
+                    lead.leadType === 'Hot' ? "bg-red-500" :
+                      lead.leadType === 'Warm' ? "bg-amber-500" :
+                        "bg-blue-500"
+                  )}>
+                    {lead.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm leading-tight">{lead.name}</h4>
+                    <a href={`tel:${lead.number}`} className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-semibold hover:text-brand-primary">
+                      <Phone className="w-3 h-3 text-brand-primary shrink-0" /> {lead.number}
+                    </a>
+                  </div>
+                </div>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                  lead.leadType === 'Hot' ? "bg-red-50 text-red-700 border-red-100" :
+                    lead.leadType === 'Warm' ? "bg-amber-550 text-amber-700 border-amber-100" :
+                      "bg-blue-50 text-blue-700 border-blue-100"
+                )}>
+                  {lead.leadType}
+                </span>
+              </div>
+
+              {/* Body details */}
+              <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-gray-50">
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Company</p>
+                  <div className="flex items-center gap-1.5 text-gray-700 font-bold truncate">
+                    <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span className="truncate">{lead.companyName || 'Individual'}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-mono tracking-wider">{lead.gst || 'No GST'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Staff</p>
+                  <div className="flex items-center gap-1.5 text-gray-700 font-bold">
+                    <div className="w-4 h-4 rounded-full bg-brand-primary flex items-center justify-center text-[8px] font-black text-white shrink-0">
                       {lead.createdByName?.charAt(0) || 'U'}
                     </div>
-                    <span className="text-xs text-gray-600 font-medium">{lead.createdByName}</span>
+                    <span className="truncate">{lead.createdByName}</span>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-md shadow-black/5",
-                      lead.leadType === 'Hot' ? "bg-red-500" :
-                        lead.leadType === 'Warm' ? "bg-amber-500" :
-                          "bg-blue-500"
-                    )}>
-                      {lead.name.charAt(0)}
+                  <p className="text-[9px] text-gray-400">{lead.entryDate}</p>
+                </div>
+              </div>
+
+              {/* Pricing details like E-commerce discounts */}
+              <div className="flex items-center justify-between py-1 bg-gray-50/50 px-2 rounded-xl border border-gray-100/50">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Estimated Deal</span>
+                <div className="text-right">
+                  {lead.discountAmount ? (
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="text-[10px] line-through text-gray-400">₹{lead.totalOrderValue?.toLocaleString()}</span>
+                      <span className="text-sm font-black text-emerald-600">₹{lead.netTotal?.toLocaleString()}</span>
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{lead.name}</p>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <Phone className="w-3 h-3" /> {lead.number}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="font-medium text-gray-700">{lead.companyName}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-xs text-gray-400 font-mono uppercase">{lead.gst || 'No GST'}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={cn(
-                    "px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider",
-                    lead.leadType === 'Hot' ? "bg-red-100 text-red-700" :
-                      lead.leadType === 'Warm' ? "bg-amber-100 text-amber-700" :
-                        "bg-blue-100 text-blue-700"
-                  )}>
-                    {lead.leadType}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    <span>{lead.entryDate}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="space-y-1">
-                    <p className="text-xs">
-                      <span className="text-gray-400">Total Value:</span>
-                      <span className="font-bold text-gray-700 ml-1">₹{lead.totalOrderValue?.toLocaleString()}</span>
-                    </p>
-                    {lead.discountAmount ? (
-                      <>
-                        <p className="text-[10px] text-green-600 font-bold flex items-center justify-end gap-1">
-                          <Check className="w-3 h-3" /> Discount ({lead.discountCode}): -₹{lead.discountAmount.toLocaleString()}
-                        </p>
-                        <p className="text-sm font-black text-brand-primary">
-                          ₹{lead.netTotal?.toLocaleString()}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-sm font-black text-gray-900">
-                        ₹{lead.totalOrderValue?.toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {canManage(lead) && (
-                      <>
-                        <button
-                          onClick={() => handleConvertOrder(lead)}
-                          className="p-2 hover:bg-green-50 text-green-600 rounded-lg transition-colors"
-                          title="Convert to Order"
-                        >
-                          <Zap className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEdit(lead)}
-                          className="p-2 hover:bg-brand-secondary text-brand-primary rounded-lg transition-colors"
-                          title="Edit Lead"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteLead(lead.id)}
-                          className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
-                          title="Delete Lead"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filteredLeads.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic">
-                  No leads found. Use "Add Lead" to get started.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  ) : (
+                    <span className="text-sm font-black text-gray-900">₹{lead.totalOrderValue?.toLocaleString()}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions row: Flipkart/Amazon-style buttons (Permanently visible) */}
+              {canManage(lead) && (
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <button
+                    onClick={() => handleConvertOrder(lead)}
+                    className="flex items-center justify-center gap-1.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-100 transition-colors cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Convert</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenEdit(lead)}
+                    className="flex items-center justify-center gap-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs border border-indigo-100 transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => deleteLead(lead.id)}
+                    className="flex items-center justify-center gap-1.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs border border-red-100 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {filteredLeads.length === 0 && (
+            <div className="text-center py-12 text-gray-400 bg-white border border-gray-100 rounded-2xl italic">
+              No leads found. Use "Add Lead" to get started.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Modal */}
