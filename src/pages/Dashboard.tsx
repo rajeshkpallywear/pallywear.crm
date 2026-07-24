@@ -610,7 +610,7 @@ export default function Dashboard() {
               )}
             </div>
           ) : activeTab === 'marketing_orders' ? (
-            <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} />
+            <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} leadManagerComponent={<LeadManager />} />
           ) : activeTab === 'reports' ? (
             <div className="space-y-8">
               <div className="flex items-center justify-between">

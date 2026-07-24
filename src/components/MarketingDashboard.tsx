@@ -22,7 +22,6 @@ import ImageViewer from './ImageViewer';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
-import LeadManager from './LeadManager';
 
 interface MarketingDashboardProps {
   orders: Order[];
@@ -32,9 +31,10 @@ interface MarketingDashboardProps {
   onDeleteOrder?: (id: string) => void;
   isAdmin?: boolean;
   user?: any;
+  leadManagerComponent?: React.ReactNode;
 }
 
-export default function MarketingDashboard({ orders, inventory = [], onCreateOrder, onUpdateOrder, onDeleteOrder, isAdmin, user }: MarketingDashboardProps) {
+export default function MarketingDashboard({ orders, inventory = [], onCreateOrder, onUpdateOrder, onDeleteOrder, isAdmin, user, leadManagerComponent }: MarketingDashboardProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1094,7 +1094,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             >
               <X size={20} />
             </button>
-            <LeadManager />
+            {leadManagerComponent}
           </div>
         </div>
       )}
