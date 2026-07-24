@@ -295,6 +295,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           // Initialize file arrays
           setDesignFiles(fullOrder.designAttachments || []);
           setMachineFiles(fullOrder.machineFiles || []);
+          setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
         }
       } else {
         // Pure Consultation
@@ -332,7 +333,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         setSelectedOrder(fullOrder);
         setDesignFiles(fullOrder.designAttachments || []);
         setMachineFiles(fullOrder.machineFiles || []);
-        setDesignNotesText(fullOrder.designNotes || '');
+        setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
       }
     } else {
       setSelectedItemIdForStaffChat(item.id);
@@ -876,9 +877,19 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       </div>
                     </div>
 
+                    {/* Marketing / Order Intake Notes Display Box */}
+                    <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-1 text-left">
+                      <span className="text-[9.5px] font-black text-amber-800 uppercase tracking-widest block flex items-center gap-1.5">
+                        📋 Marketing / Client Intake Notes:
+                      </span>
+                      <p className="text-xs text-gray-800 font-semibold whitespace-pre-line leading-relaxed">
+                        {selectedOrder.notes || selectedOrder.designNotes || 'No notes provided by marketing.'}
+                      </p>
+                    </div>
+
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center">
-                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Notes / Instructions</label>
+                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Studio Output Notes</label>
                         {!designNotesText.trim() && (
                           <span className="text-[10px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
                         )}

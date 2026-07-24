@@ -507,10 +507,10 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                     </div>
                   )}
 
-                  {order.designNotes && (
+                  {(order.notes || order.designNotes) && (
                     <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-left">
-                      <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest block mb-1">Design Studio Notes</span>
-                      <p className="text-xs font-semibold text-purple-900 italic">"{order.designNotes}"</p>
+                      <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest block mb-1">Marketing / Design Notes</span>
+                      <p className="text-xs font-semibold text-purple-900 whitespace-pre-line">"{order.notes || order.designNotes}"</p>
                     </div>
                   )}
                   {order.accountsNotes && (

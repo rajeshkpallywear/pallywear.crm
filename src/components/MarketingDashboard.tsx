@@ -52,6 +52,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     sizeBreakdown: [] as { category: string, size: string, quantity: number, price: number }[],
     totalAmount: 0,
     advancePay: 0,
+    notes: '',
     isUrgent: false
   });
 
@@ -88,6 +89,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       sizeBreakdown: [],
       totalAmount: 0,
       advancePay: 0,
+      notes: '',
       isUrgent: false
     });
     setEditingOrderId(null);
@@ -112,6 +114,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       sizeBreakdown: formData.sizeBreakdown,
       quantity: totalQuantity,
       isUrgent: formData.isUrgent,
+      notes: formData.notes.trim(),
+      designNotes: formData.notes.trim(),
       financials: {
         totalAmount: formData.totalAmount,
         advancePay: formData.advancePay,
@@ -260,6 +264,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       sizeBreakdown: order.sizeBreakdown || [],
       totalAmount: order.financials?.totalAmount || 0,
       advancePay: order.financials?.advancePay || 0,
+      notes: order.notes || order.designNotes || '',
       isUrgent: order.isUrgent || false
     });
     setIsCreating(true);
@@ -1047,6 +1052,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         updatedAt: Date.now()
                       };
                       if (noteModal.target === 'design') {
+                        updates.notes = noteModal.noteText.trim();
                         updates.designNotes = noteModal.noteText.trim();
                       } else {
                         updates.accountsNotes = noteModal.noteText.trim();

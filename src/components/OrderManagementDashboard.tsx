@@ -43,21 +43,21 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
   const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
-      return o.status === OrderStatus.HOLD;
+      return o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus);
     }
     if (selectedSection === 'completed') {
-      return o.status === OrderStatus.DELIVERED;
+      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status);
     }
     if (selectedSection === 'process') {
-      return o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD;
+      return o.status === OrderStatus.ORDER_MANAGEMENT && !!o.assignedDesigner;
     }
-    return o.status !== OrderStatus.DELIVERED;
+    return o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
   });
 
-  const recentOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED).length;
-  const processOrdersCount = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD).length;
-  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
-  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
+  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT)).length;
+  const processOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT && !!o.assignedDesigner).length;
+  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus)).length;
+  const completedOrdersCount = orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)).length;
 
   // Auto-select first order if none is selected
   useEffect(() => {
