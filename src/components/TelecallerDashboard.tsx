@@ -90,49 +90,49 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
     <div className="space-y-6">
 
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="relative p-6 rounded-3xl border-2 border-gray-100 bg-white shadow-sm flex flex-col gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-md">
-            <Users size={22} />
+      {/* Stats Cards - Compact Mobile Responsive Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3 sm:p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-3">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Total Leads</p>
-            <p className="text-4xl font-black text-gray-900 mt-0.5 leading-none">{totalCount}</p>
-            <span className="text-[10px] font-medium text-gray-400 block mt-2">Assigned lead records</span>
-          </div>
-        </div>
-
-        <div className="relative p-6 rounded-3xl border-2 border-gray-100 bg-white shadow-sm flex flex-col gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-md">
-            <Phone size={22} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Total Called</p>
-            <p className="text-4xl font-black text-gray-900 mt-0.5 leading-none">{calledCount}</p>
-            <span className="text-[10px] font-medium text-gray-400 block mt-2">Leads contacted by phone</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Total Leads</p>
+            <p className="text-base sm:text-3xl font-black text-gray-900 mt-0.5 leading-none">{totalCount}</p>
+            <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Assigned lead records</span>
           </div>
         </div>
 
-        <div className="relative p-6 rounded-3xl border-2 border-gray-100 bg-white shadow-sm flex flex-col gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shadow-md">
-            <CheckCircle2 size={22} />
+        <div className="bg-white p-3 sm:p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-3">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs shrink-0">
+            <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Interested</p>
-            <p className="text-4xl font-black text-green-600 mt-0.5 leading-none">{interestedCount}</p>
-            <span className="text-[10px] font-medium text-gray-400 block mt-2">Potential customer conversions</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Total Called</p>
+            <p className="text-base sm:text-3xl font-black text-gray-900 mt-0.5 leading-none">{calledCount}</p>
+            <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Leads contacted by phone</span>
           </div>
         </div>
 
-        <div className="relative p-6 rounded-3xl border-2 border-gray-100 bg-white shadow-sm flex flex-col gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-md">
-            <AlertCircle size={22} />
+        <div className="bg-white p-3 sm:p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-3">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shadow-xs shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Pending Calls</p>
-            <p className="text-4xl font-black text-amber-500 mt-0.5 leading-none">{pendingCount}</p>
-            <span className="text-[10px] font-medium text-gray-400 block mt-2">Awaiting initial call contact</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Interested</p>
+            <p className="text-base sm:text-3xl font-black text-green-600 mt-0.5 leading-none">{interestedCount}</p>
+            <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Potential customer conversions</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-3 sm:p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-3">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs shrink-0">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Pending Calls</p>
+            <p className="text-base sm:text-3xl font-black text-amber-500 mt-0.5 leading-none">{pendingCount}</p>
+            <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Awaiting initial contact</span>
           </div>
         </div>
       </div>

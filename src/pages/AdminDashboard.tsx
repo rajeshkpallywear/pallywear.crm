@@ -418,6 +418,14 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => setLayoutMode(prev => prev === 'mobile' ? 'system' : 'mobile')}
+              className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Toggle Mobile/System View"
+            >
+              {layoutMode === 'mobile' ? <Smartphone className="w-3.5 h-3.5 text-brand-primary" /> : <Monitor className="w-3.5 h-3.5 text-gray-500" />}
+              <span className="hidden sm:inline">{layoutMode === 'mobile' ? 'Mobile View' : 'System View'}</span>
+            </button>
             <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"><Bell className="w-5 h-5" /></button>
             <button
               className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"
@@ -437,9 +445,11 @@ export default function AdminDashboard() {
               </h1>
               <p className="text-gray-500 text-xs sm:text-sm mt-0.5">Managing administrative controls for {user?.name}</p>
             </div>
-            <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3">
-              <Button variant="outline" size="sm" className="bg-white text-xs" onClick={() => setShowLogsModal(true)}>Audit Logs</Button>
-              <Button variant="outline" size="sm" className="bg-white gap-1.5 text-xs" onClick={() => {
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              <Button variant="outline" size="sm" className="bg-white text-xs whitespace-nowrap shadow-xs" onClick={() => setShowLogsModal(true)}>
+                <FileText className="w-3.5 h-3.5 mr-1" /> Audit Logs
+              </Button>
+              <Button variant="outline" size="sm" className="bg-white gap-1.5 text-xs whitespace-nowrap shadow-xs" onClick={() => {
                 setInviteEmail('');
                 setInviteRole('marketing');
                 setInviteGeneratedLink('');
@@ -447,7 +457,7 @@ export default function AdminDashboard() {
               }}>
                 <Mail className="w-3.5 h-3.5" /> Invite User
               </Button>
-              <Button variant="secondary" size="sm" className="shadow-sm text-xs" onClick={() => navigate('/register')}>
+              <Button variant="secondary" size="sm" className="shadow-xs text-xs whitespace-nowrap" onClick={() => navigate('/register')}>
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Register User
               </Button>
             </div>
@@ -455,10 +465,10 @@ export default function AdminDashboard() {
 
           {activeTab === 'overview' ? (
             <>
-              {/* Overview Stats - Responsive Grid (2 columns on mobile, 5 on desktop) */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              {/* Overview Stats - Ultra-Compact Mobile Responsive Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
                 {[
-                  { label: 'Aggregate Value', val: `₹${Math.round(Number(aggregateTotal) || 0).toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500' },
+                  { label: 'Aggregate Value', val: `₹${Math.round(Number(aggregateTotal) || 0).toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500', fullRowOnMobile: true },
                   { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-white', bg: 'bg-brand-secondary' },
                   { label: 'Global Orders', val: orders.length, icon: Zap, color: 'text-white', bg: 'bg-orange-500' },
                   { label: 'Registered Team', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
@@ -467,16 +477,19 @@ export default function AdminDashboard() {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{ delay: i * 0.04 }}
                     key={i}
-                    className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between"
+                    className={cn(
+                      "bg-white p-2.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start justify-start sm:justify-between gap-3 sm:gap-0 hover:shadow-md transition-all",
+                      stat.fullRowOnMobile ? "col-span-2 sm:col-span-1" : ""
+                    )}
                   >
-                    <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mb-2 sm:mb-4 shadow-md", stat.bg, stat.color)}>
+                    <div className={cn("w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-full flex items-center justify-center flex-shrink-0 sm:mb-4 shadow-sm", stat.bg, stat.color)}>
                       <stat.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate">{stat.label}</p>
-                      <p className="text-base sm:text-xl font-black text-gray-900 mt-0.5 truncate">{stat.val}</p>
+                      <p className="text-sm sm:text-xl font-black text-gray-900 mt-0.5 truncate">{stat.val}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -1338,6 +1351,37 @@ export default function AdminDashboard() {
           isAdmin={true}
         />
       )}
+      {/* Fixed Bottom Quick Navigation Bar for Mobile */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-2 py-1.5 flex justify-around items-center shadow-lg">
+        {[
+          { id: 'overview', label: 'Overview', icon: TrendingUp },
+          { id: 'orders', label: 'Orders', icon: Zap },
+          { id: 'invoices', label: 'Invoices', icon: BarChart3 },
+          { id: 'users', label: 'Users', icon: Users },
+          { id: 'logs', label: 'Logs', icon: FileText },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => {
+              if (item.id === 'logs') {
+                setShowLogsModal(true);
+              } else {
+                setActiveTab(item.id as any);
+              }
+            }}
+            className={cn(
+              "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+              activeTab === item.id && item.id !== 'logs'
+                ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <item.icon className="w-4 h-4" />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
       <SidebarChat />
     </div>
   );

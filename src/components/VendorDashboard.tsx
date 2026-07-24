@@ -111,35 +111,35 @@ export default function VendorDashboard({ user }: VendorDashboardProps) {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Package size={20} />
+      {/* Summary Cards - Compact Mobile Responsive Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-xs">
+            <Package className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Orders</p>
-            <p className="text-3xl font-black text-gray-900 mt-1">{expenses.length}</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-            <IndianRupee size={20} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Outstanding Bill Value</p>
-            <p className="text-3xl font-black text-red-600 mt-1">₹{totalSpent.toLocaleString('en-IN')}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider truncate">Total Orders</p>
+            <p className="text-base sm:text-3xl font-black text-gray-900 mt-0.5">{expenses.length}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3">
-          <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
-            <FileCheck2 size={20} />
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3 col-span-2 sm:col-span-1">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 shadow-xs">
+            <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Submitted Bills</p>
-            <p className="text-3xl font-black text-green-600 mt-1">{completedInvoices} / {expenses.length}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider truncate">Outstanding Value</p>
+            <p className="text-base sm:text-3xl font-black text-red-600 mt-0.5">₹{totalSpent.toLocaleString('en-IN')}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start gap-3 col-span-2 sm:col-span-1">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0 shadow-xs">
+            <FileCheck2 className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wider truncate">Submitted Bills</p>
+            <p className="text-base sm:text-3xl font-black text-green-600 mt-0.5">{completedInvoices} / {expenses.length}</p>
           </div>
         </div>
       </div>
