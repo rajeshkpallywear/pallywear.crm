@@ -40,7 +40,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
   const [uploadFiles, setUploadFiles] = useState<string[]>([]);
 
   const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       o.id.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing

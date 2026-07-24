@@ -282,7 +282,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   };
 
   const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
+    const matchesSearch = (o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
     if (!matchesSearch) return false;
 
     if (selectedSection === 'hold') {

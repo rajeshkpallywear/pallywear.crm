@@ -34,7 +34,7 @@ export default function DigitizerCommunication({ orders, onUpdateOrder }: Digiti
 
   // Focus on orders that are typically in design or management stage
   const relevantOrders = orders.filter(o =>
-    (o.customerInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    ((o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || o.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
     [OrderStatus.ORDER_MANAGEMENT, OrderStatus.DESIGN, OrderStatus.PRODUCTION].includes(o.status)
   ).sort((a, b) => b.updatedAt - a.updatedAt);
 
