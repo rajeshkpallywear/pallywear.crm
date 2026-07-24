@@ -157,7 +157,7 @@ export default function InvoiceManager() {
             fromName: 'Pallywear Gifting Solutions',
             fromEmail: user.email,
             fromPhone: '+91 91583 01804',
-            fromAddress: 'Pallywear Gifting Solutions, Bus Stop, 49/1, Mudichur\nRoad,Near By Parvathi Nagar Shanthi Nagar, Old\nPerungalathur, Chennai, Tamil Nadu - 600063',
+            fromAddress: 'Pallywear Gifting Solutions, Bus stop, 49/1, Mudichur Rd, near by Parvathi nagar, Shanthi Nagar, Old Perungalathur, Chennai, Tamil Nadu 600063',
             billToName: newInvoiceData.customerName,
             billToEmail: `${newInvoiceData.customerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
             billToPhone: newInvoiceData.customerNumber,

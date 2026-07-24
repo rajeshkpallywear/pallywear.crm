@@ -25,11 +25,12 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
         try {
             // Use standard pixels for A4 width to ensure consistent capture
             const standardWidth = 1000;
+            const isMobile = window.innerWidth < 768;
 
             const canvas = await html2canvas(element, {
-                scale: 2, // 2 is usually enough for prints
+                scale: isMobile ? 1.2 : 2, // Use slightly lower scale on mobile to avoid OOM crashes
                 useCORS: true,
-                allowTaint: true,
+                allowTaint: false, // Set to false to prevent canvas tainting SecurityError
                 logging: false,
                 backgroundColor: '#ffffff',
                 windowWidth: standardWidth, // Virtual window width to prevent responsive shifts
@@ -70,7 +71,29 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                 heightLeft -= maxLineHeight;
             }
 
-            pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+            const fileName = `Invoice-${invoice.invoiceNumber}.pdf`;
+
+            // On mobile / Capacitor apps, Web Share API allows saving/sending PDF natively
+            const pdfBlob = pdf.output('blob');
+            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: fileName,
+                        text: `Invoice ${invoice.invoiceNumber} from Pallywear`,
+                    });
+                } catch (shareError: any) {
+                    // If sharing was cancelled, don't throw an alert, just fallback to standard save
+                    console.log('Sharing failed or cancelled, trying fallback save:', shareError);
+                    if (shareError?.name !== 'AbortError') {
+                        pdf.save(fileName);
+                    }
+                }
+            } else {
+                pdf.save(fileName);
+            }
         } catch (error) {
             console.error('PDF Generation Error:', error);
             alert('PDF generation failed. Please try using the "Print" button instead.');
