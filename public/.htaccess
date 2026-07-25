@@ -1,6 +1,16 @@
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Handle OPTIONS preflight requests directly
+  RewriteCond %{REQUEST_METHOD} OPTIONS
+  RewriteRule ^(.*)$ - [R=204,L]
 
   # Rewrite API requests to the local PHP proxy script (avoiding infinite loop on proxy.php)
   RewriteCond %{REQUEST_FILENAME} !-f
