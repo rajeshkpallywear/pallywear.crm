@@ -161,6 +161,8 @@ export interface Order {
   designDiscount?: number;
   designNotes?: string;
   accountsNotes?: string;
+  original_design_file?: string;
+  original_design_filename?: string;
 }
 
 export interface InventoryMovement {

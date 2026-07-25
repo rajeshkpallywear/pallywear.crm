@@ -60,11 +60,13 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     try {
       await onUpdateOrder(selectedOrder.id, {
         machineFiles: [...(selectedOrder.machineFiles || []), ...uploadFiles],
+        status: OrderStatus.ORDER_MANAGEMENT,
         updatedAt: Date.now()
       });
 
       setUploadFiles([]);
-      alert("Garage ZIP file uploaded successfully to manufacturing specs!");
+      setSelectedOrder(null);
+      alert("Garage ZIP file uploaded successfully and order sent to Order Management!");
     } catch (error) {
       console.error(error);
       alert("Failed to upload files.");
@@ -257,36 +259,50 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      {[...(selectedOrder.staffImages || []), ...(selectedOrder.staffPdfs || []), ...(selectedOrder.designAttachments || [])].map((file, i) => (
-                        <div key={i} className="group relative aspect-square bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden flex flex-col items-center justify-center transition-all hover:border-indigo-200 hover:shadow-lg">
-                          {file.startsWith('data:image/') ? (
-                            <img src={file} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="text-center p-4">
-                              <FileText size={40} className="text-indigo-300 mx-auto mb-2" />
-                              <span className="text-[10px] font-black text-indigo-600 uppercase">Document</span>
-                            </div>
-                          )}
+                      {[
+                        ...(selectedOrder.staffImages || []), 
+                        ...(selectedOrder.staffPdfs || []), 
+                        ...(selectedOrder.designAttachments || []),
+                        ...(selectedOrder.original_design_file ? [selectedOrder.original_design_file] : [])
+                      ].map((file, i) => {
+                        const isOriginal = file === selectedOrder.original_design_file;
+                        const downloadName = isOriginal
+                          ? (selectedOrder.original_design_filename || 'Original_Design')
+                          : `Ref_${selectedOrder.id.slice(-4)}_${i + 1}.png`;
 
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                            {file.startsWith('data:image/') && (
-                              <button
-                                onClick={() => setViewingImage(file)}
-                                className="p-3 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all hover:scale-110"
-                              >
-                                <ZoomIn size={20} />
-                              </button>
+                        return (
+                          <div key={i} className="group relative aspect-square bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden flex flex-col items-center justify-center transition-all hover:border-indigo-200 hover:shadow-lg">
+                            {file.startsWith('data:image/') ? (
+                              <img src={file} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="text-center p-4">
+                                <FileText size={40} className="text-indigo-300 mx-auto mb-2" />
+                                <span className="text-[10px] font-black text-indigo-600 uppercase">
+                                  {isOriginal ? 'Original Design' : 'Document'}
+                                </span>
+                              </div>
                             )}
-                            <a
-                              href={file}
-                              download={`Ref_${selectedOrder.id.slice(-4)}_${i + 1}.png`}
-                              className="p-3 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all hover:scale-110"
-                            >
-                              <Download size={20} />
-                            </a>
+
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                              {file.startsWith('data:image/') && (
+                                <button
+                                  onClick={() => setViewingImage(file)}
+                                  className="p-3 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all hover:scale-110 border-none cursor-pointer"
+                                >
+                                  <ZoomIn size={20} />
+                                </button>
+                              )}
+                              <a
+                                href={file}
+                                download={downloadName}
+                                className="p-3 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all hover:scale-110 cursor-pointer"
+                              >
+                                <Download size={20} />
+                              </a>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       {(!selectedOrder.staffImages?.length && !selectedOrder.staffPdfs?.length && !selectedOrder.designAttachments?.length) && (
                         <div className="col-span-2 p-10 bg-gray-50 border border-dashed border-gray-200 rounded-3xl text-center">
                           <AlertCircle className="mx-auto text-gray-300 mb-2" size={24} />
@@ -331,10 +347,10 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                         <button
                           disabled={isProcessing}
                           onClick={handleUploadSpecs}
-                          className="w-full py-5 bg-black text-white rounded-[2rem] font-bold hover:bg-gray-800 transition-all shadow-xl shadow-black/10 flex items-center justify-center gap-3 active:scale-[0.98]"
+                          className="w-full py-5 bg-black text-white rounded-[2rem] font-bold hover:bg-gray-800 transition-all shadow-xl shadow-black/10 flex items-center justify-center gap-3 active:scale-[0.98] border-none cursor-pointer"
                         >
                           {isProcessing ? <Clock className="animate-spin" /> : <CheckCircle size={20} />}
-                          Confirm & Upload Garage ZIP
+                          Confirm, Upload Garage ZIP & Send to Order Management
                         </button>
                       </div>
                     )}

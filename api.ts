@@ -276,6 +276,14 @@ router.get('/orders', async (req, res) => {
       designGst: Number(r.designGst || 0),
       designDiscount: Number(r.designDiscount || 0),
       designNotes: r.designNotes || '',
+      assignedDesigner: r.assignedDesigner || 'Unassigned',
+      holdReason: r.holdReason || '',
+      previousStatus: r.previousStatus || '',
+      createdBy: r.createdBy || '',
+      createdByName: r.createdByName || '',
+      accountsNotes: r.accountsNotes || '',
+      original_design_file: r.original_design_file || '',
+      original_design_filename: r.original_design_filename || '',
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -301,7 +309,10 @@ router.post('/orders', async (req, res) => {
         category=?, quantity=?, details=?, sizeBreakdown=?, totalAmount=?, advancePay=?, balanceAmount=?, 
         gstAmount=?, discountAmount=?, shippingCharges=?, status=?, isUrgent=?, notes=?, staffImages=?, 
         staffPdfs=?, accountsAttachments=?, orderManagementAttachments=?, designAttachments=?, machineFiles=?,
-        designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=?, updatedAt=? WHERE id=?`,
+        designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=?, 
+        assignedDesigner=?, holdReason=?, previousStatus=?, createdBy=?, createdByName=?, accountsNotes=?,
+        original_design_file=?, original_design_filename=?,
+        updatedAt=? WHERE id=?`,
         [
           customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -311,7 +322,11 @@ router.post('/orders', async (req, res) => {
           JSON.stringify(order.staffPdfs || []), JSON.stringify(order.accountsAttachments || []),
           JSON.stringify(order.orderManagementAttachments || []), JSON.stringify(order.designAttachments || []),
           JSON.stringify(order.machineFiles || []), order.designName || null, Number(order.designAmount || 0),
-          Number(order.designGst || 0), Number(order.designDiscount || 0), order.designNotes || null, Date.now(), order.id
+          Number(order.designGst || 0), Number(order.designDiscount || 0), order.designNotes || null,
+          order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
+          order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
+          order.original_design_file || null, order.original_design_filename || null,
+          Date.now(), order.id
         ]
       );
     } else {
@@ -320,8 +335,11 @@ router.post('/orders', async (req, res) => {
         category, quantity, details, sizeBreakdown, totalAmount, advancePay, balanceAmount, 
         gstAmount, discountAmount, shippingCharges, status, isUrgent, notes, staffImages, 
         staffPdfs, accountsAttachments, orderManagementAttachments, designAttachments, machineFiles,
-        designName, designAmount, designGst, designDiscount, designNotes, createdAt, updatedAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        designName, designAmount, designGst, designDiscount, designNotes,
+        assignedDesigner, holdReason, previousStatus, createdBy, createdByName, accountsNotes,
+        original_design_file, original_design_filename,
+        createdAt, updatedAt) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.id, customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -331,7 +349,11 @@ router.post('/orders', async (req, res) => {
           JSON.stringify(order.staffPdfs || []), JSON.stringify(order.accountsAttachments || []),
           JSON.stringify(order.orderManagementAttachments || []), JSON.stringify(order.designAttachments || []),
           JSON.stringify(order.machineFiles || []), order.designName || null, Number(order.designAmount || 0),
-          Number(order.designGst || 0), Number(order.designDiscount || 0), order.designNotes || null, Date.now(), Date.now()
+          Number(order.designGst || 0), Number(order.designDiscount || 0), order.designNotes || null,
+          order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
+          order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
+          order.original_design_file || null, order.original_design_filename || null,
+          Date.now(), Date.now()
         ]
       );
     }

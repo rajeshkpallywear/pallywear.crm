@@ -40,18 +40,18 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
     if (selectedSection === 'completed') {
-      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.ORDER_MANAGEMENT].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
     }
     if (selectedSection === 'process') {
-      return o.status === OrderStatus.ACCOUNTS;
+      return o.status === OrderStatus.ORDER_MANAGEMENT;
     }
-    return o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+    return o.status === OrderStatus.ACCOUNTS;
   });
 
-  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
-  const processOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
+  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
+  const processOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
+  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.ORDER_MANAGEMENT].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
@@ -318,7 +318,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
                         <div className="mt-4 grid grid-cols-2 gap-3">
                           {selectedOrder.sizeBreakdown.map((item, idx) => (
-                            <div key={idx} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col gap-1">
+                            <div key={idx} onClick={() => setSelectedHubOrder(selectedOrder)} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col gap-1 cursor-pointer hover:border-brand-primary/45 hover:scale-[1.01] transition-all">
                               <div className="flex justify-between items-start mb-1">
                                 <span className="text-[10px] font-black text-brand-primary uppercase">{item.category}</span>
                                 <span className="text-[10px] font-black text-gray-900 bg-gray-50 px-1 rounded">{item.size}</span>

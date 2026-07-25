@@ -74,6 +74,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const [designFiles, setDesignFiles] = useState<string[]>([]);
   const [machineFiles, setMachineFiles] = useState<string[]>([]);
   const [designNotesText, setDesignNotesText] = useState('');
+  const [originalFile, setOriginalFile] = useState<string>('');
+  const [originalFilename, setOriginalFilename] = useState<string>('');
 
   // Local Conversations List (Staff Conversations)
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -227,7 +229,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
       const hasOmChat = !!localStorage.getItem(chatKey);
 
-      const isCompleted = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status);
+      const isCompleted = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD, OrderStatus.ORDER_MANAGEMENT].includes(o.status);
       const isHold = o.status === OrderStatus.HOLD;
 
       const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
@@ -308,6 +310,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           setDesignFiles(fullOrder.designAttachments || []);
           setMachineFiles(fullOrder.machineFiles || []);
           setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
+          setOriginalFile(fullOrder.original_design_file || '');
+          setOriginalFilename(fullOrder.original_design_filename || '');
         }
       } else {
         // Pure Consultation
@@ -346,6 +350,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         setDesignFiles(fullOrder.designAttachments || []);
         setMachineFiles(fullOrder.machineFiles || []);
         setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
+        setOriginalFile(fullOrder.original_design_file || '');
+        setOriginalFilename(fullOrder.original_design_filename || '');
       }
     } else {
       setSelectedItemIdForStaffChat(item.id);
@@ -391,10 +397,59 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setDesignFiles([]);
       setMachineFiles([]);
       setDesignNotesText('');
+      setOriginalFile('');
+      setOriginalFilename('');
       alert("Success: Artwork output submitted and order sent to Marketing for review.");
     } catch (e) {
       console.error(e);
       alert("An error occurred while moving the order.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSendToDigitizer = async () => {
+    if (!selectedOrder || isProcessing) return;
+
+    if (!originalFile) {
+      alert("Validation Error: Please upload the Original Design File before sending to Digitizer.");
+      return;
+    }
+
+    const nextOrderState = {
+      ...selectedOrder,
+      original_design_file: originalFile,
+      original_design_filename: originalFilename,
+      designAttachments: designFiles,
+      machineFiles: machineFiles,
+      designNotes: designNotesText
+    };
+
+    if (!isOrderSizeValid(nextOrderState)) {
+      alert("Error: Total order data limit exceeded (Max 100MB). Please use a smaller file size.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await onUpdateOrder(selectedOrder.id, {
+        original_design_file: originalFile,
+        original_design_filename: originalFilename,
+        designAttachments: designFiles,
+        machineFiles: machineFiles,
+        designNotes: designNotesText,
+        updatedAt: Date.now()
+      });
+      setSelectedOrder(null);
+      setDesignFiles([]);
+      setMachineFiles([]);
+      setDesignNotesText('');
+      setOriginalFile('');
+      setOriginalFilename('');
+      alert("Success: Original design file uploaded and order made available to Digitizer.");
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred while sending to Digitizer.");
     } finally {
       setIsProcessing(false);
     }
@@ -946,6 +1001,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   setSelectedOrder(null);
                   setDesignFiles([]);
                   setMachineFiles([]);
+                  setOriginalFile('');
+                  setOriginalFilename('');
                 }}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors border-none bg-transparent cursor-pointer"
               >
@@ -1134,6 +1191,34 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           ))}
                         </div>
                       </div>
+
+                      {/* Upload 3: Original Design File */}
+                      <div className="space-y-2 bg-white p-3.5 rounded-lg border border-purple-100 col-span-1 sm:col-span-2">
+                        <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">3. Original Design File (Source File / High-Res Image)</p>
+                        <FileUpload
+                          label=""
+                          onFilesSelected={(files) => {
+                            if (files.length > 0) {
+                              setOriginalFile(files[0]);
+                              setOriginalFilename("Original_Design_File");
+                            }
+                          }}
+                        />
+                        {originalFile && (
+                          <div className="flex justify-between items-center text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200 mt-2">
+                            <span className="truncate max-w-[240px] font-mono">{originalFilename || "Original_Design_File"}</span>
+                            <button
+                              onClick={() => {
+                                setOriginalFile('');
+                                setOriginalFilename('');
+                              }}
+                              className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1247,6 +1332,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               >
                 <ArrowLeftIcon size={15} />
                 Return to Sales/Staff
+              </button>
+
+              {/* Send to Digitizer command */}
+              <button
+                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                onClick={handleSendToDigitizer}
+                className="px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                Send to Digitizer
+                <Upload size={15} />
               </button>
 
               {/* Primary Move forward command */}

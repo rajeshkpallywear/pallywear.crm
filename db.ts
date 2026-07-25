@@ -112,6 +112,7 @@ export async function initDB() {
         \`assignedDesigner\` varchar(50) DEFAULT NULL,
         \`createdBy\` varchar(50) DEFAULT NULL,
         \`createdByName\` varchar(100) DEFAULT NULL,
+        \`accountsNotes\` text DEFAULT NULL,
         \`lastUpdatedBy\` varchar(50) DEFAULT NULL,
         \`vendorName\` varchar(100) DEFAULT NULL,
         \`vendorNumber\` varchar(50) DEFAULT NULL,
@@ -307,6 +308,14 @@ export async function initDB() {
       "ALTER TABLE `invoices` ADD COLUMN `designDiscount` decimal(15,2) DEFAULT 0.00",
       "ALTER TABLE `invoices` ADD COLUMN `designNotes` text DEFAULT NULL",
       "ALTER TABLE `sidebar_messages` ADD COLUMN `recipientId` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `assignedDesigner` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `holdReason` text DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `previousStatus` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `createdBy` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `createdByName` varchar(100) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `accountsNotes` text DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `original_design_file` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `original_design_filename` varchar(255) DEFAULT NULL",
     ];
 
     for (const q of alterQueries) {
