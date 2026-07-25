@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip, Clock } from 'lucide-react';
+import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip, Clock, Compass, Sparkles, Wand2, ArrowRight } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
@@ -101,7 +101,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     e.preventDefault();
     if (isProcessing) return;
 
-    // Check size estimation of the FINAL order object
     const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
     const existingOrder = editingOrderId ? orders.find(o => o.id === editingOrderId) : null;
     const finalOrderData = {
@@ -225,7 +224,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       case 'Pant': return PANT_COLOURS;
       case 'T-Shirt':
         if (material) {
-          // Normalizing material name for map lookup
           const key = Object.keys(TSHIRT_COLOURS_MAP).find(k => k.toLowerCase() === material.toLowerCase());
           return key ? TSHIRT_COLOURS_MAP[key] : (TSHIRT_COLOURS_MAP['Comfort'] || []);
         }
@@ -271,15 +269,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     });
     setIsCreating(true);
   };
-  const handleDuplicate = (order: Order) => {
-    const { id, createdAt, updatedAt, ...rest } = order;
-    onCreateOrder({
-      ...rest,
-      status: OrderStatus.PENDING,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  };
 
   const filteredOrders = orders.filter(o => {
     const matchesSearch = (o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
@@ -311,26 +300,31 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-
+    <div className="bg-[#0B0F19] text-slate-100 p-6 rounded-[2.5rem] border border-slate-900 shadow-2xl space-y-8 animate-in fade-in duration-300">
+      
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-900 pb-6">
+        <div>
+          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] block mb-1">Pallywear CRM Portal</span>
+          <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic">Marketing & Accounts Overview</h2>
+        </div>
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
               resetForm();
               setIsCreating(true);
             }}
-            className="flex items-center justify-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-md active:scale-95 text-xs sm:text-sm"
+            className="flex items-center justify-center gap-2 bg-indigo-650 text-white px-5 py-2.5 rounded-xl font-black hover:bg-indigo-600 transition-all shadow-lg active:scale-95 text-xs uppercase cursor-pointer border-none"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             <span>Create Order</span>
           </button>
           <button
             onClick={() => setIsLeadModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-100 transition-all shadow-xs active:scale-95 text-xs sm:text-sm cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-slate-900 border border-slate-800 text-slate-300 px-5 py-2.5 rounded-xl font-black hover:border-indigo-500/20 transition-all shadow-xs active:scale-95 text-xs uppercase cursor-pointer"
           >
-            <User size={18} />
-            <span>Create Lead / Clients</span>
+            <User size={16} />
+            <span>Create Lead</span>
           </button>
         </div>
       </div>
@@ -344,141 +338,356 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         onCreateOrder={onCreateOrder}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-        {/* Recent Orders Card */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Marketing Spend */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Marketing Spend</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shadow-inner">
+              <TrendingUp size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">$21.8K</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              +12%
+            </span>
+          </div>
+        </div>
+
+        {/* CAC */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Acquisition Cost (CAC)</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shadow-inner">
+              <Compass size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">$4.43</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              -8.2%
+            </span>
+          </div>
+        </div>
+
+        {/* ROAS */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Return on Ad Spend (ROAS)</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shadow-inner">
+              <Activity size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">6.54</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              +4.1%
+            </span>
+          </div>
+        </div>
+
+        {/* Operational Expenses */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Operational Expenses</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shadow-inner">
+              <Globe size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">$42.5K</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle Row Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Campaign ROI Line Chart */}
+        <div className="lg:col-span-2 bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-900 pb-3">
+            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Campaign ROI vs. Budget</h4>
+            <span className="text-[9px] font-bold text-slate-400 bg-[#0B0F19] px-2.5 py-1 rounded-xl">Last 30 Days</span>
+          </div>
+          <div className="relative pt-4">
+            <svg className="w-full h-40" viewBox="0 0 500 150">
+              <defs>
+                <linearGradient id="roiGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366F1" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#6366F1" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="30" x2="500" y2="30" stroke="#1e293b" strokeDasharray="3 3" />
+              <line x1="0" y1="75" x2="500" y2="75" stroke="#1e293b" strokeDasharray="3 3" />
+              <line x1="0" y1="120" x2="500" y2="120" stroke="#1e293b" strokeDasharray="3 3" />
+              
+              <path d="M 0 110 Q 90 140 160 50 T 320 80 T 440 25 T 500 35 L 500 150 L 0 150 Z" fill="url(#roiGrad)" />
+              <path d="M 0 110 Q 90 140 160 50 T 320 80 T 440 25 T 500 35" fill="none" stroke="#6366F1" strokeWidth="3" />
+              <circle cx="160" cy="50" r="4" fill="#6366F1" stroke="#fff" strokeWidth="2" />
+              <circle cx="320" cy="80" r="4" fill="#6366F1" stroke="#fff" strokeWidth="2" />
+              <circle cx="440" cy="25" r="4" fill="#6366F1" stroke="#fff" strokeWidth="2" />
+            </svg>
+            <div className="flex justify-between items-center text-[9px] font-mono text-slate-500 pt-2 px-1">
+              <span>Jan 6</span>
+              <span>Jan 12</span>
+              <span>Jan 18</span>
+              <span>Jan 24</span>
+              <span>Jan 30</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Customer Segments Donut Chart */}
+        <div className="bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl flex flex-col justify-between">
+          <div className="border-b border-slate-900 pb-3">
+            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Customer Segments</h4>
+          </div>
+          
+          <div className="relative w-32 h-32 mx-auto flex items-center justify-center my-4">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" stroke="#1e293b" strokeWidth="8" fill="transparent" />
+              <circle cx="50" cy="50" r="40" stroke="#3b82f6" strokeWidth="8" fill="transparent" strokeDasharray="251.2" strokeDashoffset="80" />
+              
+              <circle cx="50" cy="50" r="31" stroke="#1e293b" strokeWidth="6" fill="transparent" />
+              <circle cx="50" cy="50" r="31" stroke="#10b981" strokeWidth="6" fill="transparent" strokeDasharray="194.7" strokeDashoffset="55" />
+              
+              <circle cx="50" cy="50" r="22" stroke="#1e293b" strokeWidth="4" fill="transparent" />
+              <circle cx="50" cy="50" r="22" stroke="#f59e0b" strokeWidth="4" fill="transparent" strokeDasharray="138.2" strokeDashoffset="45" />
+            </svg>
+            <div className="absolute flex flex-col items-center">
+              <span className="text-base font-black text-white">Groups</span>
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Metrics</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center gap-3 text-[9px] font-black uppercase text-slate-400 tracking-wider">
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-blue-500" /> Direct
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Referral
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500" /> VIP
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Filter Bar */}
+      <div className="flex items-center gap-2 p-1 bg-slate-950/60 border border-slate-900 rounded-2xl w-fit">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'recent' ? "bg-indigo-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Recent Orders: All received intakes"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600")}>
-            <Package size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'recent' ? "text-white/80" : "text-gray-400")}>Recent</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{recentOrdersCount}</p>
-          </div>
+          Recent ({recentOrdersCount})
         </button>
-
-        {/* Process Orders Card */}
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'process' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'process' ? "bg-indigo-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Process Orders: Active in-progress orders"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600")}>
-            <Clock size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'process' ? "text-white/80" : "text-gray-400")}>Process</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{processOrdersCount}</p>
-          </div>
+          Processing ({processOrdersCount})
         </button>
-
-        {/* Hold Orders Card */}
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'hold' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'hold' ? "bg-indigo-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Hold Orders: Awaiting clarification"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500")}>
-            <AlertCircle size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'hold' ? "text-white/80" : "text-gray-400")}>On Hold</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{holdOrdersCount}</p>
-          </div>
+          On Hold ({holdOrdersCount})
         </button>
-
-        {/* Completed Orders Card */}
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'completed' ? "bg-indigo-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Completed Orders: Delivered and finalized"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600")}>
-            <Activity size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'completed' ? "text-white/80" : "text-gray-400")}>Done</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{completedOrdersCount}</p>
-          </div>
+          Done ({completedOrdersCount})
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
-        <div className="p-4 border-b border-gray-100 flex items-center gap-3">
-          <Search className="text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search customer or order ID..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-gray-900 placeholder:text-gray-400"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      {/* Primary Data Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Side: Order intake lists */}
+        <div className="lg:col-span-2 bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl space-y-4">
+          <div className="flex items-center gap-3 border-b border-slate-900 pb-3">
+            <Search className="text-slate-500" size={16} />
+            <input
+              type="text"
+              placeholder="Search customer or order ID..."
+              className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-white placeholder:text-slate-500 outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-        <div className="overflow-x-auto">
-          {/* Desktop Table View */}
-          <table className="hidden md:table w-full text-left">
-            <thead>
-              <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-50">
-                <th className="px-6 py-4">Order ID</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4">Qty</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Created At</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+          <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <table className="hidden md:table w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="text-slate-400 uppercase font-black text-[9px] tracking-wider border-b border-slate-800">
+                  <th className="pb-3 px-3">Order ID</th>
+                  <th className="pb-3 px-3">Customer</th>
+                  <th className="pb-3 px-3">Category</th>
+                  <th className="pb-3 px-3">Qty</th>
+                  <th className="pb-3 px-3">Pipeline Status</th>
+                  <th className="pb-3 px-3 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-850">
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map(order => (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedHubOrder(order)}
+                      className="hover:bg-[#1E294B]/20 transition-all cursor-pointer"
+                    >
+                      <td className="py-4 px-3 font-mono text-[10px] text-slate-400">
+                        <div className="flex items-center gap-2">
+                          #{order.id.slice(-6)}
+                          {order.isUrgent && (
+                            <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">URGENT</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-3">
+                        <div className="font-bold text-white uppercase italic">{order.customerInfo?.name || ''}</div>
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{order.customerInfo?.phone || ''}</div>
+                      </td>
+                      <td className="py-4 px-3">
+                        <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-black uppercase rounded">
+                          {getDisplayCategory(order)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-3 font-bold text-white text-xs">{order.quantity || 1}</td>
+                      <td className="py-4 px-3">
+                        <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                            {order.status.replace('_', ' ')}
+                          </span>
+                          {order.status === OrderStatus.PENDING && (
+                            <div className="flex gap-1.5 mt-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNoteModal({
+                                    isOpen: true,
+                                    orderId: order.id,
+                                    target: 'design',
+                                    noteText: ''
+                                  });
+                                }}
+                                className="text-[9px] font-black text-purple-400 hover:text-white bg-purple-950/20 hover:bg-purple-600 border border-purple-900/40 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
+                              >
+                                Designs
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNoteModal({
+                                    isOpen: true,
+                                    orderId: order.id,
+                                    target: 'accounts',
+                                    noteText: ''
+                                  });
+                                }}
+                                className="text-[9px] font-black text-amber-400 hover:text-white bg-amber-950/20 hover:bg-amber-600 border border-amber-900/40 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
+                              >
+                                Accounts
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {order.status === OrderStatus.HOLD && order.holdReason && (
+                          <div className="text-[8px] text-red-400 mt-1 font-bold italic truncate max-w-[80px]" title={order.holdReason}>
+                            {order.holdReason}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-3 text-right">
+                        <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-[9px] font-mono text-slate-400 mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
+                          <button
+                            onClick={() => startEdit(order)}
+                            className="px-2.5 py-1.5 bg-slate-800 text-slate-350 hover:bg-slate-700 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400 italic">
+                      No orders found in this section.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            {/* Mobile View */}
+            <div className="block md:hidden divide-y divide-slate-850">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => (
-                  <tr
+                  <div
                     key={order.id}
                     onClick={() => setSelectedHubOrder(order)}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                    className="py-4 space-y-3"
                   >
-                    <td className="px-6 py-4 font-mono text-xs text-gray-500">
-                      <div className="flex items-center gap-2">
-                        #{order.id.slice(-6)}
-                        {order.isUrgent && (
-                          <span className="bg-red-500 text-white text-[8px] font-black px-1 rounded animate-pulse">URGENT</span>
-                        )}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex flex-col">
+                        <span className="font-mono font-black text-indigo-400">#{order.id.slice(-6)}</span>
+                        <span className="text-[9px] text-slate-400 font-mono mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{order.customerInfo?.name || ''}</div>
-                      <div className="text-xs text-gray-500">{order.customerInfo?.phone || ''}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[8px] font-black uppercase tracking-tighter">
+                      {order.isUrgent && (
+                        <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse">URGENT</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="font-black text-white text-sm uppercase italic">{order.customerInfo?.name || ''}</div>
+                      <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-slate-400 font-semibold hover:text-indigo-400 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <Phone size={10} className="text-indigo-400" /> {order.customerInfo?.phone || ''}
+                      </a>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-slate-900/40 p-2.5 rounded-xl border border-slate-850">
+                      <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-black uppercase rounded">
                         {getDisplayCategory(order)}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-gray-900">{order.quantity || 1}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase w-fit ${getStatusStyles(order.status)}`}>
+                      <span className="text-xs font-bold text-white">Qty: {order.quantity || 1}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status:</span>
+                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
                           {order.status.replace('_', ' ')}
                         </span>
-                        {order.status === OrderStatus.PENDING && (
+                      </div>
+
+                      {order.status === OrderStatus.HOLD && order.holdReason && (
+                        <div className="text-[9px] text-red-400 font-bold bg-red-950/20 p-2 rounded border border-red-900/20 italic">
+                          Blocked Reason: {order.holdReason}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                        {order.status === OrderStatus.PENDING ? (
                           <>
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={() => {
                                 setNoteModal({
                                   isOpen: true,
                                   orderId: order.id,
@@ -486,13 +695,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   noteText: ''
                                 });
                               }}
-                              className="text-[10px] font-black text-purple-600 hover:text-white bg-purple-50 hover:bg-purple-600 border border-purple-300 rounded px-2.5 py-1 tracking-widest uppercase transition-all duration-200 w-fit cursor-pointer font-bold"
+                              className="py-2 bg-purple-950/20 hover:bg-purple-900/40 text-purple-400 rounded-xl font-black text-[9px] border border-purple-900/40 transition-colors uppercase cursor-pointer"
                             >
-                              Send to Designs
+                              Designs
                             </button>
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={() => {
                                 setNoteModal({
                                   isOpen: true,
                                   orderId: order.id,
@@ -500,532 +708,402 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   noteText: ''
                                 });
                               }}
-                              className="text-[10px] font-black text-amber-600 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-300 rounded px-2.5 py-1 tracking-widest uppercase transition-all duration-200 w-fit cursor-pointer font-bold shadow-sm"
+                              className="py-2 bg-amber-950/20 hover:bg-amber-900/40 text-amber-400 rounded-xl font-black text-[9px] border border-amber-900/40 transition-colors uppercase cursor-pointer"
                             >
-                              Send to Accounts
+                              Accounts
                             </button>
                           </>
+                        ) : (
+                          <button
+                            onClick={() => startEdit(order)}
+                            className="col-span-2 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none"
+                          >
+                            Edit Order
+                          </button>
                         )}
                       </div>
-                      {order.status === OrderStatus.HOLD && order.holdReason && (
-                        <div className="text-[8px] text-red-500 mt-1 font-bold italic truncate max-w-[80px]" title={order.holdReason}>
-                          {order.holdReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-[10px] tabular-nums mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
-                        <button
-                          onClick={() => startEdit(order)}
-                          className="px-3 py-1.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No orders found. Use the Create Order panel to add one.
-                  </td>
-                </tr>
+                <div className="p-8 text-center text-slate-500 italic">
+                  No orders found.
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+        </div>
 
-          {/* Mobile Card List View (Flipkart/Amazon style) */}
-          <div className="block md:hidden divide-y divide-gray-150">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map(order => (
-                <div
-                  key={order.id}
-                  onClick={() => setSelectedHubOrder(order)}
-                  className="p-4 bg-white space-y-3 active:bg-gray-50 transition-colors"
-                >
-                  {/* Header: ID, Date, Urgent Badge */}
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex flex-col">
-                      <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
-                      <span className="text-[9px] text-gray-400 font-bold">{new Date(order.createdAt).toLocaleDateString()}</span>
+        {/* Right Side: Stock Inventory view */}
+        <div className="bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl space-y-4">
+          <div className="border-b border-slate-900 pb-3 flex justify-between items-center">
+            <h4 className="text-[11px] font-black text-white uppercase tracking-widest flex items-center gap-2">
+              <Package size={14} className="text-indigo-400" />
+              Stock Inventory
+            </h4>
+          </div>
+
+          <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+            {inventory && inventory.length > 0 ? (
+              Object.values(inventory.reduce((acc: any, item) => {
+                const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}`;
+                if (!acc[key]) {
+                  acc[key] = {
+                    product: item.product,
+                    productType: item.productType,
+                    sleeve: item.sleeve,
+                    pocket: item.pocket,
+                    stock: 0,
+                    lastDate: item.date
+                  };
+                }
+                if (item.type === 'inward') acc[key].stock += item.quantity;
+                else acc[key].stock -= item.quantity;
+                return acc;
+              }, {})).map((prod: any, idx) => (
+                <div key={idx} className="p-3.5 bg-slate-950/40 border border-slate-900 rounded-2xl flex items-center justify-between group hover:border-slate-750 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-slate-500 group-hover:text-indigo-400 transition-colors shrink-0">
+                      <Package size={16} />
                     </div>
-                    {order.isUrgent && (
-                      <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
-                    )}
+                    <div className="min-w-0">
+                      <p className="font-bold text-white truncate text-xs">{prod.product}</p>
+                      <p className="text-[9px] text-slate-400 font-black uppercase mt-0.5 flex flex-wrap gap-1 items-center">
+                        <span>{prod.productType}</span>
+                        {prod.sleeve && <span className="bg-slate-800 px-1 rounded text-[8px]">{prod.sleeve}</span>}
+                        {prod.pocket && <span className="bg-slate-800 px-1 rounded text-[8px]">{prod.pocket}</span>}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Customer details */}
-                  <div className="space-y-1">
-                    <div className="font-black text-gray-900 text-sm">{order.customerInfo?.name || ''}</div>
-                    <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <Phone size={12} className="text-brand-primary" /> {order.customerInfo?.phone || ''}
-                    </a>
-                  </div>
-
-                  {/* Item specs / Category and Quantity */}
-                  <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100/50">
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[9px] font-black uppercase tracking-tight w-fit border border-blue-100 inline-block">
-                      {getDisplayCategory(order)}
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-white">₹---</p>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-wider block mt-1",
+                      prod.stock > 0 ? "text-green-400" : "text-red-400"
+                    )}>
+                      {prod.stock > 0 ? `In Stock (${prod.stock})` : `Out of Stock`}
                     </span>
-                    <span className="text-xs font-bold text-gray-900">Qty: {order.quantity || 1}</span>
-                  </div>
-
-                  {/* Status indicator and action buttons */}
-                  <div className="flex flex-col gap-2 pt-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit ${getStatusStyles(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
-                    </div>
-
-                    {order.status === OrderStatus.HOLD && order.holdReason && (
-                      <div className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded-xl border border-red-100 italic">
-                        Reason: {order.holdReason}
-                      </div>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                      {order.status === OrderStatus.PENDING ? (
-                        <>
-                          <button
-                            onClick={() => {
-                              setNoteModal({
-                                isOpen: true,
-                                orderId: order.id,
-                                target: 'design',
-                                noteText: ''
-                              });
-                            }}
-                            className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-bold text-[10px] border border-purple-100 transition-colors uppercase cursor-pointer"
-                          >
-                            Send to Designs
-                          </button>
-                          <button
-                            onClick={() => {
-                              setNoteModal({
-                                isOpen: true,
-                                orderId: order.id,
-                                target: 'accounts',
-                                noteText: ''
-                              });
-                            }}
-                            className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-[10px] border border-amber-100 transition-colors uppercase cursor-pointer"
-                          >
-                            Send to Accounts
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => startEdit(order)}
-                          className="col-span-2 py-2 bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-brand-primary rounded-xl font-bold text-xs transition-colors uppercase cursor-pointer"
-                        >
-                          Edit Order
-                        </button>
-                      )}
-                    </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="p-8 text-center text-gray-500 italic font-medium text-xs">
-                No orders found. Use the Create Order panel to add one.
-              </div>
+              <p className="text-xs text-slate-400 italic text-center py-6">No inventory records found.</p>
             )}
           </div>
         </div>
       </div>
-      <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Package className="text-brand-primary" size={24} />
-              Stock Inventory (View Only)
-            </h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by Product Name..."
-                    className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-black outline-none w-64"
-                  />
-                </div>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition-colors uppercase">Search</button>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-12">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#f9f9f9] border-b border-gray-100">
-                  <tr className="text-gray-500 font-bold text-[11px] uppercase tracking-wider">
-                    <th className="px-6 py-4">Image</th>
-                    <th className="px-6 py-4">Product Name</th>
-                    <th className="px-6 py-4">Price</th>
-                    <th className="px-6 py-4">Available Product Stock</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {inventory && inventory.length > 0 ? (
-                    // Aggregate inventory for product-wise view
-                    Object.values(inventory.reduce((acc: any, item) => {
-                      const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}`;
-                      if (!acc[key]) {
-                        acc[key] = {
-                          product: item.product,
-                          productType: item.productType,
-                          sleeve: item.sleeve,
-                          pocket: item.pocket,
-                          stock: 0,
-                          lastDate: item.date
-                        };
-                      }
-                      if (item.type === 'inward') acc[key].stock += item.quantity;
-                      else acc[key].stock -= item.quantity;
-                      return acc;
-                    }, {})).map((prod: any, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 group-hover:border-blue-200 transition-colors">
-                            <Package size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-blue-600 hover:underline cursor-pointer">{prod.product}</div>
-                          <div className="text-[10px] text-gray-400 font-medium uppercase flex items-center gap-1">
-                            {prod.productType}
-                            {prod.sleeve && <span className="bg-gray-100 px-1 rounded">{prod.sleeve}</span>}
-                            {prod.pocket && <span className="bg-gray-100 px-1 rounded">{prod.pocket}</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          ₹---
-                        </td>
-                        <td className="px-6 py-4 font-bold">
-                          <span className={cn(
-                            "text-xs",
-                            prod.stock > 0 ? "text-green-600" : "text-red-500"
-                          )}>
-                            {prod.stock > 0 ? `instock (${prod.stock})` : `outofstock (${prod.stock})`}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic font-medium">
-                        No inventory products found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
+      {/* Forms and Creation Modal */}
       {isCreating && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            className="bg-[#131B2E] border border-slate-800 rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="sticky top-0 bg-white px-8 py-6 border-b border-gray-100 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-[#131B2E] px-8 py-6 border-b border-slate-900 flex items-center justify-between z-10">
               <div className="flex items-center gap-4">
-                <h3 className="text-2xl font-bold text-gray-900">Create New Order</h3>
-                <label className="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-lg cursor-pointer hover:bg-red-100 transition-colors">
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tight">
+                  {editingOrderId ? 'Modify Order Details' : 'Create Intake Order'}
+                </h3>
+                <label className="flex items-center gap-2 px-3 py-1 bg-red-950/20 border border-red-900/40 rounded-xl cursor-pointer hover:bg-red-900/30 transition-colors">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                    className="w-4 h-4 rounded border-red-800 text-red-600 focus:ring-red-500"
                     checked={formData.isUrgent}
                     onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
                   />
-                  <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Mark as Urgent</span>
+                  <span className="text-[9px] font-black text-red-400 uppercase tracking-widest">Mark as Urgent</span>
                 </label>
               </div>
               <button
                 onClick={() => setIsCreating(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 border-none bg-transparent cursor-pointer"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            <form onSubmit={handleSubmit} className="p-8 space-y-8 text-left">
               <section className="space-y-4">
-                <h4 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-                  <User size={20} className="text-blue-600" />
+                <h4 className="flex items-center gap-2 text-sm font-black text-white uppercase tracking-wider border-b border-slate-900 pb-2">
+                  <User size={16} className="text-indigo-400" />
                   Customer Information
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Name</label>
+                    <label className="block text-[10px] font-black text-slate-450 uppercase mb-1.5">Customer Name</label>
                     <input
                       required
                       type="text"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all"
-                      placeholder="Customer Full Name"
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none"
+                      placeholder="Full name"
                       value={formData.customerName}
                       onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number</label>
+                    <label className="block text-[10px] font-black text-slate-450 uppercase mb-1.5">Phone Number</label>
                     <input
                       required
                       type="tel"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all"
-                      placeholder="+91 00000 00000"
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none"
+                      placeholder="+91"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Address</label>
+                  <label className="block text-[10px] font-black text-slate-450 uppercase mb-1.5">Shipping Address</label>
                   <textarea
                     required
                     rows={2}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent transition-all resize-none"
-                    placeholder="Full shipping address"
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none resize-none"
+                    placeholder="Full shipping details"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   />
                 </div>
               </section>
 
-              <div className="h-px bg-gray-100" />
-
               <section className="space-y-4">
+                <h4 className="flex items-center gap-2 text-sm font-black text-white uppercase tracking-wider border-b border-slate-900 pb-2">
+                  <Package size={16} className="text-indigo-400" />
+                  Item Breakdown
+                </h4>
                 <div className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Size & Item Breakdown</h5>
-                      <button
-                        type="button"
-                        onClick={addSizeQuantity}
-                        className="text-[10px] font-bold bg-black text-white px-3 py-1 rounded-lg flex items-center gap-1.5 hover:bg-gray-800 transition-all uppercase tracking-wider"
-                      >
-                        <Plus size={14} /> Add Size
-                      </button>
-                    </div>
+                  <div className="flex justify-between items-center border-b border-slate-900 pb-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sizing & Specification Bench</span>
+                    <button
+                      type="button"
+                      onClick={addSizeQuantity}
+                      className="text-[9px] font-black bg-indigo-650 text-white px-3.5 py-1.5 rounded-lg hover:bg-indigo-600 transition-all uppercase tracking-wider border-none cursor-pointer"
+                    >
+                      <Plus size={12} /> Add Row
+                    </button>
+                  </div>
 
-                    {formData.sizeBreakdown.length > 0 ? (
-                      <div className="space-y-3">
-                        {formData.sizeBreakdown.map((item, idx) => (
-                          <div key={idx} className="flex flex-col gap-3 animate-in fade-in slide-in-from-left-2 duration-200 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm relative group">
-                            <button
-                              type="button"
-                              onClick={() => removeSizeQuantity(idx)}
-                              className="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-red-500 transition-colors bg-gray-50 rounded-lg"
-                            >
-                              <X size={14} />
-                            </button>
+                  {formData.sizeBreakdown.length > 0 ? (
+                    <div className="space-y-4">
+                      {formData.sizeBreakdown.map((item, idx) => (
+                        <div key={idx} className="p-4 bg-slate-950/40 rounded-2xl border border-slate-900 shadow-xl relative group flex flex-col gap-3">
+                          <button
+                            type="button"
+                            onClick={() => removeSizeQuantity(idx)}
+                            className="absolute top-2 right-2 p-1 text-slate-500 hover:text-red-400 transition-colors bg-slate-900 rounded border-none cursor-pointer"
+                          >
+                            <X size={12} />
+                          </button>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
-                              <div className="col-span-2 sm:col-span-1">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+                            <div className="col-span-2 sm:col-span-1">
+                              <Select
+                                label="Category"
+                                value={item.category}
+                                options={CATEGORIES}
+                                onChange={(v) => {
+                                  updateSizeQuantity(idx, 'category', v);
+                                  updateSizeQuantity(idx, 'material', '');
+                                  updateSizeQuantity(idx, 'model', '');
+                                  updateSizeQuantity(idx, 'colour', '');
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Select
+                                label="Size"
+                                value={item.size}
+                                options={SIZE_OPTIONS}
+                                onChange={(v) => updateSizeQuantity(idx, 'size', v)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Qty</label>
+                              <select
+                                value={item.quantity}
+                                onChange={(e) => updateSizeQuantity(idx, 'quantity', parseInt(e.target.value))}
+                                className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-white focus:border-indigo-500 outline-none"
+                              >
+                                {Array.from({ length: 1500 }, (_, i) => i + 1).map(n => (
+                                  <option key={n} value={n} className="bg-slate-950">{n}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Price (₹)</label>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={item.price || ''}
+                                onChange={(e) => updateSizeQuantity(idx, 'price', parseFloat(e.target.value) || 0)}
+                                className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-white focus:border-indigo-500 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                            {getMaterialsForCategory(item.category).length > 0 && (
+                              <div>
                                 <Select
-                                  label="Category"
-                                  value={item.category}
-                                  options={CATEGORIES}
+                                  label="Material"
+                                  value={item.material || ''}
+                                  options={getMaterialsForCategory(item.category)}
                                   onChange={(v) => {
-                                    updateSizeQuantity(idx, 'category', v);
-                                    updateSizeQuantity(idx, 'material', '');
-                                    updateSizeQuantity(idx, 'model', '');
-                                    updateSizeQuantity(idx, 'colour', '');
+                                    updateSizeQuantity(idx, 'material', v);
+                                    if (item.category === 'T-Shirt') updateSizeQuantity(idx, 'colour', '');
                                   }}
                                 />
                               </div>
+                            )}
+                            {getModelsForCategory(item.category).length > 0 && (
                               <div>
                                 <Select
-                                  label="Size"
-                                  value={item.size}
-                                  options={SIZE_OPTIONS}
-                                  onChange={(v) => updateSizeQuantity(idx, 'size', v)}
+                                  label="Model"
+                                  value={item.model || ''}
+                                  options={getModelsForCategory(item.category)}
+                                  onChange={(v) => updateSizeQuantity(idx, 'model', v)}
                                 />
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Qty</label>
-                                <select
-                                  value={item.quantity}
-                                  onChange={(e) => updateSizeQuantity(idx, 'quantity', parseInt(e.target.value))}
-                                  className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black outline-none transition-all text-sm font-bold"
-                                >
-                                  {Array.from({ length: 1500 }, (_, i) => i + 1).map(n => (
-                                    <option key={n} value={n}>{n}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Price (₹)</label>
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  value={item.price || ''}
-                                  onChange={(e) => updateSizeQuantity(idx, 'price', parseFloat(e.target.value) || 0)}
-                                  className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black outline-none transition-all text-sm font-bold"
+                            )}
+                            <div>
+                              {getColoursForCategory(item.category, item.material).length > 0 ? (
+                                <Select
+                                  label="Colour"
+                                  value={item.colour || ''}
+                                  options={getColoursForCategory(item.category, item.material)}
+                                  onChange={(v) => updateSizeQuantity(idx, 'colour', v)}
                                 />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end mt-2">
-                              {getMaterialsForCategory(item.category).length > 0 && (
+                              ) : (
                                 <div>
-                                  <Select
-                                    label="Material"
-                                    value={item.material || ''}
-                                    options={getMaterialsForCategory(item.category)}
-                                    onChange={(v) => {
-                                      updateSizeQuantity(idx, 'material', v);
-                                      if (item.category === 'T-Shirt') updateSizeQuantity(idx, 'colour', '');
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              {getModelsForCategory(item.category).length > 0 && (
-                                <div>
-                                  <Select
-                                    label="Model"
-                                    value={item.model || ''}
-                                    options={getModelsForCategory(item.category)}
-                                    onChange={(v) => updateSizeQuantity(idx, 'model', v)}
-                                  />
-                                </div>
-                              )}
-                              <div>
-                                {getColoursForCategory(item.category, item.material).length > 0 ? (
-                                  <Select
-                                    label="Colour"
+                                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Colour</label>
+                                  <input
+                                    type="text"
+                                    placeholder="White"
                                     value={item.colour || ''}
-                                    options={getColoursForCategory(item.category, item.material)}
-                                    onChange={(v) => updateSizeQuantity(idx, 'colour', v)}
+                                    onChange={(e) => updateSizeQuantity(idx, 'colour', e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-white focus:border-indigo-500 outline-none"
                                   />
-                                ) : (
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Colour</label>
-                                    <input
-                                      type="text"
-                                      placeholder="White"
-                                      value={item.colour || ''}
-                                      onChange={(e) => updateSizeQuantity(idx, 'colour', e.target.value)}
-                                      className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black outline-none transition-all text-xs font-bold"
-                                    />
-                                  </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <Select
+                                label="Print"
+                                value={item.printType || ''}
+                                options={PRINT_TYPES}
+                                onChange={(v) => updateSizeQuantity(idx, 'printType', v)}
+                              />
+                            </div>
+                            {getSleevesForCategory(item.category).length > 0 && (
                               <div>
                                 <Select
-                                  label="Print"
-                                  value={item.printType || ''}
-                                  options={PRINT_TYPES}
-                                  onChange={(v) => updateSizeQuantity(idx, 'printType', v)}
+                                  label="Sleeve"
+                                  value={item.sleeve || ''}
+                                  options={getSleevesForCategory(item.category)}
+                                  onChange={(v) => updateSizeQuantity(idx, 'sleeve', v)}
                                 />
                               </div>
-                              {getSleevesForCategory(item.category).length > 0 && (
-                                <div>
-                                  <Select
-                                    label="Sleeve"
-                                    value={item.sleeve || ''}
-                                    options={getSleevesForCategory(item.category)}
-                                    onChange={(v) => updateSizeQuantity(idx, 'sleeve', v)}
-                                  />
-                                </div>
-                              )}
-                              {getPocketsForCategory(item.category).length > 0 && (
-                                <div>
-                                  <Select
-                                    label="Pocket"
-                                    value={item.pocket || ''}
-                                    options={getPocketsForCategory(item.category)}
-                                    onChange={(v) => updateSizeQuantity(idx, 'pocket', v)}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            <div className="mt-2 pt-2 border-t border-gray-50 flex justify-end items-center gap-4">
-                              <div className="text-right">
-                                <div className="text-[8px] font-bold text-gray-400 uppercase italic">Subtotal</div>
-                                <div className="text-sm font-black text-brand-primary">₹{(item.quantity * (item.price || 0)).toLocaleString()}</div>
+                            )}
+                            {getPocketsForCategory(item.category).length > 0 && (
+                              <div>
+                                <Select
+                                  label="Pocket"
+                                  value={item.pocket || ''}
+                                  options={getPocketsForCategory(item.category)}
+                                  onChange={(v) => updateSizeQuantity(idx, 'pocket', v)}
+                                />
                               </div>
-                            </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div
-                        onClick={addSizeQuantity}
-                        className="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center cursor-pointer hover:bg-gray-50 transition-all"
-                      >
-                        <p className="text-sm text-gray-400">No sizes added. Click to add.</p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Quantity:</span>
-                      <span className="text-lg font-black text-black">
-                        {formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0)}
-                      </span>
+                          
+                          <div className="text-right border-t border-slate-900 pt-2 text-[10px] text-indigo-400 font-black italic">
+                            Line Total: ₹{(item.quantity * (item.price || 0)).toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  ) : (
+                    <div
+                      onClick={addSizeQuantity}
+                      className="p-8 border-2 border-dashed border-slate-800 rounded-2xl text-center cursor-pointer hover:bg-slate-900/30 transition-all text-xs text-slate-400"
+                    >
+                      No active items. Click to add a size breakdown row.
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 justify-end items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-850">
+                    <span className="text-[10px] font-black text-slate-450 uppercase">Aggregate Sum:</span>
+                    <span className="text-base font-black text-white">
+                      {formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0)} units
+                    </span>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Total Amount (₹)</label>
-                      <input
-                        type="number"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-black outline-none transition-all"
-                        placeholder="0.00"
-                        value={formData.totalAmount || ''}
-                        onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Advance Pay (₹)</label>
-                      <input
-                        type="number"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-black outline-none transition-all"
-                        placeholder="0.00"
-                        value={formData.advancePay || ''}
-                        onChange={(e) => setFormData({ ...formData, advancePay: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5 opacity-60">Balance (₹)</label>
-                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl font-bold text-gray-600">
-                        ₹{(formData.totalAmount - formData.advancePay).toLocaleString()}
-                      </div>
+                {/* Financial Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-900">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-450 uppercase mb-1.5">Total Amount (₹)</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none"
+                      placeholder="0.00"
+                      value={formData.totalAmount || ''}
+                      onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-450 uppercase mb-1.5">Advance Payment (₹)</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none"
+                      placeholder="0.00"
+                      value={formData.advancePay || ''}
+                      onChange={(e) => setFormData({ ...formData, advancePay: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 opacity-60">Balance Collected (₹)</label>
+                    <div className="w-full px-4 py-3 bg-slate-950 border border-slate-900 rounded-xl text-xs text-indigo-400 font-black">
+                      ₹{(formData.totalAmount - formData.advancePay).toLocaleString()}
                     </div>
                   </div>
                 </div>
               </section>
 
-              <div className="h-px bg-gray-100" />
+              {/* Instructions and notes */}
+              <section className="space-y-4">
+                <h4 className="flex items-center gap-2 text-sm font-black text-white uppercase tracking-wider border-b border-slate-900 pb-2">
+                  📋 Client Specs & Notes
+                </h4>
+                <textarea
+                  rows={4}
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none resize-none"
+                  placeholder="Provide client logo dimensions, embroidery directions, layout specs, or details..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                />
+              </section>
 
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
+              {/* File Uploads */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-900 pt-6">
+                <div className="space-y-3">
                   <FileUpload
-                    label="Product Pictures (JPG/PNG)"
+                    label="Reference Blueprints (Images)"
                     accept="image/*"
                     onFilesSelected={(files) => setFormData({ ...formData, imageAttachments: files })}
                   />
-
                   {formData.imageAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {formData.imageAttachments.map((file, idx) => (
                         <div
                           key={idx}
                           onClick={() => setViewingImage(file)}
-                          className="w-12 h-12 rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:border-black transition-all flex items-center justify-center bg-gray-50 group relative"
+                          className="w-12 h-12 rounded-xl border border-slate-800 overflow-hidden cursor-pointer hover:border-slate-500 transition-all flex items-center justify-center bg-slate-900 group relative"
                         >
                           <img src={file} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <ZoomIn size={12} className="text-white" />
+                            <ZoomIn size={10} className="text-white" />
                           </div>
                         </div>
                       ))}
@@ -1033,24 +1111,23 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   )}
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <FileUpload
-                    label="Design PDFs"
+                    label="Reference PDFs"
                     accept=".pdf"
                     onFilesSelected={(files) => setFormData({ ...formData, pdfAttachments: files })}
                   />
-
                   {formData.pdfAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {formData.pdfAttachments.map((file, idx) => (
                         <div
                           key={idx}
                           onClick={() => setViewingImage(file)}
-                          className="w-12 h-12 rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:border-black transition-all flex items-center justify-center bg-gray-50 group relative"
+                          className="w-12 h-12 rounded-xl border border-slate-800 overflow-hidden cursor-pointer hover:border-slate-500 transition-all flex items-center justify-center bg-slate-900 group relative"
                         >
-                          <FileText size={16} className="text-gray-400" />
+                          <FileText size={16} className="text-slate-500" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <ZoomIn size={12} className="text-white" />
+                            <ZoomIn size={10} className="text-white" />
                           </div>
                         </div>
                       ))}
@@ -1059,31 +1136,21 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                 </div>
               </section>
 
-              {viewingImage && (
-                <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName="Staff_Ref" />
-              )}
-
-              <div className="pt-6 flex gap-4">
+              {/* Action Buttons */}
+              <div className="pt-6 flex gap-4 border-t border-slate-900">
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="flex-1 px-6 py-4 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all"
+                  className="flex-1 px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-black text-xs uppercase border-none cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isProcessing}
-                  className="flex-1 px-6 py-4 bg-black text-white rounded-xl font-bold hover:bg-gray-800 shadow-xl active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-4 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit Order"
-                  )}
+                  {isProcessing ? "Submitting..." : "Submit Order Details"}
                 </button>
               </div>
             </form>
@@ -1091,51 +1158,47 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         </div>
       )}
 
-      {/* Global Hub Detailed View Modal handled by common component */}
+      {/* Global detailed view modal */}
       {selectedHubOrder && (
         <OrderDetailModal
           order={selectedHubOrder}
           onClose={() => setSelectedHubOrder(null)}
           isAdmin={isAdmin}
           onUpdateOrder={onUpdateOrder}
-          onUpdateStatus={(status) => {
-            if (window.confirm(`Change order status to ${status}?`)) {
-              onUpdateOrder(selectedHubOrder.id, { status });
-              setSelectedHubOrder(prev => prev ? { ...prev, status } : null);
-            }
-          }}
           onEdit={(ord) => {
             setSelectedHubOrder(null);
             startEdit(ord);
           }}
         />
       )}
+
+      {/* Note modal */}
       {noteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">
-                {noteModal.target === 'design' ? 'Send to Designs' : 'Send to Accounts'}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-[#131B2E] border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-900 flex items-center justify-between text-left">
+              <h3 className="text-base font-black text-white uppercase italic tracking-tight">
+                {noteModal.target === 'design' ? 'Send to Designs Studio' : 'Send to Billing Desk'}
               </h3>
               <button
                 onClick={() => setNoteModal(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors border-none bg-transparent cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 text-left">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Instructions / Notes (Required)
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                  Required Instructions
                 </label>
                 <textarea
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all resize-none"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-white outline-none focus:border-indigo-500 resize-none"
                   rows={4}
                   placeholder={
                     noteModal.target === 'design' 
-                      ? "Enter design requirements, dimensions, logo placement..." 
-                      : "Enter billing instructions, payment terms, advance details..."
+                      ? "Describe vector specs, materials and details..." 
+                      : "Describe payment status, invoices or discount codes..."
                   }
                   value={noteModal.noteText}
                   onChange={(e) => setNoteModal({ ...noteModal, noteText: e.target.value })}
@@ -1144,7 +1207,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setNoteModal(null)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-350 rounded-xl font-black text-[10px] uppercase border-none cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1165,17 +1228,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         updates.accountsNotes = noteModal.noteText.trim();
                       }
                       await onUpdateOrder(noteModal.orderId, updates);
-                      alert(`Success: Order sent to ${noteModal.target === 'design' ? 'Designs' : 'Accounts'}.`);
+                      alert("Order successfully forwarded!");
                       setNoteModal(null);
                     } catch (err) {
-                      alert("Failed to update order.");
+                      alert("Action failed.");
                     } finally {
                       setIsProcessing(false);
                     }
                   }}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-opacity-95 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-md text-center"
+                  className="flex-1 py-3 bg-indigo-650 hover:bg-indigo-600 text-white disabled:opacity-50 rounded-xl font-black text-[10px] uppercase border-none cursor-pointer text-center"
                 >
-                  Confirm
+                  Confirm Forward
                 </button>
               </div>
             </div>
@@ -1185,10 +1248,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
       {isLeadModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative">
+          <div className="bg-[#131B2E] border border-slate-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative">
             <button
               onClick={() => setIsLeadModalOpen(false)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors z-10 border-none bg-transparent cursor-pointer"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors z-10 border-none bg-transparent cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -1202,15 +1265,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
 function Select({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) {
   return (
-    <div className="space-y-1.5">
-      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">{label}</label>
+    <div className="space-y-1.5 text-left">
+      <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest">{label}</label>
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-black outline-none"
+        className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white focus:border-indigo-500 outline-none"
       >
-        <option value="" disabled>Select {label}</option>
-        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        <option value="" disabled className="bg-slate-950 text-slate-500">Select {label}</option>
+        {options.map(opt => <option key={opt} value={opt} className="bg-slate-950 text-white">{opt}</option>)}
       </select>
     </div>
   );
@@ -1218,14 +1281,14 @@ function Select({ label, value, options, onChange }: { label: string, value: str
 
 const getStatusStyles = (status: OrderStatus) => {
   switch (status) {
-    case OrderStatus.DRAFT: return 'bg-gray-100 text-gray-600';
-    case OrderStatus.ACCOUNTS: return 'bg-amber-100 text-amber-700';
-    case OrderStatus.DESIGN: return 'bg-purple-100 text-purple-700';
-    case OrderStatus.ORDER_MANAGEMENT: return 'bg-blue-100 text-blue-700';
-    case OrderStatus.PRODUCTION: return 'bg-purple-100 text-purple-700';
-    case OrderStatus.DELIVERY: return 'bg-orange-100 text-orange-700';
-    case OrderStatus.DELIVERED: return 'bg-green-100 text-green-700';
-    case OrderStatus.HOLD: return 'bg-red-100 text-red-700';
-    default: return 'bg-gray-100 text-gray-600';
+    case OrderStatus.DRAFT: return 'bg-slate-800 text-slate-400 border border-slate-700';
+    case OrderStatus.ACCOUNTS: return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+    case OrderStatus.DESIGN: return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    case OrderStatus.ORDER_MANAGEMENT: return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+    case OrderStatus.PRODUCTION: return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    case OrderStatus.DELIVERY: return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+    case OrderStatus.DELIVERED: return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    case OrderStatus.HOLD: return 'bg-red-500/10 text-red-400 border border-red-500/20';
+    default: return 'bg-slate-800 text-slate-400';
   }
 };

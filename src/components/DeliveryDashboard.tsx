@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Truck, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, MapPin, Phone, Clock, AlertCircle } from 'lucide-react';
@@ -24,8 +19,6 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const pendingOrders = orders.filter(o => o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY));
 
   const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
@@ -66,341 +59,426 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-
+    <div className="bg-[#0B0F19] text-slate-100 p-6 rounded-[2.5rem] border border-slate-900 shadow-2xl space-y-8">
+      {/* Header Panel */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-900 pb-6">
+        <div>
+          <span className="text-[10px] font-black text-orange-400 uppercase tracking-[0.25em] block mb-1">Pallywear CRM Portal</span>
+          <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic">Order Fulfillment & Delivery Status</h2>
+        </div>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
+          className="px-4 py-2.5 bg-slate-900 border border-slate-800 hover:border-orange-500/20 text-slate-300 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
         >
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           Sync Data
         </button>
       </div>
 
-      {/* Summary Stats Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      {/* Mock Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stat 1 */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pending Orders</span>
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center shadow-inner">
+              <Clock size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">230</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              +230
+            </span>
+          </div>
+        </div>
+
+        {/* Stat 2 */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Awaiting Digitisation</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shadow-inner">
+              <Globe size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">55</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              +55
+            </span>
+          </div>
+        </div>
+
+        {/* Stat 3 */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Productions</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shadow-inner">
+              <Package size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">100</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              +400
+            </span>
+          </div>
+        </div>
+
+        {/* Stat 4 */}
+        <div className="bg-[#131B2E]/70 backdrop-blur-md border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shipped Orders</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shadow-inner">
+              <Truck size={14} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black tracking-tight text-white">1,465</span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              +1.95%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle Row Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Map Tracker */}
+        <div className="lg:col-span-2 bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-900 pb-3">
+            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Delivery Map & ETA Tracker</h4>
+            <span className="text-[9px] font-bold text-slate-400 bg-[#0B0F19] px-2.5 py-1 rounded-xl">Real-Time Routing</span>
+          </div>
+          <div className="relative h-40 bg-[#090D1A] rounded-2xl overflow-hidden flex items-center justify-center border border-slate-900">
+            {/* Simulated Vector World Map */}
+            <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 800 400" fill="none" stroke="#fff" strokeWidth="1">
+              <path d="M150,150 Q300,100 450,150 T700,200" strokeDasharray="5,5" />
+              <path d="M200,220 Q400,180 600,250" strokeDasharray="3,3" />
+            </svg>
+            
+            {/* Active flight paths and labels */}
+            <div className="absolute top-1/3 left-1/4 flex flex-col items-center">
+              <div className="w-3.5 h-3.5 rounded-full bg-orange-500 animate-ping absolute" />
+              <div className="w-2.5 h-2.5 rounded-full bg-orange-400 border-2 border-slate-900 relative" />
+              <span className="text-[8px] bg-slate-900/90 text-slate-300 font-bold px-1.5 py-0.5 rounded mt-1 shadow border border-slate-800">Order #40409: A1 Port</span>
+            </div>
+
+            <div className="absolute top-1/2 left-2/3 flex flex-col items-center">
+              <div className="w-3.5 h-3.5 rounded-full bg-indigo-500 animate-ping absolute" />
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 border-2 border-slate-900 relative" />
+              <span className="text-[8px] bg-slate-900/90 text-slate-300 font-bold px-1.5 py-0.5 rounded mt-1 shadow border border-slate-800">Order #45422: M1 Center</span>
+            </div>
+            
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider absolute bottom-3 right-4">Live Dispatch Feeds</span>
+          </div>
+        </div>
+
+        {/* Delivery Type Breakdown */}
+        <div className="bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl flex flex-col justify-between">
+          <div className="border-b border-slate-900 pb-3">
+            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Delivery Type Status</h4>
+          </div>
+
+          <div className="space-y-3.5 my-auto py-4">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-white uppercase tracking-tight">Embroidery Run</span>
+              <span className="px-2.5 py-0.5 bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[9px] font-black rounded-lg">Active</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-white uppercase tracking-tight">Embroidery Run</span>
+              <span className="px-2.5 py-0.5 bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[9px] font-black rounded-lg">Active</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-white uppercase tracking-tight">Print on Demand</span>
+              <span className="px-2.5 py-0.5 bg-slate-800 text-slate-400 text-[9px] font-black rounded-lg">Queue</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-white uppercase tracking-tight">Custom Maidgoods</span>
+              <span className="px-2.5 py-0.5 bg-slate-800 text-slate-400 text-[9px] font-black rounded-lg">Queue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Filter buttons */}
+      <div className="flex items-center gap-2 p-1 bg-slate-950/60 border border-slate-900 rounded-2xl w-fit">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'recent' ? "bg-orange-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Recent Orders: All shipments"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600")}>
-            <Package size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'recent' ? "text-white/80" : "text-gray-400")}>Recent</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{recentOrdersCount}</p>
-          </div>
+          All Shipments ({recentOrdersCount})
         </button>
-
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'process' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'process' ? "bg-orange-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Process Orders: Active in-progress orders"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600")}>
-            <Clock size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'process' ? "text-white/80" : "text-gray-400")}>Process</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{processOrdersCount}</p>
-          </div>
+          In Transit ({processOrdersCount})
         </button>
-
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'hold' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'hold' ? "bg-orange-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Hold Orders: Blocked shipments"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500")}>
-            <AlertCircle size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'hold' ? "text-white/80" : "text-gray-400")}>On Hold</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{holdOrdersCount}</p>
-          </div>
+          Holds ({holdOrdersCount})
         </button>
-
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            selectedSection === 'completed' ? "bg-orange-650 text-white shadow-lg" : "text-slate-400 hover:text-white"
           )}
-          title="Completed Orders: Successfully Delivered"
         >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600")}>
-            <TrendingUp size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'completed' ? "text-white/80" : "text-gray-400")}>Delivered</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{completedOrdersCount}</p>
-          </div>
+          Delivered ({completedOrdersCount})
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-4">
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
-            <Truck className="text-orange-600" size={16} />
-            {selectedSection === 'total' ? 'All Delivery Records' : selectedSection === 'hold' ? 'On Hold Deliveries' : 'Successful Deliveries'} ({filteredOrders.length})
-          </h3>
-          <div className="space-y-3">
+      {/* Critical Deliveries Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: List of deliveries */}
+        <div className="space-y-4">
+          <div className="border-b border-slate-900 pb-3">
+            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Critical Delivery Issues</h4>
+          </div>
+
+          <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
             {filteredOrders.length > 0 ? (
               filteredOrders.map(order => (
                 <button
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
-                  className={`w-full text-left p-5 rounded-3xl border transition-all ${selectedOrder?.id === order.id
-                    ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                    : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm'
-                    }`}
+                  className={cn(
+                    "w-full text-left p-5 rounded-3xl border transition-all flex flex-col gap-3 hover:scale-[1.01] hover:border-orange-500/20 cursor-pointer",
+                    selectedOrder?.id === order.id
+                      ? "bg-orange-650 border-orange-600 text-white shadow-2xl"
+                      : "bg-[#131B2E]/50 border-slate-800/80"
+                  )}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-mono opacity-60">#{order.id.slice(-6)}</span>
-                        {order.status === OrderStatus.HOLD && (
-                          <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 rounded w-fit mt-1">ON HOLD</span>
-                        )}
-                        {order.isUrgent && (
-                          <span className="bg-red-500 text-white text-[10px] font-black px-1.5 rounded animate-pulse w-fit mt-0.5">URGENT</span>
-                        )}
-                      </div>
+                  <div className="flex justify-between items-center w-full">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono opacity-60">#{order.id.slice(-6)}</span>
+                      {order.status === OrderStatus.HOLD && (
+                        <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded w-fit mt-1">HOLD</span>
+                      )}
+                      {order.isUrgent && (
+                        <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse w-fit mt-0.5">URGENT</span>
+                      )}
                     </div>
-                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-200 text-[8px] uppercase font-bold rounded">
+                    <span className="px-2 py-0.5 bg-slate-900/60 text-slate-300 text-[8px] uppercase font-bold rounded">
                       {getDisplayCategory(order)}
                     </span>
                   </div>
-                  <div className="font-bold text-lg mb-1">{order.customerInfo.name}</div>
+
+                  <div className="font-bold text-base uppercase italic leading-tight">{order.customerInfo.name}</div>
+
                   {order.status === OrderStatus.HOLD && order.holdReason && (
-                    <div className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 px-1.5 py-0.5 rounded italic border border-red-100 mb-2">
-                      Reason: {order.holdReason}
+                    <div className="text-[9px] text-red-400 font-bold bg-red-950/20 p-2 rounded italic border border-red-550/20">
+                      Blocked Reason: "{order.holdReason}"
                     </div>
                   )}
-                  <div className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
-                    <MapPin size={10} />
+
+                  <div className="text-[9px] text-slate-400 flex items-center gap-1.5">
+                    <MapPin size={10} className="shrink-0 text-slate-500" />
                     <span className="truncate">{order.customerInfo.address}</span>
                   </div>
                 </button>
               ))
             ) : (
-              <div className="p-12 bg-gray-50 border border-dashed border-gray-200 rounded-3xl text-center">
-                <CheckCircle className="mx-auto text-gray-300 mb-2" size={32} />
-                <p className="text-sm text-gray-500">No pending deliveries!</p>
+              <div className="p-10 bg-[#131B2E]/30 border border-dashed border-slate-800 rounded-3xl text-center">
+                <CheckCircle className="mx-auto text-slate-500 mb-2" size={24} />
+                <p className="text-xs text-slate-400">No active delivery orders found.</p>
               </div>
             )}
           </div>
         </div>
 
+        {/* Right Column: Detail details panel */}
         <div className="lg:col-span-2">
           {selectedOrder ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden"
+              className="bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] p-6 shadow-xl space-y-6"
             >
-              <div className="p-8 bg-black text-white">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery Trip</span>
-                    <h4 className="text-3xl font-black italic tracking-tighter">#{selectedOrder.id.slice(-8)}</h4>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Customer Contact</span>
-                    <div className="flex items-center gap-2 text-xl font-bold">
-                      <Phone size={20} className="text-orange-400" />
-                      {selectedOrder.customerInfo.phone}
-                    </div>
+              <div className="flex justify-between items-start border-b border-slate-900 pb-4">
+                <div>
+                  <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest font-bold">Delivery Active Node</span>
+                  <h4 className="text-2xl font-black text-white uppercase italic mt-0.5">#{selectedOrder.id.slice(-8)}</h4>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-black text-slate-400 uppercase block">Phone Dial</span>
+                  <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                    <Phone size={12} className="text-orange-400" />
+                    {selectedOrder.customerInfo.phone}
                   </div>
                 </div>
               </div>
 
-              <div className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                  <div className="space-y-4">
-                    <h6 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Shipping Address</h6>
-                    <div className="p-6 bg-gray-50 border border-gray-100 rounded-3xl flex items-start gap-4">
-                      <MapPin size={24} className="text-red-500 shrink-0 mt-1" />
-                      <p className="text-lg font-medium text-gray-900 leading-relaxed">{selectedOrder.customerInfo.address}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <h6 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Payment Summary</h6>
-                    <div className="p-6 bg-red-50 border border-red-100 rounded-3xl flex flex-col justify-center">
-                      <span className="text-xs font-bold text-red-400 uppercase mb-1">CASH ON DELIVERY / BALANCE</span>
-                      <span className="text-3xl font-black text-red-700 italic tracking-tighter">₹{(selectedOrder.financials?.balanceAmount || 0).toLocaleString()}</span>
-                    </div>
+              {/* Details & Balance */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shipping Address</span>
+                  <div className="p-4 bg-slate-950/40 border border-slate-900 rounded-2xl flex items-start gap-3">
+                    <MapPin size={20} className="text-red-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-300 font-bold leading-relaxed">{selectedOrder.customerInfo.address}</p>
                   </div>
                 </div>
 
-                <div className="mb-8 p-6 bg-gray-50 border border-gray-100 rounded-3xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <h6 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Order Breakdown</h6>
-                    <div className="flex items-center gap-4">
-                      <span className="px-3 py-1 bg-black text-white rounded-lg text-[10px] font-bold uppercase">{getDisplayCategory(selectedOrder)}</span>
-                      <span className="text-xs font-bold text-gray-900 italic">Total: {selectedOrder.quantity} pcs</span>
-                    </div>
+                <div className="space-y-1.5">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cash Balance Due</span>
+                  <div className="p-4 bg-red-950/20 border border-red-900/40 rounded-2xl flex flex-col justify-center">
+                    <span className="text-[8px] font-black text-red-400 uppercase tracking-widest mb-0.5">Payment collect</span>
+                    <span className="text-2xl font-black text-red-400 italic">₹{(selectedOrder.financials?.balanceAmount || 0).toLocaleString()}</span>
                   </div>
+                </div>
+              </div>
 
-                  <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                    {selectedOrder.sizeBreakdown?.map((item, idx) => (
-                      <div key={idx} className="p-3 bg-white border border-gray-100 shadow-sm rounded-xl flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-black text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{item.size}</span>
-                          <span className="text-xs font-bold text-gray-500">{item.colour} {item.printType && `| ${item.printType}`}</span>
-                        </div>
-                        <span className="text-xs font-black italic">x {item.quantity}</span>
+              {/* Breakdown */}
+              <div className="space-y-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Order Breakdown</span>
+                <div className="max-h-[160px] overflow-y-auto space-y-2 pr-1">
+                  {selectedOrder.sizeBreakdown?.map((item, idx) => (
+                    <div key={idx} className="p-3 bg-slate-950/40 border border-slate-900 rounded-xl flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-750">{item.size}</span>
+                        <span className="text-xs text-slate-400 font-semibold">{item.colour} {item.printType && `| ${item.printType}`}</span>
                       </div>
-                    ))}
-                  </div>
+                      <span className="text-xs text-white font-black italic">x {item.quantity}</span>
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                {viewingImage && (
-                  <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${selectedOrder.id}`} />
-                )}
-
-                <div className="flex gap-3">
-                  {selectedOrder.status === OrderStatus.HOLD ? (
-                    <button
-                      disabled={isProcessing}
-                      onClick={async () => {
-                        const newStatus = selectedOrder.previousStatus || OrderStatus.DELIVERY;
-                        if (window.confirm(`Release order back to ${newStatus}?`)) {
-                          setIsProcessing(true);
-                          try {
-                            await onUpdateOrder(selectedOrder.id, {
-                              status: newStatus,
-                              previousStatus: undefined,
-                              updatedAt: Date.now()
-                            });
-                            setSelectedOrder(prev => prev ? { ...prev, status: newStatus, previousStatus: undefined } : null);
-                            alert("Order released.");
-                          } catch (e) {
-                            alert("Action failed.");
-                          } finally {
-                            setIsProcessing(false);
-                          }
-                        }
-                      }}
-                      className="px-6 py-4 bg-green-100 text-green-700 rounded-2xl font-bold hover:bg-green-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      Release
-                    </button>
-                  ) : (
-                    <button
-                      disabled={isProcessing || selectedOrder.status === OrderStatus.DELIVERED}
-                      onClick={async () => {
-                        const reason = window.prompt("Enter Hold Reason:");
-                        if (reason === null) return;
-                        if (!reason.trim()) {
-                          alert("Reason is required.");
-                          return;
-                        }
-
+              {/* Actions Footer */}
+              <div className="flex gap-3 border-t border-slate-900 pt-4">
+                {selectedOrder.status === OrderStatus.HOLD ? (
+                  <button
+                    disabled={isProcessing}
+                    onClick={async () => {
+                      const newStatus = selectedOrder.previousStatus || OrderStatus.DELIVERY;
+                      if (window.confirm(`Release order back to ${newStatus}?`)) {
                         setIsProcessing(true);
                         try {
-                          const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
-                          const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
-
                           await onUpdateOrder(selectedOrder.id, {
-                            status: OrderStatus.HOLD,
-                            holdReason: reason.trim(),
-                            previousStatus: selectedOrder.status,
-                            notes: updatedNotes,
+                            status: newStatus,
+                            previousStatus: undefined,
                             updatedAt: Date.now()
                           });
-                          setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes } : null);
-                          alert("Order put on HOLD.");
+                          setSelectedOrder(prev => prev ? { ...prev, status: newStatus, previousStatus: undefined } : null);
+                          alert("Order released back to active delivery.");
                         } catch (e) {
                           alert("Action failed.");
                         } finally {
                           setIsProcessing(false);
                         }
-                      }}
-                      className="px-6 py-4 bg-red-100 text-red-700 rounded-2xl font-bold hover:bg-red-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      Hold
-                    </button>
-                  )}
+                      }
+                    }}
+                    className="px-6 py-4 bg-green-950/20 border border-green-900/40 text-green-400 rounded-2xl font-black uppercase text-xs hover:bg-green-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    Release Hold
+                  </button>
+                ) : (
+                  <button
+                    disabled={isProcessing}
+                    onClick={async () => {
+                      const reason = window.prompt("Enter Hold Reason:");
+                      if (reason === null) return;
+                      if (!reason.trim()) {
+                        alert("Reason is required.");
+                        return;
+                      }
 
-                  {selectedOrder.status === OrderStatus.DELIVERED ? (
-                    <div className="flex-1 py-5 bg-green-50 text-green-700 rounded-2xl font-black uppercase text-center flex items-center justify-center gap-2 border border-green-100">
-                      <CheckCircle size={20} />
-                      Delivered Successfully
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleFinishDelivery}
-                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                      className="flex-1 py-5 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-2 group disabled:opacity-70"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Confirming...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle size={22} className="group-hover:translate-y-[-2px] transition-transform" />
-                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Confirm Order Delivery'}
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
+                      setIsProcessing(true);
+                      try {
+                        const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
+                        const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
+
+                        await onUpdateOrder(selectedOrder.id, {
+                          status: OrderStatus.HOLD,
+                          holdReason: reason.trim(),
+                          previousStatus: selectedOrder.status,
+                          notes: updatedNotes,
+                          updatedAt: Date.now()
+                        });
+                        setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes } : null);
+                        alert("Order shipment put on Hold.");
+                      } catch (e) {
+                        alert("Action failed.");
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    className="px-6 py-4 bg-red-950/20 border border-red-900/40 text-red-400 rounded-2xl font-black uppercase text-xs hover:bg-red-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <AlertCircle size={14} />
+                    Hold Ship
+                  </button>
+                )}
+
+                {selectedOrder.status === OrderStatus.DELIVERED ? (
+                  <div className="flex-1 py-4 bg-green-950/20 text-green-400 border border-green-900/40 rounded-2xl font-black uppercase text-center flex items-center justify-center gap-2 text-xs">
+                    <CheckCircle size={16} />
+                    Delivered Successfully
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleFinishDelivery}
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    className="flex-1 py-4 bg-orange-650 hover:bg-orange-600 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 shadow-lg shadow-orange-650/20"
+                  >
+                    {isProcessing ? "Confirming..." : "Confirm Order Delivery"}
+                    <CheckCircle size={14} />
+                  </button>
+                )}
               </div>
             </motion.div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center p-12 bg-gray-50 border border-dashed border-gray-200 rounded-[2rem] text-center">
-              <div className="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center mb-6">
-                <Truck className="text-gray-300" size={48} />
+            <div className="h-full flex flex-col items-center justify-center p-20 bg-[#131B2E]/30 border border-dashed border-slate-800 rounded-[2.5rem] text-center">
+              <div className="w-20 h-20 bg-slate-900 border border-slate-800 rounded-3xl flex items-center justify-center mb-6 text-slate-500 shadow-2xl">
+                <Truck size={36} />
               </div>
-              <h4 className="text-2xl font-bold text-gray-900">Delivery Hub</h4>
-              <p className="text-gray-500 max-w-sm mt-3 text-lg">Select a trip to view address details and confirm successful delivery.</p>
+              <h4 className="text-xl font-black text-white uppercase italic">Delivery Workspace</h4>
+              <p className="text-slate-400 max-w-xs mt-2 text-xs font-semibold">Select a shipment order to access customer address maps, phone lines, and confirm collections.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Global Hub Section */}
-      <div className="pt-8 border-t border-gray-100">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
-          <Globe className="text-brand-primary" size={24} />
+      {/* Bottom Row: Order History Hub */}
+      <div className="pt-8 border-t border-slate-900">
+        <h3 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2 mb-6">
+          <Globe className="text-orange-500" size={20} />
           Order History Hub
         </h3>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {/* Desktop Table View */}
-          <table className="hidden md:table w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
+        <div className="bg-[#131B2E]/50 border border-slate-800/80 rounded-[2rem] shadow-xl overflow-hidden">
+          <table className="hidden md:table w-full text-left text-xs border-collapse">
+            <thead className="bg-[#131B2E] border-b border-slate-900">
+              <tr className="text-slate-400 font-black uppercase text-[9px] tracking-widest">
                 <th className="px-6 py-4">Order ID</th>
                 <th className="px-6 py-4">Customer</th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Update</th>
+                <th className="px-6 py-4 text-right">Update Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-850">
               {orders.slice(0, 5).map(order => (
-                <tr key={order.id} onClick={() => setSelectedHubOrder(order)} className="hover:bg-gray-50/50 cursor-pointer">
-                  <td className="px-6 py-4 font-mono text-xs text-gray-400">#{order.id.slice(-8)}</td>
-                  <td className="px-6 py-4 font-bold text-gray-900">{order.customerInfo.name}</td>
+                <tr key={order.id} onClick={() => setSelectedHubOrder(order)} className="hover:bg-[#1E294B]/20 cursor-pointer transition-colors">
+                  <td className="px-6 py-4 font-mono text-xs text-slate-400">#{order.id.slice(-8)}</td>
+                  <td className="px-6 py-4 font-bold text-white">{order.customerInfo.name}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right text-[10px] text-gray-400">
+                  <td className="px-6 py-4 text-right text-[10px] text-slate-400 font-mono">
                     {new Date(order.updatedAt).toLocaleDateString()}
                   </td>
                 </tr>
@@ -409,21 +487,21 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
           </table>
 
           {/* Mobile Card List View */}
-          <div className="block md:hidden divide-y divide-gray-150">
+          <div className="block md:hidden divide-y divide-slate-900">
             {orders.slice(0, 5).map(order => (
               <div
                 key={order.id}
                 onClick={() => setSelectedHubOrder(order)}
-                className="p-4 bg-white space-y-3 active:bg-gray-50 transition-colors"
+                className="p-4 bg-transparent space-y-3 active:bg-slate-900/40 transition-colors"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono font-black text-brand-primary">#{order.id.slice(-8)}</span>
-                  <span className="text-[10px] text-gray-400 font-bold">{new Date(order.updatedAt).toLocaleDateString()}</span>
+                  <span className="font-mono font-black text-orange-400">#{order.id.slice(-8)}</span>
+                  <span className="text-[10px] text-slate-400 font-bold font-mono">{new Date(order.updatedAt).toLocaleDateString()}</span>
                 </div>
-                <div className="font-black text-gray-900 text-sm">{order.customerInfo.name}</div>
+                <div className="font-black text-white text-sm">{order.customerInfo.name}</div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit ${getStatusStyles(order.status)}`}>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status:</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
                     {order.status}
                   </span>
                 </div>
@@ -432,6 +510,10 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
           </div>
         </div>
       </div>
+
+      {viewingImage && (
+        <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${selectedOrder?.id}`} />
+      )}
 
       {selectedHubOrder && (
         <OrderDetailModal
@@ -447,9 +529,9 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
 
 const getStatusStyles = (status: OrderStatus) => {
   switch (status) {
-    case OrderStatus.DELIVERY: return 'bg-orange-100 text-orange-700';
-    case OrderStatus.DELIVERED: return 'bg-green-100 text-green-700';
-    case OrderStatus.HOLD: return 'bg-red-100 text-red-700';
-    default: return 'bg-gray-100 text-gray-600';
+    case OrderStatus.DELIVERY: return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+    case OrderStatus.DELIVERED: return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    case OrderStatus.HOLD: return 'bg-red-500/10 text-red-400 border border-red-500/20';
+    default: return 'bg-slate-800 text-slate-400';
   }
 };
