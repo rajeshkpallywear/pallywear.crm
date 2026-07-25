@@ -20,8 +20,20 @@ export const getApiBaseUrl = (): string => {
     return savedUrl;
   }
   
-  // Auto-detect browser origin if available
-  if (typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null' && window.location.protocol.startsWith('http')) {
+  const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor;
+  const isLocalhostMobile = typeof window !== 'undefined' && 
+                            window.location.hostname === 'localhost' && 
+                            (!window.location.port || window.location.port === '80');
+
+  // Auto-detect browser origin if available, unless we are in Capacitor / native mobile app environment
+  if (
+    typeof window !== 'undefined' && 
+    window.location.origin && 
+    window.location.origin !== 'null' && 
+    window.location.protocol.startsWith('http') &&
+    !isCapacitor &&
+    !isLocalhostMobile
+  ) {
     return window.location.origin;
   }
   
