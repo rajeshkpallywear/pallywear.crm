@@ -3,12 +3,13 @@ import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
 import {
     Plus, Search, Download, FileText,
-    Trash2, Eye, Calendar, DollarSign
+    Trash2, Eye, Calendar, DollarSign, MessageSquare
 } from 'lucide-react';
 import { Button } from './Button';
 import { motion, AnimatePresence } from 'motion/react';
 import InvoiceModal from './InvoiceModal';
 import { Invoice } from '../types';
+import { shareInvoiceToWhatsApp } from '../lib/utils';
 
 export default function InvoiceManager() {
     const { leads, invoices, addInvoice, deleteInvoice } = useLeads();
@@ -313,6 +314,13 @@ export default function InvoiceManager() {
                                                 <Eye className="w-4 h-4" />
                                             </button>
                                             <button
+                                                onClick={() => shareInvoiceToWhatsApp(inv)}
+                                                className="p-2.5 hover:bg-green-50 hover:shadow-sm text-green-600 rounded-xl transition-all bg-green-50/50"
+                                                title="Share to WhatsApp"
+                                            >
+                                                <MessageSquare className="w-4 h-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => deleteInvoice(inv.id)}
                                                 className="p-2.5 hover:bg-white hover:shadow-sm text-gray-400 hover:text-red-500 rounded-xl transition-all"
                                                 title="Delete Permanently"
@@ -364,6 +372,13 @@ export default function InvoiceManager() {
                                                 title="View & Download"
                                             >
                                                 <Eye className="w-4.5 h-4.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => shareInvoiceToWhatsApp(inv)}
+                                                className="p-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-lg transition-colors"
+                                                title="Share to WhatsApp"
+                                            >
+                                                <MessageSquare className="w-4.5 h-4.5" />
                                             </button>
                                             <button
                                                 onClick={() => deleteInvoice(inv.id)}

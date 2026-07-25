@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { Invoice } from '../types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,4 +35,31 @@ export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
   }
 
   return totalSize < limit;
+}
+
+export function shareInvoiceToWhatsApp(invoice: Invoice) {
+  let phone = invoice.billToPhone || invoice.customerPhoneNumber || '';
+  let cleanPhone = phone.replace(/[^\d+]/g, '');
+  
+  if (cleanPhone.length === 10 && !cleanPhone.startsWith('+')) {
+    cleanPhone = '91' + cleanPhone;
+  } else if (cleanPhone.startsWith('+')) {
+    cleanPhone = cleanPhone.substring(1);
+  }
+
+  const itemsList = invoice.items?.map(item => `- ${item.description} (Qty: ${item.quantity})`).join('\n') || '';
+  
+  const message = `Hello *${invoice.billToName}*,\n\n` +
+      `This is a message from *Pallywear Gifting Solutions*.\n\n` +
+      `Here are the details for your Invoice *#${invoice.invoiceNumber}*:\n` +
+      `━━━━━━━━━━━━━━━━━━━\n` +
+      `• *Total Amount:* ₹${invoice.total.toLocaleString('en-IN')}\n` +
+      `• *Due Date:* ${new Date(invoice.dueDate).toLocaleDateString('en-IN')}\n` +
+      `• *Payment Method:* ${invoice.paymentMethod || 'GPay'}\n` +
+      (itemsList ? `• *Items:*\n${itemsList}\n` : '') +
+      `━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Please proceed with the payment. Thank you for choosing Pallywear!`;
+
+  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  window.open(whatsappUrl, '_blank');
 }

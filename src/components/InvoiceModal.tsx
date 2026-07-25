@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Download, Printer, Send, CreditCard, Laptop } from 'lucide-react';
+import { X, Download, Printer, Send, CreditCard, Laptop, MessageSquare } from 'lucide-react';
 import { Invoice } from '../types';
 import Logo from './Logo';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { shareInvoiceToWhatsApp } from '../lib/utils';
 
 interface InvoiceModalProps {
     invoice: Invoice | null;
@@ -188,6 +189,12 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                                     className="flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90 transition-all"
                                 >
                                     <Send className="w-4 h-4" /> Send Invoice
+                                </button>
+                                <button
+                                    onClick={() => shareInvoiceToWhatsApp(invoice)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-green-600/20 hover:bg-green-600/90 transition-all"
+                                >
+                                    <MessageSquare className="w-4 h-4" /> Share to WhatsApp
                                 </button>
                                 <button
                                     onClick={onClose}
