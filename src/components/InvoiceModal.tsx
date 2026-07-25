@@ -211,7 +211,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                                 <div className="scale-125 origin-top-left flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
                                         <img
-                                            src="/logo.png"
+                                            src="/logo.png?v=2"
                                             alt="Pw"
                                             className="w-full h-full object-cover"
                                             referrerPolicy="no-referrer"

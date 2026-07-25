@@ -13,7 +13,7 @@ export default function Logo({ className, iconOnly = false, inverted = false }: 
         <div className={cn("flex items-center gap-3", className)}>
             <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform overflow-hidden relative group">
                 <img
-                    src="/logo.png"
+                    src="/logo.png?v=2"
                     alt="PW"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
