@@ -1,6 +1,16 @@
 <?php
 // PHP Proxy Script for routing /api requests to local Node.js Express server on port 118
 
+// Allow CORS for Capacitor Android/iOS apps
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 $route = isset($_GET['route']) ? $_GET['route'] : '';
 
 // The target URL of the Node.js server running on your VPS
