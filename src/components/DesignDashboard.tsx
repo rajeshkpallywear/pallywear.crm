@@ -606,87 +606,13 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 italic text-xs font-bold">
-            🔒 Designer Account: {designerName}
+            ðŸ”’ Designer Account: {designerName}
           </div>
         </div>
       </div>
 
       {/* Primary Communication Channel Navigations (Removed Staff channels) */}
 
-      {/* Summary Columns Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-        {/* Card: Recent */}
-        <button
-          onClick={() => setSelectedSection('recent')}
-          className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
-          )}
-          title="Recent Orders: All received intakes"
-        >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600")}>
-            <Package size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'recent' ? "text-white/80" : "text-gray-400")}>Recent</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{activeStats.recentCount}</p>
-          </div>
-        </button>
-
-        {/* Card: Process */}
-        <button
-          onClick={() => setSelectedSection('process')}
-          className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'process' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
-          )}
-          title="Process Orders: Active in-progress orders"
-        >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600")}>
-            <Clock size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'process' ? "text-white/80" : "text-gray-400")}>Process</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{activeStats.processCount}</p>
-          </div>
-        </button>
-
-        {/* Card: Hold */}
-        <button
-          onClick={() => setSelectedSection('hold')}
-          className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'hold' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
-          )}
-          title="Hold Orders: Awaiting clarification"
-        >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'hold' ? "bg-white/20 text-white" : "bg-red-50 text-red-500")}>
-            <AlertCircle size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'hold' ? "text-white/80" : "text-gray-400")}>On Hold</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{activeStats.holdCount}</p>
-          </div>
-        </button>
-
-        {/* Card: Completed */}
-        <button
-          onClick={() => setSelectedSection('completed')}
-          className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
-          )}
-          title="Completed Orders: Delivered and finalized"
-        >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'completed' ? "bg-white/20 text-white" : "bg-green-50 text-green-600")}>
-            <CheckCircle size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'completed' ? "text-white/80" : "text-gray-400")}>Done</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{activeStats.completedCount}</p>
-          </div>
-        </button>
-      </div>
 
       {/* Design Project Queue (Mockup View) */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
@@ -712,23 +638,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
       {/* Main List Workspace Container */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Search header panel */}
-        <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50">
-          <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2 w-full max-w-md shadow-sm">
-            <Search className="text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by customer name, id, or specs..."
-              className="bg-transparent border-none outline-none text-sm w-full font-medium"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && <X size={14} className="text-gray-400 cursor-pointer" onClick={() => setSearchTerm('')} />}
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-brand-secondary text-brand-primary px-3 py-1.5 rounded-full border border-brand-primary/10 w-fit">
-            Channel: {activeChannel === 'staff' ? 'Staff Desk Inquiry' : 'Order Backoffice'} ➜ Sub: {selectedSection.toUpperCase()}
-          </span>
-        </div>
 
         {/* Data list grid */}
         <div className="overflow-x-auto">
@@ -789,14 +698,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         <div>
                           {isUnclaimed ? (
                             <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-[9.5px] font-black uppercase tracking-widest border border-amber-200">
-                              ⚠️ Unclaimed / Open
+                              âš ï¸ Unclaimed / Open
                             </span>
                           ) : (
                             <span className={cn(
                               "px-2 py-1 rounded text-[9.5px] font-black uppercase tracking-widest border",
                               isClaimedByMe ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"
                             )}>
-                              {isClaimedByMe ? "🔒 Assigned to You" : `🔒 ${item.assignedDesigner}`}
+                              {isClaimedByMe ? "ðŸ”’ Assigned to You" : `ðŸ”’ ${item.assignedDesigner}`}
                             </span>
                           )}
                         </div>
@@ -805,7 +714,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         {item.isCompleted ? (
                           <div className="flex items-center justify-end gap-2 text-xs">
                             <span className="text-[10px] text-green-700 bg-green-50 font-black uppercase px-2 py-1 rounded-lg border border-green-200">
-                              Completed ✔
+                              Completed âœ”
                             </span>
                             <button
                               onClick={() => handleOpenWorkspace(item)}
@@ -892,14 +801,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <div>
                         {isUnclaimed ? (
                           <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[9.5px] font-black uppercase tracking-widest border border-amber-200">
-                            ⚠️ Unclaimed / Open
+                            âš ï¸ Unclaimed / Open
                           </span>
                         ) : (
                           <span className={cn(
                             "px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-widest border",
                             isClaimedByMe ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"
                           )}>
-                            {isClaimedByMe ? "🔒 Assigned to You" : `🔒 ${item.assignedDesigner}`}
+                            {isClaimedByMe ? "ðŸ”’ Assigned to You" : `ðŸ”’ ${item.assignedDesigner}`}
                           </span>
                         )}
                       </div>
@@ -910,7 +819,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       {item.isCompleted ? (
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-[10px] text-green-700 bg-green-50 font-black uppercase px-2 py-1.5 rounded-xl border border-green-200 flex-1 text-center">
-                            Completed ✔
+                            Completed âœ”
                           </span>
                           <button
                             onClick={() => handleOpenWorkspace(item)}
@@ -1032,7 +941,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     {/* Marketing / Order Intake Notes Display Box */}
                     <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-1 text-left">
                       <span className="text-[9.5px] font-black text-amber-800 uppercase tracking-widest block flex items-center gap-1.5">
-                        📋 Marketing / Client Intake Notes:
+                        ðŸ“‹ Marketing / Client Intake Notes:
                       </span>
                       <p className="text-xs text-gray-800 font-semibold whitespace-pre-line leading-relaxed">
                         {selectedOrder.notes || selectedOrder.designNotes || 'No notes provided by marketing.'}
@@ -1043,7 +952,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <div className="flex justify-between items-center">
                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Studio Output Notes</label>
                         {!designNotesText.trim() && (
-                          <span className="text-[10px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
+                          <span className="text-[10px] text-red-500 font-bold">âš ï¸ Required to send to marketing</span>
                         )}
                       </div>
                       <textarea
@@ -1133,7 +1042,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         <div className="flex justify-between items-center">
                           <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">1. Vector Tracing Output (PDF)</p>
                           {designFiles.length === 0 && (
-                            <span className="text-[9px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
+                            <span className="text-[9px] text-red-500 font-bold">âš ï¸ Required to send to marketing</span>
                           )}
                         </div>
                         <FileUpload
