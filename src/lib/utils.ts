@@ -38,7 +38,20 @@ export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
 }
 
 export function shareInvoiceToWhatsApp(invoice: Invoice) {
-  let phone = invoice.billToPhone || invoice.customerPhoneNumber || '';
+  const defaultPhone = invoice.billToPhone || invoice.customerPhoneNumber || '';
+  const inputPhone = window.prompt(
+    "Enter the WhatsApp phone number to send the invoice to (include country code without '+', e.g., 919876543210):",
+    defaultPhone
+  );
+
+  if (inputPhone === null) return; // User cancelled
+
+  let phone = inputPhone.trim();
+  if (!phone) {
+    alert("Phone number cannot be empty.");
+    return;
+  }
+
   let cleanPhone = phone.replace(/[^\d+]/g, '');
   
   if (cleanPhone.length === 10 && !cleanPhone.startsWith('+')) {
@@ -63,3 +76,4 @@ export function shareInvoiceToWhatsApp(invoice: Invoice) {
   const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   window.open(whatsappUrl, '_blank');
 }
+
