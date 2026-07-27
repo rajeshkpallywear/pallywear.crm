@@ -13,6 +13,13 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
 import Logo from './Logo';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+
+const PRODUCTION_PIPELINE_DATA = [
+  { name: 'Preproduction', value: 2000, color: '#3b82f6' },
+  { name: 'QC', value: 1500, color: '#10b981' },
+  { name: 'Packaging', value: 900, color: '#f59e0b' }
+];
 
 export interface ChatMessage {
   id: string;
@@ -507,8 +514,152 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      {/* Mockup Management Cockpit Dashboard */}
+      <div className="bg-white p-6 rounded-[2.5rem] border border-gray-150 shadow-sm space-y-6">
+        <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+          <div>
+            <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.25em] block mb-1">Pallywear Cockpit</span>
+            <h2 className="text-xl font-black text-gray-900 tracking-tighter uppercase italic">Order Management Dashboard</h2>
+          </div>
+          <div className="text-xs text-gray-500 font-bold bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
+            Coemm Deck v2024
+          </div>
+        </div>
 
+        {/* Top Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Vendor Expense */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Vendor Expense</span>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-black text-gray-900">$21.8K</span>
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">+12%</span>
+            </div>
+          </div>
+          {/* Production Status */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-black">Production Status</span>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-black text-brand-primary">ACTIVE</span>
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">100%</span>
+            </div>
+          </div>
+          {/* Vendor Delivery Score */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Vendor Delivery Score</span>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-black text-gray-900">32.5%</span>
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">-4%</span>
+            </div>
+          </div>
+          {/* Active Team Members */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Active Team Members</span>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-black text-gray-900">28</span>
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">+12%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Order Status Pipeline & Production Pipeline Recharts Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Global Order Status Pipeline */}
+          <div className="lg:col-span-2 bg-white border border-gray-100 rounded-3xl p-5 shadow-xs space-y-4">
+            <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Global Order Status</h4>
+            <div className="flex items-center justify-between gap-1.5 overflow-x-auto py-2">
+              {[
+                { label: 'RECVD', active: true, color: 'bg-blue-650' },
+                { label: 'CONFIRMD', active: true, color: 'bg-emerald-500' },
+                { label: 'PROD', active: true, color: 'bg-amber-500' },
+                { label: 'SHIPPED', active: false, color: 'bg-gray-300' }
+              ].map((stage, idx, arr) => (
+                <div key={idx} className="flex items-center flex-1 min-w-0">
+                  <div className={cn(
+                    "flex-1 text-center py-4 px-3 rounded-2xl text-[10px] font-black uppercase tracking-wider text-white shadow-xs",
+                    stage.active ? stage.color : "bg-gray-200 text-gray-400"
+                  )}>
+                    {stage.label}
+                  </div>
+                  {idx < arr.length - 1 && (
+                    <ChevronRight size={16} className="text-gray-300 mx-1 flex-shrink-0" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Production Pipeline Recharts Bar Chart */}
+          <div className="lg:col-span-1 bg-white border border-gray-100 rounded-3xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
+            <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Production Pipeline</h4>
+            <div className="h-28 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={PRODUCTION_PIPELINE_DATA} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ fontSize: 9, borderRadius: 8 }} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {PRODUCTION_PIPELINE_DATA.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Cockpit Row: Order Status Feed & Vendor Activity Table */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Order Status Feed */}
+          <div className="lg:col-span-1 bg-white border border-gray-100 rounded-3xl p-5 shadow-xs space-y-4">
+            <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Order Status Feed</h4>
+            <div className="space-y-3">
+              {[
+                { id: '45432', status: 'Shipped', desc: 'abandoned 3 days ago', color: 'text-gray-400 bg-gray-50' },
+                { id: '45433', status: 'In Production', desc: 'active 5 days ago', color: 'text-amber-700 bg-amber-50 border-amber-100' }
+              ].map((feed, idx) => (
+                <div key={idx} className="flex items-center gap-3 text-xs p-2.5 rounded-xl bg-gray-50">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">#</div>
+                  <div>
+                    <p className="font-bold text-gray-800">Order {feed.id}: <span className="text-brand-primary">{feed.status}</span></p>
+                    <p className="text-[10px] text-gray-400 font-semibold">{feed.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Vendor Activity & Agent Performance table */}
+          <div className="lg:col-span-2 bg-white border border-gray-100 rounded-3xl p-5 shadow-xs space-y-4">
+            <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Vendor Activity & Agent Performance</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                    <th className="px-4 py-2.5">Interventions</th>
+                    <th className="px-4 py-2.5">Workers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {[
+                    { intervention: "Agent A5C - Action completed", worker: "Vendor ABC - Active" },
+                    { intervention: "Agent 4BC - Task assigned", worker: "Vendor XYZ - Idle" },
+                    { intervention: "Agent Sent - Invoice generated", worker: "Vendor ABC - Completed" }
+                  ].map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/50">
+                      <td className="px-4 py-3 font-semibold text-gray-700">{row.intervention}</td>
+                      <td className="px-4 py-3 font-bold text-brand-primary">{row.worker}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none w-full">
           <button
             onClick={() => setIsMsgSidebarOpen(true)}
