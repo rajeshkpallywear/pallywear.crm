@@ -15,11 +15,7 @@ import InventoryManagement from './InventoryManagement';
 import Logo from './Logo';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
-const PRODUCTION_PIPELINE_DATA = [
-  { name: 'Preproduction', value: 2000, color: '#3b82f6' },
-  { name: 'QC', value: 1500, color: '#10b981' },
-  { name: 'Packaging', value: 900, color: '#f59e0b' }
-];
+const PRODUCTION_PIPELINE_DATA: { name: string; value: number; color: string }[] = [];
 
 export interface ChatMessage {
   id: string;
@@ -532,32 +528,28 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Vendor Expense</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-gray-900">$21.8K</span>
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">+12%</span>
+              <span className="text-2xl font-black text-gray-900">—</span>
             </div>
           </div>
           {/* Production Status */}
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-black">Production Status</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-brand-primary">ACTIVE</span>
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">100%</span>
+              <span className="text-2xl font-black text-brand-primary">—</span>
             </div>
           </div>
           {/* Vendor Delivery Score */}
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Vendor Delivery Score</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-gray-900">32.5%</span>
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">-4%</span>
+              <span className="text-2xl font-black text-gray-900">—</span>
             </div>
           </div>
           {/* Active Team Members */}
           <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-1.5 shadow-xs relative overflow-hidden">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Active Team Members</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-gray-900">28</span>
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">+12%</span>
+              <span className="text-2xl font-black text-gray-900">—</span>
             </div>
           </div>
         </div>
@@ -615,18 +607,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           <div className="lg:col-span-1 bg-white border border-gray-100 rounded-3xl p-5 shadow-xs space-y-4">
             <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Order Status Feed</h4>
             <div className="space-y-3">
-              {[
-                { id: '45432', status: 'Shipped', desc: 'abandoned 3 days ago', color: 'text-gray-400 bg-gray-50' },
-                { id: '45433', status: 'In Production', desc: 'active 5 days ago', color: 'text-amber-700 bg-amber-50 border-amber-100' }
-              ].map((feed, idx) => (
-                <div key={idx} className="flex items-center gap-3 text-xs p-2.5 rounded-xl bg-gray-50">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">#</div>
-                  <div>
-                    <p className="font-bold text-gray-800">Order {feed.id}: <span className="text-brand-primary">{feed.status}</span></p>
-                    <p className="text-[10px] text-gray-400 font-semibold">{feed.desc}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center text-gray-400 py-6 text-xs">No active orders in feed.</div>
             </div>
           </div>
 
@@ -642,16 +623,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {[
-                    { intervention: "Agent A5C - Action completed", worker: "Vendor ABC - Active" },
-                    { intervention: "Agent 4BC - Task assigned", worker: "Vendor XYZ - Idle" },
-                    { intervention: "Agent Sent - Invoice generated", worker: "Vendor ABC - Completed" }
-                  ].map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-semibold text-gray-700">{row.intervention}</td>
-                      <td className="px-4 py-3 font-bold text-brand-primary">{row.worker}</td>
-                    </tr>
-                  ))}
+                  <tr>
+                    <td colSpan={2} className="px-4 py-8 text-center text-gray-400 text-xs">No vendor activity recorded.</td>
+                  </tr>
                 </tbody>
               </table>
             </div>

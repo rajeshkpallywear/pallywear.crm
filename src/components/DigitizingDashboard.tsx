@@ -188,23 +188,9 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {[
-                { id: "#54321", file: "Design File", stitches: "231K", status: "ACTIVE", statusBg: "bg-emerald-50 text-emerald-700 border border-emerald-150" },
-                { id: "#54322", file: "Design File", stitches: "212K", status: "ACTIVE", statusBg: "bg-emerald-50 text-emerald-700 border border-emerald-150" },
-                { id: "#54323", file: "Design File", stitches: "115K", status: "AWAITING MATERIAL", statusBg: "bg-amber-50 text-amber-700 border border-amber-150" },
-                { id: "#54324", file: "Design File", stitches: "57K", status: "AWAITING MATERIAL", statusBg: "bg-amber-50 text-amber-700 border border-amber-150" }
-              ].map((d, idx) => (
-                <tr key={idx} className="hover:bg-gray-50/30">
-                  <td className="px-5 py-3.5 font-bold text-brand-primary">{d.id}</td>
-                  <td className="px-5 py-3.5 text-gray-600 font-semibold">{d.file}</td>
-                  <td className="px-5 py-3.5 text-gray-900 font-bold">{d.stitches}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider", d.statusBg)}>
-                      {d.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              <tr>
+                <td colSpan={4} className="px-5 py-8 text-center text-gray-400 text-xs">No active digitization jobs.</td>
+              </tr>
             </tbody>
           </table>
         </div>

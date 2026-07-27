@@ -108,7 +108,7 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Pending Orders</p>
-            <p className="text-base sm:text-3xl font-black text-red-500 mt-0.5 leading-none">230</p>
+            <p className="text-base sm:text-3xl font-black text-red-500 mt-0.5 leading-none">{pendingCount}</p>
             <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Awaiting processing</span>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Avg Callback</p>
-            <p className="text-base sm:text-3xl font-black text-gray-900 mt-0.5 leading-none">55 Min</p>
+            <p className="text-base sm:text-3xl font-black text-gray-900 mt-0.5 leading-none">—</p>
             <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Response pipeline latency</span>
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400 truncate">Integrated Maps</p>
-            <p className="text-base sm:text-3xl font-black text-green-600 mt-0.5 leading-none">100</p>
+            <p className="text-base sm:text-3xl font-black text-green-600 mt-0.5 leading-none">—</p>
             <span className="text-[9px] font-medium text-gray-400 hidden sm:block mt-2">Active geolocation nodes</span>
           </div>
         </div>
@@ -281,46 +281,13 @@ export default function TelecallerDashboard({ user }: TelecallerDashboardProps) 
           {/* Telecaller Performance & Leads Feed */}
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
             <h5 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Leads Performance & Feed</h5>
-            <div className="space-y-4">
-              {[
-                { agent: "Sarah M.", action: "converted 3 leads", time: "2 hours ago" },
-                { agent: "Alex R.", action: "marked John S. for callback", time: "3 hours ago" },
-                { agent: "John D.", action: "completed 15 cold calls", time: "5 hours ago" }
-              ].map((feed, i) => (
-                <div key={i} className="flex gap-3 text-xs">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">{feed.agent.charAt(0)}</div>
-                  <div>
-                    <p className="text-gray-800 font-medium"><span className="font-bold">{feed.agent}</span> {feed.action}</p>
-                    <p className="text-[10px] text-gray-400 font-bold">{feed.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="text-center text-gray-400 py-6 text-xs">No recent lead activity to display.</div>
           </div>
 
           {/* Agent Leaderboard */}
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
             <h5 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Agent Leaderboard</h5>
-            <div className="space-y-3">
-              {[
-                { rank: 1, name: "Sarah M. Shewn", score: 538 },
-                { rank: 2, name: "Alex R.", score: 510 },
-                { rank: 3, name: "John D.", score: 480 }
-              ].map((leader, i) => (
-                <div key={i} className="flex justify-between items-center p-2.5 bg-gray-50 rounded-xl text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center font-black text-[9px]",
-                      leader.rank === 1 ? "bg-amber-100 text-amber-700" :
-                      leader.rank === 2 ? "bg-slate-100 text-slate-700" :
-                      "bg-amber-50 text-amber-800"
-                    )}>{leader.rank}</span>
-                    <span className="font-bold text-gray-800">{leader.name}</span>
-                  </div>
-                  <span className="font-black text-brand-primary">{leader.score} pts</span>
-                </div>
-              ))}
-            </div>
+            <div className="text-center text-gray-400 py-6 text-xs">No agents ranked yet.</div>
           </div>
         </div>
 

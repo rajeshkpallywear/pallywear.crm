@@ -24,21 +24,8 @@ import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 
-const ROAS_DATA = [
-  { name: 'Jan 18', Spend: 1000, Revenue: 2500 },
-  { name: 'Jan 20', Spend: 1500, Revenue: 3600 },
-  { name: 'Jan 22', Spend: 2000, Revenue: 4100 },
-  { name: 'Jan 24', Spend: 1800, Revenue: 4800 },
-  { name: 'Jan 26', Spend: 2200, Revenue: 5200 },
-  { name: 'Jan 28', Spend: 2500, Revenue: 6100 },
-];
-
-const SOURCE_DATA = [
-  { name: 'Google Ads', value: 45, color: '#3b82f6' },
-  { name: 'Meta Ads', value: 30, color: '#ec4899' },
-  { name: 'Direct', value: 15, color: '#10b981' },
-  { name: 'Organic', value: 10, color: '#f59e0b' }
-];
+const ROAS_DATA: { name: string; Spend: number; Revenue: number }[] = [];
+const SOURCE_DATA: { name: string; value: number; color: string }[] = [];
 
 interface MarketingDashboardProps {
   orders: Order[];
@@ -366,10 +353,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-gray-900">$42.1K</span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">
-              +12%
-            </span>
+            <span className="text-3xl font-black tracking-tight text-gray-900">—</span>
           </div>
         </div>
 
@@ -382,10 +366,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-gray-900">3.8M</span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">
-              +8.2%
-            </span>
+            <span className="text-3xl font-black tracking-tight text-gray-900">—</span>
           </div>
         </div>
 
@@ -398,10 +379,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-green-600">4.1%</span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">
-              +4.1%
-            </span>
+            <span className="text-3xl font-black tracking-tight text-green-600">—</span>
           </div>
         </div>
 
@@ -414,7 +392,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-gray-900">12</span>
+            <span className="text-3xl font-black tracking-tight text-gray-900">—</span>
           </div>
         </div>
       </div>

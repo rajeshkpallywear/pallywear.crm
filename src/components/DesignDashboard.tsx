@@ -702,23 +702,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {[
-                { rank: 1, project: "Alex R. Design Hub", designer: "Alex R.", status: "IN DESIGN", statusBg: "bg-purple-100 text-purple-700" },
-                { rank: 2, project: "Digitizer J. Digitizing", designer: "Designer", status: "AWAITING REVIEW", statusBg: "bg-amber-100 text-amber-700" },
-                { rank: 3, project: "Digitizing & Embroidery", designer: "J. Sheveen", status: "IN DESIGN", statusBg: "bg-purple-100 text-purple-700" },
-                { rank: 4, project: "Pallywear Custom Polo", designer: "Alex R.", status: "AWAITING REVIEW", statusBg: "bg-amber-100 text-amber-700" }
-              ].map((p, idx) => (
-                <tr key={idx} className="hover:bg-gray-50/30">
-                  <td className="px-5 py-3.5 font-bold text-gray-400">{p.rank}</td>
-                  <td className="px-5 py-3.5 font-bold text-gray-800">{p.project}</td>
-                  <td className="px-5 py-3.5 text-gray-600 font-semibold">{p.designer}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={cn("px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider", p.statusBg)}>
-                      {p.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              <tr>
+                <td colSpan={4} className="px-5 py-8 text-center text-gray-400 text-xs">No design projects in queue yet.</td>
+              </tr>
             </tbody>
           </table>
         </div>
