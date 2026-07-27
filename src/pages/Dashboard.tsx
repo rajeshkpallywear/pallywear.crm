@@ -44,9 +44,24 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const filteredOrders = React.useMemo(() => {
-    return user?.role === 'admin'
-      ? orders
-      : orders.filter(o => o.createdBy === user?.id || o.createdBy === user?.uid);
+    if (!user) return [];
+    
+    // Admin and operational/processing roles must see all orders to do their jobs
+    const viewAllRoles = [
+      'admin',
+      'accounts',
+      'designer',
+      'order_management',
+      'production',
+      'digitizer',
+      'delivery'
+    ];
+    
+    if (viewAllRoles.includes(user.role)) {
+      return orders;
+    }
+    
+    return orders.filter(o => o.createdBy === user.id || o.createdBy === user.uid);
   }, [orders, user]);
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>('dashboard');
