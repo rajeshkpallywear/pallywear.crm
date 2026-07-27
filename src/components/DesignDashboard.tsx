@@ -53,7 +53,7 @@ interface ChatMessage {
 
 export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignDashboardProps) {
   // Primary Tabs: 'staff' for Staff/Sales desk pipeline, 'order_management' for Backoffice pipeline
-  const [activeChannel, setActiveChannel] = useState<'staff' | 'order_management'>('staff');
+  const [activeChannel, setActiveChannel] = useState<'staff' | 'order_management'>('order_management');
 
   // Subsection filters: 'recent', 'process', 'hold', 'completed'
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
@@ -611,42 +611,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         </div>
       </div>
 
-      {/* Primary Communication Channel Navigations */}
-      <div className="flex border-b border-gray-150 gap-4">
-        <button
-          onClick={() => {
-            setActiveChannel('staff');
-            setSelectedSection('recent');
-          }}
-          className={cn(
-            "pb-4 text-sm font-black transition-all relative flex items-center gap-2 cursor-pointer border-none bg-transparent",
-            activeChannel === 'staff' ? "text-brand-primary" : "text-gray-400 hover:text-gray-700"
-          )}
-        >
-          <MessageSquare size={18} />
-          <span>1. Marketing Design</span>
-          {activeChannel === 'staff' && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-primary rounded-t-full" />
-          )}
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveChannel('order_management');
-            setSelectedSection('recent');
-          }}
-          className={cn(
-            "pb-4 text-sm font-black transition-all relative flex items-center gap-2 cursor-pointer border-none bg-transparent",
-            activeChannel === 'order_management' ? "text-brand-primary" : "text-gray-400 hover:text-gray-700"
-          )}
-        >
-          <FolderOpen size={18} />
-          <span>2. Order Designs</span>
-          {activeChannel === 'order_management' && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand-primary rounded-t-full" />
-          )}
-        </button>
-      </div>
+      {/* Primary Communication Channel Navigations (Removed Staff channels) */}
 
       {/* Summary Columns Counters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
@@ -1137,7 +1102,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       Outputs Upload Bench (PDF / machine code)
                     </h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-4">
                       {/* Upload 1: Artwork Graphics */}
                       <div className={cn(
                         "space-y-2 bg-white p-3.5 rounded-lg border",
@@ -1168,134 +1133,67 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           ))}
                         </div>
                       </div>
-
-                      {/* Upload 2: DST/Embroidery files */}
-                      <div className="space-y-2 bg-white p-3.5 rounded-lg border border-purple-100">
-                        <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">2. Machine Embroidery Files (DST)</p>
-                        <FileUpload
-                          label=""
-                          accept=".dst,.pes,.jef,.exp,.hus,.emb"
-                          onFilesSelected={(files) => setMachineFiles(prev => [...prev, ...files])}
-                        />
-                        <div className="max-h-[80px] overflow-y-auto space-y-1 mt-2">
-                          {machineFiles.map((file, i) => (
-                            <div key={i} className="flex justify-between items-center text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200">
-                              <span className="truncate max-w-[120px] font-mono">Digi_{i + 1}.dst</span>
-                              <button
-                                onClick={() => handleRemoveFile(i, 'machine')}
-                                className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Upload 3: Original Design File */}
-                      <div className="space-y-2 bg-white p-3.5 rounded-lg border border-purple-100 col-span-1 sm:col-span-2">
-                        <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">3. Original Design File (Source File / High-Res Image)</p>
-                        <FileUpload
-                          label=""
-                          onFilesSelected={(files) => {
-                            if (files.length > 0) {
-                              setOriginalFile(files[0]);
-                              setOriginalFilename("Original_Design_File");
-                            }
-                          }}
-                        />
-                        {originalFile && (
-                          <div className="flex justify-between items-center text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200 mt-2">
-                            <span className="truncate max-w-[240px] font-mono">{originalFilename || "Original_Design_File"}</span>
-                            <button
-                              onClick={() => {
-                                setOriginalFile('');
-                                setOriginalFilename('');
-                              }}
-                              className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
 
-                  {/* Chat Panel Interface based on selected channel */}
+                  {/* Chat Panel Interface (Only Backoffice Chat) */}
                   <div className="bg-gray-50 rounded-2xl border border-gray-150 p-4 shrink-0 flex flex-col gap-3 min-h-[290px] justify-between">
                     <div>
                       <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
                           <MessageSquare size={12} />
-                          {activeChannel === 'staff' ? 'Staff Desk Communication Log' : 'Backoffice Coordinator Chat'}
+                          Backoffice Coordinator Chat
                         </span>
                         <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                       </div>
 
-                      {/* Actual Chat Logs Render */}
-                      {activeChannel === 'staff' ? (
-                        <div className="text-center py-6 text-xs text-gray-400 space-y-2">
-                          <p className="font-semibold text-gray-500">Sales/Staff Dialogues have a dedicated workspace panel</p>
-                          <button
-                            onClick={() => {
-                              setSelectedItemIdForStaffChat(selectedOrder.id);
-                              setIsStaffChatOpen(true);
+                      {/* Live Channel */}
+                      <div className="space-y-3">
+                        <div className="max-h-[180px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
+                          {omMessages.length === 0 ? (
+                            <p className="italic text-gray-400 text-center py-4">No back-and-forth messages with Backoffice coordinates yet.</p>
+                          ) : (
+                            omMessages.map((msg, idx) => {
+                              const isDesigner = msg.senderRole === 'designer';
+                              return (
+                                <div key={idx} className={cn(
+                                  "p-3 rounded-2xl max-w-[85%] space-y-1 block text-left",
+                                  isDesigner ? "bg-black text-white ml-auto" : "bg-gray-200 text-gray-900 mr-auto"
+                                )}>
+                                  <p className="text-[9px] font-black opacity-60 uppercase">{msg.sender}</p>
+                                  <p className="font-medium text-xs leading-relaxed">{msg.text}</p>
+                                  {msg.attachments && msg.attachments.map((att, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 mt-1 bg-white/10 p-1.5 rounded-lg">
+                                      <Paperclip size={10} />
+                                      <span className="text-[9px] truncate max-w-[130px]">Reference File</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Message Trigger Form */}
+                        <div className="flex gap-2 border-t border-gray-200 pt-3">
+                          <input
+                            type="text"
+                            placeholder="Send re-work details to Manager..."
+                            className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 outline-none text-gray-800 font-medium"
+                            value={omNewMessage}
+                            onChange={(e) => setOmNewMessage(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSendOmChatMessage();
                             }}
-                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-extrabold uppercase transition-all shadow-sm cursor-pointer border-none"
+                          />
+                          <button
+                            onClick={handleSendOmChatMessage}
+                            className="h-9 w-9 bg-black text-white flex items-center justify-center rounded-xl hover:bg-gray-800 transition-all cursor-pointer border-none"
                           >
-                            Launch Sales Dialogues
+                            <Send size={14} />
                           </button>
                         </div>
-                      ) : (
-                        // Order Management Live Channel
-                        <div className="space-y-3">
-                          <div className="max-h-[180px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
-                            {omMessages.length === 0 ? (
-                              <p className="italic text-gray-400 text-center py-4">No back-and-forth messages with Backoffice coordinates yet.</p>
-                            ) : (
-                              omMessages.map((msg, idx) => {
-                                const isDesigner = msg.senderRole === 'designer';
-                                return (
-                                  <div key={idx} className={cn(
-                                    "p-3 rounded-2xl max-w-[85%] space-y-1 block text-left",
-                                    isDesigner ? "bg-black text-white ml-auto" : "bg-gray-200 text-gray-900 mr-auto"
-                                  )}>
-                                    <p className="text-[9px] font-black opacity-60 uppercase">{msg.sender}</p>
-                                    <p className="font-medium text-xs leading-relaxed">{msg.text}</p>
-                                    {msg.attachments && msg.attachments.map((att, i) => (
-                                      <div key={i} className="flex items-center gap-1.5 mt-1 bg-white/10 p-1.5 rounded-lg">
-                                        <Paperclip size={10} />
-                                        <span className="text-[9px] truncate max-w-[130px]">Reference File</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-
-                          {/* Message Trigger Form */}
-                          <div className="flex gap-2 border-t border-gray-200 pt-3">
-                            <input
-                              type="text"
-                              placeholder="Send re-work details to Manager..."
-                              className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 outline-none text-gray-800 font-medium"
-                              value={omNewMessage}
-                              onChange={(e) => setOmNewMessage(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSendOmChatMessage();
-                              }}
-                            />
-                            <button
-                              onClick={handleSendOmChatMessage}
-                              className="h-9 w-9 bg-black text-white flex items-center justify-center rounded-xl hover:bg-gray-800 transition-all cursor-pointer border-none"
-                            >
-                              <Send size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1324,25 +1222,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   Request Design Hold
                 </button>
               )}
-
-              <button
-                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                onClick={handleReturnToCreator}
-                className="px-6 py-4 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <ArrowLeftIcon size={15} />
-                Return to Sales/Staff
-              </button>
-
-              {/* Send to Digitizer command */}
-              <button
-                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                onClick={handleSendToDigitizer}
-                className="px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                Send to Digitizer
-                <Upload size={15} />
-              </button>
 
               {/* Primary Move forward command */}
               <button

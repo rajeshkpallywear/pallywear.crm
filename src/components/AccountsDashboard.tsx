@@ -40,18 +40,18 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
     if (selectedSection === 'completed') {
-      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.ORDER_MANAGEMENT].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
     }
     if (selectedSection === 'process') {
-      return o.status === OrderStatus.ORDER_MANAGEMENT;
+      return o.status === OrderStatus.DESIGN;
     }
     return o.status === OrderStatus.ACCOUNTS;
   });
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
-  const processOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
+  const processOrdersCount = orders.filter(o => o.status === OrderStatus.DESIGN).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.ORDER_MANAGEMENT].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
+  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
@@ -70,19 +70,19 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     setIsProcessing(true);
     try {
       await onUpdateOrder(selectedOrder.id, {
-        status: OrderStatus.ORDER_MANAGEMENT,
+        status: OrderStatus.DESIGN,
         accountsAttachments: billingFiles,
         updatedAt: Date.now()
       });
       setSelectedOrder(null);
       setBillingFiles([]);
-      alert("Success: Order moved to Order Management Hub.");
+      alert("Success: Order sent to Digitizer.");
     } catch (e: any) {
       console.error(e);
       if (e?.message?.includes("exceeds the maximum allowed size")) {
         alert("Action failed: The order document is now too large (Max 100MB). Please reduce the number of attachments.");
       } else {
-        alert("An error occurred while moving the order.");
+        alert("An error occurred while sending the order.");
       }
     } finally {
       setIsProcessing(false);
@@ -441,12 +441,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       {isProcessing ? (
                         <>
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Moving...
+                          Sending...
                         </>
                       ) : (
                         <>
                           <ChevronRight size={20} />
-                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Move to Order Management'}
+                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Send to Digitizer'}
                         </>
                       )}
                     </button>
