@@ -174,6 +174,41 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
           </div>
         </div>
       </div>
+      {/* Digitization Status (Mockup View) */}
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
+        <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Digitization Status</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs whitespace-nowrap">
+            <thead>
+              <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                <th className="px-5 py-3">Order #</th>
+                <th className="px-5 py-3">Design File</th>
+                <th className="px-5 py-3">Stitch Count</th>
+                <th className="px-5 py-3">Machine Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {[
+                { id: "#54321", file: "Design File", stitches: "231K", status: "ACTIVE", statusBg: "bg-emerald-50 text-emerald-700 border border-emerald-150" },
+                { id: "#54322", file: "Design File", stitches: "212K", status: "ACTIVE", statusBg: "bg-emerald-50 text-emerald-700 border border-emerald-150" },
+                { id: "#54323", file: "Design File", stitches: "115K", status: "AWAITING MATERIAL", statusBg: "bg-amber-50 text-amber-700 border border-amber-150" },
+                { id: "#54324", file: "Design File", stitches: "57K", status: "AWAITING MATERIAL", statusBg: "bg-amber-50 text-amber-700 border border-amber-150" }
+              ].map((d, idx) => (
+                <tr key={idx} className="hover:bg-gray-50/30">
+                  <td className="px-5 py-3.5 font-bold text-brand-primary">{d.id}</td>
+                  <td className="px-5 py-3.5 text-gray-600 font-semibold">{d.file}</td>
+                  <td className="px-5 py-3.5 text-gray-900 font-bold">{d.stitches}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider", d.statusBg)}>
+                      {d.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-2xl w-fit">
         <button

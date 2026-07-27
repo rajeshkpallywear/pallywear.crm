@@ -35,7 +35,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
-  const [managementFiles, setManagementFiles] = useState<string[]>([]);
+
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -67,9 +67,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
   }, [orders, selectedSection]);
 
-  const handleRemoveManagementFile = (index: number) => {
-    setManagementFiles(prev => prev.filter((_, i) => i !== index));
-  };
+
 
   const handleRemoveExistingAttachment = async (field: keyof Order, index: number) => {
     if (!selectedOrder) return;
@@ -102,7 +100,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     // Check total order document size of next state
     const nextOrderState = {
       ...selectedOrder,
-      orderManagementAttachments: managementFiles
+      orderManagementAttachments: []
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
@@ -114,12 +112,11 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     try {
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.PRODUCTION,
-        orderManagementAttachments: managementFiles,
+        orderManagementAttachments: [],
         updatedAt: Date.now()
       });
 
       setSelectedOrder(null);
-      setManagementFiles([]);
       alert("Success: Order shared with Production Team.");
     } catch (e: any) {
       console.error("Order Management process failed:", e);
@@ -679,6 +676,33 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                   </span>
                 </div>
 
+                {/* Global Order Status Pipeline */}
+                <div className="mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between gap-2 overflow-x-auto">
+                  {[
+                    { label: "RECV'D", active: true },
+                    { label: "CONFIRM'D", active: ['order_management', 'production', 'delivery', 'delivered'].includes(selectedOrder.status) },
+                    { label: "PROD", active: ['production', 'delivery', 'delivered'].includes(selectedOrder.status) },
+                    { label: "SHIPPED", active: ['delivery', 'delivered'].includes(selectedOrder.status) }
+                  ].map((stage, idx, arr) => (
+                    <div key={idx} className="flex items-center flex-1 min-w-0">
+                      <div className={cn(
+                        "flex-1 text-center py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                        stage.active 
+                          ? "bg-brand-primary text-white shadow-sm" 
+                          : "bg-white text-gray-400 border border-gray-100"
+                      )}>
+                        {stage.label}
+                      </div>
+                      {idx < arr.length - 1 && (
+                        <div className={cn(
+                          "w-4 h-0.5 mx-2 flex-shrink-0",
+                          arr[idx + 1].active ? "bg-brand-primary" : "bg-gray-200"
+                        )} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <div>
@@ -844,44 +868,52 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
               </div>
 
               <div className="p-8 space-y-8">
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h5 className="text-sm font-bold text-gray-900">Final Production File (Garage ZIP ONLY)</h5>
-                    <p className="text-xs text-gray-500">Only .zip files are permitted for manufacturing specs</p>
-                  </div>
-                  <FileUpload
-                    label="Upload Garage ZIP File"
-                    accept=".zip"
-                    maxFiles={1}
-                    onFilesSelected={(files) => setManagementFiles(prev => [...prev, ...files])}
-                  />
-
-                  {managementFiles.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {managementFiles.map((file, i) => (
-                        <div key={i} className="relative group rounded-xl overflow-hidden aspect-video border border-gray-100 bg-gray-50 flex items-center justify-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <Package size={32} className="text-indigo-500" />
-                            <span className="text-[10px] font-bold text-gray-500 uppercase">
-                              Garage ZIP Upload
-                            </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Production Pipeline Status Summary */}
+                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
+                    <h5 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Production Pipeline</h5>
+                    <div className="space-y-4">
+                      {[
+                        { stage: "Production", value: 75, color: "bg-blue-600" },
+                        { stage: "QC Testing", value: 45, color: "bg-emerald-500" },
+                        { stage: "Packaging", value: 20, color: "bg-amber-500" }
+                      ].map((p, idx) => (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold text-gray-600">
+                            <span>{p.stage}</span>
+                            <span>{p.value}%</span>
                           </div>
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <a
-                              href={file}
-                              download={`Garage_Final_${i + 1}.zip`}
-                              className="p-1.5 bg-white/20 rounded-lg text-white hover:bg-white/40"
-                              title="Download"
-                            >
-                              <Download size={16} />
-                            </a>
-                            <button onClick={() => handleRemoveManagementFile(i)} className="p-1.5 bg-red-500/80 rounded-lg text-white hover:bg-red-600" title="Remove"><Trash2 size={16} /></button>
+                          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${p.color} rounded-full`} style={{ width: `${p.value}%` }} />
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </section>
+                  </div>
+
+                  {/* Vendor Activity & Agent Performance */}
+                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
+                    <h5 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Vendor Status & Performance</h5>
+                    <div className="space-y-3 max-h-[140px] overflow-y-auto pr-1">
+                      {[
+                        { name: "Apex Knits", task: "Sourcing Material", status: "Active" },
+                        { name: "Vasco Textiles", task: "Embroidery QC", status: "Active" },
+                        { name: "Yash Garments", task: "Stitching Job", status: "Idle" }
+                      ].map((v, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-50 rounded-xl">
+                          <div>
+                            <p className="text-xs font-black text-gray-800">{v.name}</p>
+                            <p className="text-[10px] text-gray-500">{v.task}</p>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider",
+                            v.status === 'Active' ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+                          )}>{v.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
                 {viewingImage && (
                   <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${selectedOrder.id}`} />

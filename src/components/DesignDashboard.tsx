@@ -688,6 +688,42 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         </button>
       </div>
 
+      {/* Design Project Queue (Mockup View) */}
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
+        <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Design Project Queue</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs whitespace-nowrap">
+            <thead>
+              <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                <th className="px-5 py-3">Rank</th>
+                <th className="px-5 py-3">Project Name</th>
+                <th className="px-5 py-3">Lead Designer</th>
+                <th className="px-5 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {[
+                { rank: 1, project: "Alex R. Design Hub", designer: "Alex R.", status: "IN DESIGN", statusBg: "bg-purple-100 text-purple-700" },
+                { rank: 2, project: "Digitizer J. Digitizing", designer: "Designer", status: "AWAITING REVIEW", statusBg: "bg-amber-100 text-amber-700" },
+                { rank: 3, project: "Digitizing & Embroidery", designer: "J. Sheveen", status: "IN DESIGN", statusBg: "bg-purple-100 text-purple-700" },
+                { rank: 4, project: "Pallywear Custom Polo", designer: "Alex R.", status: "AWAITING REVIEW", statusBg: "bg-amber-100 text-amber-700" }
+              ].map((p, idx) => (
+                <tr key={idx} className="hover:bg-gray-50/30">
+                  <td className="px-5 py-3.5 font-bold text-gray-400">{p.rank}</td>
+                  <td className="px-5 py-3.5 font-bold text-gray-800">{p.project}</td>
+                  <td className="px-5 py-3.5 text-gray-600 font-semibold">{p.designer}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={cn("px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider", p.statusBg)}>
+                      {p.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Main List Workspace Container */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Search header panel */}
