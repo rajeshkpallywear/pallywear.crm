@@ -21,7 +21,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { getDisplayCategory, cn } from '../lib/utils';
+import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 
@@ -55,8 +55,18 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
 
   const handleUploadSpecs = async () => {
     if (!selectedOrder || uploadFiles.length === 0) return;
-    setIsProcessing(true);
 
+    const nextOrderState = {
+      ...selectedOrder,
+      machineFiles: [...(selectedOrder.machineFiles || []), ...uploadFiles]
+    };
+
+    if (!isOrderSizeValid(nextOrderState)) {
+      alert("Sync failed: Data might be too large (Max 100MB per order in current setup). Try using a smaller ZIP file.");
+      return;
+    }
+
+    setIsProcessing(true);
     try {
       await onUpdateOrder(selectedOrder.id, {
         machineFiles: [...(selectedOrder.machineFiles || []), ...uploadFiles],
@@ -106,10 +116,22 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
       return;
     }
 
+    const newNote = `[MESSAGE FROM DIGITIZER] ${new Date().toLocaleString()}\n${msgRequest.message}`;
+    const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
+
+    const nextOrderState = {
+      ...selectedOrder,
+      notes: updatedNotes,
+      staffImages: [...(selectedOrder.staffImages || []), ...msgRequest.attachments]
+    };
+
+    if (!isOrderSizeValid(nextOrderState)) {
+      alert("Sync failed: Data might be too large (Max 100MB per order in current setup). Try using smaller or fewer images.");
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const newNote = `[MESSAGE FROM DIGITIZER] ${new Date().toLocaleString()}\n${msgRequest.message}`;
-      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
 
       await onUpdateOrder(selectedOrder.id, {
         notes: updatedNotes,
@@ -310,13 +332,6 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                         </div>
                       )}
                     </div>
-
-                    {selectedOrder.notes && (
-                      <div className="mt-8 p-6 bg-indigo-50 border border-indigo-100 rounded-3xl">
-                        <h6 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3">Important Instructions</h6>
-                        <p className="text-xs text-indigo-900 font-medium leading-relaxed whitespace-pre-wrap">{selectedOrder.notes}</p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Upload Section */}
