@@ -52,8 +52,8 @@ interface ChatMessage {
 }
 
 export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignDashboardProps) {
-  // Primary Tabs: 'staff' for Staff/Sales desk pipeline, 'order_management' for Backoffice pipeline
-  const [activeChannel, setActiveChannel] = useState<'staff' | 'order_management'>('order_management');
+  // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
+  const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('accounts_queue');
 
   // Subsection filters: 'all', 'recent', 'process', 'hold', 'completed'
   const [selectedSection, setSelectedSection] = useState<'all' | 'recent' | 'process' | 'hold' | 'completed'>('all');
@@ -155,12 +155,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     return !clean.includes(designerName.toLowerCase()) && !designerName.toLowerCase().includes(clean);
   };
 
-  // 1. Process Order and Conversation Items for STAFF CHANNEL
-  const staffOrderItems = orders
+  // 1. Process Order and Conversation Items for MARKETING QUEUE (Marketing Sent)
+  const marketingOrderItems = orders
     .filter(o => {
-      // Show orders currently in design or hold stage, where they originated from Staff desk
+      // Show orders currently in design or hold stage, where they originated from Marketing (no accounts attachments)
       // and aren't locked to other designers.
-      return (o.status === OrderStatus.DESIGN || o.status === OrderStatus.HOLD) && !isAssignedToOther(o.assignedDesigner || '');
+      const isDesignPhase = o.status === OrderStatus.DESIGN;
+      const isHoldFromDesign = o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN;
+      const isCompletedDesign = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status);
+      const isMarketing = !o.accountsAttachments || o.accountsAttachments.length === 0;
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing && !isAssignedToOther(o.assignedDesigner || '');
     })
     .map(o => {
       let isCompleted = false;
@@ -188,7 +192,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         isCompleted: isCompleted,
         createdAt: o.createdAt,
         staffImages: o.staffImages || [],
-        staffPdfs: o.staffPdfs || []
+        staffPdfs: o.staffPdfs || [],
+        accountsAttachments: []
       };
     });
 
@@ -216,18 +221,19 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       };
     });
 
-  const staffCombinedList = [...staffOrderItems, ...staffConsultationItems];
+  const marketingCombinedList = [...marketingOrderItems, ...staffConsultationItems];
 
-  // 2. Process Items for ORDER MANAGEMENT CHANNEL
-  // Orders in Backoffice QC / OM Pipeline — only show DESIGN and HOLD status orders
-  const omOrderItems = orders
+  // 2. Process Items for ACCOUNTS QUEUE (Accounts Sent)
+  // Orders in Backoffice QC / OM Pipeline — only show DESIGN and HOLD status orders sent by Accounts
+  const accountsOrderItems = orders
     .filter(o => {
       // Only show orders that are actively in DESIGN phase or on HOLD from DESIGN
       // This ensures accounts-sent orders (status=DESIGN) show up here
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
       const isCompletedDesign = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD, OrderStatus.ORDER_MANAGEMENT].includes(o.status);
-      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && !isAssignedToOther(o.assignedDesigner || '');
+      const isAccounts = o.accountsAttachments && o.accountsAttachments.length > 0;
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts && !isAssignedToOther(o.assignedDesigner || '');
     })
     .map(o => {
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
@@ -267,7 +273,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Filter lists based on primary tab and subsection
   const getFilteredItems = () => {
-    let baseList = activeChannel === 'staff' ? staffCombinedList : omOrderItems;
+    let baseList = activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
 
     // Filter by subsection
     if (selectedSection === 'hold') {
@@ -290,8 +296,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   };
 
   // Get counters for high-level buttons
-  const getChannelStats = (channel: 'staff' | 'order_management') => {
-    const baseList = channel === 'staff' ? staffCombinedList : omOrderItems;
+  const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
+    const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
     const recentCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
     const processCount = baseList.filter(item => !isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
@@ -622,15 +628,44 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         </div>
       </div>
 
-      {/* Primary Communication Channel Navigations (Removed Staff channels) */}
-
+      {/* Primary Communication Channel Navigations */}
+      <div className="flex border-b border-gray-100 bg-white p-2 rounded-2xl shadow-xs gap-2">
+        <button
+          onClick={() => {
+            setActiveChannel('marketing_queue');
+            setSelectedSection('all');
+          }}
+          className={cn(
+            "flex-1 sm:flex-initial px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 border-none",
+            activeChannel === 'marketing_queue'
+              ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]"
+              : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+          )}
+        >
+          📢 Marketing Sent Orders
+        </button>
+        <button
+          onClick={() => {
+            setActiveChannel('accounts_queue');
+            setSelectedSection('all');
+          }}
+          className={cn(
+            "flex-1 sm:flex-initial px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 border-none",
+            activeChannel === 'accounts_queue'
+              ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]"
+              : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+          )}
+        >
+          💳 Accounts Sent Orders
+        </button>
+      </div>
 
       {/* Design Project Queue — Live Orders */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Design Project Queue</h4>
           <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-xl">
-            {omOrderItems.length} Project{omOrderItems.length !== 1 ? 's' : ''}
+            {(activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems).length} Project{(activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems).length !== 1 ? 's' : ''}
           </span>
         </div>
 
@@ -1196,7 +1231,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         <div className="flex justify-between items-center">
                           <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">1. Vector Tracing Output (PDF)</p>
                           {designFiles.length === 0 && (
-                            <span className="text-[9px] text-red-500 font-bold">âš ï¸ Required to send to marketing</span>
+                            <span className="text-[9px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
                           )}
                         </div>
                         <FileUpload
@@ -1218,6 +1253,44 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           ))}
                         </div>
                       </div>
+
+                      {/* Upload 2: Original Design File (Required for Accounts Sent Orders going to Digitizer) */}
+                      {(activeChannel === 'accounts_queue' || (selectedOrder.accountsAttachments || []).length > 0) && (
+                        <div className={cn(
+                          "space-y-2 bg-white p-3.5 rounded-lg border",
+                          !originalFile ? "border-amber-200 bg-amber-50/5" : "border-purple-100"
+                        )}>
+                          <div className="flex justify-between items-center">
+                            <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">2. Original Design File (EMB/DST/CDR)</p>
+                            {!originalFile && (
+                              <span className="text-[9px] text-amber-600 font-bold">⚠️ Required to send to Digitizer</span>
+                            )}
+                          </div>
+                          <FileUpload
+                            label=""
+                            onFilesSelected={(files) => {
+                              if (files && files[0]) {
+                                setOriginalFile(files[0]);
+                                setOriginalFilename("original_design_file");
+                              }
+                            }}
+                          />
+                          {originalFile && (
+                            <div className="flex justify-between items-center text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200 mt-2">
+                              <span className="truncate max-w-[150px] font-mono">{originalFilename || 'Original file'}</span>
+                              <button
+                                onClick={() => {
+                                  setOriginalFile('');
+                                  setOriginalFilename('');
+                                }}
+                                className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1308,15 +1381,37 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 </button>
               )}
 
-              {/* Primary Move forward command */}
-              <button
-                disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                onClick={handleSendToMarketing}
-                className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {isProcessing ? 'Processing files...' : 'Finish & Send to Marketing'}
-                <CheckCircle size={15} />
-              </button>
+              {/* Show action buttons depending on whether it is Accounts Sent vs Marketing Sent */}
+              {(activeChannel === 'accounts_queue' || (selectedOrder.accountsAttachments || []).length > 0) ? (
+                /* Accounts Sent Order -> Send to Digitizer */
+                <button
+                  disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                  onClick={handleSendToDigitizer}
+                  className="flex-1 py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessing ? 'Processing files...' : 'Send to Digitizer'}
+                  <CheckCircle size={15} />
+                </button>
+              ) : (
+                /* Marketing Sent Order -> Return to Marketing & Send to Marketing */
+                <>
+                  <button
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    onClick={handleReturnToCreator}
+                    className="px-6 py-4 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    Return to Marketing
+                  </button>
+                  <button
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    onClick={handleSendToMarketing}
+                    className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 animate-pulse"
+                  >
+                    {isProcessing ? 'Processing files...' : 'Send to Marketing'}
+                    <CheckCircle size={15} />
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </div>
