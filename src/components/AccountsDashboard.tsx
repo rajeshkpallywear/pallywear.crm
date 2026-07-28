@@ -76,7 +76,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       });
       setSelectedOrder(null);
       setBillingFiles([]);
-      alert("Success: Order sent to Digitizer.");
+      alert("Success: Order sent to Design.");
     } catch (e: any) {
       console.error(e);
       if (e?.message?.includes("exceeds the maximum allowed size")) {
@@ -288,7 +288,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
               animate={{ opacity: 1, x: 0 }}
               className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
             >
-              <div className="p-8 border-b border-gray-50 bg-gray-50/50">
+              <div className="p-8 border-b border-gray-50 bg-white">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <span className="text-xs font-mono text-gray-400">ORDER DETAILS</span>
@@ -437,6 +437,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       onClick={handleProcessOrder}
                       disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
                       className="flex-1 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
+                      title="Send invoice to Design team for this account"
                     >
                       {isProcessing ? (
                         <>
@@ -446,7 +447,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       ) : (
                         <>
                           <ChevronRight size={20} />
-                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Send to Digitizer'}
+                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Send to Design'}
                         </>
                       )}
                     </button>
