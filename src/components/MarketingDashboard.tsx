@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Globe, Trash2, Package, AlertCircle, Activity, TrendingUp, Mic, Send, MessageSquare, Paperclip, Clock, Compass, Sparkles, Wand2, ArrowRight } from 'lucide-react';
+import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Trash2, Package, AlertCircle, Mic, Send, MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
@@ -22,10 +22,6 @@ import ImageViewer from './ImageViewer';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
-
-const ROAS_DATA: { name: string; Spend: number; Revenue: number }[] = [];
-const SOURCE_DATA: { name: string; value: number; color: string }[] = [];
 
 interface MarketingDashboardProps {
   orders: Order[];
@@ -310,7 +306,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
         <div>
           <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.25em] block mb-1">Pallywear CRM Portal</span>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Marketing & Accounts Overview</h2>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Orders & Lead Management</h2>
         </div>
         <div className="flex items-center gap-2.5">
           <button
@@ -341,129 +337,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         onUpdateOrder={onUpdateOrder}
         onCreateOrder={onCreateOrder}
       />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Ad Spend */}
-        <div className="bg-gray-50/60 backdrop-blur-md border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
-          <div className="flex justify-between items-center">
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Ad Spend</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
-              <TrendingUp size={14} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-gray-900">—</span>
-          </div>
-        </div>
-
-        {/* Impressions */}
-        <div className="bg-gray-50/60 backdrop-blur-md border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
-          <div className="flex justify-between items-center">
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Impressions</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
-              <Compass size={14} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-gray-900">—</span>
-          </div>
-        </div>
-
-        {/* Conversion Rate */}
-        <div className="bg-gray-50/60 backdrop-blur-md border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
-          <div className="flex justify-between items-center">
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Conversion Rate</span>
-            <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shadow-xs">
-              <Activity size={14} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-green-600">—</span>
-          </div>
-        </div>
-
-        {/* Active Campaigns */}
-        <div className="bg-gray-50/60 backdrop-blur-md border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col gap-2 relative overflow-hidden transition-all hover:scale-[1.01]">
-          <div className="flex justify-between items-center">
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Active Campaigns</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
-              <Globe size={14} />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-black tracking-tight text-gray-900">—</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Middle Row Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Campaign ROAS Timeline */}
-        <div className="lg:col-span-2 bg-white border border-gray-100 rounded-[2rem] p-6 shadow-xs space-y-4">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-            <h4 className="text-[11px] font-black text-gray-800 uppercase tracking-widest">Campaign ROAS Timeline</h4>
-            <span className="text-[9px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-xl">Last 30 Days</span>
-          </div>
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ROAS_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="roasGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                <Area type="monotone" dataKey="Revenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#roasGrad)" />
-                <Area type="monotone" dataKey="Spend" stroke="#ec4899" strokeWidth={2} fill="none" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Channel Source Breakdown Donut Chart */}
-        <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-xs flex flex-col justify-between space-y-4">
-          <div className="border-b border-gray-100 pb-3">
-            <h4 className="text-[11px] font-black text-gray-800 uppercase tracking-widest">Channel Source Breakdown</h4>
-          </div>
-          
-          <div className="h-32 w-full flex items-center justify-center relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={SOURCE_DATA}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={45}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {SOURCE_DATA.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e2e8f0' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute flex flex-col items-center">
-              <span className="text-sm font-black text-gray-800">4.1%</span>
-              <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Conv Rate</span>
-            </div>
-          </div>
-
-          <div className="flex justify-center flex-wrap gap-x-3 gap-y-1 text-[9px] font-black uppercase text-gray-400 tracking-wider">
-            {SOURCE_DATA.map((s, idx) => (
-              <div key={idx} className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} /> {s.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Tabs Filter Bar */}
       <div className="flex items-center gap-2 p-1 bg-gray-100 border border-gray-250 rounded-2xl w-fit">

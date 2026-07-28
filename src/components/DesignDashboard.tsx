@@ -614,9 +614,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       {/* Primary Communication Channel Navigations (Removed Staff channels) */}
 
 
-      {/* Design Project Queue (Mockup View) */}
+      {/* Design Project Queue — Live Orders */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
-        <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-4">Design Project Queue</h4>
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Design Project Queue</h4>
+          <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-xl">
+            {getFilteredItems().length} Project{getFilteredItems().length !== 1 ? 's' : ''}
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead>
@@ -628,9 +633,65 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              <tr>
-                <td colSpan={4} className="px-5 py-8 text-center text-gray-400 text-xs">No design projects in queue yet.</td>
-              </tr>
+              {getFilteredItems().length > 0 ? (
+                getFilteredItems().map((item, idx) => {
+                  const isSelected = selectedOrder?.id === item.id;
+                  const isClaimedByMe = item.assignedDesigner.toLowerCase().includes(designerName.toLowerCase());
+                  const isUnclaimed = !item.assignedDesigner || item.assignedDesigner === 'Unassigned' || item.assignedDesigner === 'Designer assigned' || item.assignedDesigner === '';
+
+                  let statusLabel = '';
+                  let statusClass = '';
+                  if (item.isCompleted) {
+                    statusLabel = '✓ Completed';
+                    statusClass = 'bg-green-50 text-green-700 border-green-200';
+                  } else if (item.isHold) {
+                    statusLabel = '⏸ On Hold';
+                    statusClass = 'bg-orange-50 text-orange-700 border-orange-200';
+                  } else if (isUnclaimed) {
+                    statusLabel = '⚠ Open';
+                    statusClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                  } else if (isClaimedByMe) {
+                    statusLabel = '🔒 In Progress';
+                    statusClass = 'bg-blue-50 text-blue-700 border-blue-200';
+                  } else {
+                    statusLabel = '🔒 Claimed';
+                    statusClass = 'bg-slate-50 text-slate-600 border-slate-200';
+                  }
+
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => handleOpenWorkspace(item)}
+                      className={`cursor-pointer transition-all ${isSelected ? 'bg-purple-50/60 border-l-4 border-l-purple-500' : 'hover:bg-gray-50/60'}`}
+                    >
+                      <td className="px-5 py-3">
+                        <span className="font-black text-gray-500 text-sm">#{idx + 1}</span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-black text-gray-800 text-xs">{item.customerName}</span>
+                          <span className="font-mono text-[9px] text-brand-primary font-bold">#{item.id.slice(-8)}</span>
+                          <span className="text-[9px] text-gray-400 font-semibold">{getDisplayCategory(item as any)}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`text-xs font-bold ${isClaimedByMe ? 'text-green-700' : isUnclaimed ? 'text-amber-600 italic' : 'text-gray-600'}`}>
+                          {isUnclaimed ? 'Unassigned' : item.assignedDesigner}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-5 py-8 text-center text-gray-400 text-xs">No design projects in queue yet.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
