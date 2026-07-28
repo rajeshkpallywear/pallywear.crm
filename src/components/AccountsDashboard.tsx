@@ -297,7 +297,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                     <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)}</h4>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                    <button
+                      onClick={() => setSelectedHubOrder(selectedOrder)}
+                      className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer shadow-xs border border-indigo-150 mr-2"
+                      title="Click to open full size page for this order"
+                    >
+                      <ExternalLink size={14} />
+                      View Full Size Order
+                    </button>
+                    <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider">
                       Status: {selectedOrder.status}
                     </span>
                   </div>

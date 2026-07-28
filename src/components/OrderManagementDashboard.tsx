@@ -29,7 +29,8 @@ import {
   Check,
   Clock,
   AlertCircle,
-  X
+  X,
+  Truck
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
@@ -38,6 +39,7 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
 import Logo from './Logo';
+import { getApiBaseUrl } from '../lib/apiConfig';
 
 export interface ChatMessage {
   id: string;
@@ -58,11 +60,38 @@ interface OrderManagementDashboardProps {
 
 export default function OrderManagementDashboard({ orders, inventory = [], onUpdateOrder, onDeleteOrder, isAdmin }: OrderManagementDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed' | 'vendors'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [vendorExpenses, setVendorExpenses] = useState<any[]>([]);
+  const [registeredVendors, setRegisteredVendors] = useState<any[]>([]);
+
+  const fetchVendorsAndExpenses = async () => {
+    try {
+      const base = getApiBaseUrl();
+      const resExp = await fetch(`${base}/api/expenses?type=vendor`);
+      const dataExp = await resExp.json();
+      if (dataExp.success) {
+        setVendorExpenses(dataExp.expenses || []);
+      }
+
+      const resUsers = await fetch(`${base}/api/users`);
+      const dataUsers = await resUsers.json();
+      if (Array.isArray(dataUsers)) {
+        const filtered = dataUsers.filter((u: any) => u.role === 'vendor' || u.role?.toLowerCase() === 'vendor');
+        setRegisteredVendors(filtered);
+      }
+    } catch (e) {
+      console.error('Failed to fetch vendors/expenses:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchVendorsAndExpenses();
+  }, []);
 
   // Filter lists based on selected tabs
   const filteredOrders = orders.filter(o => {
@@ -80,6 +109,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
     if (selectedSection === 'process') {
       return o.status === OrderStatus.PRODUCTION;
+    }
+    if (selectedSection === 'vendors') {
+      return o.status === OrderStatus.ORDER_MANAGEMENT;
     }
     // 'recent' shows Order Management active queue
     return o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
@@ -113,6 +145,106 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     } catch (e: any) {
       console.error("Order Management process failed:", e);
       alert("Failed to share order.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleHoldOrder = async () => {
+    if (!selectedOrder || isProcessing) return;
+
+    if (selectedOrder.status === OrderStatus.HOLD) {
+      const newStatus = selectedOrder.previousStatus || OrderStatus.ORDER_MANAGEMENT;
+      if (window.confirm(`Release order back to ${newStatus}?`)) {
+        setIsProcessing(true);
+        try {
+          await onUpdateOrder(selectedOrder.id, {
+            status: newStatus,
+            previousStatus: undefined,
+            updatedAt: Date.now()
+          });
+          setSelectedOrder(prev => prev ? { ...prev, status: newStatus, previousStatus: undefined } : null);
+          alert("Order released.");
+        } catch (e) {
+          alert("Action failed.");
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+      return;
+    }
+
+    const reason = window.prompt("Enter Hold Reason:");
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert("Hold reason is mandatory.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newNote = `[HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
+      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${newNote}` : newNote;
+
+      await onUpdateOrder(selectedOrder.id, {
+        status: OrderStatus.HOLD,
+        holdReason: reason.trim(),
+        previousStatus: selectedOrder.status,
+        notes: updatedNotes,
+        updatedAt: Date.now()
+      });
+      setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason.trim(), previousStatus: selectedOrder.status, notes: updatedNotes } : null);
+      alert("Order put on HOLD.");
+    } catch (e) {
+      alert("Action failed.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAssignToVendor = async (vendorName: string, amount: number, notesText: string) => {
+    if (!selectedOrder || isProcessing) return;
+    if (!vendorName) {
+      alert("Please select a vendor.");
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/api/expenses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'vendor',
+          vendorName: vendorName,
+          productName: `${getDisplayCategory(selectedOrder)} (Order #${selectedOrder.id.slice(-6)})`,
+          qty: String(selectedOrder.quantity || 1),
+          amount: amount,
+          notes: notesText || `Assigned order #${selectedOrder.id.slice(-6)} to vendor ${vendorName}`,
+          date: new Date().toISOString().split('T')[0]
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        await onUpdateOrder(selectedOrder.id, {
+          status: OrderStatus.PRODUCTION,
+          notes: selectedOrder.notes 
+            ? `${selectedOrder.notes}\n[VENDOR DISPATCH] Assigned to vendor: ${vendorName} with payout ₹${amount}`
+            : `[VENDOR DISPATCH] Assigned to vendor: ${vendorName} with payout ₹${amount}`,
+          updatedAt: Date.now()
+        });
+        
+        alert(`Order successfully dispatched to vendor: ${vendorName}!`);
+        setSelectedOrder(null);
+        fetchVendorsAndExpenses();
+      } else {
+        alert("Failed to create vendor purchase order.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error dispatching order to vendor.");
     } finally {
       setIsProcessing(false);
     }
@@ -449,8 +581,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           { key: 'recent', label: '⏳ Live OM Queue', count: recentOrdersCount },
           { key: 'process', label: '⚙️ In Production', count: processOrdersCount },
           { key: 'hold', label: '⏸ On Hold', count: holdOrdersCount },
-          { key: 'completed', label: '✓ Completed / Shipped', count: completedOrdersCount }
-        ] as const).map(({ key, label, count }) => (
+          { key: 'completed', label: '✓ Completed / Shipped', count: completedOrdersCount },
+          { key: 'vendors', label: '🤝 Vendor Dispatch', count: vendorExpenses.length }
+        ] as any[]).map(({ key, label, count }) => (
           <button
             key={key}
             onClick={() => { setSelectedSection(key); setSelectedOrder(null); }}
@@ -692,23 +825,69 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                   )}
                 </div>
 
-                {/* Communication drawer triggers */}
-                <div className="flex gap-2 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={() => setIsMsgSidebarOpen(true)}
-                    className="flex-1 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 text-xs cursor-pointer border-none"
-                  >
-                    <MessageSquare size={14} />
-                    <span>Chat Digitizer</span>
-                  </button>
-                  <button
-                    onClick={() => setIsDesignMsgSidebarOpen(true)}
-                    className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 text-xs cursor-pointer border-none"
-                  >
-                    <Palette size={14} />
-                    <span>Chat Designer</span>
-                  </button>
-                </div>
+                {/* Vendor Assignment Box */}
+                {selectedSection === 'vendors' && (
+                  <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 text-left space-y-4">
+                    <h5 className="text-[11px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-1.5">
+                      <Truck size={14} />
+                      Vendor Order Dispatch Desk
+                    </h5>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Select Vendor</label>
+                        <select 
+                          id="vendor_select"
+                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-indigo-500 cursor-pointer"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>-- Choose Registered Vendor --</option>
+                          {registeredVendors.map(vendor => (
+                            <option key={vendor.id} value={vendor.name}>{vendor.name} ({vendor.email})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Contract Amount (INR)</label>
+                        <input
+                          id="vendor_amount"
+                          type="number"
+                          defaultValue={selectedOrder.totalPrice || 0}
+                          placeholder="Payout amount"
+                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Production Instructions / Specs</label>
+                      <textarea
+                        id="vendor_instructions"
+                        rows={3}
+                        placeholder="Write colors, patterns, material or pocket details..."
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-indigo-500 resize-none"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const sel = document.getElementById('vendor_select') as HTMLSelectElement;
+                        const amt = document.getElementById('vendor_amount') as HTMLInputElement;
+                        const inst = document.getElementById('vendor_instructions') as HTMLTextAreaElement;
+                        if (!sel || !sel.value) {
+                          alert("Please select a vendor first!");
+                          return;
+                        }
+                        handleAssignToVendor(sel.value, Number(amt?.value || 0), inst?.value || '');
+                      }}
+                      disabled={isProcessing}
+                      className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
+                    >
+                      {isProcessing ? 'Dispatching...' : 'Assign & Dispatch to Vendor'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Action Footer */}
@@ -716,11 +895,31 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                 <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex justify-end gap-3">
                   <button
                     disabled={isProcessing}
+                    onClick={handleHoldOrder}
+                    className="px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-red-200"
+                  >
+                    <AlertCircle size={14} />
+                    Hold Order
+                  </button>
+                  <button
+                    disabled={isProcessing}
                     onClick={handleProcessOrder}
-                    className="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer border-none"
+                    className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer border-none"
                   >
                     {isProcessing ? 'Processing...' : 'Send to Production'}
                     <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+
+              {selectedSection === 'hold' && selectedOrder.status === OrderStatus.HOLD && (
+                <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex justify-end">
+                  <button
+                    disabled={isProcessing}
+                    onClick={handleHoldOrder}
+                    className="px-6 py-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-green-200"
+                  >
+                    Release Hold
                   </button>
                 </div>
               )}
