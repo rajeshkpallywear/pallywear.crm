@@ -55,8 +55,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'staff' for Staff/Sales desk pipeline, 'order_management' for Backoffice pipeline
   const [activeChannel, setActiveChannel] = useState<'staff' | 'order_management'>('order_management');
 
-  // Subsection filters: 'recent', 'process', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
+  // Subsection filters: 'all', 'recent', 'process', 'hold', 'completed'
+  const [selectedSection, setSelectedSection] = useState<'all' | 'recent' | 'process' | 'hold' | 'completed'>('all');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -279,6 +279,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } else if (selectedSection === 'recent') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold);
     }
+    // 'all' shows everything in the base list (no extra filter)
 
     // Search term matching
     return baseList.filter(item =>
@@ -295,8 +296,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     const processCount = baseList.filter(item => !isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
+    const totalCount = baseList.length;
 
-    return { recentCount, processCount, holdCount, completedCount };
+    return { recentCount, processCount, holdCount, completedCount, totalCount };
   };
 
   const handleClaimItem = async (item: any) => {
@@ -628,8 +630,32 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Design Project Queue</h4>
           <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-xl">
-            {getFilteredItems().length} Project{getFilteredItems().length !== 1 ? 's' : ''}
+            {omOrderItems.length} Project{omOrderItems.length !== 1 ? 's' : ''}
           </span>
+        </div>
+
+        {/* Section Filter Pills */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {([
+            { key: 'all', label: '⬤ All Orders', count: activeStats.totalCount },
+            { key: 'recent', label: '⚡ New / Unclaimed', count: activeStats.recentCount },
+            { key: 'process', label: '🔒 In Progress', count: activeStats.processCount },
+            { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount },
+            { key: 'completed', label: '✓ Done', count: activeStats.completedCount },
+          ] as const).map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setSelectedSection(key)}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border",
+                selectedSection === key
+                  ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                  : "bg-gray-50 text-gray-500 border-gray-200 hover:border-brand-primary/40"
+              )}
+            >
+              {label} ({count})
+            </button>
+          ))}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs whitespace-nowrap">
