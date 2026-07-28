@@ -247,7 +247,12 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
 
   // Handle Receiving complete production orders into inventory stock
   const handleReceiveProductionOrder = async (order: Order) => {
-    if (!confirm(`Verify and accept Order #${order.id} (${order.quantity} qty) into inventory stock?`)) return;
+    const whyReason = window.prompt("Reason for receiving into inventory (Why):", "Production intake verification completed");
+    if (whyReason === null) return;
+    if (!whyReason.trim()) {
+      alert("Reason is required to receive order.");
+      return;
+    }
 
     try {
       // 1. Record Inward movement
@@ -257,15 +262,15 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         date: new Date().toISOString().split('T')[0],
         product: order.category,
         productType: order.details || 'Production Finished Goods',
-        sleeve: 'full',
+        sleeve: 'none',
         pocket: 'no',
-        transportName: 'Internal Factory Dispatch',
+        transportName: whyReason.trim(),
         transportNumber: 'IN-FACTORY',
         quantity: order.quantity
       });
 
       // 2. Mark order as received by updating notes/status
-      const receiptNotes = `[INVENTORY] ${new Date().toLocaleString()}: Stock accepted into inventory by manager.`;
+      const receiptNotes = `[INVENTORY] ${new Date().toLocaleString()}: Stock accepted into inventory by manager. Reason: ${whyReason.trim()}`;
       await updateOrder(order.id, {
         notes: order.notes ? `${order.notes}\n${receiptNotes}` : receiptNotes,
         updatedAt: Date.now()
@@ -292,7 +297,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 text-left">
       {/* Sub-Sidebar Navigation */}
-      <div className="lg:col-span-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-5">
+      <div className="lg:col-span-1 lg:order-last bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-5">
         <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
           <Layers className="text-brand-primary" size={18} />
           <h3 className="text-xs font-black uppercase text-gray-500 tracking-widest">Inventory Modules</h3>
@@ -386,7 +391,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
       </div>
 
       {/* Main Workspace Detail Panel */}
-      <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-6">
+      <div className="lg:col-span-3 lg:order-first bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-6">
         
         {/* VIEW 1: Stock Overview */}
         {activeSubView === 'products' && (
@@ -439,8 +444,6 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                     <th className="px-5 py-3.5">Product Name</th>
                     <th className="px-5 py-3.5">Type/Material</th>
-                    <th className="px-5 py-3.5">Sleeve Option</th>
-                    <th className="px-5 py-3.5">Pocket</th>
                     <th className="px-5 py-3.5 text-right">Available Qty</th>
                   </tr>
                 </thead>
@@ -452,8 +455,6 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         {prod.name}
                       </td>
                       <td className="px-5 py-3.5 text-slate-500 font-semibold">{prod.type || 'Standard'}</td>
-                      <td className="px-5 py-3.5 capitalize font-mono text-[10px]">{prod.sleeve || 'None'}</td>
-                      <td className="px-5 py-3.5 capitalize text-[10px] font-mono">{prod.pocket || 'No'}</td>
                       <td className="px-5 py-3.5 text-right font-black text-xs">
                         <span className={cn(
                           "px-2.5 py-1 rounded-full",
@@ -644,40 +645,16 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Sleeve Options</label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.sleeve}
-                      onChange={e => setInwardForm({ ...inwardForm, sleeve: e.target.value })}
-                    >
-                      {SLEEVE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Pocket</label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.pocket}
-                      onChange={e => setInwardForm({ ...inwardForm, pocket: e.target.value })}
-                    >
-                      {POCKET_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.quantity}
-                      onChange={e => setInwardForm({ ...inwardForm, quantity: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                    value={inwardForm.quantity}
+                    onChange={e => setInwardForm({ ...inwardForm, quantity: parseInt(e.target.value) || 1 })}
+                  />
                 </div>
 
                 <button
@@ -743,40 +720,16 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Sleeve Options</label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.sleeve}
-                      onChange={e => setOutwardForm({ ...outwardForm, sleeve: e.target.value })}
-                    >
-                      {SLEEVE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Pocket</label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.pocket}
-                      onChange={e => setOutwardForm({ ...outwardForm, pocket: e.target.value })}
-                    >
-                      {POCKET_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.quantity}
-                      onChange={e => setOutwardForm({ ...outwardForm, quantity: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                    value={outwardForm.quantity}
+                    onChange={e => setOutwardForm({ ...outwardForm, quantity: parseInt(e.target.value) || 1 })}
+                  />
                 </div>
 
                 <button
