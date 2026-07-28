@@ -302,10 +302,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           assignedDesigner: designerName,
           updatedAt: Date.now()
         });
+        // Switch to 'process' tab so the claimed order stays visible
+        setSelectedSection('process');
         alert(`Success: Order #${item.id.slice(-8)} successfully assigned to you!`);
         const fullOrder = orders.find(o => o.id === item.id);
         if (fullOrder) {
-          setSelectedOrder(fullOrder);
+          setSelectedOrder({ ...fullOrder, assignedDesigner: designerName });
           // Initialize file arrays
           setDesignFiles(fullOrder.designAttachments || []);
           setMachineFiles(fullOrder.machineFiles || []);
@@ -331,6 +333,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         localStorage.setItem('pallywear_conversations', JSON.stringify(updated));
         loadStaffConversations();
         setSelectedItemIdForStaffChat(item.id);
+        // Switch to process tab for consultations too
+        setSelectedSection('process');
         alert(`Success: Consultation claimed by you! Opening Staff dialogue panel...`);
         setIsStaffChatOpen(true);
       }
