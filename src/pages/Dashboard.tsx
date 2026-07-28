@@ -6,7 +6,7 @@ import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
   ChevronLeft, ChevronRight, Menu, Plus, MessageSquare, Calendar as CalendarIcon,
-  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown, Monitor, Smartphone
+  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown, Monitor, Smartphone, CreditCard
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -378,6 +378,23 @@ export default function Dashboard() {
                 >
                   <ClipboardCheck className="w-4 h-4 flex-shrink-0 text-brand-primary" />
                   {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Orders</span>}
+                </button>
+
+                {/* Expenses Hub */}
+                <button
+                  onClick={() => {
+                    selectTab('dashboard');
+                    setAccountsSidebarView('expenses-hub' as any);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all mt-1",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
+                    activeTab === 'dashboard' && accountsSidebarView === 'expenses-hub' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
+                  )}
+                  title={isSidebarCollapsed ? "Expenses Hub" : ""}
+                >
+                  <CreditCard className="w-4 h-4 flex-shrink-0 text-brand-primary" />
+                  {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest font-black">Expenses Hub</span>}
                 </button>
               </div>
             </div>

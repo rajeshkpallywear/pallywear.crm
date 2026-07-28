@@ -13,8 +13,9 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import VendorExpensePage from './VendorExpensePage';
 import OtherExpensePage from './OtherExpensePage';
+import ExpensesHub from './ExpensesHub';
 
-type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue';
+type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue' | 'expenses-hub';
 
 interface AccountsDashboardProps {
   orders: Order[];
@@ -146,6 +147,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     if (sidebarView === 'salary') return <OtherExpensePage user={user} expenseType="salary" title="Salary" description="Monthly salary payments to staff" icon={<Users size={20}/>} color="#0ea5e9" extraFields="salary" />;
     if (sidebarView === 'delivery-expense') return <OtherExpensePage user={user} expenseType="delivery" title="Delivery Expense" description="Courier and logistics costs" icon={<Truck size={20}/>} color="#f59e0b" extraFields="delivery" />;
     if (sidebarView === 'revenue') return <OtherExpensePage user={user} expenseType="revenue" title="Revenue" description="Income and revenue records" icon={<IndianRupee size={20}/>} color="#16a34a" extraFields="revenue" />;
+    if (sidebarView === 'expenses-hub') return <ExpensesHub user={user} />;
     return null;
   };
 
