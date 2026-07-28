@@ -764,6 +764,10 @@ export default function Dashboard() {
                 <TelecallerDashboard user={user} />
               ) : user?.role === UserRole.VENDOR || user?.role === 'vendor' ? (
                 <VendorDashboard user={user} />
+              ) : user?.role === UserRole.INVENTORY_MANAGEMENT || user?.role === 'inventory_management' ? (
+                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-left">
+                  <InventoryManagement userRole={user?.role} />
+                </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

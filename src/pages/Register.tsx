@@ -197,6 +197,7 @@ export default function Register() {
               <option value={UserRole.DELIVERY}>Delivery</option>
               <option value={UserRole.TELECALLER}>Telecaller</option>
               <option value={UserRole.VENDOR}>Vendor</option>
+              <option value={UserRole.INVENTORY_MANAGEMENT}>Inventory Management</option>
               <option value={UserRole.ADMIN}>Administrator</option>
             </select>
           </div>

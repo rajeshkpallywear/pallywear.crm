@@ -84,7 +84,8 @@ export enum UserRole {
   DESIGNER = 'designer',
   DIGITIZER = 'digitizer',
   TELECALLER = 'telecaller',
-  VENDOR = 'vendor'
+  VENDOR = 'vendor',
+  INVENTORY_MANAGEMENT = 'inventory_management'
 }
 
 export interface UserProfile {

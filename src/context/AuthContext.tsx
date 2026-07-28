@@ -63,6 +63,7 @@ const getRoleFromEmail = (email: string): UserRole => {
   if (lower.startsWith('del') || lower.startsWith('delyvery')) return UserRole.DELIVERY;
   if (lower.startsWith('tele')) return UserRole.TELECALLER;
   if (lower.startsWith('vendor') || lower.startsWith('supp')) return UserRole.VENDOR;
+  if (lower.startsWith('inventory')) return UserRole.INVENTORY_MANAGEMENT;
   return UserRole.MARKETING;
 };
 
