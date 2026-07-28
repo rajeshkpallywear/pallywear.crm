@@ -63,7 +63,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
   
   // Inward/Outward sub-tabs inside logs
   const [movementTab, setMovementTab] = useState<'logs' | 'inward' | 'outward'>('logs');
+  const [productionTab, setProductionTab] = useState<'intake' | 'delivery' | 'shipped'>('intake');
   const [searchTerm, setSearchTerm] = useState('');
+  const [shipForms, setShipForms] = useState<Record<string, { courierName: string; trackingNumber: string }>>({});
 
   // Channel upload listings state
   const [listings, setListings] = useState<ChannelListing[]>([]);
@@ -283,6 +285,46 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
     }
   };
 
+  const handleShipOrder = async (order: Order, courierName: string, trackingNumber: string) => {
+    if (!courierName.trim() || !trackingNumber.trim()) {
+      alert("Please enter both Courier Partner and Tracking Number.");
+      return;
+    }
+
+    try {
+      await addInventoryMovement({
+        type: 'outward',
+        customer: order.customerInfo?.name || 'Retail Client',
+        date: new Date().toISOString().split('T')[0],
+        product: order.category,
+        productType: order.details?.productType || 'Finished Goods Delivery',
+        sleeve: 'none',
+        pocket: 'no',
+        transportName: courierName.trim(),
+        transportNumber: trackingNumber.trim(),
+        quantity: order.quantity
+      });
+
+      const shipNotes = `[DELIVERY] ${new Date().toLocaleString()}: Goods dispatched via ${courierName.trim()}. Tracking ID: ${trackingNumber.trim()}`;
+      await updateOrder(order.id, {
+        status: OrderStatus.DELIVERED,
+        notes: order.notes ? `${order.notes}\n${shipNotes}` : shipNotes,
+        details: {
+          ...(order.details || {}),
+          courierName: courierName.trim(),
+          trackingNumber: trackingNumber.trim(),
+          shippedAt: Date.now()
+        },
+        updatedAt: Date.now()
+      });
+
+      alert(`Success: Order #${order.id} shipped and marked as Delivered.`);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to ship order.');
+    }
+  };
+
   const filteredInventory = inventory.filter(item =>
     (item.vendor || item.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.productType.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -297,7 +339,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 text-left">
       {/* Sub-Sidebar Navigation */}
-      <div className="lg:col-span-1 lg:order-last bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-5">
+      <div className="lg:col-span-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-5">
         <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
           <Layers className="text-brand-primary" size={18} />
           <h3 className="text-xs font-black uppercase text-gray-500 tracking-widest">Inventory Modules</h3>
@@ -391,7 +433,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
       </div>
 
       {/* Main Workspace Detail Panel */}
-      <div className="lg:col-span-3 lg:order-first bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-6">
+      <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-6">
         
         {/* VIEW 1: Stock Overview */}
         {activeSubView === 'products' && (
@@ -919,55 +961,193 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         {/* VIEW 4: Completed Production Orders Queue */}
         {activeSubView === 'production_orders' && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-black text-slate-950 tracking-tight flex items-center gap-2">
-                <CheckCircle2 className="text-emerald-600" size={20} />
-                Finished Production Intake Queue
-              </h2>
-              <p className="text-gray-500 text-xs mt-0.5">Orders currently completed in production that are ready to be dispatched or checked-in to inventory.</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-150 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-950 tracking-tight flex items-center gap-2">
+                  <CheckCircle2 className="text-emerald-600" size={20} />
+                  Production & Delivery Management
+                </h2>
+                <p className="text-gray-500 text-xs mt-0.5">Control finished goods check-in and delivery tracking logs.</p>
+              </div>
+
+              {/* Sub-tabs to toggle between intake, delivery, and shipped */}
+              <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                {([
+                  { key: 'intake', label: '📥 Intake Queue' },
+                  { key: 'delivery', label: '🚚 Delivery & Courier' },
+                  { key: 'shipped', label: '✓ Shipped Archive' }
+                ] as const).map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => setProductionTab(t.key)}
+                    className={cn(
+                      "px-3.5 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none",
+                      productionTab === t.key ? "bg-white text-slate-900 shadow-xs" : "text-gray-500 hover:text-slate-900"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-gray-150">
-              <table className="w-full text-left text-xs whitespace-nowrap">
-                <thead>
-                  <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
-                    <th className="px-5 py-3.5">Order ID</th>
-                    <th className="px-5 py-3.5">Customer Name</th>
-                    <th className="px-5 py-3.5">Garment Category</th>
-                    <th className="px-5 py-3.5 text-center">Quantity</th>
-                    <th className="px-5 py-3.5 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                  {productionOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-slate-50/50">
-                      <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
-                      <td className="px-5 py-3.5 font-bold text-slate-800">
-                        <div>
-                          <span>{order.customerName}</span>
-                          <span className="text-[9px] block text-gray-400 font-normal">{order.customerCompany || 'Direct Retail'}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category}</td>
-                      <td className="px-5 py-3.5 text-center font-black text-slate-900">{order.quantity} Pcs</td>
-                      <td className="px-5 py-3.5 text-center">
-                        <button
-                          onClick={() => handleReceiveProductionOrder(order)}
-                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors"
-                        >
-                          <ArrowRight size={10} /> Receive into Inventory
-                        </button>
-                      </td>
+            {productionTab === 'intake' && (
+              <div className="overflow-x-auto rounded-2xl border border-gray-150">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                      <th className="px-5 py-3.5">Order ID</th>
+                      <th className="px-5 py-3.5">Customer Name</th>
+                      <th className="px-5 py-3.5">Garment Category</th>
+                      <th className="px-5 py-3.5 text-center">Quantity</th>
+                      <th className="px-5 py-3.5 text-center">Action</th>
                     </tr>
-                  ))}
-                  {productionOrders.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-gray-400 italic">No completed orders waiting in queue.</td>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
+                    {orders.filter(o => o.status === OrderStatus.PRODUCTION).map(order => (
+                      <tr key={order.id} className="hover:bg-slate-50/50">
+                        <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
+                        <td className="px-5 py-3.5 font-bold text-slate-800">
+                          <div>
+                            <span>{order.customerInfo?.name}</span>
+                            <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category}</td>
+                        <td className="px-5 py-3.5 text-center font-black text-slate-900">{order.quantity} Pcs</td>
+                        <td className="px-5 py-3.5 text-center">
+                          <button
+                            onClick={() => handleReceiveProductionOrder(order)}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors"
+                          >
+                            <ArrowRight size={10} /> Receive into Inventory
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {orders.filter(o => o.status === OrderStatus.PRODUCTION).length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-400 italic">No completed orders waiting in production queue.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {productionTab === 'delivery' && (
+              <div className="overflow-x-auto rounded-2xl border border-gray-150">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                      <th className="px-5 py-3.5">Order ID</th>
+                      <th className="px-5 py-3.5">Customer Name</th>
+                      <th className="px-5 py-3.5">Garment Category</th>
+                      <th className="px-5 py-3.5">Courier Partner</th>
+                      <th className="px-5 py-3.5">Tracking Number</th>
+                      <th className="px-5 py-3.5 text-center">Action</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
+                    {orders.filter(o => o.status === OrderStatus.DELIVERY).map(order => {
+                      const currentForm = shipForms[order.id] || { courierName: '', trackingNumber: '' };
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50/50">
+                          <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
+                          <td className="px-5 py-3.5 font-bold text-slate-800">
+                            <div>
+                              <span>{order.customerInfo?.name}</span>
+                              <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category} ({order.quantity} Pcs)</td>
+                          <td className="px-5 py-3.5">
+                            <input
+                              type="text"
+                              placeholder="e.g. DHL Express"
+                              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:border-indigo-500 w-36"
+                              value={currentForm.courierName}
+                              onChange={e => setShipForms({
+                                ...shipForms,
+                                [order.id]: { ...currentForm, courierName: e.target.value }
+                              })}
+                            />
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <input
+                              type="text"
+                              placeholder="e.g. TRK123456789"
+                              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:border-indigo-500 w-44"
+                              value={currentForm.trackingNumber}
+                              onChange={e => setShipForms({
+                                ...shipForms,
+                                [order.id]: { ...currentForm, trackingNumber: e.target.value }
+                              })}
+                            />
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <button
+                              onClick={() => handleShipOrder(order, currentForm.courierName, currentForm.trackingNumber)}
+                              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors"
+                            >
+                              <Truck size={10} /> Ship Goods
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {orders.filter(o => o.status === OrderStatus.DELIVERY).length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-400 italic">No checked-in inventory orders ready for courier dispatch.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {productionTab === 'shipped' && (
+              <div className="overflow-x-auto rounded-2xl border border-gray-150">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                      <th className="px-5 py-3.5">Order ID</th>
+                      <th className="px-5 py-3.5">Customer Name</th>
+                      <th className="px-5 py-3.5">Garment Category</th>
+                      <th className="px-5 py-3.5">Courier Partner</th>
+                      <th className="px-5 py-3.5">Tracking Number</th>
+                      <th className="px-5 py-3.5 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
+                    {orders.filter(o => o.status === OrderStatus.DELIVERED).map(order => (
+                      <tr key={order.id} className="hover:bg-slate-50/50">
+                        <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
+                        <td className="px-5 py-3.5 font-bold text-slate-800">
+                          <div>
+                            <span>{order.customerInfo?.name}</span>
+                            <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category} ({order.quantity} Pcs)</td>
+                        <td className="px-5 py-3.5 text-slate-500 font-semibold">{order.details?.courierName || 'Standard Post'}</td>
+                        <td className="px-5 py-3.5 font-mono text-slate-600 font-bold">{order.details?.trackingNumber || 'LOCAL-DELIVERY'}</td>
+                        <td className="px-5 py-3.5 text-center">
+                          <span className="px-2.5 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[9px] font-black uppercase tracking-wider">
+                            Delivered
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {orders.filter(o => o.status === OrderStatus.DELIVERED).length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-400 italic">No shipped/delivered orders found in history.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
