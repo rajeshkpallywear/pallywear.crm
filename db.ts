@@ -284,6 +284,22 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // Create channel_listings table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`channel_listings\` (
+        \`id\` varchar(50) NOT NULL,
+        \`platform\` varchar(50) NOT NULL,
+        \`productName\` varchar(200) NOT NULL,
+        \`sku\` varchar(100) DEFAULT NULL,
+        \`price\` decimal(12,2) NOT NULL DEFAULT 0.00,
+        \`stock\` int NOT NULL DEFAULT 0,
+        \`details\` text DEFAULT NULL,
+        \`image\` LONGTEXT DEFAULT NULL,
+        \`createdAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // 8. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [

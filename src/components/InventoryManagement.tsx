@@ -1,20 +1,107 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Package, Plus, Trash2, ArrowDownLeft, ArrowUpRight, Search, Calendar, User, Truck, CheckCircle, Shirt, Scissors } from 'lucide-react';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Package,
+  Plus,
+  Trash2,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Search,
+  Calendar,
+  User,
+  Truck,
+  CheckCircle,
+  Shirt,
+  Scissors,
+  Layers,
+  ChevronRight,
+  Upload,
+  Globe,
+  ShoppingCart,
+  Database,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  X
+} from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
-import { InventoryMovement } from '../types';
+import { InventoryMovement, Order, OrderStatus } from '../types';
 import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS } from '../constants';
 import { cn } from '../lib/utils';
+import FileUpload from './FileUpload';
+import { getApiBaseUrl } from '../lib/apiConfig';
+
+const API_BASE = getApiBaseUrl() + '/api';
 
 interface InventoryManagementProps {
   userRole?: string;
 }
 
+interface ChannelListing {
+  id: string;
+  platform: string;
+  productName: string;
+  sku: string;
+  price: number;
+  stock: number;
+  details?: string;
+  image?: string;
+  createdAt: number;
+}
+
 export default function InventoryManagement({ userRole }: InventoryManagementProps) {
   const isStaff = userRole === 'staff';
-  const { inventory, addInventoryMovement, deleteInventoryMovement } = useLeads();
-  const [activeTab, setActiveTab] = useState<'products' | 'list' | 'inward' | 'outward'>(isStaff ? 'products' : 'products');
+  const { inventory, orders, addInventoryMovement, deleteInventoryMovement, updateOrder } = useLeads();
+  
+  // Sidebar Sub-View tabs
+  const [activeSubView, setActiveSubView] = useState<'products' | 'movement_logs' | 'amazon' | 'flipkart' | 'meesho' | 'production_orders'>('products');
+  
+  // Inward/Outward sub-tabs inside logs
+  const [movementTab, setMovementTab] = useState<'logs' | 'inward' | 'outward'>('logs');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Channel upload listings state
+  const [listings, setListings] = useState<ChannelListing[]>([]);
+  const [loadingListings, setLoadingListings] = useState(false);
+  const [showListingForm, setShowListingForm] = useState(false);
+  const [listingFile, setListingFile] = useState<string>('');
+  const [listingForm, setListingForm] = useState({
+    productName: '',
+    sku: '',
+    price: '',
+    stock: '',
+    details: ''
+  });
+
+  // Fetch channel listings when platform changes
+  const fetchChannelListings = async (platform: string) => {
+    setLoadingListings(true);
+    try {
+      const res = await fetch(`${API_BASE}/channel-listings?platform=${platform}`);
+      const data = await res.json();
+      if (data.success) {
+        setListings(data.listings || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch channel listings:', e);
+    } finally {
+      setLoadingListings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (['amazon', 'flipkart', 'meesho'].includes(activeSubView)) {
+      fetchChannelListings(activeSubView);
+      setShowListingForm(false);
+      setListingFile('');
+      setListingForm({ productName: '', sku: '', price: '', stock: '', details: '' });
+    }
+  }, [activeSubView]);
 
   // Derived product list from inventory movements
   const productStock = Object.values(inventory.reduce((acc: any, item) => {
@@ -80,15 +167,15 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
       transportNumber: '',
       quantity: 1
     });
-    setActiveTab('list');
-    alert('Inventory inward recorded.');
+    setMovementTab('logs');
+    alert('Inventory inward recorded successfully.');
   };
 
   const handleAddOutward = async (e: React.FormEvent) => {
     e.preventDefault();
     await addInventoryMovement({
       type: 'outward',
-      product: inwardForm.product, // Just using first category as default for outward too
+      product: inwardForm.product, // Default to selected category
       ...outwardForm
     });
     setOutwardForm({
@@ -100,8 +187,95 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
       sleeve: SLEEVE_OPTIONS[0],
       pocket: POCKET_OPTIONS[0]
     });
-    setActiveTab('list');
-    alert('Inventory outward recorded.');
+    setMovementTab('logs');
+    alert('Inventory outward recorded successfully.');
+  };
+
+  // Channel Listing Submit
+  const handleSaveListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!listingForm.productName || !listingForm.price) {
+      alert('Please fill out product name and price.');
+      return;
+    }
+
+    try {
+      const id = `listing-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+      const body = {
+        id,
+        platform: activeSubView,
+        productName: listingForm.productName,
+        sku: listingForm.sku,
+        price: parseFloat(listingForm.price) || 0,
+        stock: parseInt(listingForm.stock, 10) || 0,
+        details: listingForm.details,
+        image: listingFile || null
+      };
+
+      const res = await fetch(`${API_BASE}/channel-listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setListingForm({ productName: '', sku: '', price: '', stock: '', details: '' });
+        setListingFile('');
+        setShowListingForm(false);
+        fetchChannelListings(activeSubView);
+        alert('Listing details uploaded successfully.');
+      } else {
+        alert('Failed to upload listing.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error saving channel listing.');
+    }
+  };
+
+  // Delete Channel Listing
+  const handleDeleteListing = async (id: string) => {
+    if (!confirm('Delete this listing?')) return;
+    try {
+      await fetch(`${API_BASE}/channel-listings/${id}`, { method: 'DELETE' });
+      setListings(ls => ls.filter(l => l.id !== id));
+      alert('Listing deleted.');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Handle Receiving complete production orders into inventory stock
+  const handleReceiveProductionOrder = async (order: Order) => {
+    if (!confirm(`Verify and accept Order #${order.id} (${order.quantity} qty) into inventory stock?`)) return;
+
+    try {
+      // 1. Record Inward movement
+      await addInventoryMovement({
+        type: 'inward',
+        vendor: 'Production Factory Intake',
+        date: new Date().toISOString().split('T')[0],
+        product: order.category,
+        productType: order.details || 'Production Finished Goods',
+        sleeve: 'full',
+        pocket: 'no',
+        transportName: 'Internal Factory Dispatch',
+        transportNumber: 'IN-FACTORY',
+        quantity: order.quantity
+      });
+
+      // 2. Mark order as received by updating notes/status
+      const receiptNotes = `[INVENTORY] ${new Date().toLocaleString()}: Stock accepted into inventory by manager.`;
+      await updateOrder(order.id, {
+        notes: order.notes ? `${order.notes}\n${receiptNotes}` : receiptNotes,
+        updatedAt: Date.now()
+      });
+
+      alert(`Success: Completed order accepted into Inventory Stock. Inward ledger updated.`);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to receive order.');
+    }
   };
 
   const filteredInventory = inventory.filter(item =>
@@ -110,481 +284,740 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
     item.product.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Completed production orders (orders in PRODUCTION state or completed logs ready for delivery)
+  const productionOrders = orders.filter(o =>
+    [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            <Package className="text-brand-primary" size={24} />
-            Inventory Management
-          </h2>
-          <p className="text-sm text-gray-500 font-medium">Track inward and outward movements</p>
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 text-left">
+      {/* Sub-Sidebar Navigation */}
+      <div className="lg:col-span-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-5">
+        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+          <Layers className="text-brand-primary" size={18} />
+          <h3 className="text-xs font-black uppercase text-gray-500 tracking-widest">Inventory Modules</h3>
         </div>
-        {!isStaff && (
-          <div className="flex gap-2">
+
+        {/* Core Stock & Movement Links */}
+        <div className="space-y-1.5">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 block px-1 mb-1">Store Controls</span>
+          <button
+            onClick={() => setActiveSubView('products')}
+            className={cn(
+              "w-full text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between font-bold text-xs cursor-pointer",
+              activeSubView === 'products'
+                ? "bg-slate-900 text-white border-slate-900 shadow-md scale-[1.01]"
+                : "bg-white border-gray-100 text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span>📦</span>
+              <span>Stock Overview</span>
+            </div>
+            <ChevronRight size={12} className="opacity-50" />
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSubView('movement_logs');
+              setMovementTab('logs');
+            }}
+            className={cn(
+              "w-full text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between font-bold text-xs cursor-pointer",
+              activeSubView === 'movement_logs'
+                ? "bg-slate-900 text-white border-slate-900 shadow-md scale-[1.01]"
+                : "bg-white border-gray-100 text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span>⚖️</span>
+              <span>Inward / Outward Ledger</span>
+            </div>
+            <ChevronRight size={12} className="opacity-50" />
+          </button>
+        </div>
+
+        {/* E-Commerce sales channels */}
+        <div className="space-y-1.5 pt-2 border-t border-gray-50">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 block px-1 mb-1 font-mono">E-Commerce Uploads</span>
+          {[
+            { id: 'amazon', label: 'Amazon Store', icon: '🅰️', color: 'text-orange-500' },
+            { id: 'flipkart', label: 'Flipkart Store', icon: '🛒', color: 'text-blue-500' },
+            { id: 'meesho', label: 'Meesho Store', icon: '🛍️', color: 'text-pink-500' }
+          ].map(ch => (
             <button
-              onClick={() => setActiveTab('inward')}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition-all shadow-sm text-xs"
+              key={ch.id}
+              onClick={() => setActiveSubView(ch.id as any)}
+              className={cn(
+                "w-full text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between font-bold text-xs cursor-pointer",
+                activeSubView === ch.id
+                  ? "bg-[#0ea5e9] text-white border-[#0ea5e9] shadow-md scale-[1.01]"
+                  : "bg-white border-gray-100 text-gray-700 hover:border-gray-300"
+              )}
             >
-              <ArrowDownLeft size={16} />
-              Record Inward
+              <div className="flex items-center gap-2">
+                <span>{ch.icon}</span>
+                <span>{ch.label}</span>
+              </div>
+              <ChevronRight size={12} className="opacity-50" />
             </button>
-            <button
-              onClick={() => setActiveTab('outward')}
-              className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-sm text-xs"
-            >
-              <ArrowUpRight size={16} />
-              Record Outward
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
+
+        {/* Production Factory Dispatch Queue */}
+        <div className="space-y-1.5 pt-2 border-t border-gray-50">
+          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 block px-1 mb-1 font-mono">Operations</span>
+          <button
+            onClick={() => setActiveSubView('production_orders')}
+            className={cn(
+              "w-full text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between font-bold text-xs cursor-pointer",
+              activeSubView === 'production_orders'
+                ? "bg-emerald-800 text-white border-emerald-800 shadow-md scale-[1.01]"
+                : "bg-white border-gray-100 text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span>🏭</span>
+              <span>Production Orders ({productionOrders.length})</span>
+            </div>
+            <ChevronRight size={12} className="opacity-50" />
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
-        <div className="flex border-b border-gray-100 bg-[#f9f9f9]">
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'products' ? 'bg-white text-brand-primary border-t-2 border-brand-primary border-x border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            Manage Products
-          </button>
-          {!isStaff && (
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'list' ? 'bg-white text-blue-600 border-t-2 border-blue-600 border-x border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              Movement Logs
-            </button>
-          )}
-          {!isStaff && (
-            <>
-              <button
-                onClick={() => setActiveTab('inward')}
-                className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inward' ? 'bg-white text-green-700 border-t-2 border-green-600 border-x border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                Inward Form
-              </button>
-              <button
-                onClick={() => setActiveTab('outward')}
-                className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'outward' ? 'bg-white text-orange-700 border-t-2 border-orange-600 border-x border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                Outward Form
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="p-0">
-          {activeTab === 'products' ? (
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                {!isStaff ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setActiveTab('inward')}
-                      className="px-4 py-1.5 bg-brand-primary text-white rounded-lg text-xs font-bold shadow-sm hover:bg-brand-dark transition-colors uppercase flex items-center gap-2"
-                    >
-                      <Plus size={14} /> Add New Product
-                    </button>
-                    <select className="px-3 py-1.5 bg-white border border-gray-200 rounded text-xs outline-none">
-                      <option>Bulk actions</option>
-                    </select>
-                  </div>
-                ) : <div />}
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by Product Name..."
-                      className="pl-9 pr-4 py-1.5 bg-white border border-gray-200 rounded text-xs focus:ring-1 focus:ring-black outline-none w-64"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <button className="px-4 py-1.5 bg-blue-600 text-white rounded text-xs font-bold shadow-sm hover:bg-blue-700 transition-colors uppercase">Search</button>
-                  {!isStaff && (
-                    <button
-                      onClick={() => alert('Bulk upload feature coming soon! Please use the Record forms for now.')}
-                      className="px-4 py-1.5 bg-gray-100 text-gray-600 rounded text-xs font-bold shadow-sm hover:bg-gray-200 transition-colors uppercase border border-gray-200"
-                    >
-                      Bulk Upload
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#f9f9f9] border-b border-gray-100">
-                    <tr className="text-gray-500 font-bold text-[11px] uppercase tracking-wider">
-                      {!isStaff && (
-                        <th className="px-6 py-4 w-10">
-                          <input type="checkbox" className="rounded border-gray-300" />
-                        </th>
-                      )}
-                      <th className="px-6 py-4">Image</th>
-                      <th className="px-6 py-4">Product Name</th>
-                      <th className="px-6 py-4 text-center">Price</th>
-                      <th className="px-6 py-4 text-center">Available Product Stock</th>
-                      {!isStaff && <th className="px-6 py-4 text-center">POS Status</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {filteredProducts.map((prod, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                        {!isStaff && (
-                          <td className="px-6 py-4">
-                            <input type="checkbox" className="rounded border-gray-300" />
-                          </td>
-                        )}
-                        <td className="px-6 py-4">
-                          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 group-hover:border-blue-200 transition-colors">
-                            <Package size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-blue-600 hover:underline cursor-pointer">{prod.name}</div>
-                          <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tight flex items-center gap-2">
-                            {prod.type}
-                            {prod.sleeve && <span className="bg-gray-100 px-1 rounded">{prod.sleeve}</span>}
-                            {prod.pocket && <span className="bg-gray-100 px-1 rounded">{prod.pocket}</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center font-bold text-gray-900">
-                          ₹{prod.price}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={cn(
-                            "text-xs font-bold",
-                            prod.stock > 0 ? "text-green-600" : "text-red-500"
-                          )}>
-                            {prod.stock > 0 ? `instock (${prod.stock})` : `outofstock (${prod.stock})`}
-                          </span>
-                        </td>
-                        {!isStaff && (
-                          <td className="px-6 py-4 text-center">
-                            <span className="px-3 py-1 bg-[#7ad03a] text-white rounded-[4px] text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                              Enabled
-                            </span>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                    {filteredProducts.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic font-medium">
-                          No inventory products found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+      {/* Main Workspace Detail Panel */}
+      <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-gray-100 shadow-xs space-y-6">
+        
+        {/* VIEW 1: Stock Overview */}
+        {activeSubView === 'products' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <Package className="text-brand-primary" size={20} />
+                Products & Stock Inventory
+              </h2>
+              <p className="text-gray-500 text-xs mt-0.5">Live counts of available garments and assets.</p>
             </div>
-          ) : activeTab === 'list' ? (
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                <Search size={16} className="text-gray-400" />
+
+            <div className="flex items-center justify-between gap-4 border-b border-gray-50 pb-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search records..."
-                  className="bg-transparent border-none focus:ring-0 text-sm flex-1"
+                  placeholder="Search products..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 italic">
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Entity</th>
-                      <th className="px-4 py-3">Product Info</th>
-                      <th className="px-4 py-3 text-right">Qty</th>
-                      <th className="px-4 py-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {filteredInventory.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-4 text-xs font-bold text-gray-500">{item.date}</td>
-                        <td className="px-4 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${item.type === 'inward' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                            {item.type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="font-bold text-gray-900">{item.vendor || item.customer}</div>
-                          <div className="text-[10px] text-gray-400 space-y-0.5">
-                            {item.type === 'outward' && item.orderId && <div>📦 Order: {item.orderId}</div>}
-                            {item.transportName && <div>🚚 {item.transportName} {item.transportNumber && `(${item.transportNumber})`}</div>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="font-bold text-brand-primary">{item.product}</div>
-                          <div className="text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                            {item.productType}
-                            {item.sleeve && <span>• {item.sleeve}</span>}
-                            {item.pocket && <span>• {item.pocket}</span>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-right font-black text-gray-900">{item.quantity}</td>
-                        <td className="px-4 py-4 text-center">
-                          {!isStaff && (
-                            <button
-                              onClick={() => { if (window.confirm('Delete this movement?')) deleteInventoryMovement(item.id); }}
-                              className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredInventory.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-12 text-center text-gray-400 italic font-medium">No inventory records found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setActiveSubView('movement_logs');
+                    setMovementTab('inward');
+                  }}
+                  className="px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer border-none shadow-sm"
+                >
+                  <ArrowDownLeft size={12} /> Record Inward
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSubView('movement_logs');
+                    setMovementTab('outward');
+                  }}
+                  className="px-3.5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer border-none shadow-sm"
+                >
+                  <ArrowUpRight size={12} /> Record Outward
+                </button>
               </div>
             </div>
-          ) : activeTab === 'inward' ? (
-            <motion.form
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onSubmit={handleAddInward}
-              className="max-w-2xl mx-auto space-y-6 bg-gray-50/50 p-8 rounded-3xl border border-gray-100"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Vendor Name</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+
+            {/* Stock Table */}
+            <div className="overflow-x-auto rounded-2xl border border-gray-150">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                    <th className="px-5 py-3.5">Product Name</th>
+                    <th className="px-5 py-3.5">Type/Material</th>
+                    <th className="px-5 py-3.5">Sleeve Option</th>
+                    <th className="px-5 py-3.5">Pocket</th>
+                    <th className="px-5 py-3.5 text-right">Available Qty</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
+                  {filteredProducts.map((prod, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="px-5 py-3.5 font-bold text-slate-900 flex items-center gap-2">
+                        <Shirt size={14} className="text-slate-400" />
+                        {prod.name}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500 font-semibold">{prod.type || 'Standard'}</td>
+                      <td className="px-5 py-3.5 capitalize font-mono text-[10px]">{prod.sleeve || 'None'}</td>
+                      <td className="px-5 py-3.5 capitalize text-[10px] font-mono">{prod.pocket || 'No'}</td>
+                      <td className="px-5 py-3.5 text-right font-black text-xs">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full",
+                          prod.stock <= 0 ? "bg-red-50 text-red-600 font-bold" : "bg-emerald-50 text-emerald-700 font-extrabold"
+                        )}>
+                          {prod.stock} Units
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-gray-400 italic">No products currently recorded.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: Inward / Outward Ledger Logs */}
+        {activeSubView === 'movement_logs' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Stock Movement Logs</h2>
+                <p className="text-gray-500 text-xs mt-0.5">Detailed records of goods intake and release.</p>
+              </div>
+
+              {/* Sub tabs selectors */}
+              <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                {(['logs', 'inward', 'outward'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setMovementTab(t)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none",
+                      movementTab === t ? "bg-white text-slate-900 shadow-xs" : "text-gray-500 hover:text-slate-900"
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* TAB: Logs list */}
+            {movementTab === 'logs' && (
+              <div className="space-y-4">
+                <div className="relative max-w-sm">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search logs..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-gray-150">
+                  <table className="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                      <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                        <th className="px-5 py-3">Type</th>
+                        <th className="px-5 py-3">Vendor / Client</th>
+                        <th className="px-5 py-3">Product Name</th>
+                        <th className="px-5 py-3">Date</th>
+                        <th className="px-5 py-3 text-right">Qty</th>
+                        <th className="px-5 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
+                      {filteredInventory.map(item => (
+                        <tr key={item.id} className="hover:bg-slate-50/50">
+                          <td className="px-5 py-3.5">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider inline-block",
+                              item.type === 'inward' ? "bg-green-50 text-green-700 border border-green-200" : "bg-orange-50 text-orange-700 border border-orange-200"
+                            )}>
+                              {item.type}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 font-bold text-slate-800">
+                            {item.type === 'inward' ? item.vendor : item.customer}
+                          </td>
+                          <td className="px-5 py-3.5 font-bold text-slate-950">
+                            {item.product} <span className="text-[10px] text-gray-400 font-medium font-mono">{item.productType}</span>
+                          </td>
+                          <td className="px-5 py-3.5">{new Date(item.date).toLocaleDateString()}</td>
+                          <td className="px-5 py-3.5 text-right font-black text-slate-900">{item.quantity}</td>
+                          <td className="px-5 py-3.5 text-center">
+                            <button
+                              onClick={() => deleteInventoryMovement(item.id)}
+                              className="p-1 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded border-none bg-transparent cursor-pointer transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredInventory.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-gray-400 italic">No movement logs found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: Inward Form */}
+            {movementTab === 'inward' && (
+              <form onSubmit={handleAddInward} className="bg-slate-50 p-6 rounded-2xl border border-gray-150/40 space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-green-700 mb-2">Record Inward (Receipts)</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Vendor Name</label>
                     <input
-                      required
                       type="text"
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
+                      required
+                      placeholder="e.g. Cotton Mills Co"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
                       value={inwardForm.vendor}
                       onChange={e => setInwardForm({ ...inwardForm, vendor: e.target.value })}
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Date</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Date</label>
                     <input
-                      required
                       type="date"
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
+                      required
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
                       value={inwardForm.date}
                       onChange={e => setInwardForm({ ...inwardForm, date: e.target.value })}
                     />
                   </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Transport Name</label>
-                  <div className="relative">
-                    <Truck className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Product Category</label>
+                    <select
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={inwardForm.product}
+                      onChange={e => setInwardForm({ ...inwardForm, product: e.target.value })}
+                    >
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Product Type / Materials</label>
                     <input
                       type="text"
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
-                      placeholder="e.g. VRL Logistics"
+                      required
+                      placeholder="e.g. Cotton-180, Heavy Knit"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={inwardForm.productType}
+                      onChange={e => setInwardForm({ ...inwardForm, productType: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Transport Logistics Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. DTDC Courier"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
                       value={inwardForm.transportName}
                       onChange={e => setInwardForm({ ...inwardForm, transportName: e.target.value })}
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Transport Reg. Number</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
-                    placeholder="e.g. KA-01-AB-1234"
-                    value={inwardForm.transportNumber}
-                    onChange={e => setInwardForm({ ...inwardForm, transportNumber: e.target.value })}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Product</label>
-                  <select
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
-                    value={inwardForm.product}
-                    onChange={e => setInwardForm({ ...inwardForm, product: e.target.value })}
-                  >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Vehicle / Tracking Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MH-12-XX-1234"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={inwardForm.transportNumber}
+                      onChange={e => setInwardForm({ ...inwardForm, transportNumber: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Type of Product</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. Dot Knit"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
-                    value={inwardForm.productType}
-                    onChange={e => setInwardForm({ ...inwardForm, productType: e.target.value })}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Sleeve Type</label>
-                  <div className="relative">
-                    <Shirt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Sleeve Options</label>
                     <select
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm appearance-none"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
                       value={inwardForm.sleeve}
                       onChange={e => setInwardForm({ ...inwardForm, sleeve: e.target.value })}
                     >
                       {SLEEVE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Pocket</label>
-                  <div className="relative">
-                    <Scissors className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Pocket</label>
                     <select
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm appearance-none"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
                       value={inwardForm.pocket}
                       onChange={e => setInwardForm({ ...inwardForm, pocket: e.target.value })}
                     >
                       {POCKET_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Quantity</label>
-                  <input
-                    required
-                    type="number"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold text-sm"
-                    value={inwardForm.quantity}
-                    onChange={e => setInwardForm({ ...inwardForm, quantity: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
 
-              <div className="pt-6">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={inwardForm.quantity}
+                      onChange={e => setInwardForm({ ...inwardForm, quantity: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full bg-[#1db160] text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-[#158f4d] shadow-xl shadow-green-600/10 active:scale-[0.98] transition-all"
+                  className="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-wider active:scale-98 transition-all border-none cursor-pointer"
                 >
-                  SAVE INWARD RECORD
+                  Record Inward Stock Intake
                 </button>
-              </div>
-            </motion.form>
-          ) : (
-            <motion.form
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onSubmit={handleAddOutward}
-              className="max-w-2xl mx-auto space-y-6 bg-gray-50/50 p-8 rounded-3xl border border-gray-100"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Customer Name</label>
-                  <input
-                    required
-                    type="text"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.customer}
-                    onChange={e => setOutwardForm({ ...outwardForm, customer: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Date</label>
-                  <input
-                    required
-                    type="date"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.date}
-                    onChange={e => setOutwardForm({ ...outwardForm, date: e.target.value })}
-                  />
-                </div>
-              </div>
+              </form>
+            )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Order ID / Ref</label>
-                  <input
-                    required
-                    type="text"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.orderId}
-                    onChange={e => setOutwardForm({ ...outwardForm, orderId: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Sleeve</label>
-                  <select
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.sleeve}
-                    onChange={e => setOutwardForm({ ...outwardForm, sleeve: e.target.value })}
-                  >
-                    {SLEEVE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Pocket</label>
-                  <select
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.pocket}
-                    onChange={e => setOutwardForm({ ...outwardForm, pocket: e.target.value })}
-                  >
-                    {POCKET_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-              </div>
+            {/* TAB: Outward Form */}
+            {movementTab === 'outward' && (
+              <form onSubmit={handleAddOutward} className="bg-slate-50 p-6 rounded-2xl border border-gray-150/40 space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-orange-700 mb-2">Record Outward (Releases)</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Balance Type of Product</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. Shirts"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.productType}
-                    onChange={e => setOutwardForm({ ...outwardForm, productType: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 tracking-widest pl-1">Balance Total Qty (Manual)</label>
-                  <input
-                    required
-                    type="number"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-sm"
-                    value={outwardForm.quantity}
-                    onChange={e => setOutwardForm({ ...outwardForm, quantity: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Customer Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Rajesh Kumar"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.customer}
+                      onChange={e => setOutwardForm({ ...outwardForm, customer: e.target.value })}
+                    />
+                  </div>
 
-              <div className="pt-6">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Date</label>
+                    <input
+                      type="date"
+                      required
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.date}
+                      onChange={e => setOutwardForm({ ...outwardForm, date: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Order ID Ref</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. ORD-102938"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.orderId}
+                      onChange={e => setOutwardForm({ ...outwardForm, orderId: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Product Type</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Cotton-180"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.productType}
+                      onChange={e => setOutwardForm({ ...outwardForm, productType: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Sleeve Options</label>
+                    <select
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.sleeve}
+                      onChange={e => setOutwardForm({ ...outwardForm, sleeve: e.target.value })}
+                    >
+                      {SLEEVE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Pocket</label>
+                    <select
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.pocket}
+                      onChange={e => setOutwardForm({ ...outwardForm, pocket: e.target.value })}
+                    >
+                      {POCKET_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                      value={outwardForm.quantity}
+                      onChange={e => setOutwardForm({ ...outwardForm, quantity: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full bg-[#f44336] text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-[#d32f2f] shadow-xl shadow-orange-600/10 active:scale-[0.98] transition-all"
+                  className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black uppercase tracking-wider active:scale-98 transition-all border-none cursor-pointer"
                 >
-                  SAVE OUTWARD RECORD
+                  Record Outward Stock Release
                 </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* VIEW 3: E-Commerce Store Platforms (Amazon, Flipkart, Meesho) */}
+        {['amazon', 'flipkart', 'meesho'].includes(activeSubView) && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-50 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 capitalize">
+                  <Globe className="text-blue-500" size={20} />
+                  {activeSubView} Listing Hub
+                </h2>
+                <p className="text-gray-500 text-xs mt-0.5">Upload, configure, and save details for items listing on {activeSubView}.</p>
               </div>
-            </motion.form>
-          )}
-        </div>
+
+              <button
+                onClick={() => setShowListingForm(!showListingForm)}
+                className="px-4 py-2 bg-[#0ea5e9] hover:bg-[#0284c7] text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer border-none shadow-sm"
+              >
+                {showListingForm ? <X size={14} /> : <Plus size={14} />}
+                <span>{showListingForm ? 'Cancel Upload' : 'Upload Item Details'}</span>
+              </button>
+            </div>
+
+            {/* Listing Form */}
+            <AnimatePresence>
+              {showListingForm && (
+                <motion.form
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  onSubmit={handleSaveListing}
+                  className="bg-slate-50 p-6 rounded-2xl border border-gray-150/60 space-y-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-gray-400">Product Title</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Printed Polo T-Shirt, Pallywear Special"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                        value={listingForm.productName}
+                        onChange={e => setListingForm({ ...listingForm, productName: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-gray-400">Seller SKU ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. PW-POLO-BLK-M"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                        value={listingForm.sku}
+                        onChange={e => setListingForm({ ...listingForm, sku: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-gray-400">Selling Price (INR)</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="e.g. 899"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                        value={listingForm.price}
+                        onChange={e => setListingForm({ ...listingForm, price: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-gray-400">Stock Qty Allocated</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 50"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
+                        value={listingForm.stock}
+                        onChange={e => setListingForm({ ...listingForm, stock: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Listing Features & Details</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Enter description bullet points, fabric parameters, keywords..."
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold resize-none"
+                      value={listingForm.details}
+                      onChange={e => setListingForm({ ...listingForm, details: e.target.value })}
+                    />
+                  </div>
+
+                  {/* Image upload */}
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-gray-400">Upload Product Image / Reference sheet</label>
+                    <FileUpload
+                      label=""
+                      maxFiles={1}
+                      onFilesSelected={(files) => {
+                        if (files && files[0]) setListingFile(files[0]);
+                      }}
+                    />
+                    {listingFile && (
+                      <div className="aspect-square w-16 rounded border border-gray-200 overflow-hidden mt-2 relative">
+                        <img src={listingFile} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setListingFile('')}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-0.5 cursor-pointer border-none"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-[#0ea5e9] hover:bg-[#0284c7] text-white rounded-xl text-xs font-black uppercase tracking-wider active:scale-98 transition-all border-none cursor-pointer"
+                  >
+                    Save & Sync {activeSubView} Listing
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
+
+            {/* Platform listings table */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Active Listings on {activeSubView}</h3>
+              {loadingListings ? (
+                <div className="py-8 text-center text-xs text-gray-400 animate-pulse">Fetching platform products...</div>
+              ) : listings.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {listings.map(l => (
+                    <div key={l.id} className="bg-slate-50 p-4 rounded-2xl border border-gray-150 flex items-start gap-4">
+                      {l.image ? (
+                        <div className="aspect-square w-16 bg-white border border-gray-200 rounded-xl overflow-hidden shrink-0">
+                          <img src={l.image} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-white border border-dashed border-gray-200 rounded-xl flex items-center justify-center shrink-0 text-slate-300">
+                          <Shirt size={24} />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="font-bold text-xs text-slate-900 truncate">{l.productName}</p>
+                        <div className="flex gap-2 text-[10px] font-mono text-gray-400">
+                          <span>SKU: {l.sku || 'N/A'}</span>
+                          <span>•</span>
+                          <span>Price: ₹{l.price}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="px-2 py-0.5 bg-sky-50 border border-sky-200 rounded text-[9px] font-black text-sky-700 uppercase">
+                            Stock: {l.stock} units
+                          </span>
+                          <button
+                            onClick={() => handleDeleteListing(l.id)}
+                            className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer p-1"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center text-xs text-gray-400">
+                  No active items uploaded for this platform yet.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 4: Completed Production Orders Queue */}
+        {activeSubView === 'production_orders' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-black text-slate-950 tracking-tight flex items-center gap-2">
+                <CheckCircle2 className="text-emerald-600" size={20} />
+                Finished Production Intake Queue
+              </h2>
+              <p className="text-gray-500 text-xs mt-0.5">Orders currently completed in production that are ready to be dispatched or checked-in to inventory.</p>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-gray-150">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                    <th className="px-5 py-3.5">Order ID</th>
+                    <th className="px-5 py-3.5">Customer Name</th>
+                    <th className="px-5 py-3.5">Garment Category</th>
+                    <th className="px-5 py-3.5 text-center">Quantity</th>
+                    <th className="px-5 py-3.5 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
+                  {productionOrders.map(order => (
+                    <tr key={order.id} className="hover:bg-slate-50/50">
+                      <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
+                      <td className="px-5 py-3.5 font-bold text-slate-800">
+                        <div>
+                          <span>{order.customerName}</span>
+                          <span className="text-[9px] block text-gray-400 font-normal">{order.customerCompany || 'Direct Retail'}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category}</td>
+                      <td className="px-5 py-3.5 text-center font-black text-slate-900">{order.quantity} Pcs</td>
+                      <td className="px-5 py-3.5 text-center">
+                        <button
+                          onClick={() => handleReceiveProductionOrder(order)}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors"
+                        >
+                          <ArrowRight size={10} /> Receive into Inventory
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {productionOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-gray-400 italic">No completed orders waiting in queue.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

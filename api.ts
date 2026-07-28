@@ -735,4 +735,54 @@ router.delete('/invitations/:id', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// CHANNEL LISTINGS ENDPOINTS
+// ----------------------------------------------------
+
+router.get('/channel-listings', async (req, res) => {
+  const { platform } = req.query;
+  try {
+    let sql = 'SELECT * FROM channel_listings';
+    const params: any[] = [];
+    if (platform) {
+      sql += ' WHERE platform = ?';
+      params.push(platform);
+    }
+    sql += ' ORDER BY createdAt DESC';
+    const rows = await query(sql, params);
+    res.json({ success: true, listings: rows });
+  } catch (error: any) {
+    console.error('Error fetching channel listings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/channel-listings', async (req, res) => {
+  const { id, platform, productName, sku, price, stock, details, image } = req.body;
+  if (!id || !platform || !productName || !price) {
+    return res.status(400).json({ success: false, message: 'Missing required parameters.' });
+  }
+  try {
+    await query(
+      'INSERT INTO channel_listings (id, platform, productName, sku, price, stock, details, image, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, platform, productName, sku || null, parseFloat(price) || 0, parseInt(stock, 10) || 0, details || null, image || null, Date.now()]
+    );
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error creating channel listing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/channel-listings/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await query('DELETE FROM channel_listings WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting channel listing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
