@@ -219,11 +219,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const staffCombinedList = [...staffOrderItems, ...staffConsultationItems];
 
   // 2. Process Items for ORDER MANAGEMENT CHANNEL
-  // Orders in Backoffice QC / OM Pipeline
+  // Orders in Backoffice QC / OM Pipeline — only show DESIGN and HOLD status orders
   const omOrderItems = orders
     .filter(o => {
-      // Either currently in DESIGN / HOLD phase, or previously processed by designer
-      return !isAssignedToOther(o.assignedDesigner || '');
+      // Only show orders that are actively in DESIGN phase or on HOLD from DESIGN
+      // This ensures accounts-sent orders (status=DESIGN) show up here
+      const isDesignPhase = o.status === OrderStatus.DESIGN;
+      const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
+      const isCompletedDesign = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD, OrderStatus.ORDER_MANAGEMENT].includes(o.status);
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && !isAssignedToOther(o.assignedDesigner || '');
     })
     .map(o => {
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
@@ -252,7 +256,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         createdAt: o.createdAt,
         hasOmChat: hasOmChat,
         staffImages: o.staffImages || [],
-        staffPdfs: o.staffPdfs || []
+        staffPdfs: o.staffPdfs || [],
+        accountsAttachments: o.accountsAttachments || []
       };
     });
 
@@ -713,6 +718,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 <th className="px-6 py-4">Descriptor Code</th>
                 <th className="px-6 py-4">Client Detail</th>
                 <th className="px-6 py-4">Design Requirement & Category</th>
+                <th className="px-6 py-4 text-center">Accounts Billing Docs</th>
                 <th className="px-6 py-4 text-center">Assigned Handler</th>
                 <th className="px-6 py-4 text-right">Action override</th>
               </tr>
@@ -758,6 +764,19 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             {item.notes}
                           </span>
                         </div>
+                      </td>
+                      {/* Accounts Billing Docs column */}
+                      <td className="px-6 py-4 text-center">
+                        {((item as any).accountsAttachments || []).length > 0 ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[9px] font-black uppercase border border-amber-200">
+                              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                              {(item as any).accountsAttachments.length} Doc{(item as any).accountsAttachments.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[9px] text-gray-300 font-bold italic">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div>
@@ -813,7 +832,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-gray-400 italic font-medium">
+                  <td colSpan={6} className="px-6 py-16 text-center text-gray-400 italic font-medium">
                     All clear! No pending design assets found in this pipeline state.
                   </td>
                 </tr>
@@ -1087,6 +1106,50 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       })}
                     </div>
                   </section>
+
+                  {/* Accounts Billing Documents — images/PDFs sent by Accounts when they dispatched this order to Design */}
+                  {(selectedOrder.accountsAttachments || []).length > 0 && (
+                    <section className="space-y-3">
+                      <h4 className="text-[10.5px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-amber-100">
+                        <FileText size={13} className="text-amber-500" />
+                        Accounts Billing Documents ({(selectedOrder.accountsAttachments || []).length})
+                        <span className="ml-auto text-[8px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 normal-case tracking-normal">Sent by Accounts</span>
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {(selectedOrder.accountsAttachments || []).map((file, i) => (
+                          <div key={i} className="flex flex-col gap-2 p-2 bg-amber-50 rounded-2xl border border-amber-100 group relative">
+                            <div className="aspect-square rounded-xl overflow-hidden relative bg-white flex items-center justify-center border border-amber-100">
+                              {file.startsWith('data:image/') ? (
+                                <img src={file} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="flex flex-col items-center gap-2 text-amber-500">
+                                  <FileText size={28} />
+                                  <span className="text-[8px] font-black uppercase text-amber-600">Billing Doc</span>
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                {file.startsWith('data:image/') && (
+                                  <button
+                                    onClick={() => setViewingImage(file)}
+                                    className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all border-none cursor-pointer"
+                                  >
+                                    <ZoomIn size={14} />
+                                  </button>
+                                )}
+                                <a
+                                  href={file}
+                                  download={`Billing_Doc_${i + 1}_Order_${selectedOrder.id.slice(-6)}`}
+                                  className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer"
+                                >
+                                  <Download size={14} />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
                 </div>
 
                 {/* Right Column: Interaction Hub (Staff vs Order Management Conversational Chat) */}
