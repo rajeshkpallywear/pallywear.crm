@@ -405,7 +405,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
               </div>
 
               {/* Attachment Desks */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs border-t border-slate-900 pt-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs border-t border-slate-900 pt-4">
                 {/* Desk 1 */}
                 <div className="space-y-2">
                   <h6 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Staff Pics</h6>
@@ -451,19 +451,57 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                   ))}
                 </div>
 
-                {/* Desk 4 */}
+                {/* Desk 4: Original Design Image (Required view for production) */}
                 <div className="space-y-2">
-                  <h6 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Stitch Files</h6>
+                  <h6 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Original Design</h6>
+                  {selectedOrder.original_design_file ? (
+                    <div className="flex flex-col gap-1.5 p-2 bg-[#1b253b] border border-indigo-900/40 rounded-xl">
+                      {selectedOrder.original_design_file.startsWith('data:image/') ? (
+                        <div className="aspect-video w-full rounded overflow-hidden relative group">
+                          <img src={selectedOrder.original_design_file} className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => setViewingImage(selectedOrder.original_design_file!)}
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white border-none cursor-pointer"
+                          >
+                            <ZoomIn size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full h-10 bg-slate-950 flex items-center justify-center rounded text-indigo-400">
+                          <FileText size={16} />
+                        </div>
+                      )}
+                      <a
+                        href={selectedOrder.original_design_file}
+                        download={selectedOrder.original_design_filename || "original_design"}
+                        className="w-full py-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[8px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Download size={8} /> HD Download
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-[9px] text-slate-500 italic block">None uploaded</span>
+                  )}
+                </div>
+
+                {/* Desk 5: Stitch Files (Digitizer Sent Garage File) */}
+                <div className="space-y-2">
+                  <h6 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Stitch Files (Garage)</h6>
                   {(selectedOrder.machineFiles || []).map((f, i) => (
-                    <div
+                    <a
                       key={i}
-                      onClick={() => setViewingImage(f)}
-                      className="p-2 bg-indigo-950/20 border border-indigo-900/40 rounded-xl truncate cursor-pointer hover:border-indigo-800/60 transition-colors flex items-center justify-between text-indigo-400 font-bold"
+                      href={f}
+                      download={`Stitch_Garage_File_${i + 1}_order_${selectedOrder.id}`}
+                      className="p-2 bg-indigo-950/20 border border-indigo-900/40 rounded-xl truncate hover:border-indigo-850 transition-colors flex items-center justify-between text-indigo-400 font-bold block no-underline cursor-pointer"
+                      title="Click to download garage production file"
                     >
                       <span className="truncate text-[10px]">Stitch_{i + 1}.dst</span>
-                      <Download size={10} />
-                    </div>
+                      <Download size={10} className="shrink-0 ml-1" />
+                    </a>
                   ))}
+                  {(selectedOrder.machineFiles || []).length === 0 && (
+                    <span className="text-[9px] text-slate-500 italic block">None uploaded</span>
+                  )}
                 </div>
               </div>
 
