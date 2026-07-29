@@ -155,8 +155,15 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       ...sanitizeForStorage(orderUpdate),
       updatedAt: Date.now(),
     };
-    await mockDataService.saveOrder(nextOrder);
+
+    // ⚡ Instant optimistic UI update (1 second response)
     setOrders((prev) => prev.map((order) => (order.id === id ? nextOrder : order)));
+
+    try {
+      await mockDataService.saveOrder(nextOrder);
+    } catch (err) {
+      console.error("Background sync error:", err);
+    }
   };
 
   const deleteOrder = async (id: string) => {

@@ -64,7 +64,14 @@ export default function Dashboard() {
     return orders.filter(o => o.createdBy === user.id || o.createdBy === user.uid);
   }, [orders, user]);
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>(() => {
+    const saved = localStorage.getItem('pallywear_active_tab');
+    if (saved && ['dashboard', 'reports', 'clients', 'invoices', 'inventory', 'history', 'digitizer_comm', 'marketing_orders', 'calendar'].includes(saved)) {
+      return saved as any;
+    }
+    return 'dashboard';
+  });
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
@@ -87,6 +94,7 @@ export default function Dashboard() {
     setShowSettings(false);
     window.location.reload();
   };
+
   const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue'>('orders');
   const [expenseExpanded, setExpenseExpanded] = React.useState(true);
 
@@ -104,14 +112,15 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     if (user && (user.role === 'marketing' || user.role === 'staff' || user.role === UserRole.MARKETING || user.role === UserRole.STAFF)) {
-      if (activeTab === 'dashboard') {
+      if (!localStorage.getItem('pallywear_active_tab')) {
         setActiveTab('marketing_orders');
       }
     }
-  }, [user, activeTab]);
+  }, [user]);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
+    localStorage.setItem('pallywear_active_tab', tab);
     setIsMobileOpen(false);
   };
 
