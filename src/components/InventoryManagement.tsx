@@ -1262,22 +1262,18 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Option 1: In-House Delivery */}
                     <button
-                      disabled={isDispatching}
-                      onClick={async () => {
-                        setIsDispatching(true);
-                        try {
-                          await updateOrder(selectedIntakeOrder.id, {
-                            status: OrderStatus.DELIVERY,
-                            details: { ...selectedIntakeOrder.details, dispatchType: 'in_house' },
-                            updatedAt: Date.now()
-                          });
-                          setSelectedIntakeOrder(null);
-                          alert("Order successfully shared to Delivery Dashboard for in-house delivery!");
-                        } catch (e) {
-                          alert("Failed to share order to Delivery Dashboard.");
-                        } finally {
-                          setIsDispatching(false);
-                        }
+                      onClick={() => {
+                        if (!selectedIntakeOrder) return;
+                        const orderId = selectedIntakeOrder.id;
+                        const details = selectedIntakeOrder.details || {};
+                        setSelectedIntakeOrder(null);
+                        setDispatchMode('none');
+                        updateOrder(orderId, {
+                          status: OrderStatus.DELIVERY,
+                          details: { ...details, dispatchType: 'in_house' },
+                          updatedAt: Date.now()
+                        });
+                        alert("Order successfully shared to Delivery Dashboard for in-house delivery!");
                       }}
                       className="p-5 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider flex flex-col items-center justify-center gap-2 cursor-pointer transition-all shadow-md hover:scale-[1.01] border-none"
                     >
@@ -1288,7 +1284,6 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
 
                     {/* Option 2: Courier Shipping */}
                     <button
-                      disabled={isDispatching}
                       onClick={() => setDispatchMode('courier')}
                       className="p-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider flex flex-col items-center justify-center gap-2 cursor-pointer transition-all shadow-md hover:scale-[1.01] border-none"
                     >
@@ -1357,35 +1352,35 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       </button>
                       <button
                         type="button"
-                        disabled={isDispatching}
-                        onClick={async () => {
+                        onClick={() => {
                           if (!selectedCourier.trim()) {
                             alert("Please select a courier partner.");
                             return;
                           }
-                          setIsDispatching(true);
-                          try {
-                            await updateOrder(selectedIntakeOrder.id, {
-                              status: OrderStatus.DELIVERED,
-                              details: {
-                                ...selectedIntakeOrder.details,
-                                dispatchType: 'courier',
-                                courierName: selectedCourier,
-                                trackingNumber: courierTrackingNo.trim() || 'COURIER-DISPATCH'
-                              },
-                              updatedAt: Date.now()
-                            });
-                            setSelectedIntakeOrder(null);
-                            alert(`Order successfully dispatched via ${selectedCourier}!`);
-                          } catch (e) {
-                            alert("Failed to dispatch courier shipment.");
-                          } finally {
-                            setIsDispatching(false);
-                          }
+                          if (!selectedIntakeOrder) return;
+                          const orderId = selectedIntakeOrder.id;
+                          const details = selectedIntakeOrder.details || {};
+                          const courier = selectedCourier;
+                          const tracking = courierTrackingNo.trim() || 'COURIER-DISPATCH';
+
+                          setSelectedIntakeOrder(null);
+                          setDispatchMode('none');
+
+                          updateOrder(orderId, {
+                            status: OrderStatus.DELIVERED,
+                            details: {
+                              ...details,
+                              dispatchType: 'courier',
+                              courierName: courier,
+                              trackingNumber: tracking
+                            },
+                            updatedAt: Date.now()
+                          });
+                          alert(`Order successfully dispatched via ${courier}!`);
                         }}
-                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase border-none cursor-pointer shadow-md disabled:opacity-50"
+                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase border-none cursor-pointer shadow-md"
                       >
-                        {isDispatching ? "Processing..." : `Confirm ${selectedCourier} Dispatch`}
+                        Confirm {selectedCourier} Dispatch
                       </button>
                     </div>
                   </motion.div>
