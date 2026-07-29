@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
@@ -32,6 +32,17 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     }
     return o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
   });
+
+  // Auto-select first order when section or filtered order list changes
+  useEffect(() => {
+    if (filteredOrders.length > 0) {
+      if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
+        setSelectedOrder(filteredOrders[0]);
+      }
+    } else {
+      setSelectedOrder(null);
+    }
+  }, [selectedSection, filteredOrders.length]);
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length;
   const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;

@@ -480,7 +480,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
                           <span className="text-[9px] font-mono text-gray-400 mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
                           <button
-                            onClick={() => startEdit(order)}
+                            onClick={() => setSelectedHubOrder(order)}
                             className="px-2.5 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
                           >
                             Edit
@@ -578,10 +578,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           </>
                         ) : (
                           <button
-                            onClick={() => startEdit(order)}
+                            onClick={() => setSelectedHubOrder(order)}
                             className="col-span-2 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none"
                           >
-                            Edit Order
+                            View & Edit
                           </button>
                         )}
                       </div>
@@ -633,8 +633,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       <p className="font-bold text-gray-900 truncate text-xs">{prod.product}</p>
                       <p className="text-[9px] text-gray-500 font-black uppercase mt-0.5 flex flex-wrap gap-1 items-center">
                         <span>{prod.productType}</span>
-                        {prod.sleeve && <span className="bg-gray-150 text-gray-600 px-1 rounded text-[8px]">{prod.sleeve}</span>}
-                        {prod.pocket && <span className="bg-gray-150 text-gray-600 px-1 rounded text-[8px]">{prod.pocket}</span>}
+
                       </p>
                     </div>
                   </div>
@@ -856,26 +855,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 onChange={(v) => updateSizeQuantity(idx, 'printType', v)}
                               />
                             </div>
-                            {getSleevesForCategory(item.category).length > 0 && (
-                              <div>
-                                <Select
-                                  label="Sleeve"
-                                  value={item.sleeve || ''}
-                                  options={getSleevesForCategory(item.category)}
-                                  onChange={(v) => updateSizeQuantity(idx, 'sleeve', v)}
-                                />
-                              </div>
-                            )}
-                            {getPocketsForCategory(item.category).length > 0 && (
-                              <div>
-                                <Select
-                                  label="Pocket"
-                                  value={item.pocket || ''}
-                                  options={getPocketsForCategory(item.category)}
-                                  onChange={(v) => updateSizeQuantity(idx, 'pocket', v)}
-                                />
-                              </div>
-                            )}
+
                           </div>
                           
                           <div className="text-right border-t border-gray-100 pt-2 text-[10px] text-brand-primary font-black italic">
@@ -952,6 +932,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   <FileUpload
                     label="Reference Blueprints (Images)"
                     accept="image/*"
+                    maxFiles={1}
                     onFilesSelected={(files) => setFormData({ ...formData, imageAttachments: files })}
                   />
                   {formData.imageAttachments.length > 0 && (

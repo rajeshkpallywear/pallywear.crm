@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
@@ -48,6 +48,17 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
     return o.status === OrderStatus.ACCOUNTS;
   });
+
+  // Auto-select first order when section or filtered order list changes
+  useEffect(() => {
+    if (filteredOrders.length > 0) {
+      if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
+        setSelectedOrder(filteredOrders[0]);
+      }
+    } else {
+      setSelectedOrder(null);
+    }
+  }, [selectedSection, filteredOrders.length]);
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
   const processOrdersCount = orders.filter(o => o.status === OrderStatus.DESIGN).length;

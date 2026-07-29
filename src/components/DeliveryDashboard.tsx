@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Truck, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, MapPin, Phone, Clock, AlertCircle } from 'lucide-react';
+import { Truck, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, MapPin, Phone, Clock, AlertCircle, ExternalLink } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
@@ -32,6 +32,17 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
     return o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
   });
+
+  // Auto-select first order when section or filtered order list changes
+  useEffect(() => {
+    if (filteredOrders.length > 0) {
+      if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
+        setSelectedOrder(filteredOrders[0]);
+      }
+    } else {
+      setSelectedOrder(null);
+    }
+  }, [selectedSection, filteredOrders.length]);
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length;
   const processOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY).length;
@@ -313,11 +324,21 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                   <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest font-bold">Delivery Active Node</span>
                   <h4 className="text-2xl font-black text-white uppercase italic mt-0.5">#{selectedOrder.id.slice(-8)}</h4>
                 </div>
-                <div className="text-right">
-                  <span className="text-[9px] font-black text-slate-400 uppercase block">Phone Dial</span>
-                  <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-                    <Phone size={12} className="text-orange-400" />
-                    {selectedOrder.customerInfo.phone}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedHubOrder(selectedOrder)}
+                    className="px-3.5 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer"
+                    title="Click to open full size page for this order"
+                  >
+                    <ExternalLink size={14} />
+                    View Full Size Order
+                  </button>
+                  <div className="text-right">
+                    <span className="text-[9px] font-black text-slate-400 uppercase block">Phone Dial</span>
+                    <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                      <Phone size={12} className="text-orange-400" />
+                      {selectedOrder.customerInfo.phone}
+                    </div>
                   </div>
                 </div>
               </div>

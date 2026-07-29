@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Scissors,
@@ -27,6 +27,7 @@ import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
+import OrderDetailModal from './OrderDetailModal';
 
 interface DigitizingDashboardProps {
   orders: Order[];
@@ -36,6 +37,7 @@ interface DigitizingDashboardProps {
 
 export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: DigitizingDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewMode, setViewMode] = useState<'pending' | 'completed'>('pending');
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,6 +59,17 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
       return matchesSearch && (relevantStatus || o.status === OrderStatus.DELIVERY) && (o.machineFiles?.length || 0) > 0;
     }
   });
+
+  // Auto-select first order when section, view mode or search changes
+  useEffect(() => {
+    if (filteredOrders.length > 0) {
+      if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
+        setSelectedOrder(filteredOrders[0]);
+      }
+    } else {
+      setSelectedOrder(null);
+    }
+  }, [viewMode, searchTerm, filteredOrders.length]);
 
   const handleUploadSpecs = async () => {
     if (!selectedOrder || uploadFiles.length === 0) return;
@@ -276,7 +289,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                   <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order workspace</span>
                   <h4 className="text-base font-black text-slate-900">#{selectedOrder.id}</h4>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedHubOrder(selectedOrder)}
+                    className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-150 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Click to open full size page for this order"
+                  >
+                    <ExternalLink size={13} />
+                    View Full Size Order
+                  </button>
                   <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-black uppercase">
                     {selectedOrder.status}
                   </span>
@@ -525,6 +546,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
             </div>
           </motion.div>
         </div>
+      )}
+
+      {selectedHubOrder && (
+        <OrderDetailModal
+          order={selectedHubOrder}
+          onClose={() => setSelectedHubOrder(null)}
+          isAdmin={isAdmin}
+          onUpdateOrder={onUpdateOrder}
+        />
       )}
     </div>
   );

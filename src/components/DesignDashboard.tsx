@@ -55,8 +55,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
   const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('accounts_queue');
 
-  // Subsection filters: 'all', 'recent', 'process', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'all' | 'recent' | 'process' | 'hold' | 'completed'>('all');
+  // Subsection filters: 'process', 'recent', 'hold', 'completed'
+  const [selectedSection, setSelectedSection] = useState<'process' | 'recent' | 'hold' | 'completed'>('process');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -633,7 +633,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('marketing_queue');
-            setSelectedSection('all');
+            setSelectedSection('process');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 border-none",
@@ -647,7 +647,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('accounts_queue');
-            setSelectedSection('all');
+            setSelectedSection('process');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 border-none",
@@ -665,16 +665,18 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Design Project Queue</h4>
           <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-xl">
-            {(activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems).length} Project{(activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems).length !== 1 ? 's' : ''}
+            {
+              (activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems)
+                .filter(item => !isUnclaimedItem(item.assignedDesigner)).length
+            } Project{(activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems).filter(item => !isUnclaimedItem(item.assignedDesigner)).length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {/* Section Filter Pills */}
         <div className="flex flex-wrap gap-2 mb-4">
           {([
-            { key: 'all', label: '⬤ All Orders', count: activeStats.totalCount },
-            { key: 'recent', label: '⚡ New / Unclaimed', count: activeStats.recentCount },
             { key: 'process', label: '🔒 In Progress', count: activeStats.processCount },
+            { key: 'recent', label: '⚡ New / Unclaimed', count: activeStats.recentCount },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount },
             { key: 'completed', label: '✓ Done', count: activeStats.completedCount },
           ] as const).map(({ key, label, count }) => (
@@ -703,8 +705,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {getFilteredItems().length > 0 ? (
-                getFilteredItems().map((item, idx) => {
+              {getFilteredItems().filter(item => !isUnclaimedItem(item.assignedDesigner)).length > 0 ? (
+                getFilteredItems().filter(item => !isUnclaimedItem(item.assignedDesigner)).map((item, idx) => {
                   const isSelected = selectedOrder?.id === item.id;
                   const isClaimedByMe = item.assignedDesigner.toLowerCase().includes(designerName.toLowerCase());
                   const isUnclaimed = !item.assignedDesigner || item.assignedDesigner === 'Unassigned' || item.assignedDesigner === 'Designer assigned' || item.assignedDesigner === '';
