@@ -36,18 +36,25 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
       try {
         let fileToProcess: File | Blob = file;
 
-        // Compress images
+        // Keep 100% Full HD / Original Quality for images
         if (file.type.startsWith('image/')) {
-          const options = {
-            maxSizeMB: 0.1, // Target 100KB per image to allow multiple images across stages
-            maxWidthOrHeight: 1280,
-            useWebWorker: true,
-          };
-          try {
-            fileToProcess = await imageCompression(file, options);
-          } catch (error) {
-            console.error('Compression failed:', error);
-            // Fallback to original file
+          if (file.size <= 5 * 1024 * 1024) {
+            // Under 5MB: Keep exact 100% original uncompressed bytes for 100% Full HD quality
+            fileToProcess = file;
+          } else {
+            // High Quality HD optimization for larger images up to 100MB
+            const options = {
+              maxSizeMB: 20,
+              maxWidthOrHeight: 4096, // Supports 4K / Full HD
+              initialQuality: 0.98,
+              useWebWorker: true,
+            };
+            try {
+              fileToProcess = await imageCompression(file, options);
+            } catch (error) {
+              console.error('HD Optimization fallback to original:', error);
+              fileToProcess = file;
+            }
           }
         }
 
@@ -90,7 +97,7 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
         {isCompressing && (
           <div className="flex items-center gap-1.5 text-xs text-brand-primary animate-pulse font-bold">
             <Loader2 size={12} className="animate-spin" />
-            Optimizing...
+            Loading HD File...
           </div>
         )}
       </div>
@@ -103,8 +110,8 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
           <Upload size={24} className="text-gray-500" />
         </div>
         <p className="text-sm font-medium text-gray-700">Click or drag to upload files</p>
-        <p className="text-xs text-brand-primary mt-1 font-bold">Images are auto-optimized for HD quality (Max 100MB)</p>
-        <p className="text-[10px] text-gray-400">PDF, ZIP or image files (Max {maxFiles} total)</p>
+        <p className="text-xs text-brand-primary mt-1 font-bold">100% Full HD Quality (Files 0 KB to 100MB saved to database)</p>
+        <p className="text-[10px] text-gray-400">PDF, ZIP or Full HD image files (Max {maxFiles} total)</p>
         <input
           type="file"
           hidden

@@ -27,7 +27,14 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Phone,
+  MapPin,
+  ExternalLink,
+  CreditCard,
+  FileText,
+  Download,
+  ZoomIn
 } from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
 import { InventoryMovement, Order, OrderStatus } from '../types';
@@ -66,6 +73,13 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
   const [productionTab, setProductionTab] = useState<'intake' | 'delivery' | 'shipped'>('intake');
   const [searchTerm, setSearchTerm] = useState('');
   const [shipForms, setShipForms] = useState<Record<string, { courierName: string; trackingNumber: string }>>({});
+
+  // Intake Order Processing state
+  const [selectedIntakeOrder, setSelectedIntakeOrder] = useState<Order | null>(null);
+  const [dispatchMode, setDispatchMode] = useState<'none' | 'courier'>('none');
+  const [selectedCourier, setSelectedCourier] = useState<string>('Professional Courier');
+  const [courierTrackingNo, setCourierTrackingNo] = useState<string>('');
+  const [isDispatching, setIsDispatching] = useState<boolean>(false);
 
   // Channel upload listings state
   const [listings, setListings] = useState<ChannelListing[]>([]);
@@ -1004,30 +1018,41 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => o.status === OrderStatus.PRODUCTION).map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50/50">
-                        <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
-                        <td className="px-5 py-3.5 font-bold text-slate-800">
+                    {orders.filter(o => o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY).map(order => (
+                      <tr
+                        key={order.id}
+                        onClick={() => {
+                          setSelectedIntakeOrder(order);
+                          setDispatchMode('none');
+                        }}
+                        className="hover:bg-slate-50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-5 py-3.5 font-mono font-black text-indigo-600">#{order.id.slice(-8)}</td>
+                        <td className="px-5 py-3.5 font-bold text-slate-900">
                           <div>
                             <span>{order.customerInfo?.name}</span>
                             <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category}</td>
+                        <td className="px-5 py-3.5 font-bold text-slate-700">{order.category}</td>
                         <td className="px-5 py-3.5 text-center font-black text-slate-900">{order.quantity} Pcs</td>
                         <td className="px-5 py-3.5 text-center">
                           <button
-                            onClick={() => handleReceiveProductionOrder(order)}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIntakeOrder(order);
+                              setDispatchMode('none');
+                            }}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors shadow-xs"
                           >
-                            <ArrowRight size={10} /> Receive into Inventory
+                            <ArrowRight size={10} /> Take & View Details
                           </button>
                         </td>
                       </tr>
                     ))}
-                    {orders.filter(o => o.status === OrderStatus.PRODUCTION).length === 0 && (
+                    {orders.filter(o => o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY).length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-400 italic">No completed orders waiting in production queue.</td>
+                        <td colSpan={5} className="py-8 text-center text-gray-400 italic font-medium">No completed orders waiting in production queue.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1152,6 +1177,224 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         )}
 
       </div>
+
+      {/* FULL ORDER INTAKE MODAL WITH COURIER & DELIVERY OPTIONS */}
+      <AnimatePresence>
+        {selectedIntakeOrder && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 space-y-6 relative text-left"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div>
+                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Inventory Intake Queue • Production Order</span>
+                  <h3 className="text-2xl font-black text-slate-900 uppercase italic">#{selectedIntakeOrder.id.slice(-8)}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedIntakeOrder(null)}
+                  className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Order Info & Address */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
+                  <span className="text-[9px] font-black text-gray-400 uppercase">Customer Name</span>
+                  <p className="text-sm font-bold text-slate-900">{selectedIntakeOrder.customerInfo?.name}</p>
+                  <div className="pt-1 flex items-center gap-1.5 text-xs text-indigo-600 font-bold">
+                    <Phone size={12} />
+                    <a href={`tel:${selectedIntakeOrder.customerInfo?.phone}`} className="hover:underline text-indigo-600">
+                      {selectedIntakeOrder.customerInfo?.phone}
+                    </a>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
+                  <span className="text-[9px] font-black text-gray-400 uppercase">Shipping Address</span>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedIntakeOrder.customerInfo?.address || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-slate-800 font-bold flex items-start gap-1.5 hover:text-red-600 transition-colors group no-underline"
+                  >
+                    <MapPin size={14} className="text-red-500 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                    <span className="leading-tight group-hover:underline">{selectedIntakeOrder.customerInfo?.address || 'No address specified'}</span>
+                    <ExternalLink size={10} className="shrink-0 text-gray-400" />
+                  </a>
+                </div>
+
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 space-y-1">
+                  <span className="text-[9px] font-black text-emerald-700 uppercase">Garment Category & Balance</span>
+                  <p className="text-xs font-bold text-emerald-900">{selectedIntakeOrder.category} ({selectedIntakeOrder.quantity} Pcs)</p>
+                  <p className="text-lg font-black text-emerald-700 italic mt-1">₹{(selectedIntakeOrder.financials?.balanceAmount || 0).toLocaleString()} <span className="text-[9px] font-bold uppercase text-emerald-600">Balance Due</span></p>
+                </div>
+              </div>
+
+              {/* Size Breakdown */}
+              {selectedIntakeOrder.sizeBreakdown && selectedIntakeOrder.sizeBreakdown.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Garment Size Breakdown</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {selectedIntakeOrder.sizeBreakdown.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-gray-50 border border-gray-150 rounded-xl flex items-center justify-between">
+                        <div>
+                          <span className="text-[9px] font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-gray-200">{item.size}</span>
+                          <p className="text-[10px] text-gray-500 font-semibold mt-1">{item.colour} {item.printType && `| ${item.printType}`}</p>
+                        </div>
+                        <span className="text-xs font-black text-slate-900 italic">x {item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* DISPATCH ACTION OPTIONS */}
+              <div className="bg-slate-50 p-5 rounded-2xl border border-gray-200 space-y-4">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Select Dispatch Method for this Intake Order</h4>
+
+                {dispatchMode === 'none' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Option 1: In-House Delivery */}
+                    <button
+                      disabled={isDispatching}
+                      onClick={async () => {
+                        setIsDispatching(true);
+                        try {
+                          await updateOrder(selectedIntakeOrder.id, {
+                            status: OrderStatus.DELIVERY,
+                            details: { ...selectedIntakeOrder.details, dispatchType: 'in_house' },
+                            updatedAt: Date.now()
+                          });
+                          setSelectedIntakeOrder(null);
+                          alert("Order successfully shared to Delivery Dashboard for in-house delivery!");
+                        } catch (e) {
+                          alert("Failed to share order to Delivery Dashboard.");
+                        } finally {
+                          setIsDispatching(false);
+                        }
+                      }}
+                      className="p-5 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider flex flex-col items-center justify-center gap-2 cursor-pointer transition-all shadow-md hover:scale-[1.01] border-none"
+                    >
+                      <Truck size={24} />
+                      <span>🚚 Share to Delivery Dashboard</span>
+                      <span className="text-[9px] text-orange-100 font-normal lowercase">Forward order to in-house delivery team</span>
+                    </button>
+
+                    {/* Option 2: Courier Shipping */}
+                    <button
+                      disabled={isDispatching}
+                      onClick={() => setDispatchMode('courier')}
+                      className="p-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider flex flex-col items-center justify-center gap-2 cursor-pointer transition-all shadow-md hover:scale-[1.01] border-none"
+                    >
+                      <Package size={24} />
+                      <span>📦 Courier Shipping</span>
+                      <span className="text-[9px] text-blue-100 font-normal lowercase">Select courier partner (DTDC, Professional, etc.)</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Courier Selection Sub-panel */}
+                {dispatchMode === 'courier' && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                      <span className="text-xs font-black text-blue-700 uppercase tracking-wider">Which Courier Partner?</span>
+                      <button onClick={() => setDispatchMode('none')} className="text-[10px] font-bold text-gray-500 hover:text-gray-900 border-none bg-transparent cursor-pointer">
+                        ← Back to Options
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'Professional Courier',
+                        'DTDC Express',
+                        'ST Courier',
+                        'Blue Dart',
+                        'India Post',
+                        'Porter',
+                        'Dunzo / Shadowfax',
+                        'Custom / Other'
+                      ].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setSelectedCourier(c)}
+                          className={cn(
+                            "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border",
+                            selectedCourier === c
+                              ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100"
+                          )}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-gray-400">Tracking / AWB / Consignment Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. TRK987654321"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold"
+                        value={courierTrackingNo}
+                        onChange={(e) => setCourierTrackingNo(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setDispatchMode('none')}
+                        className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDispatching}
+                        onClick={async () => {
+                          if (!selectedCourier.trim()) {
+                            alert("Please select a courier partner.");
+                            return;
+                          }
+                          setIsDispatching(true);
+                          try {
+                            await updateOrder(selectedIntakeOrder.id, {
+                              status: OrderStatus.DELIVERED,
+                              details: {
+                                ...selectedIntakeOrder.details,
+                                dispatchType: 'courier',
+                                courierName: selectedCourier,
+                                trackingNumber: courierTrackingNo.trim() || 'COURIER-DISPATCH'
+                              },
+                              updatedAt: Date.now()
+                            });
+                            setSelectedIntakeOrder(null);
+                            alert(`Order successfully dispatched via ${selectedCourier}!`);
+                          } catch (e) {
+                            alert("Failed to dispatch courier shipment.");
+                          } finally {
+                            setIsDispatching(false);
+                          }
+                        }}
+                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase border-none cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        {isDispatching ? "Processing..." : `Confirm ${selectedCourier} Dispatch`}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

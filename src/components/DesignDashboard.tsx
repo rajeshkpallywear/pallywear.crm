@@ -1175,50 +1175,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       })}
                     </div>
                   </section>
-
-                  {/* Accounts Billing Documents — images/PDFs sent by Accounts when they dispatched this order to Design */}
-                  {(selectedOrder.accountsAttachments || []).length > 0 && (
-                    <section className="space-y-3">
-                      <h4 className="text-[10.5px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-amber-100">
-                        <FileText size={13} className="text-amber-500" />
-                        Accounts Billing Documents ({(selectedOrder.accountsAttachments || []).length})
-                        <span className="ml-auto text-[8px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 normal-case tracking-normal">Sent by Accounts</span>
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {(selectedOrder.accountsAttachments || []).map((file, i) => (
-                          <div key={i} className="flex flex-col gap-2 p-2 bg-amber-50 rounded-2xl border border-amber-100 group relative">
-                            <div className="aspect-square rounded-xl overflow-hidden relative bg-white flex items-center justify-center border border-amber-100">
-                              {file.startsWith('data:image/') ? (
-                                <img src={file} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              ) : (
-                                <div className="flex flex-col items-center gap-2 text-amber-500">
-                                  <FileText size={28} />
-                                  <span className="text-[8px] font-black uppercase text-amber-600">Billing Doc</span>
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                                {file.startsWith('data:image/') && (
-                                  <button
-                                    onClick={() => setViewingImage(file)}
-                                    className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all border-none cursor-pointer"
-                                  >
-                                    <ZoomIn size={14} />
-                                  </button>
-                                )}
-                                <a
-                                  href={file}
-                                  download={`Billing_Doc_${i + 1}_Order_${selectedOrder.id.slice(-6)}`}
-                                  className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer"
-                                >
-                                  <Download size={14} />
-                                </a>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
                 </div>
 
                 {/* Right Column: Interaction Hub (Staff vs Order Management Conversational Chat) */}
