@@ -34,40 +34,18 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
         continue;
       }
       try {
-        let fileToProcess: File | Blob = file;
-
-        // Keep 100% Full HD / Original Quality for images
-        if (file.type.startsWith('image/')) {
-          if (file.size <= 5 * 1024 * 1024) {
-            // Under 5MB: Keep exact 100% original uncompressed bytes for 100% Full HD quality
-            fileToProcess = file;
-          } else {
-            // High Quality HD optimization for larger images up to 100MB
-            const options = {
-              maxSizeMB: 20,
-              maxWidthOrHeight: 4096, // Supports 4K / Full HD
-              initialQuality: 0.98,
-              useWebWorker: true,
-            };
-            try {
-              fileToProcess = await imageCompression(file, options);
-            } catch (error) {
-              console.error('HD Optimization fallback to original:', error);
-              fileToProcess = file;
-            }
-          }
-        }
-
+        // Read raw file directly for 100% untouched Full HD quality & crystal clarity
         const reader = new FileReader();
-        const data = await new Promise<string>((resolve) => {
+        const data = await new Promise<string>((resolve, reject) => {
           reader.onload = (event) => resolve(event.target?.result as string);
-          reader.readAsDataURL(fileToProcess);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(file);
         });
 
         processedFiles.push({
           name: file.name,
           type: file.type,
-          size: fileToProcess.size,
+          size: file.size,
           data: data
         });
       } catch (error) {

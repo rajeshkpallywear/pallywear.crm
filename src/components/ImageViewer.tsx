@@ -70,8 +70,13 @@ export default function ImageViewer({ src, onClose, fileName = 'attachment' }: I
           animate={{ scale: zoom }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         >
-          {src.startsWith('data:image') || src.includes('.png') || src.includes('.jpg') ? (
-            <img src={src} className="max-w-none shadow-2xl rounded-lg" draggable={false} />
+          {src.startsWith('data:image') || src.includes('.png') || src.includes('.jpg') || src.includes('.jpeg') || src.includes('.webp') ? (
+            <img
+              src={src}
+              className="max-h-[85vh] max-w-[90vw] object-contain shadow-2xl rounded-2xl select-none"
+              style={{ imageRendering: 'high-quality' }}
+              draggable={false}
+            />
           ) : (
             <div className="bg-white p-12 rounded-3xl text-center max-w-md">
               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
