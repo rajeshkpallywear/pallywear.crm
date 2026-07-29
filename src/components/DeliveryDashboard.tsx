@@ -72,20 +72,6 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   return (
     <div className="bg-white text-slate-800 p-6 rounded-3xl border border-gray-100 shadow-xs space-y-8 text-left">
-      {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
-        <div>
-          <span className="text-[10px] font-black text-orange-600 uppercase tracking-[0.25em] block mb-1">Pallywear CRM Portal</span>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Order Fulfillment & Delivery Status</h2>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2.5 bg-slate-50 border border-gray-200 hover:border-orange-500/20 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
-        >
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          Sync Data
-        </button>
-      </div>
 
       {/* Dynamic Real Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">

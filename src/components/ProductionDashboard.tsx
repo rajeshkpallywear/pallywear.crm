@@ -101,20 +101,6 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
 
   return (
     <div className="bg-white text-slate-800 p-6 rounded-[2.5rem] border border-gray-200 shadow-xl space-y-8 text-left">
-      {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
-        <div>
-          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.25em] block mb-1">Pallywear CRM Portal</span>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Production Run Board</h2>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2.5 bg-slate-50 border border-gray-200 hover:border-indigo-500/20 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
-        >
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          Sync Data
-        </button>
-      </div>
 
       {/* Tabs Filter Bar */}
       <div className="flex items-center gap-2 p-1 bg-gray-100 border border-gray-200 rounded-2xl w-fit">

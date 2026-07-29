@@ -86,11 +86,7 @@ export default function OrdersChart({ orders }: OrdersChartProps) {
 
   return (
     <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-xs space-y-6 text-left">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
-        <div>
-          <h3 className="text-base font-black text-gray-900 uppercase tracking-tight">Order Performance & Metrics</h3>
-          <p className="text-xs text-gray-500 font-semibold mt-0.5">Real-time volume timeline and pipeline status breakdown</p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 border-b border-gray-100 pb-4">
         <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-3 py-1 rounded-xl border border-purple-100 w-fit">
           Live Data Analytics
         </span>

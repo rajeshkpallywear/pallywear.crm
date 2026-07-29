@@ -560,22 +560,6 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
   return (
     <div className="space-y-6">
-      {/* Header and Sync Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-gray-150 shadow-sm">
-        <div>
-          <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.25em] block mb-1">Pallywear Portal</span>
-          <h2 className="text-xl font-black text-gray-900 tracking-tighter uppercase italic">Order Management Deck</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2.5 bg-gray-50 border border-gray-150 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Sync Data
-          </button>
-        </div>
-      </div>
 
       {/* Top Filter Buttons */}
       <div className="flex bg-white p-1.5 rounded-2xl border border-gray-150 gap-1.5 overflow-x-auto shadow-xs w-full">

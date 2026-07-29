@@ -279,10 +279,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       return o.status === OrderStatus.HOLD;
     }
     if (selectedSection === 'completed') {
-      return o.status === OrderStatus.DELIVERED;
+      return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED;
     }
     if (selectedSection === 'process') {
-      return o.status !== OrderStatus.DELIVERED && 
+      return o.status !== OrderStatus.DELIVERY &&
+             o.status !== OrderStatus.DELIVERED && 
              o.status !== OrderStatus.HOLD && 
              o.status !== OrderStatus.PENDING && 
              o.status !== OrderStatus.DRAFT;
@@ -292,42 +293,37 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
   const processOrdersCount = orders.filter(o => 
+    o.status !== OrderStatus.DELIVERY && 
     o.status !== OrderStatus.DELIVERED && 
     o.status !== OrderStatus.HOLD && 
     o.status !== OrderStatus.PENDING && 
     o.status !== OrderStatus.DRAFT
   ).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
-  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
+  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED).length;
 
   return (
     <div className="bg-white text-gray-900 p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8 animate-in fade-in duration-300">
       
-      {/* Title Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
-        <div>
-          <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.25em] block mb-1">Pallywear CRM Portal</span>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Orders & Lead Management</h2>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => {
-              resetForm();
-              setIsCreating(true);
-            }}
-            className="flex items-center justify-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-black hover:opacity-90 transition-all shadow-lg active:scale-95 text-xs uppercase cursor-pointer border-none"
-          >
-            <Plus size={16} />
-            <span>Create Order</span>
-          </button>
-          <button
-            onClick={() => setIsLeadModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-gray-150 border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-black hover:bg-gray-200 transition-all shadow-xs active:scale-95 text-xs uppercase cursor-pointer"
-          >
-            <User size={16} />
-            <span>Create Lead</span>
-          </button>
-        </div>
+      {/* Action Buttons Header */}
+      <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-4">
+        <button
+          onClick={() => {
+            resetForm();
+            setIsCreating(true);
+          }}
+          className="flex items-center justify-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-black hover:opacity-90 transition-all shadow-lg active:scale-95 text-xs uppercase cursor-pointer border-none"
+        >
+          <Plus size={16} />
+          <span>Create Order</span>
+        </button>
+        <button
+          onClick={() => setIsLeadModalOpen(true)}
+          className="flex items-center justify-center gap-2 bg-gray-150 border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-black hover:bg-gray-200 transition-all shadow-xs active:scale-95 text-xs uppercase cursor-pointer"
+        >
+          <User size={16} />
+          <span>Create Lead</span>
+        </button>
       </div>
 
       <ConversationDashboard
