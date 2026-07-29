@@ -28,6 +28,7 @@ import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import OrderDetailModal from './OrderDetailModal';
+import OrdersChart from './OrdersChart';
 
 interface DigitizingDashboardProps {
   orders: Order[];
@@ -464,6 +465,11 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
             </div>
           )}
         </div>
+      </div>
+
+      {/* Analytics Graph Model */}
+      <div className="pt-4">
+        <OrdersChart orders={orders} />
       </div>
 
       {/* Global Image Viewer Modal */}

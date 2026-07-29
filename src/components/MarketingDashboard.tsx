@@ -22,6 +22,7 @@ import ImageViewer from './ImageViewer';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
+import OrdersChart from './OrdersChart';
 
 interface MarketingDashboardProps {
   orders: Order[];
@@ -653,7 +654,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             )}
           </div>
         </div>
-      </div>      {/* Forms and Creation Modal */}
+      </div>
+
+      {/* Analytics Graph Model */}
+      <div className="pt-4">
+        <OrdersChart orders={orders} />
+      </div>
+
+      {/* Forms and Creation Modal */}
       {isCreating && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div

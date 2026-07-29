@@ -14,6 +14,7 @@ import ImageViewer from './ImageViewer';
 import VendorExpensePage from './VendorExpensePage';
 import OtherExpensePage from './OtherExpensePage';
 import ExpensesHub from './ExpensesHub';
+import OrdersChart from './OrdersChart';
 
 type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue' | 'expenses-hub';
 
@@ -491,6 +492,11 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
             </div>
           )}
         </div>
+      </div>
+
+      {/* Analytics Graph Model */}
+      <div className="pt-4">
+        <OrdersChart orders={orders} />
       </div>
 
 

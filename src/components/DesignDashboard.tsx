@@ -35,6 +35,7 @@ import ImageViewer from './ImageViewer';
 import OrderDetailModal from './OrderDetailModal';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import ConversationDashboard, { Conversation } from './ConversationDashboard';
+import OrdersChart from './OrdersChart';
 
 interface DesignDashboardProps {
   orders: Order[];
@@ -1007,6 +1008,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             )}
           </div>
         </div>
+      </div>
+
+      {/* Analytics Graph Model */}
+      <div className="pt-4">
+        <OrdersChart orders={orders} />
       </div>
 
       {/* Staff Chats Embedded Modal / Conversation Side-Drawer */}

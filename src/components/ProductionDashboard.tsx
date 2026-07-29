@@ -5,6 +5,7 @@ import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
+import OrdersChart from './OrdersChart';
 
 interface ProductionDashboardProps {
   orders: Order[];
@@ -457,6 +458,11 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
             </div>
           )}
         </div>
+      </div>
+
+      {/* Analytics Graph Model */}
+      <div className="pt-4">
+        <OrdersChart orders={orders} />
       </div>
 
       {viewingImage && (

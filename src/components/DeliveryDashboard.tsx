@@ -5,6 +5,7 @@ import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
+import OrdersChart from './OrdersChart';
 
 interface DeliveryDashboardProps {
   orders: Order[];
@@ -376,63 +377,9 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
         </div>
       </div>
 
-      {/* Bottom Row: Order History Hub */}
-      <div className="pt-8 border-t border-gray-100">
-        <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-6">
-          <Globe className="text-orange-600" size={20} />
-          Order History Hub
-        </h3>
-        <div className="bg-white border border-gray-200 rounded-[2rem] shadow-xs overflow-hidden">
-          <table className="hidden md:table w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 border-b border-gray-100">
-              <tr className="text-slate-400 font-black uppercase text-[9px] tracking-widest">
-                <th className="px-6 py-4">Order ID</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Update Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {orders.slice(0, 5).map(order => (
-                <tr key={order.id} onClick={() => setSelectedHubOrder(order)} className="hover:bg-slate-50 cursor-pointer transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs text-orange-600 font-bold">#{order.id.slice(-8)}</td>
-                  <td className="px-6 py-4 font-bold text-slate-900">{order.customerInfo.name}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-[10px] text-slate-400 font-mono">
-                    {new Date(order.updatedAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Mobile Card List View */}
-          <div className="block md:hidden divide-y divide-gray-100">
-            {orders.slice(0, 5).map(order => (
-              <div
-                key={order.id}
-                onClick={() => setSelectedHubOrder(order)}
-                className="p-4 bg-white space-y-3 active:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono font-black text-orange-600">#{order.id.slice(-8)}</span>
-                  <span className="text-[10px] text-slate-400 font-bold font-mono">{new Date(order.updatedAt).toLocaleDateString()}</span>
-                </div>
-                <div className="font-black text-slate-900 text-sm">{order.customerInfo.name}</div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status:</span>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
-                    {order.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Analytics Graph Model */}
+      <div className="pt-4">
+        <OrdersChart orders={orders} />
       </div>
 
       {viewingImage && (

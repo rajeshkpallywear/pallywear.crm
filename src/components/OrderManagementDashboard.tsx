@@ -39,6 +39,7 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
 import Logo from './Logo';
+import OrdersChart from './OrdersChart';
 import { getApiBaseUrl } from '../lib/apiConfig';
 
 export interface ChatMessage {
@@ -939,8 +940,13 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
       </div>
 
       {/* Inventory Summary Section */}
-      <div className="pt-4 border-t border-gray-100 pb-12">
+      <div className="pt-4 border-t border-gray-100 pb-8">
         <InventoryManagement userRole={isAdmin ? 'admin' : 'order_management'} />
+      </div>
+
+      {/* Analytics Graph Model */}
+      <div className="pt-4 pb-8">
+        <OrdersChart orders={orders} />
       </div>
 
       {selectedHubOrder && (
