@@ -1,6 +1,6 @@
 
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -165,10 +165,17 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                           <Phone size={18} className="text-brand-primary/60" />
                           {order.customerInfo.phone}
                         </div>
-                        <div className="flex flex-start gap-3 text-gray-500 text-xs mt-2 italic leading-relaxed">
-                          <MapPin size={18} className="text-brand-primary/40 shrink-0" />
-                          {order.customerInfo.address}
-                        </div>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customerInfo.address || '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-3 text-gray-700 hover:text-red-600 text-xs mt-2 font-medium leading-relaxed no-underline cursor-pointer group"
+                          title="Click to open location in Google Maps"
+                        >
+                          <MapPin size={18} className="text-red-500 shrink-0 group-hover:scale-110 transition-transform" />
+                          <span className="group-hover:underline">{order.customerInfo.address || 'No address specified'}</span>
+                          <ExternalLink size={12} className="text-gray-400 shrink-0 mt-0.5" />
+                        </a>
                       </>
                     )}
                   </div>

@@ -826,8 +826,6 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
-              {/* Performance Graph under all dashboards */}
-              <OrdersChart orders={filteredOrders} />
             </div>
           ) : (
             <div className="text-gray-500">Page not found.</div>

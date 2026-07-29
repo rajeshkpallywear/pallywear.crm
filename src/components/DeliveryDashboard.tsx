@@ -198,9 +198,22 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                     </div>
                   )}
 
-                  <div className={cn("text-[9px] flex items-center gap-1.5", selectedOrder?.id === order.id ? "text-orange-100" : "text-slate-500")}>
+                  <div
+                    onClick={(e) => {
+                      if (order.customerInfo?.address) {
+                        e.stopPropagation();
+                        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customerInfo.address)}`, '_blank');
+                      }
+                    }}
+                    className={cn(
+                      "text-[9px] flex items-center gap-1.5 hover:underline cursor-pointer transition-colors",
+                      selectedOrder?.id === order.id ? "text-orange-100 hover:text-white" : "text-slate-500 hover:text-red-600"
+                    )}
+                    title="Click to open address in Google Maps"
+                  >
                     <MapPin size={10} className="shrink-0" />
                     <span className="truncate">{order.customerInfo.address || 'No address specified'}</span>
+                    <ExternalLink size={8} className="shrink-0 opacity-70" />
                   </div>
                 </button>
               ))
@@ -250,11 +263,29 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
               {/* Details & Balance */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shipping Address</span>
-                  <div className="p-4 bg-white border border-gray-200 rounded-2xl flex items-start gap-3 shadow-xs">
-                    <MapPin size={20} className="text-red-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-700 font-bold leading-relaxed">{selectedOrder.customerInfo.address || 'No address specified'}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shipping Address</span>
+                    <span className="text-[8px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 uppercase">Click to open Google Maps</span>
                   </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedOrder.customerInfo.address || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-4 bg-white border border-gray-200 hover:border-red-400 hover:bg-red-50/20 transition-all rounded-2xl flex items-start justify-between gap-3 shadow-xs group no-underline text-slate-700 cursor-pointer"
+                    title="Click to open route navigation in Google Maps"
+                  >
+                    <div className="flex items-start gap-3">
+                      <MapPin size={20} className="text-red-500 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                      <div>
+                        <p className="text-xs text-slate-900 font-bold leading-relaxed group-hover:text-red-600 transition-colors">
+                          {selectedOrder.customerInfo.address || 'No address specified'}
+                        </p>
+                        <span className="text-[10px] font-bold text-red-600 underline mt-1.5 inline-flex items-center gap-1">
+                          Open in Google Maps <ExternalLink size={10} />
+                        </span>
+                      </div>
+                    </div>
+                  </a>
                 </div>
 
                 <div className="space-y-1.5">
