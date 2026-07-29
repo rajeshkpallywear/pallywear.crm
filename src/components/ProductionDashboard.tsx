@@ -34,9 +34,11 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     return o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
   });
 
-  // Auto-select first order when section or filtered order list changes
+  // Auto-select first order when section or filtered order list changes (except completed tab)
   useEffect(() => {
-    if (filteredOrders.length > 0) {
+    if (selectedSection === 'completed') {
+      setSelectedOrder(null);
+    } else if (filteredOrders.length > 0) {
       if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
         setSelectedOrder(filteredOrders[0]);
       }

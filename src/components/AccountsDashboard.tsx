@@ -50,9 +50,11 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     return o.status === OrderStatus.ACCOUNTS;
   });
 
-  // Auto-select first order when section or filtered order list changes
+  // Auto-select first order when section or filtered order list changes (except completed tab)
   useEffect(() => {
-    if (filteredOrders.length > 0) {
+    if (selectedSection === 'completed') {
+      setSelectedOrder(null);
+    } else if (filteredOrders.length > 0) {
       if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
         setSelectedOrder(filteredOrders[0]);
       }

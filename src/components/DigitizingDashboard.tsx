@@ -61,9 +61,11 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     }
   });
 
-  // Auto-select first order when section, view mode or search changes
+  // Auto-select first order when section, view mode or search changes (except completed mode)
   useEffect(() => {
-    if (filteredOrders.length > 0) {
+    if (viewMode === 'completed') {
+      setSelectedOrder(null);
+    } else if (filteredOrders.length > 0) {
       if (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id)) {
         setSelectedOrder(filteredOrders[0]);
       }

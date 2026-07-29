@@ -75,8 +75,15 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     }
 
     loadData();
+
+    // ⚡ Automatic background refresh every 10 seconds
+    const interval = setInterval(loadData, 10000);
+
     window.addEventListener('pallywear-data-updated', loadData);
-    return () => window.removeEventListener('pallywear-data-updated', loadData);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('pallywear-data-updated', loadData);
+    };
   }, [user]);
 
   const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;

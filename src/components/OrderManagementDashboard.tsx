@@ -123,11 +123,12 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus)).length;
   const completedOrdersCount = orders.filter(o => [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)).length;
 
-  // Auto-select first order if none is selected
+  // Auto-select first order if none is selected (except completed tab)
   useEffect(() => {
-    const list = filteredOrders;
-    if (list.length > 0 && (!selectedOrder || !list.some(o => o.id === selectedOrder.id))) {
-      setSelectedOrder(list[0]);
+    if (selectedSection === 'completed') {
+      setSelectedOrder(null);
+    } else if (filteredOrders.length > 0 && (!selectedOrder || !filteredOrders.some(o => o.id === selectedOrder.id))) {
+      setSelectedOrder(filteredOrders[0]);
     }
   }, [orders, selectedSection]);
 
