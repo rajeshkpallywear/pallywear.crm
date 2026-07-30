@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
@@ -103,11 +103,11 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     <div className="bg-white text-slate-800 p-6 rounded-[2.5rem] border border-gray-200 shadow-xl space-y-8 text-left">
 
       {/* Tabs Filter Bar */}
-      <div className="flex items-center gap-2 p-1 bg-gray-100 border border-gray-200 rounded-2xl w-fit">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-gray-100 border border-gray-200 rounded-2xl w-full sm:w-fit">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'recent' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
@@ -116,7 +116,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'process' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
@@ -125,7 +125,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'hold' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
@@ -134,7 +134,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'completed' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
@@ -145,7 +145,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       {/* Pipeline Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
         {/* Left Column: Product Design Pipeline */}
-        <div className="space-y-4">
+        <div className={cn("space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <div className="border-b border-gray-150 pb-3">
             <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Product Design Pipeline</h4>
           </div>
@@ -202,13 +202,21 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         </div>
 
         {/* Right Column: Work Station details */}
-        <div className="lg:col-span-2">
+        <div className={cn("lg:col-span-2", selectedOrder ? "block" : "hidden lg:block")}>
           {selectedOrder ? (
             <motion.div
               layoutId={selectedOrder.id}
               className="bg-slate-50 border border-gray-200 rounded-[2rem] p-6 shadow-md space-y-6 text-slate-800"
             >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 pb-4">
+              <div className="flex flex-col gap-2 border-b border-gray-200 pb-4">
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="lg:hidden w-fit px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back to List
+                </button>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Active Station Workspace</span>
                   <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic mt-0.5">#{selectedOrder.id.slice(-8)}</h3>
@@ -231,6 +239,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                   </button>
                 </div>
               </div>
+            </div>
 
               {/* Order Breakdown Grid */}
               <div className="space-y-4">

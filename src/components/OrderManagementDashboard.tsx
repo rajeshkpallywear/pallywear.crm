@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
+  ArrowLeft,
   Layers,
   Package,
   ChevronRight,
@@ -562,7 +563,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     <div className="space-y-6">
 
       {/* Top Filter Buttons */}
-      <div className="flex bg-white p-1.5 rounded-2xl border border-gray-150 gap-1.5 overflow-x-auto shadow-xs w-full">
+      <div className="flex flex-wrap sm:flex-nowrap bg-white p-1.5 rounded-2xl border border-gray-150 gap-1.5 w-full sm:w-fit">
         {([
           { key: 'recent', label: '⏳ Live OM Queue', count: recentOrdersCount },
           { key: 'process', label: '⚙️ In Production', count: processOrdersCount },
@@ -574,7 +575,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
             key={key}
             onClick={() => { setSelectedSection(key); setSelectedOrder(null); }}
             className={cn(
-              "flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border-none cursor-pointer",
+              "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border-none cursor-pointer text-center",
               selectedSection === key
                 ? "bg-slate-900 text-white shadow-sm"
                 : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
@@ -600,7 +601,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
       {/* Main interactive grid layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column: Orders list */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className={cn("lg:col-span-1 space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-3">
             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
               <Layers size={14} className="text-indigo-500" />
@@ -659,8 +660,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
           </div>
         </div>
 
-        {/* Right column: Active detail space */}
-        <div className="lg:col-span-2">
+        <div className={cn("lg:col-span-2", selectedOrder ? "block" : "hidden lg:block")}>
           {selectedOrder ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -668,7 +668,15 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
               className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden text-left"
             >
               {/* Workspace Header */}
-              <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+              <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex flex-col gap-2">
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="lg:hidden w-fit px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back to List
+                </button>
+                <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order verification workspace</span>
                   <h4 className="text-base font-black text-slate-900">Order #{selectedOrder.id}</h4>
@@ -679,6 +687,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                   </span>
                 </div>
               </div>
+            </div>
 
               {/* Workspace Body */}
               <div className="p-6 space-y-6">

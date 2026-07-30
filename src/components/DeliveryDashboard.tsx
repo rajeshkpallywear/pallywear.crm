@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Truck, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, MapPin, Phone, Clock, AlertCircle, ExternalLink, Activity } from 'lucide-react';
+import { ArrowLeft, Truck, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, MapPin, Phone, Clock, AlertCircle, ExternalLink, Activity } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
@@ -143,7 +143,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Delivery Queue */}
-        <div className="space-y-4">
+        <div className={cn("space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <div className="border-b border-gray-100 pb-3">
             <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Delivery Queue ({filteredOrders.length})</h4>
           </div>
@@ -213,14 +213,22 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
         </div>
 
         {/* Right Column: Delivery Workspace */}
-        <div className="lg:col-span-2">
+        <div className={cn("lg:col-span-2", selectedOrder ? "block" : "hidden lg:block")}>
           {selectedOrder ? (
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-slate-50 border border-gray-200 rounded-[2rem] p-6 shadow-md space-y-6 text-slate-800"
             >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 pb-4">
+              <div className="flex flex-col gap-2 border-b border-gray-200 pb-4">
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="lg:hidden w-fit px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back to List
+                </button>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest font-bold">Delivery Active Node</span>
                   <h4 className="text-2xl font-black text-slate-900 uppercase italic mt-0.5">#{selectedOrder.id.slice(-8)}</h4>
@@ -245,6 +253,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
                 </div>
               </div>
+            </div>
 
               {/* Details & Balance */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

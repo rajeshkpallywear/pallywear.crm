@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
+  ArrowLeft,
   Scissors,
   FileText,
   Download,
@@ -226,7 +227,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side: Order list */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className={cn("lg:col-span-1 space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs space-y-3">
             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
               <Scissors size={14} className="text-indigo-500" />
@@ -279,7 +280,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
         </div>
 
         {/* Right Side: Active Workspace */}
-        <div className="lg:col-span-2">
+        <div className={cn("lg:col-span-2", selectedOrder ? "block" : "hidden lg:block")}>
           {selectedOrder ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -287,7 +288,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
               className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden"
             >
               {/* Header */}
-              <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+              <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex flex-col gap-2">
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="lg:hidden w-fit px-3 py-1.5 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back to List
+                </button>
+                <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order workspace</span>
                   <h4 className="text-base font-black text-slate-900">#{selectedOrder.id}</h4>
@@ -306,6 +315,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                   </span>
                 </div>
               </div>
+            </div>
 
               {/* Body */}
               <div className="p-6 space-y-6">

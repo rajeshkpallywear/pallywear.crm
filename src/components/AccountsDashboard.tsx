@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
@@ -247,7 +247,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-4">
+        <div className={cn("lg:col-span-1 space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
             <ClipboardCheck className="text-amber-500" size={16} />
             {selectedSection === 'total' ? 'All Billing Records' : selectedSection === 'hold' ? 'On Hold Billing' : 'Completed Invoices'} ({filteredOrders.length})
@@ -297,7 +297,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           </div>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className={cn("lg:col-span-2", selectedOrder ? "block" : "hidden lg:block")}>
           {selectedOrder ? (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -305,6 +305,13 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
               className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
             >
               <div className="p-8 border-b border-gray-50 bg-white">
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="lg:hidden mb-4 flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all border-none cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back to List
+                </button>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <span className="text-xs font-mono text-gray-400">ORDER DETAILS</span>

@@ -336,11 +336,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       />
 
       {/* Tabs Filter Bar */}
-      <div className="flex items-center gap-2 p-1 bg-gray-100 border border-gray-250 rounded-2xl w-fit">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-gray-100 border border-gray-250 rounded-2xl w-full sm:w-fit">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'recent' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -349,7 +349,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'process' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -358,7 +358,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'hold' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -367,7 +367,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer",
+            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
             selectedSection === 'completed' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
