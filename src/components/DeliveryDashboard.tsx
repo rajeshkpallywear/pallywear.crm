@@ -16,7 +16,7 @@ interface DeliveryDashboardProps {
 
 export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin }: DeliveryDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('process');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,7 +45,6 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
   }, [selectedSection, filteredOrders.length]);
 
-  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length;
   const processOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
@@ -74,23 +73,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
     <div className="bg-white text-slate-800 p-6 rounded-3xl border border-gray-100 shadow-xs space-y-8 text-left">
 
       {/* Dynamic Real Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-        <button
-          onClick={() => setSelectedSection('recent')}
-          className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'recent' ? "bg-orange-600 border-orange-600 text-white shadow-md shadow-orange-600/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-orange-500/40 hover:scale-[1.01]"
-          )}
-        >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'recent' ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600")}>
-            <Package size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'recent' ? "text-white/80" : "text-gray-400")}>All Shipments</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{recentOrdersCount}</p>
-          </div>
-        </button>
-
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
