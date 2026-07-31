@@ -19,24 +19,31 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
     const invoiceRef = useRef<HTMLDivElement>(null);
     const [isQrOpen, setIsQrOpen] = useState(false);
     const [logoBase64, setLogoBase64] = useState<string>('');
+    const [qrBase64, setQrBase64] = useState<string>('');
+    const [sealBase64, setSealBase64] = useState<string>('');
+    const [sigBase64, setSigBase64] = useState<string>('');
 
     useEffect(() => {
-        const fetchLogo = async () => {
+        const fetchAsset = async (urlPath: string, setter: (val: string) => void) => {
             try {
-                const res = await fetch(getApiUrl('/logo.png'));
+                const res = await fetch(getApiUrl(urlPath));
                 if (res.ok) {
                     const blob = await res.blob();
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        setLogoBase64(reader.result as string);
+                        setter(reader.result as string);
                     };
                     reader.readAsDataURL(blob);
                 }
             } catch (err) {
-                console.error('Failed to convert logo to base64:', err);
+                console.error(`Failed to convert ${urlPath} to base64:`, err);
             }
         };
-        fetchLogo();
+
+        fetchAsset('/logo.png', setLogoBase64);
+        fetchAsset('/Qr.png', setQrBase64);
+        fetchAsset('/SEAL.png', setSealBase64);
+        fetchAsset('/signature.png', setSigBase64);
     }, []);
 
     React.useEffect(() => {
@@ -186,7 +193,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                                     className="max-w-md w-full aspect-square bg-white rounded-[60px] p-10 shadow-2xl relative"
                                 >
-                                    <img src="/Qr.png" className="w-full h-full object-contain" alt="Large QR" />
+                                    <img src={qrBase64 || getApiUrl('/Qr.png')} className="w-full h-full object-contain" alt="Large QR" />
                                     <div className="absolute -bottom-16 left-0 right-0 text-center">
                                         <p className="text-white font-black uppercase tracking-[0.4em] text-[10px]">Tap anywhere to close</p>
                                     </div>
@@ -340,7 +347,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                                 onClick={() => setIsQrOpen(true)}
                                             >
                                                 <img
-                                                    src="/Qr.png"
+                                                    src={qrBase64 || getApiUrl('/Qr.png')}
                                                     alt="Payment QR Code"
                                                     className="w-full h-full object-contain"
                                                     referrerPolicy="no-referrer"
@@ -400,7 +407,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                 {/* Seal on the left */}
                                 <div className="relative w-48 h-48 opacity-80 pointer-events-none rotate-[-8deg] mb-8">
                                     <img
-                                        src="/SEAL.png"
+                                        src={sealBase64 || getApiUrl('/SEAL.png')}
                                         alt="Company Seal"
                                         className="w-full h-full object-contain"
                                         referrerPolicy="no-referrer"
@@ -411,7 +418,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                 <div className="relative text-center">
                                     <div className="h-32 flex items-end justify-center mb-2 px-4">
                                         <img
-                                            src="/signature.png"
+                                            src={sigBase64 || getApiUrl('/signature.png')}
                                             alt="Authorized Signature"
                                             className="h-24 object-contain translate-x-4 opacity-95"
                                             referrerPolicy="no-referrer"
