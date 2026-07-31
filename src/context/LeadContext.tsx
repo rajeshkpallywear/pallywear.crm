@@ -168,7 +168,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     setOrders((prev) => prev.map((order) => (order.id === id ? nextOrder : order)));
 
     try {
-      await mockDataService.saveOrder(nextOrder);
+      await mockDataService.patchOrder(id, sanitizeForStorage(orderUpdate));
     } catch (err) {
       console.error("Background sync error:", err);
     }

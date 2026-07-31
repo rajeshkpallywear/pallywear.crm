@@ -1238,18 +1238,50 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
 
               {/* Size Breakdown */}
               {selectedIntakeOrder.sizeBreakdown && selectedIntakeOrder.sizeBreakdown.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Garment Size Breakdown</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {selectedIntakeOrder.sizeBreakdown.map((item, idx) => (
-                      <div key={idx} className="p-3 bg-gray-50 border border-gray-150 rounded-xl flex items-center justify-between">
-                        <div>
-                          <span className="text-[9px] font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-gray-200">{item.size}</span>
-                          <p className="text-[10px] text-gray-500 font-semibold mt-1">{item.colour} {item.printType && `| ${item.printType}`}</p>
+                      <div key={idx} className="p-4 bg-gray-50 border border-gray-150 rounded-2xl flex flex-col justify-between gap-1.5 shadow-sm">
+                        <div className="flex justify-between items-start w-full">
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wide">{item.category}</span>
+                          <span className="text-[10px] font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-gray-200">{item.size}</span>
                         </div>
-                        <span className="text-xs font-black text-slate-900 italic">x {item.quantity}</span>
+                        <div className="text-[10px] text-gray-500 font-bold leading-tight space-y-0.5 mt-1">
+                          {item.colour && <div>Colour: <span className="text-slate-800 font-semibold">{item.colour}</span></div>}
+                          {item.material && <div>Material: <span className="text-slate-800 font-semibold">{item.material}</span></div>}
+                          {item.printType && <div>Print: <span className="text-slate-800 font-semibold">{item.printType}</span></div>}
+                          {item.model && <div>Model: <span className="text-slate-800 font-semibold">{item.model}</span></div>}
+                          {item.sleeve && <div>Sleeve: <span className="text-slate-800 font-semibold">{item.sleeve}</span></div>}
+                          {item.pocket && <div>Pocket: <span className="text-slate-800 font-semibold">{item.pocket}</span></div>}
+                        </div>
+                        <div className="mt-2 pt-1.5 border-t border-gray-200/60 flex justify-between items-center text-xs font-black">
+                          <span className="text-slate-400">Qty</span>
+                          <span className="text-slate-800 italic">x {item.quantity}</span>
+                        </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Requirement Notes */}
+              {(selectedIntakeOrder.notes || selectedIntakeOrder.designNotes || selectedIntakeOrder.accountsNotes) && (
+                <div className="space-y-2.5">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Requirement Notes & Instructions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedIntakeOrder.notes && (
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
+                        <span className="text-[9px] font-black text-gray-400 uppercase">General Specifications</span>
+                        <p className="text-xs font-bold text-slate-700 whitespace-pre-wrap">{selectedIntakeOrder.notes}</p>
+                      </div>
+                    )}
+                    {selectedIntakeOrder.designNotes && (
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
+                        <span className="text-[9px] font-black text-indigo-600 uppercase">Design & Customization Details</span>
+                        <p className="text-xs font-bold text-indigo-900 whitespace-pre-wrap">{selectedIntakeOrder.designNotes}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

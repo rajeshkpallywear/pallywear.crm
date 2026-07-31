@@ -547,6 +547,238 @@ router.delete('/orders/:id', async (req, res) => {
   }
 });
 
+router.patch('/orders/:id', async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  
+  if (!id) {
+    return res.status(400).json({ success: false, message: 'Order ID is required.' });
+  }
+  
+  try {
+    const existing = await query('SELECT status, original_design_file FROM orders WHERE id = ?', [id]) as any[];
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+    const oldStatus = existing[0].status;
+    const oldDesignFile = existing[0].original_design_file;
+    
+    const fields: string[] = [];
+    const params: any[] = [];
+    
+    const keyToColumnMap: { [key: string]: string } = {
+      category: 'category',
+      quantity: 'quantity',
+      status: 'status',
+      isUrgent: 'isUrgent',
+      notes: 'notes',
+      designNotes: 'designNotes',
+      designName: 'designName',
+      designAmount: 'designAmount',
+      designGst: 'designGst',
+      designDiscount: 'designDiscount',
+      assignedDesigner: 'assignedDesigner',
+      holdReason: 'holdReason',
+      previousStatus: 'previousStatus',
+      createdBy: 'createdBy',
+      createdByName: 'createdByName',
+      accountsNotes: 'accountsNotes',
+      original_design_file: 'original_design_file',
+      original_design_filename: 'original_design_filename',
+      vendorName: 'vendorName',
+      vendorNumber: 'vendorNumber',
+      vendorCompany: 'vendorCompany',
+      vendorSize: 'vendorSize',
+      vendorQty: 'vendorQty',
+      vendorHub: 'vendorHub',
+      vendorMaterial: 'vendorMaterial',
+      vendorModel: 'vendorModel',
+      vendorSleeve: 'vendorSleeve',
+      vendorPocket: 'vendorPocket',
+      vendorColor: 'vendorColor',
+      vendorInstructions: 'vendorInstructions',
+      vendorDeliveryName: 'vendorDeliveryName',
+      vendorDeliveryPhone: 'vendorDeliveryPhone',
+      vendorDeliveryVehicle: 'vendorDeliveryVehicle',
+      vendorDeliveryCourier: 'vendorDeliveryCourier',
+      vendorDeliveryTransportType: 'vendorDeliveryTransportType',
+      vendorDeliveryQty: 'vendorDeliveryQty',
+      marketing_image: 'marketing_image',
+      marketing_notes: 'marketing_notes',
+      invoice_file: 'invoice_file',
+      invoice_file_name: 'invoice_file_name',
+      digitizer_file: 'digitizer_file',
+      digitizer_filename: 'digitizer_filename',
+      balance_received_notes: 'balance_received_notes',
+    };
+    
+    if (updates.customerInfo) {
+      const customer = updates.customerInfo;
+      if (customer.name !== undefined) { fields.push('customerName = ?'); params.push(customer.name); }
+      if (customer.company !== undefined) { fields.push('customerCompany = ?'); params.push(customer.company); }
+      if (customer.phone !== undefined) { fields.push('customerPhone = ?'); params.push(customer.phone); }
+      if (customer.address !== undefined) { fields.push('customerAddress = ?'); params.push(customer.address); }
+    }
+    
+    if (updates.financials) {
+      const fin = updates.financials;
+      if (fin.totalAmount !== undefined) { fields.push('totalAmount = ?'); params.push(fin.totalAmount); }
+      if (fin.advancePay !== undefined) { fields.push('advancePay = ?'); params.push(fin.advancePay); }
+      if (fin.balanceAmount !== undefined) { fields.push('balanceAmount = ?'); params.push(fin.balanceAmount); }
+      if (fin.gstAmount !== undefined) { fields.push('gstAmount = ?'); params.push(fin.gstAmount); }
+      if (fin.discountAmount !== undefined) { fields.push('discountAmount = ?'); params.push(fin.discountAmount); }
+      if (fin.shippingCharges !== undefined) { fields.push('shippingCharges = ?'); params.push(fin.shippingCharges); }
+    }
+    
+    if (updates.details !== undefined) {
+      fields.push('details = ?');
+      params.push(JSON.stringify(updates.details || {}));
+    }
+    if (updates.sizeBreakdown !== undefined) {
+      fields.push('sizeBreakdown = ?');
+      params.push(JSON.stringify(updates.sizeBreakdown || []));
+    }
+    if (updates.staffImages !== undefined) {
+      fields.push('staffImages = ?');
+      params.push(JSON.stringify(updates.staffImages || []));
+    }
+    if (updates.staffPdfs !== undefined) {
+      fields.push('staffPdfs = ?');
+      params.push(JSON.stringify(updates.staffPdfs || []));
+    }
+    if (updates.accountsAttachments !== undefined) {
+      fields.push('accountsAttachments = ?');
+      params.push(JSON.stringify(updates.accountsAttachments || []));
+    }
+    if (updates.orderManagementAttachments !== undefined) {
+      fields.push('orderManagementAttachments = ?');
+      params.push(JSON.stringify(updates.orderManagementAttachments || []));
+    }
+    if (updates.designAttachments !== undefined) {
+      fields.push('designAttachments = ?');
+      params.push(JSON.stringify(updates.designAttachments || []));
+    }
+    if (updates.machineFiles !== undefined) {
+      fields.push('machineFiles = ?');
+      params.push(JSON.stringify(updates.machineFiles || []));
+    }
+    
+    for (const key in keyToColumnMap) {
+      if (updates[key] !== undefined) {
+        fields.push(`${keyToColumnMap[key]} = ?`);
+        let val = updates[key];
+        if (key === 'isUrgent') {
+          val = val ? 1 : 0;
+        }
+        params.push(val);
+      }
+    }
+    
+    if (fields.length === 0) {
+      return res.json({ success: true, message: 'No fields to update.' });
+    }
+    
+    fields.push('updatedAt = ?');
+    params.push(Date.now());
+    
+    params.push(id);
+    
+    const sql = `UPDATE orders SET ${fields.join(', ')} WHERE id = ?`;
+    await query(sql, params);
+    
+    const newStatus = updates.status;
+    if (newStatus && oldStatus !== newStatus) {
+      const targetRoles = [];
+      if (newStatus === 'accounts') targetRoles.push('accounts');
+      else if (newStatus === 'design') {
+        targetRoles.push('designer');
+        if (updates.original_design_file || oldDesignFile) {
+          targetRoles.push('digitizer');
+        }
+      }
+      else if (newStatus === 'order_management') targetRoles.push('order_management');
+      else if (newStatus === 'production') {
+        targetRoles.push('production');
+        targetRoles.push('vendor');
+      }
+      else if (newStatus === 'delivery') targetRoles.push('delivery');
+      else if (newStatus === 'delivered') {
+        targetRoles.push('marketing');
+        targetRoles.push('admin');
+      }
+      
+      if (!targetRoles.includes('admin')) {
+        targetRoles.push('admin');
+      }
+      
+      const customerName = updates.customerInfo?.name || '';
+      for (const role of targetRoles) {
+        await query(
+          'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            role,
+            `Order Status Moved`,
+            `Order for ${customerName || 'Client'} has been moved to ${newStatus.toUpperCase()}`,
+            id,
+            0,
+            Date.now()
+          ]
+        );
+      }
+    }
+
+    if (newStatus === 'accounts') {
+      const revId = `rev-${id}`;
+      const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
+      const financials = updates.financials || {};
+      const customer = updates.customerInfo || {};
+      
+      if (revExisting.length > 0) {
+        await query(
+          'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
+          [
+            financials.totalAmount || 0,
+            customer.name || 'Client',
+            updates.category || 'Order',
+            String(updates.quantity || 0),
+            updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
+            revId
+          ]
+        );
+      } else {
+        await query(
+          `INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            revId,
+            'revenue',
+            updates.createdBy || 'system',
+            updates.createdByName || 'System',
+            customer.name || 'Client',
+            updates.category || 'Order',
+            String(updates.quantity || 0),
+            null,
+            null,
+            financials.totalAmount || 0,
+            new Date().toISOString().split('T')[0],
+            null,
+            updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
+            null,
+            new Date().toLocaleString('en-US', { month: 'long' }),
+            Date.now()
+          ]
+        );
+      }
+    }
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error patching order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ----------------------------------------------------
 // INVOICES ENDPOINTS
 // ----------------------------------------------------
