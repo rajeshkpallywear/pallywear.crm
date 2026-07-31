@@ -217,14 +217,6 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                   <h4 className="text-2xl font-black text-slate-900 uppercase italic mt-0.5">#{selectedOrder.id.slice(-8)}</h4>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setSelectedHubOrder(selectedOrder)}
-                    className="px-3.5 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-                    title="Click to open full size page for this order"
-                  >
-                    <ExternalLink size={14} />
-                    View Full Size Order
-                  </button>
                   <div className="text-right">
                     <span className="text-[9px] font-black text-slate-400 uppercase block">Phone Dial</span>
                     <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">

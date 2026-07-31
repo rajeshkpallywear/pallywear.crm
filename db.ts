@@ -284,6 +284,21 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // Create notifications table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`notifications\` (
+        \`id\` varchar(50) NOT NULL,
+        \`userId\` varchar(50) DEFAULT NULL,
+        \`userRole\` varchar(50) DEFAULT NULL,
+        \`title\` varchar(150) NOT NULL,
+        \`message\` text NOT NULL,
+        \`orderId\` varchar(50) DEFAULT NULL,
+        \`isRead\` tinyint(1) DEFAULT '0',
+        \`createdAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // Create channel_listings table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS \`channel_listings\` (

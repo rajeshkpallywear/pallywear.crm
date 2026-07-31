@@ -78,6 +78,93 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = React.useState(false);
+  const notificationsRef = React.useRef(notifications);
+  notificationsRef.current = notifications;
+
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.15);
+
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.15); // E5
+      gain2.gain.setValueAtTime(0.15, audioContext.currentTime + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      osc2.start(audioContext.currentTime + 0.15);
+      osc2.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      console.warn('AudioContext failed:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!user) return;
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const fetchNotifications = async (isInitial = false) => {
+      try {
+        const res = await fetch(`/api/notifications?role=${user.role}`);
+        const data = await res.json();
+        if (data.success) {
+          const newNotifs = data.notifications || [];
+          const currentList = notificationsRef.current;
+          if (!isInitial && currentList.length > 0) {
+            const hasNew = newNotifs.some((n: any) => n.isRead === 0 && !currentList.some(existing => existing.id === n.id));
+            if (hasNew) {
+              playNotificationSound();
+              const firstNew = newNotifs.find((n: any) => n.isRead === 0 && !currentList.some(existing => existing.id === n.id));
+              if (firstNew && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(firstNew.title, { body: firstNew.message });
+              }
+            }
+          }
+          setNotifications(newNotifs);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchNotifications(true);
+    const interval = setInterval(() => fetchNotifications(false), 12000);
+    return () => clearInterval(interval);
+  }, [user?.role]);
+
+  const handleToggleNotifications = async () => {
+    const nextShow = !showNotifications;
+    setShowNotifications(nextShow);
+    if (nextShow) {
+      try {
+        await fetch('/api/notifications/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: user?.role })
+        });
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: 1 })));
+      } catch (e) {
+        console.error('Failed to mark notifications as read:', e);
+      }
+    }
+  };
+
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setIsMobileOpen(false);
@@ -426,7 +513,37 @@ export default function AdminDashboard() {
               {layoutMode === 'mobile' ? <Smartphone className="w-3.5 h-3.5 text-brand-primary" /> : <Monitor className="w-3.5 h-3.5 text-gray-500" />}
               <span className="hidden sm:inline">{layoutMode === 'mobile' ? 'Mobile View' : 'System View'}</span>
             </button>
-            <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"><Bell className="w-5 h-5" /></button>
+            <div className="relative">
+              <button
+                onClick={handleToggleNotifications}
+                className="p-2 hover:bg-gray-50 rounded-lg text-gray-500 relative cursor-pointer flex items-center justify-center"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some(n => n.isRead === 0) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-gray-100 shadow-xl z-50 overflow-hidden text-left">
+                  <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-gray-500 tracking-wider">Notifications</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                    {notifications.length > 0 ? (
+                      notifications.map(n => (
+                        <div key={n.id} className={cn("p-4 transition-colors", n.isRead === 0 ? "bg-purple-50/10" : "")}>
+                          <p className="text-xs font-bold text-gray-900">{n.title}</p>
+                          <p className="text-[10px] text-gray-500 font-semibold mt-1 leading-relaxed">{n.message}</p>
+                          <span className="text-[9px] text-gray-400 font-bold block mt-2">{new Date(n.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-6 text-center text-xs text-gray-400">No notifications yet.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"
               onClick={() => setShowProfileModal(true)}

@@ -53,7 +53,9 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
       (o.category || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
-    const relevantStatus = [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(o.status);
+    // If in DESIGN status, only show if the original design file uploader is complete (ready for digitizing)
+    const isOrderReady = o.status !== OrderStatus.DESIGN || !!o.original_design_file;
+    const relevantStatus = [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(o.status) && isOrderReady;
 
     if (viewMode === 'pending') {
       return matchesSearch && relevantStatus && !o.machineFiles?.length;
@@ -187,7 +189,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ⏳ Pending ({orders.filter(o => [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(o.status) && !o.machineFiles?.length).length})
+            ⏳ Pending ({orders.filter(o => [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(o.status) && (o.status !== OrderStatus.DESIGN || !!o.original_design_file) && !o.machineFiles?.length).length})
           </button>
           <button
             onClick={() => { setViewMode('completed'); setSelectedOrder(null); }}
@@ -302,14 +304,6 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                   <h4 className="text-base font-black text-slate-900">#{selectedOrder.id}</h4>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedHubOrder(selectedOrder)}
-                    className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-150 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all cursor-pointer"
-                    title="Click to open full size page for this order"
-                  >
-                    <ExternalLink size={13} />
-                    View Full Size Order
-                  </button>
                   <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-black uppercase">
                     {selectedOrder.status}
                   </span>

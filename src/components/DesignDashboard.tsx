@@ -783,7 +783,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               <tr>
                 <th className="px-6 py-4">Descriptor Code</th>
                 <th className="px-6 py-4">Client Detail</th>
-                <th className="px-6 py-4">Design Requirement & Category</th>
+                <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4 text-center">Assigned Handler</th>
                 <th className="px-6 py-4 text-right">Action override</th>
               </tr>
@@ -821,14 +821,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1 max-w-sm">
-                          <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-black uppercase tracking-tight w-fit border border-purple-150">
-                            {getDisplayCategory(item as any)}
-                          </span>
-                          <span className="text-xs text-gray-600 font-medium truncate block max-w-xs">
-                            {item.notes}
-                          </span>
-                        </div>
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-black uppercase tracking-tight w-fit border border-purple-150">
+                          {getDisplayCategory(item as any)}
+                        </span>
                       </td>
 
                       <td className="px-6 py-4 text-center">
@@ -929,7 +924,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[9px] font-black uppercase tracking-tight w-fit border border-purple-150 inline-block">
                         {getDisplayCategory(item as any)}
                       </span>
-                      <p className="text-xs text-gray-700 font-medium whitespace-pre-line leading-relaxed">{item.notes}</p>
                     </div>
 
                     {/* Status & Assigned Handler */}

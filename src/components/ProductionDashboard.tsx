@@ -223,14 +223,6 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setSelectedHubOrder(selectedOrder)}
-                    className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer shadow-xs border border-indigo-150"
-                    title="Click to open full size page for this order"
-                  >
-                    <ExternalLink size={14} />
-                    View Full Size Order
-                  </button>
-                  <button
                     onClick={() => downloadAllAttachments(selectedOrder)}
                     className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-slate-700 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer shadow-xs"
                   >

@@ -29,7 +29,7 @@ interface AccountsDashboardProps {
 
 export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin, user, sidebarView = 'orders' }: AccountsDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'hold' | 'completed'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -42,10 +42,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
     if (selectedSection === 'completed') {
-      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
-    }
-    if (selectedSection === 'process') {
-      return o.status === OrderStatus.DESIGN;
+      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
     }
     return o.status === OrderStatus.ACCOUNTS;
   });
@@ -64,9 +61,8 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   }, [selectedSection, filteredOrders.length]);
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
-  const processOrdersCount = orders.filter(o => o.status === OrderStatus.DESIGN).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
+  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
@@ -176,12 +172,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
 
       {/* Summary Stats Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
             "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            selectedSection === 'recent' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-150 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
           title="Recent Orders: All received orders"
         >
@@ -191,23 +187,6 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           <div className="min-w-0 flex-1">
             <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'recent' ? "text-white/80" : "text-gray-400")}>Recent</p>
             <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{recentOrdersCount}</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setSelectedSection('process')}
-          className={cn(
-            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'process' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
-          )}
-          title="Process Orders: Active in-progress orders"
-        >
-          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'process' ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600")}>
-            <Clock size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'process' ? "text-white/80" : "text-gray-400")}>Process</p>
-            <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{processOrdersCount}</p>
           </div>
         </button>
 
@@ -250,7 +229,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
         <div className={cn("lg:col-span-1 space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
             <ClipboardCheck className="text-amber-500" size={16} />
-            {selectedSection === 'total' ? 'All Billing Records' : selectedSection === 'hold' ? 'On Hold Billing' : 'Completed Invoices'} ({filteredOrders.length})
+            {selectedSection === 'recent' ? 'Pending Billing' : selectedSection === 'hold' ? 'On Hold Billing' : 'Completed Invoices'} ({filteredOrders.length})
           </h3>
           <div className="space-y-3">
             {filteredOrders.length > 0 ? (
@@ -317,15 +296,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                     <span className="text-xs font-mono text-gray-400">ORDER DETAILS</span>
                     <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)}</h4>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedHubOrder(selectedOrder)}
-                      className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition-all cursor-pointer shadow-xs border border-indigo-150 mr-2"
-                      title="Click to open full size page for this order"
-                    >
-                      <ExternalLink size={14} />
-                      View Full Size Order
-                    </button>
+                  <div className="flex items-center gap-2 mt-2 md:mt-0">
                     <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider">
                       Status: {selectedOrder.status}
                     </span>
@@ -370,18 +341,21 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
                 </div>
 
-                <div className="mt-8 p-6 bg-white border border-gray-200 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-6 shadow-sm">
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Amount</p>
-                    <p className="text-2xl font-black text-gray-900">₹{(selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">Advance Pay</p>
-                    <p className="text-2xl font-black text-amber-600">₹{(selectedOrder.financials?.advancePay || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Balance Due</p>
-                    <p className="text-2xl font-black text-red-600">₹{(selectedOrder.financials?.balanceAmount || 0).toLocaleString()}</p>
+                <div className="mt-8 space-y-3">
+                  <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order Amount Details</h5>
+                  <div className="p-6 bg-white border border-gray-200 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-6 shadow-sm">
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Amount</p>
+                      <p className="text-2xl font-black text-gray-900">₹{(selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">Advance Pay</p>
+                      <p className="text-2xl font-black text-amber-600">₹{(selectedOrder.financials?.advancePay || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Balance Due</p>
+                      <p className="text-2xl font-black text-red-600">₹{(selectedOrder.financials?.balanceAmount || 0).toLocaleString()}</p>
+                    </div>
                   </div>
                 </div>
               </div>

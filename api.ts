@@ -302,8 +302,12 @@ router.post('/orders', async (req, res) => {
   }
 
   try {
-    const existing = await query('SELECT id FROM orders WHERE id = ?', [order.id]) as any[];
+    const existing = await query('SELECT id, status, original_design_file FROM orders WHERE id = ?', [order.id]) as any[];
+    let oldStatus = null;
+    let oldDesignFile = null;
     if (existing.length > 0) {
+      oldStatus = existing[0].status;
+      oldDesignFile = existing[0].original_design_file;
       await query(
         `UPDATE orders SET customerName=?, customerCompany=?, customerPhone=?, customerAddress=?, 
         category=?, quantity=?, details=?, sizeBreakdown=?, totalAmount=?, advancePay=?, balanceAmount=?, 
@@ -329,6 +333,64 @@ router.post('/orders', async (req, res) => {
           Date.now(), order.id
         ]
       );
+
+      // Status change notification
+      if (oldStatus && oldStatus !== order.status) {
+        const targetRoles = [];
+        if (order.status === 'accounts') targetRoles.push('accounts');
+        else if (order.status === 'design') {
+          targetRoles.push('designer');
+          if (order.original_design_file) {
+            targetRoles.push('digitizer');
+          }
+        }
+        else if (order.status === 'order_management') targetRoles.push('order_management');
+        else if (order.status === 'production') {
+          targetRoles.push('production');
+          targetRoles.push('vendor');
+        }
+        else if (order.status === 'delivery') targetRoles.push('delivery');
+        else if (order.status === 'delivered') {
+          targetRoles.push('marketing');
+          targetRoles.push('admin');
+        }
+
+        if (!targetRoles.includes('admin')) {
+          targetRoles.push('admin');
+        }
+
+        for (const role of targetRoles) {
+          await query(
+            'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+              `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+              role,
+              `Order Status Moved`,
+              `Order for ${customer.name || 'Client'} has been moved to ${order.status.toUpperCase()}`,
+              order.id,
+              0,
+              Date.now()
+            ]
+          );
+        }
+      }
+
+      // Design uploaded notification (to Digitizer)
+      if (oldStatus && !oldDesignFile && order.original_design_file) {
+        await query(
+          'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            'digitizer',
+            `Design Ready for Digitizing`,
+            `Original design file for Order #${order.id.slice(-6)} is ready.`,
+            order.id,
+            0,
+            Date.now()
+          ]
+        );
+      }
+
     } else {
       await query(
         `INSERT INTO orders (id, customerName, customerCompany, customerPhone, customerAddress, 
@@ -356,6 +418,30 @@ router.post('/orders', async (req, res) => {
           Date.now(), Date.now()
         ]
       );
+
+      const targetRoles = [];
+      if (order.status === 'accounts') targetRoles.push('accounts');
+      else if (order.status === 'design') targetRoles.push('designer');
+      else if (order.status === 'pending') targetRoles.push('marketing');
+      
+      if (!targetRoles.includes('admin')) {
+        targetRoles.push('admin');
+      }
+
+      for (const role of targetRoles) {
+        await query(
+          'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            role,
+            `New Order Created`,
+            `Order #${order.id.slice(-6)} has been created in ${order.status.toUpperCase()}`,
+            order.id,
+            0,
+            Date.now()
+          ]
+        );
+      }
     }
     res.json({ success: true });
   } catch (error: any) {
@@ -781,6 +867,43 @@ router.delete('/channel-listings/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting channel listing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NOTIFICATIONS ENDPOINTS
+router.get('/notifications', async (req, res) => {
+  const { role, userId } = req.query;
+  try {
+    let sql = 'SELECT * FROM notifications WHERE 1=1';
+    const params = [];
+    if (role && role !== 'admin') {
+      sql += ' AND userRole = ?';
+      params.push(role);
+    }
+    sql += ' ORDER BY createdAt DESC LIMIT 50';
+    const rows = await query(sql, params);
+    res.json({ success: true, notifications: rows });
+  } catch (error: any) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/notifications/read', async (req, res) => {
+  const { ids, role } = req.body;
+  try {
+    if (ids && ids.length > 0) {
+      const placeholders = ids.map(() => '?').join(',');
+      await query(`UPDATE notifications SET isRead = 1 WHERE id IN (${placeholders})`, ids);
+    } else if (role) {
+      await query('UPDATE notifications SET isRead = 1 WHERE userRole = ? OR userRole = \'admin\'', [role]);
+    } else {
+      await query('UPDATE notifications SET isRead = 1');
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error marking notifications as read:', error);
     res.status(500).json({ error: error.message });
   }
 });
