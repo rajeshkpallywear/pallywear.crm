@@ -9,6 +9,7 @@ import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, C
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
+import { useLeads } from '../context/LeadContext';
 import {
   CATEGORIES, JERSEY_MATERIALS, JERSEY_MODELS, SLEEVE_OPTIONS,
   SHIRT_MATERIALS, SHIRT_MODELS, SHIRT_COLOURS, PRINT_TYPES,
@@ -42,6 +43,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [activeShareMenu, setActiveShareMenu] = useState<string | null>(null);
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
+  const { loadOrderAttachments } = useLeads();
+
+  useEffect(() => {
+    if (selectedHubOrder && !selectedHubOrder.original_design_file && (!selectedHubOrder.staffImages || selectedHubOrder.staffImages.length === 0)) {
+      loadOrderAttachments(selectedHubOrder.id).then(attachments => {
+        setSelectedHubOrder(prev => prev && prev.id === selectedHubOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedHubOrder?.id]);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customerName: '',

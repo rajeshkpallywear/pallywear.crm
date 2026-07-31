@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
+import { useLeads } from '../context/LeadContext';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import OrderDetailModal from './OrderDetailModal';
@@ -45,6 +46,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadFiles, setUploadFiles] = useState<string[]>([]);
+  const { loadOrderAttachments } = useLeads();
+
+  useEffect(() => {
+    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.machineFiles || selectedOrder.machineFiles.length === 0)) {
+      loadOrderAttachments(selectedOrder.id).then(attachments => {
+        setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedOrder?.id]);
 
   // Filter orders
   const filteredOrders = orders.filter(o => {

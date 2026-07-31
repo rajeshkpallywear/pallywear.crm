@@ -19,6 +19,7 @@ interface LeadContextType {
   deleteOrder: (id: string) => Promise<void>;
   addInventoryMovement: (movement: Omit<InventoryMovement, 'id' | 'createdAt'>) => Promise<void>;
   deleteInventoryMovement: (id: string) => Promise<void>;
+  loadOrderAttachments: (orderId: string) => Promise<any>;
 }
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
@@ -193,6 +194,19 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     setInventory((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const loadOrderAttachments = async (orderId: string): Promise<any> => {
+    try {
+      const attachments = await mockDataService.getOrderAttachments(orderId);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, ...attachments } : o))
+      );
+      return attachments;
+    } catch (error) {
+      console.error('Error loading order attachments:', error);
+      return {};
+    }
+  };
+
   return (
     <LeadContext.Provider value={{
       leads,
@@ -209,7 +223,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       updateOrder,
       deleteOrder,
       addInventoryMovement,
-      deleteInventoryMovement
+      deleteInventoryMovement,
+      loadOrderAttachments
     }}>
       {children}
     </LeadContext.Provider>

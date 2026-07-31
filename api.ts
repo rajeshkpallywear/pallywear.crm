@@ -239,7 +239,17 @@ router.patch('/leads/:id', async (req, res) => {
 
 router.get('/orders', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM orders') as any[];
+    const rows = await query(`
+      SELECT id, customerName, customerCompany, customerPhone, customerAddress, 
+             category, quantity, details, sizeBreakdown, totalAmount, advancePay, 
+             balanceAmount, gstAmount, discountAmount, shippingCharges, status, 
+             isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
+             designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
+             previousStatus, createdBy, createdByName, accountsNotes, 
+             original_design_filename 
+      FROM orders
+    `) as any[];
+
     const mapped = rows.map(r => ({
       id: r.id,
       customerInfo: {
@@ -263,12 +273,12 @@ router.get('/orders', async (req, res) => {
       status: r.status,
       isUrgent: r.isUrgent === 1,
       notes: r.notes,
-      staffImages: safeJSONParse(r.staffImages, []),
-      staffPdfs: safeJSONParse(r.staffPdfs, []),
-      accountsAttachments: safeJSONParse(r.accountsAttachments, []),
-      orderManagementAttachments: safeJSONParse(r.orderManagementAttachments, []),
-      designAttachments: safeJSONParse(r.designAttachments, []),
-      machineFiles: safeJSONParse(r.machineFiles, []),
+      staffImages: [],
+      staffPdfs: [],
+      accountsAttachments: [],
+      orderManagementAttachments: [],
+      designAttachments: [],
+      machineFiles: [],
       createdAt: Number(r.createdAt || 0),
       updatedAt: Number(r.updatedAt || 0),
       designName: r.designName || '',
@@ -282,12 +292,46 @@ router.get('/orders', async (req, res) => {
       createdBy: r.createdBy || '',
       createdByName: r.createdByName || '',
       accountsNotes: r.accountsNotes || '',
-      original_design_file: r.original_design_file || '',
+      original_design_file: '',
       original_design_filename: r.original_design_filename || '',
     }));
     res.json(mapped);
   } catch (error: any) {
     console.error('Error fetching orders:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/orders/:id/attachments', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rows = await query(
+      `SELECT staffImages, staffPdfs, staffAttachments, accountsAttachments, 
+              orderManagementAttachments, designAttachments, machineFiles, 
+              original_design_file, marketing_image, digitizer_file, invoice_file 
+       FROM orders WHERE id = ?`,
+      [id]
+    ) as any[];
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    const r = rows[0];
+    res.json({
+      staffImages: safeJSONParse(r.staffImages, []),
+      staffPdfs: safeJSONParse(r.staffPdfs, []),
+      staffAttachments: safeJSONParse(r.staffAttachments, []),
+      accountsAttachments: safeJSONParse(r.accountsAttachments, []),
+      orderManagementAttachments: safeJSONParse(r.orderManagementAttachments, []),
+      designAttachments: safeJSONParse(r.designAttachments, []),
+      machineFiles: safeJSONParse(r.machineFiles, []),
+      original_design_file: r.original_design_file || '',
+      marketing_image: r.marketing_image || '',
+      digitizer_file: r.digitizer_file || '',
+      invoice_file: r.invoice_file || '',
+    });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -509,7 +553,18 @@ router.delete('/orders/:id', async (req, res) => {
 
 router.get('/invoices', async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM invoices') as any[];
+    const rows = await query(`
+      SELECT id, invoiceNumber, date, createdAt, dueDate, billToName, billToEmail, 
+             billToPhone, billToAddress, shipToAddress, trackingNumber, items, 
+             subtotal, discountTotal, shippingCost, salesTax, total, amountPaid, 
+             balanceDue, notes, paymentInstructions, paymentMethod, productType, 
+             productSubCategory, customerPhoneNumber, bankName, bankAccountName, 
+             bankIfscCode, bankAccountNumber, createdBy, createdByName, leadId, 
+             invoice_file_name, order_id, type, client, amount, status, description, 
+             invoice_date, created_at, designName, designAmount, designGst, 
+             designDiscount, designNotes 
+      FROM invoices
+    `) as any[];
     const mapped = rows.map(r => ({
       ...r,
       items: safeJSONParse(r.items, []),
@@ -523,10 +578,24 @@ router.get('/invoices', async (req, res) => {
       designAmount: Number(r.designAmount || 0),
       designGst: Number(r.designGst || 0),
       designDiscount: Number(r.designDiscount || 0),
+      invoice_file: '',
     }));
     res.json(mapped);
   } catch (error: any) {
     console.error('Error fetching invoices:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/invoices/:id/file', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rows = await query('SELECT invoice_file FROM invoices WHERE id = ?', [id]) as any[];
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    res.json({ invoice_file: rows[0].invoice_file || '' });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

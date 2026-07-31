@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
+import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
 import OrdersChart from './OrdersChart';
@@ -20,6 +21,15 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { loadOrderAttachments } = useLeads();
+
+  useEffect(() => {
+    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.machineFiles || selectedOrder.machineFiles.length === 0)) {
+      loadOrderAttachments(selectedOrder.id).then(attachments => {
+        setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedOrder?.id]);
 
   const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
@@ -29,9 +39,9 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       return o.status === OrderStatus.DELIVERED;
     }
     if (selectedSection === 'process') {
-      return o.status === OrderStatus.PRODUCTION;
+      return o.status === OrderStatus.PRODUCTION && o.details?.productionStarted === true;
     }
-    return o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
+    return o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted;
   });
 
   // Auto-select first order when section or filtered order list changes (except completed tab)
@@ -47,8 +57,8 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     }
   }, [selectedSection, filteredOrders.length]);
 
-  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length;
-  const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
+  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted).length;
+  const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION && o.details?.productionStarted === true).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
@@ -111,7 +121,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
             selectedSection === 'recent' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
-          All Runs ({recentOrdersCount})
+          Recent Orders ({recentOrdersCount})
         </button>
         <button
           onClick={() => setSelectedSection('process')}
@@ -429,14 +439,49 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                   </button>
                 )}
 
-                <button
-                  onClick={handleFinishProduction}
-                  disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                  className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-indigo-650/10"
-                >
-                  {isProcessing ? "Completing run..." : "Finish Production & Send to Inventory Management"}
-                  <CheckCircle size={14} />
-                </button>
+                {!selectedOrder.details?.productionStarted ? (
+                  <button
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    onClick={async () => {
+                      if (isProcessing) return;
+                      setIsProcessing(true);
+                      try {
+                        await onUpdateOrder(selectedOrder.id, {
+                          details: {
+                            ...selectedOrder.details,
+                            productionStarted: true
+                          },
+                          updatedAt: Date.now()
+                        });
+                        setSelectedOrder(prev => prev ? {
+                          ...prev,
+                          details: {
+                            ...prev.details,
+                            productionStarted: true
+                          }
+                        } : null);
+                        alert("Production run started and moved to processing!");
+                      } catch (e) {
+                        alert("Failed to start production.");
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-indigo-650/10"
+                  >
+                    Start Production Run
+                    <CheckCircle size={14} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleFinishProduction}
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-indigo-650/10"
+                  >
+                    {isProcessing ? "Completing run..." : "Finish Production & Send to Inventory Management"}
+                    <CheckCircle size={14} />
+                  </button>
+                )}
               </div>
             </motion.div>
           ) : (

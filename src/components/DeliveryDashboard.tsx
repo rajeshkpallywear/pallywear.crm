@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Truck, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, MapPin, Phone, Clock, AlertCircle, ExternalLink, Activity } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
+import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
 import OrdersChart from './OrdersChart';
@@ -20,6 +21,15 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { loadOrderAttachments } = useLeads();
+
+  useEffect(() => {
+    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.staffImages || selectedOrder.staffImages.length === 0)) {
+      loadOrderAttachments(selectedOrder.id).then(attachments => {
+        setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedOrder?.id]);
 
   const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {

@@ -33,6 +33,7 @@ import { Order, OrderStatus } from '../types';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import OrderDetailModal from './OrderDetailModal';
+import { useLeads } from '../context/LeadContext';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import ConversationDashboard, { Conversation } from './ConversationDashboard';
 import OrdersChart from './OrdersChart';
@@ -70,6 +71,19 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStaffChatOpen, setIsStaffChatOpen] = useState(false);
   const [selectedItemIdForStaffChat, setSelectedItemIdForStaffChat] = useState<string | null>(null);
+
+  const { loadOrderAttachments } = useLeads();
+
+  useEffect(() => {
+    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.designAttachments || selectedOrder.designAttachments.length === 0)) {
+      loadOrderAttachments(selectedOrder.id).then(attachments => {
+        setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
+        if (attachments.designAttachments) setDesignFiles(attachments.designAttachments);
+        if (attachments.machineFiles) setMachineFiles(attachments.machineFiles);
+        if (attachments.original_design_file) setOriginalFile(attachments.original_design_file);
+      });
+    }
+  }, [selectedOrder?.id]);
 
   // Local File Assemble State
   const [designFiles, setDesignFiles] = useState<string[]>([]);

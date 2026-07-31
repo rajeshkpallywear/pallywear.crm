@@ -5,6 +5,7 @@ import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
 import { useState, useEffect } from 'react';
+import { useLeads } from '../context/LeadContext';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -26,8 +27,13 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
     noteText: string;
   } | null>(null);
 
+  const { loadOrderAttachments } = useLeads();
+
   useEffect(() => {
     setEditedOrder(order);
+    if (order && !order.original_design_file && (!order.staffImages || order.staffImages.length === 0)) {
+      loadOrderAttachments(order.id);
+    }
   }, [order]);
 
   const handleSave = async () => {

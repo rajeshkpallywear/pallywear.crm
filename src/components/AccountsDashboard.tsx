@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
+import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
@@ -34,6 +35,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { loadOrderAttachments } = useLeads();
+
+  useEffect(() => {
+    if (selectedOrder && (!selectedOrder.accountsAttachments || selectedOrder.accountsAttachments.length === 0)) {
+      loadOrderAttachments(selectedOrder.id).then(attachments => {
+        setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedOrder?.id]);
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
 

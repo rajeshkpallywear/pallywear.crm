@@ -17,6 +17,12 @@ export const mockDataService = {
     return res.json();
   },
 
+  getOrderAttachments: async (id: string): Promise<any> => {
+    const res = await fetch(getApiUrl(`/api/orders/${id}/attachments`));
+    if (!res.ok) throw new Error('Failed to fetch order attachments');
+    return res.json();
+  },
+
   saveOrder: async (order: Order): Promise<void> => {
     const res = await fetch(getApiUrl('/api/orders'), {
       method: 'POST',
