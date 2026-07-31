@@ -554,7 +554,7 @@ router.delete('/orders/:id', async (req, res) => {
   }
 });
 
-router.patch('/orders/:id', async (req, res) => {
+const handleUpdateOrderFields = async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
   
@@ -783,10 +783,13 @@ router.patch('/orders/:id', async (req, res) => {
     
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error patching order:', error);
+    console.error('Error patching/updating order:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+router.patch('/orders/:id', handleUpdateOrderFields);
+router.put('/orders/:id', handleUpdateOrderFields);
 
 // ----------------------------------------------------
 // INVOICES ENDPOINTS

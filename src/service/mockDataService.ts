@@ -25,11 +25,11 @@ export const mockDataService = {
 
   patchOrder: async (id: string, updates: any): Promise<void> => {
     const res = await fetch(getApiUrl(`/api/orders/${id}`), {
-      method: 'PATCH',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
-    if (!res.ok) throw new Error('Failed to patch order');
+    if (!res.ok) throw new Error('Failed to update order');
     notifyUpdate();
   },
 
