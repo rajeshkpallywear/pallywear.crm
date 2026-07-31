@@ -617,7 +617,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {order.status === OrderStatus.PENDING && (
+                        {(order.status === OrderStatus.PENDING || order.status === OrderStatus.ACCOUNTS) && (
                           <div className="flex flex-col gap-2">
                             <button
                               disabled={isProcessingAction}
@@ -631,18 +631,20 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                             >
                               <CheckCircle size={14} /> Send to Designs
                             </button>
-                            <button
-                              disabled={isProcessingAction}
-                              onClick={() => {
-                                setNoteModal({
-                                  target: 'accounts',
-                                  noteText: ''
-                                });
-                              }}
-                              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
-                            >
-                              <CheckCircle size={14} /> Send to Accounts
-                            </button>
+                            {order.status === OrderStatus.PENDING && (
+                              <button
+                                disabled={isProcessingAction}
+                                onClick={() => {
+                                  setNoteModal({
+                                    target: 'accounts',
+                                    noteText: ''
+                                  });
+                                }}
+                                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
+                              >
+                                <CheckCircle size={14} /> Send to Accounts
+                              </button>
+                            )}
                           </div>
                         )}
                         <button

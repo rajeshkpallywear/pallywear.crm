@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Download, Printer, Send, CreditCard, Laptop, MessageSquare } from 'lucide-react';
+import { X, Download, Printer, Send, CreditCard, Laptop, MessageSquare, Share2 } from 'lucide-react';
 import { Invoice } from '../types';
 import Logo from './Logo';
 import html2canvas from 'html2canvas';
@@ -11,11 +11,21 @@ interface InvoiceModalProps {
     invoice: Invoice | null;
     isOpen: boolean;
     onClose: () => void;
+    autoShare?: boolean;
 }
 
-export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalProps) {
+export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = false }: InvoiceModalProps) {
     const invoiceRef = useRef<HTMLDivElement>(null);
     const [isQrOpen, setIsQrOpen] = useState(false);
+
+    React.useEffect(() => {
+        if (isOpen && autoShare && invoice) {
+            const timer = setTimeout(() => {
+                handleDownloadPDF();
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, autoShare, invoice?.invoiceNumber]);
 
     if (!invoice) return null;
 
@@ -98,6 +108,10 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
         } catch (error) {
             console.error('PDF Generation Error:', error);
             alert('PDF generation failed. Please try using the "Print" button instead.');
+        } finally {
+            if (autoShare) {
+                onClose();
+            }
         }
     };
 
@@ -191,10 +205,10 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                                     <Send className="w-4 h-4" /> Send Invoice
                                 </button>
                                 <button
-                                    onClick={() => shareInvoiceToWhatsApp(invoice)}
+                                    onClick={handleDownloadPDF}
                                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-green-600/20 hover:bg-green-600/90 transition-all"
                                 >
-                                    <MessageSquare className="w-4 h-4" /> Share to WhatsApp
+                                    <Share2 className="w-4 h-4" /> Share PDF
                                 </button>
                                 <button
                                     onClick={onClose}
@@ -233,9 +247,11 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                                 <div>
                                     <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">From</h2>
                                     <div className="space-y-1">
-                                        <p className="text-xl font-black text-gray-900">{invoice.fromName}</p>
-                                        <p className="text-sm font-medium text-gray-500 prose whitespace-pre-line">{invoice.fromAddress}</p>
-                                        <p className="text-sm font-medium text-gray-500">{invoice.fromPhone}</p>
+                                        <p className="text-xl font-black text-gray-900">{invoice.fromName || 'Pallywear Gifting Solutions'}</p>
+                                        <p className="text-sm font-medium text-gray-500 prose whitespace-pre-line">
+                                            {invoice.fromAddress || 'Pallywear Gifting Solutions, Bus stop, 49/1, Mudichur Rd, near by Parvathi nagar, Shanthi Nagar, Old Perungalathur, Chennai, Tamil Nadu 600063'}
+                                        </p>
+                                        <p className="text-sm font-medium text-gray-500">{invoice.fromPhone || '+91 9597528585'}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">

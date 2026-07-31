@@ -18,6 +18,13 @@ export default function InvoiceManager() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
+    const [autoSharePDF, setAutoSharePDF] = useState(false);
+
+    const handleShareInvoice = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        setAutoSharePDF(true);
+        setIsModalOpen(true);
+    };
 
     const [newInvoiceData, setNewInvoiceData] = useState({
         leadId: `L-${Math.random().toString(36).substring(2, 7)}`,
@@ -314,19 +321,21 @@ export default function InvoiceManager() {
                                                 <Eye className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => shareInvoiceToWhatsApp(inv)}
+                                                onClick={() => handleShareInvoice(inv)}
                                                 className="p-2.5 hover:bg-green-50 hover:shadow-sm text-green-600 rounded-xl transition-all bg-green-50/50"
                                                 title="Share to WhatsApp"
                                             >
                                                 <MessageSquare className="w-4 h-4" />
                                             </button>
-                                            <button
-                                                onClick={() => deleteInvoice(inv.id)}
-                                                className="p-2.5 hover:bg-white hover:shadow-sm text-gray-400 hover:text-red-500 rounded-xl transition-all"
-                                                title="Delete Permanently"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {user?.role === 'admin' && (
+                                                <button
+                                                    onClick={() => deleteInvoice(inv.id)}
+                                                    className="p-2.5 hover:bg-white hover:shadow-sm text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                                                    title="Delete Permanently"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -374,19 +383,21 @@ export default function InvoiceManager() {
                                                 <Eye className="w-4.5 h-4.5" />
                                             </button>
                                             <button
-                                                onClick={() => shareInvoiceToWhatsApp(inv)}
+                                                onClick={() => handleShareInvoice(inv)}
                                                 className="p-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-lg transition-colors"
                                                 title="Share to WhatsApp"
                                             >
                                                 <MessageSquare className="w-4.5 h-4.5" />
                                             </button>
-                                            <button
-                                                onClick={() => deleteInvoice(inv.id)}
-                                                className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
-                                                title="Delete Permanently"
-                                            >
-                                                <Trash2 className="w-4.5 h-4.5" />
-                                            </button>
+                                            {user?.role === 'admin' && (
+                                                <button
+                                                    onClick={() => deleteInvoice(inv.id)}
+                                                    className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                                                    title="Delete Permanently"
+                                                >
+                                                    <Trash2 className="w-4.5 h-4.5" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 
@@ -420,8 +431,12 @@ export default function InvoiceManager() {
 
             <InvoiceModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setAutoSharePDF(false);
+                }}
                 invoice={selectedInvoice}
+                autoShare={autoSharePDF}
             />
 
             {/* New Invoice Modal */}

@@ -1208,7 +1208,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         </div>
                         <FileUpload
                           label=""
-                          accept=".pdf,image/*"
+                          accept=".pdf,image/*,.zip"
                           onFilesSelected={(files) => setDesignFiles(prev => [...prev, ...files])}
                         />
                         <div className="max-h-[80px] overflow-y-auto space-y-1 mt-2">
@@ -1240,6 +1240,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           </div>
                           <FileUpload
                             label=""
+                            accept="image/*,.pdf,.zip,.emb,.dst,.cdr"
                             onFilesSelected={(files) => {
                               if (files && files[0]) {
                                 setOriginalFile(files[0]);

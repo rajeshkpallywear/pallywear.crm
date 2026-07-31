@@ -398,6 +398,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                     <h5 className="text-[10.5px] font-black text-indigo-900 uppercase tracking-wider">Embroidery / Garage ZIP File Upload</h5>
                     <FileUpload
                       label="Upload EMB, DST, CDR, or ZIP file (Auto-Optimized)"
+                      accept="image/*,.pdf,.zip,.emb,.dst,.cdr"
                       onFilesSelected={(files) => setUploadFiles(prev => [...prev, ...files])}
                     />
 
@@ -533,6 +534,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 <label className="text-[10px] font-black uppercase text-gray-400">Attachments</label>
                 <FileUpload
                   label="Upload reference files if any"
+                  accept="image/*,.pdf,.zip,.emb,.dst,.cdr"
                   onFilesSelected={(files) => setMsgRequest(prev => ({ ...prev, attachments: [...prev.attachments, ...files] }))}
                 />
                 {msgRequest.attachments.length > 0 && (
