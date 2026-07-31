@@ -20,7 +20,7 @@ async function startServer() {
   // 2. Enabled CORS so your frontend can communicate seamlessly with this backend
   app.use(cors({
     origin: "*", // Allows requests from any origin; change to your specific domain in strict production setups
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
   }));
 
