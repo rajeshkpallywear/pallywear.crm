@@ -38,10 +38,18 @@ export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
 }
 
 export function shareInvoiceToWhatsApp(invoice: Invoice) {
-  const phone = (invoice.billToPhone || invoice.customerPhoneNumber || '').trim();
+  const defaultPhone = (invoice.billToPhone || invoice.customerPhoneNumber || '').trim();
+  
+  const phoneInput = prompt(
+    "Enter the WhatsApp phone number (with country code, e.g. 919876543210) to share this invoice:",
+    defaultPhone
+  );
 
+  if (phoneInput === null) return; // User cancelled
+
+  const phone = phoneInput.trim();
   if (!phone) {
-    alert("No phone number found for this invoice. Please update the client's phone number.");
+    alert("Phone number is required to share via WhatsApp.");
     return;
   }
 

@@ -39,7 +39,7 @@ import {
 import { useLeads } from '../context/LeadContext';
 import { InventoryMovement, Order, OrderStatus } from '../types';
 import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS } from '../constants';
-import { cn } from '../lib/utils';
+import { cn, getDisplayCategory } from '../lib/utils';
 import FileUpload from './FileUpload';
 import { getApiBaseUrl } from '../lib/apiConfig';
 
@@ -1018,7 +1018,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY).map(order => (
+                    {orders.filter(o => o.status === OrderStatus.DELIVERY).map(order => (
                       <tr
                         key={order.id}
                         onClick={() => {
@@ -1034,7 +1034,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                             <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 font-bold text-slate-700">{order.category}</td>
+                        <td className="px-5 py-3.5 font-bold text-slate-700">{getDisplayCategory(order)}</td>
                         <td className="px-5 py-3.5 text-center font-black text-slate-900">{order.quantity} Pcs</td>
                         <td className="px-5 py-3.5 text-center">
                           <button
@@ -1050,9 +1050,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         </td>
                       </tr>
                     ))}
-                    {orders.filter(o => o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY).length === 0 && (
+                    {orders.filter(o => o.status === OrderStatus.DELIVERY).length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-400 italic font-medium">No completed orders waiting in production queue.</td>
+                        <td colSpan={5} className="py-8 text-center text-gray-400 italic font-medium">No completed orders waiting in delivery queue.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1231,7 +1231,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
 
                 <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 space-y-1">
                   <span className="text-[9px] font-black text-emerald-700 uppercase">Garment Category & Balance</span>
-                  <p className="text-xs font-bold text-emerald-900">{selectedIntakeOrder.category} ({selectedIntakeOrder.quantity} Pcs)</p>
+                  <p className="text-xs font-bold text-emerald-900">{getDisplayCategory(selectedIntakeOrder)} ({selectedIntakeOrder.quantity} Pcs)</p>
                   <p className="text-lg font-black text-emerald-700 italic mt-1">₹{(selectedIntakeOrder.financials?.balanceAmount || 0).toLocaleString()} <span className="text-[9px] font-bold uppercase text-emerald-600">Balance Due</span></p>
                 </div>
               </div>
