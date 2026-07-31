@@ -104,9 +104,19 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
     const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
     const existingOrder = editingOrderId ? orders.find(o => o.id === editingOrderId) : null;
+    let computedCategory = formData.category;
+    if (formData.sizeBreakdown && formData.sizeBreakdown.length > 0) {
+      const categories = Array.from(new Set(formData.sizeBreakdown.map(i => i.category)));
+      if (categories.length === 1) {
+        computedCategory = categories[0];
+      } else if (categories.length > 1) {
+        computedCategory = 'Mixed Order';
+      }
+    }
+
     const finalOrderData = {
       status: existingOrder ? existingOrder.status : OrderStatus.PENDING,
-      category: formData.category,
+      category: computedCategory,
       customerInfo: {
         name: formData.customerName,
         phone: formData.phone,

@@ -194,7 +194,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         createdAt: o.createdAt,
         staffImages: o.staffImages || [],
         staffPdfs: o.staffPdfs || [],
-        accountsAttachments: []
+        accountsAttachments: [],
+        sizeBreakdown: o.sizeBreakdown || []
       };
     });
 
@@ -264,7 +265,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         hasOmChat: hasOmChat,
         staffImages: o.staffImages || [],
         staffPdfs: o.staffPdfs || [],
-        accountsAttachments: o.accountsAttachments || []
+        accountsAttachments: o.accountsAttachments || [],
+        sizeBreakdown: o.sizeBreakdown || []
       };
     });
 
@@ -782,7 +784,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 <th className="px-6 py-4">Descriptor Code</th>
                 <th className="px-6 py-4">Client Detail</th>
                 <th className="px-6 py-4">Design Requirement & Category</th>
-                <th className="px-6 py-4 text-center">Accounts Billing Docs</th>
                 <th className="px-6 py-4 text-center">Assigned Handler</th>
                 <th className="px-6 py-4 text-right">Action override</th>
               </tr>
@@ -829,19 +830,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           </span>
                         </div>
                       </td>
-                      {/* Accounts Billing Docs column */}
-                      <td className="px-6 py-4 text-center">
-                        {((item as any).accountsAttachments || []).length > 0 ? (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[9px] font-black uppercase border border-amber-200">
-                              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-                              {(item as any).accountsAttachments.length} Doc{(item as any).accountsAttachments.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-[9px] text-gray-300 font-bold italic">—</span>
-                        )}
-                      </td>
+
                       <td className="px-6 py-4 text-center">
                         <div>
                           {isUnclaimed ? (
@@ -896,7 +885,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-gray-400 italic font-medium">
+                  <td colSpan={5} className="px-6 py-16 text-center text-gray-400 italic font-medium">
                     All clear! No pending design assets found in this pipeline state.
                   </td>
                 </tr>

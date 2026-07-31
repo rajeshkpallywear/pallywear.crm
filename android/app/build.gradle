@@ -4,6 +4,7 @@ android {
     namespace "pallywear.in"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
+
         applicationId "pallywear.in"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

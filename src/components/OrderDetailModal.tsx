@@ -34,7 +34,16 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
     if (!onUpdateOrder) return;
     setIsSaving(true);
     try {
-      await onUpdateOrder(order.id, { ...editedOrder, updatedAt: Date.now() });
+      let computedCategory = editedOrder.category;
+      if (editedOrder.sizeBreakdown && editedOrder.sizeBreakdown.length > 0) {
+        const categories = Array.from(new Set(editedOrder.sizeBreakdown.map(i => i.category)));
+        if (categories.length === 1) {
+          computedCategory = categories[0];
+        } else if (categories.length > 1) {
+          computedCategory = 'Mixed Order';
+        }
+      }
+      await onUpdateOrder(order.id, { ...editedOrder, category: computedCategory, updatedAt: Date.now() });
       setIsEditing(false);
     } catch (error) {
       alert("Failed to save changes.");
