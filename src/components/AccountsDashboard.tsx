@@ -29,7 +29,7 @@ interface AccountsDashboardProps {
 
 export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder, isAdmin, user, sidebarView = 'orders' }: AccountsDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'hold' | 'completed' | 'revenue'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -156,7 +156,6 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     if (sidebarView === 'office-expense') return <OtherExpensePage user={user} expenseType="office" title="Office Expense" description="Track day-to-day office expenses" icon={<Building2 size={20}/>} color="#8b5cf6" />;
     if (sidebarView === 'salary') return <OtherExpensePage user={user} expenseType="salary" title="Salary" description="Monthly salary payments to staff" icon={<Users size={20}/>} color="#0ea5e9" extraFields="salary" />;
     if (sidebarView === 'delivery-expense') return <OtherExpensePage user={user} expenseType="delivery" title="Delivery Expense" description="Courier and logistics costs" icon={<Truck size={20}/>} color="#f59e0b" extraFields="delivery" />;
-    if (sidebarView === 'revenue') return <OtherExpensePage user={user} expenseType="revenue" title="Revenue" description="Income and revenue records" icon={<IndianRupee size={20}/>} color="#16a34a" extraFields="revenue" />;
     if (sidebarView === 'expenses-hub') return <ExpensesHub user={user} />;
     return null;
   };
@@ -172,7 +171,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
 
       {/* Summary Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 sm:gap-3">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
@@ -211,7 +210,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           onClick={() => setSelectedSection('completed')}
           className={cn(
             "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
-            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-100 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+            selectedSection === 'completed' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-150 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
           )}
           title="Completed Orders: Fully delivered and paid"
         >
@@ -223,9 +222,31 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
             <p className="text-sm sm:text-xl font-black leading-none mt-0.5">{completedOrdersCount}</p>
           </div>
         </button>
+
+        <button
+          onClick={() => setSelectedSection('revenue')}
+          className={cn(
+            "flex items-center gap-2.5 p-2.5 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer text-left",
+            selectedSection === 'revenue' ? "bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]" : "bg-white border-gray-150 shadow-xs hover:border-brand-primary/40 hover:scale-[1.01]"
+          )}
+          title="Revenue Ledger: Manually and auto-created income records"
+        >
+          <div className={cn("w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-xs shrink-0", selectedSection === 'revenue' ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600")}>
+            <IndianRupee size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={cn("text-[9px] font-bold uppercase tracking-wider truncate", selectedSection === 'revenue' ? "text-white/80" : "text-gray-400")}>Revenue</p>
+            <p className="text-sm sm:text-base font-black leading-none mt-0.5">Ledger</p>
+          </div>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {selectedSection === 'revenue' ? (
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <OtherExpensePage user={user} expenseType="revenue" title="Revenue Ledger" description="Income and revenue records" icon={<IndianRupee size={20}/>} color="#16a34a" extraFields="revenue" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className={cn("lg:col-span-1 space-y-4", selectedOrder ? "hidden lg:block" : "block")}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
             <ClipboardCheck className="text-amber-500" size={16} />
@@ -480,6 +501,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           )}
         </div>
       </div>
+      )}
 
       {/* Analytics Graph Model */}
       <div className="pt-4">

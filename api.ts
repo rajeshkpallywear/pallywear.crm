@@ -443,6 +443,48 @@ router.post('/orders', async (req, res) => {
         );
       }
     }
+
+    if (order.status === 'accounts') {
+      const revId = `rev-${order.id}`;
+      const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
+      if (revExisting.length > 0) {
+        await query(
+          'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
+          [
+            financials.totalAmount || 0,
+            customer.name || 'Client',
+            order.category || 'Order',
+            String(order.quantity || 0),
+            order.notes || `Auto-created revenue from Order #${order.id.slice(-6)}`,
+            revId
+          ]
+        );
+      } else {
+        await query(
+          `INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            revId,
+            'revenue',
+            order.createdBy || 'system',
+            order.createdByName || 'System',
+            customer.name || 'Client',
+            order.category || 'Order',
+            String(order.quantity || 0),
+            null,
+            null,
+            financials.totalAmount || 0,
+            new Date().toISOString().split('T')[0],
+            null,
+            order.notes || `Auto-created revenue from Order #${order.id.slice(-6)}`,
+            null,
+            new Date().toLocaleString('en-US', { month: 'long' }),
+            Date.now()
+          ]
+        );
+      }
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error saving order:', error);
