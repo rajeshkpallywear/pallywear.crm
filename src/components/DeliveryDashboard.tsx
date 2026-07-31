@@ -136,12 +136,14 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
               filteredOrders.map(order => (
                 <button
                   key={order.id}
-                  onClick={() => setSelectedOrder(order)}
+                  onClick={() => order.status !== OrderStatus.DELIVERED && setSelectedOrder(order)}
                   className={cn(
-                    "w-full text-left p-5 rounded-3xl border transition-all flex flex-col gap-3 hover:scale-[1.01] cursor-pointer",
-                    selectedOrder?.id === order.id
-                      ? "bg-orange-600 border-orange-600 text-white shadow-lg"
-                      : "bg-slate-50 border-gray-200 text-slate-800 hover:bg-slate-100/85"
+                    "w-full text-left p-5 rounded-3xl border transition-all flex flex-col gap-3 hover:scale-[1.01]",
+                    order.status === OrderStatus.DELIVERED
+                      ? "bg-slate-50 border-gray-200 text-slate-800 cursor-default opacity-85 hover:bg-slate-50 hover:scale-100"
+                      : selectedOrder?.id === order.id
+                        ? "bg-orange-600 border-orange-600 text-white shadow-lg cursor-pointer"
+                        : "bg-slate-50 border-gray-200 text-slate-800 hover:bg-slate-100/85 cursor-pointer"
                   )}
                 >
                   <div className="flex justify-between items-center w-full">

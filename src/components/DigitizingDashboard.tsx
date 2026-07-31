@@ -60,7 +60,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     if (viewMode === 'pending') {
       return matchesSearch && relevantStatus && !o.machineFiles?.length;
     } else {
-      return matchesSearch && (relevantStatus || o.status === OrderStatus.DELIVERY) && (o.machineFiles?.length || 0) > 0;
+      return matchesSearch && o.status === OrderStatus.DELIVERED;
     }
   });
 
@@ -200,7 +200,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ✓ Digitized ({orders.filter(o => (o.machineFiles?.length || 0) > 0).length})
+            ✓ Done ({orders.filter(o => o.status === OrderStatus.DELIVERED).length})
           </button>
         </div>
 
@@ -241,12 +241,14 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 filteredOrders.map(order => (
                   <button
                     key={order.id}
-                    onClick={() => setSelectedOrder(order)}
+                    onClick={() => order.status !== OrderStatus.DELIVERED && setSelectedOrder(order)}
                     className={cn(
-                      "w-full text-left p-4 rounded-2xl border transition-all flex flex-col gap-1.5 cursor-pointer",
-                      selectedOrder?.id === order.id
-                        ? "bg-slate-900 text-white border-slate-900 shadow-md scale-[1.01]"
-                        : "bg-white border-gray-100 hover:border-indigo-100 shadow-xs"
+                      "w-full text-left p-4 rounded-2xl border transition-all flex flex-col gap-1.5",
+                      order.status === OrderStatus.DELIVERED
+                        ? "bg-white border-gray-100 cursor-default opacity-85"
+                        : selectedOrder?.id === order.id
+                          ? "bg-slate-900 text-white border-slate-900 shadow-md scale-[1.01] cursor-pointer"
+                          : "bg-white border-gray-100 hover:border-indigo-100 shadow-xs cursor-pointer"
                     )}
                   >
                     <div className="flex items-center justify-between">

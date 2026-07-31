@@ -26,7 +26,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION;
     }
     if (selectedSection === 'completed') {
-      return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED;
+      return o.status === OrderStatus.DELIVERED;
     }
     if (selectedSection === 'process') {
       return o.status === OrderStatus.PRODUCTION;
@@ -50,7 +50,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length;
   const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
-  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED).length;
+  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
   const handleFinishProduction = async () => {
     if (!selectedOrder || isProcessing) return;
@@ -155,12 +155,14 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
               filteredOrders.map(order => (
                 <button
                   key={order.id}
-                  onClick={() => setSelectedOrder(order)}
+                  onClick={() => order.status !== OrderStatus.DELIVERED && setSelectedOrder(order)}
                   className={cn(
-                    "w-full text-left p-5 rounded-3xl border transition-all flex flex-col gap-3 hover:scale-[1.01] cursor-pointer",
-                    selectedOrder?.id === order.id
-                      ? "bg-indigo-600 border-indigo-650 text-white shadow-xl"
-                      : "bg-slate-50 border-gray-200 text-slate-800 hover:bg-slate-100/85"
+                    "w-full text-left p-5 rounded-3xl border transition-all flex flex-col gap-3 hover:scale-[1.01]",
+                    order.status === OrderStatus.DELIVERED
+                      ? "bg-slate-50 border-gray-200 text-slate-800 cursor-default opacity-85 hover:bg-slate-50 hover:scale-100"
+                      : selectedOrder?.id === order.id
+                        ? "bg-indigo-600 border-indigo-650 text-white shadow-xl cursor-pointer"
+                        : "bg-slate-50 border-gray-200 text-slate-800 hover:bg-slate-100/85 cursor-pointer"
                   )}
                 >
                   <div className="flex items-center justify-between w-full">

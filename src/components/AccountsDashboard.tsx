@@ -42,7 +42,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
     if (selectedSection === 'completed') {
-      return ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+      return o.status === OrderStatus.DELIVERED;
     }
     return o.status === OrderStatus.ACCOUNTS;
   });
@@ -62,7 +62,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-  const completedOrdersCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS)).length;
+  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
 
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
@@ -236,11 +236,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
               filteredOrders.map(order => (
                 <button
                   key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedOrder?.id === order.id
-                    ? 'bg-black text-white border-black shadow-lg scale-[1.02]'
-                    : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm'
-                    }`}
+                  onClick={() => order.status !== OrderStatus.DELIVERED && setSelectedOrder(order)}
+                  className={cn(
+                    "w-full text-left p-4 rounded-2xl border transition-all",
+                    order.status === OrderStatus.DELIVERED
+                      ? "bg-white border-gray-100 cursor-default opacity-85"
+                      : selectedOrder?.id === order.id
+                        ? "bg-black text-white border-black shadow-lg scale-[1.02] cursor-pointer"
+                        : "bg-white border-gray-100 hover:border-gray-300 shadow-sm cursor-pointer"
+                  )}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">

@@ -163,16 +163,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       // and aren't locked to other designers.
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN;
-      const isCompletedDesign = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status);
+      const isCompletedDesign = o.status === OrderStatus.DELIVERED;
       const isMarketing = !o.accountsAttachments || o.accountsAttachments.length === 0;
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing && !isAssignedToOther(o.assignedDesigner || '');
     })
     .map(o => {
-      let isCompleted = false;
-      // If order is beyond Design phase and has design files or was finished, mark as completed
-      if (![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status)) {
-        isCompleted = true;
-      }
+      const isCompleted = o.status === OrderStatus.DELIVERED;
 
       const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
         ? o.sizeBreakdown.map(s => [s.category, s.material, s.colour, s.printType, s.model].filter(Boolean).join(' ')).filter(Boolean).join(' | ') 
@@ -233,7 +229,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       // This ensures accounts-sent orders (status=DESIGN) show up here
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
-      const isCompletedDesign = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD, OrderStatus.ORDER_MANAGEMENT].includes(o.status);
+      const isCompletedDesign = o.status === OrderStatus.DELIVERED;
       const isAccounts = o.accountsAttachments && o.accountsAttachments.length > 0;
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts && !isAssignedToOther(o.assignedDesigner || '');
     })
@@ -241,7 +237,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
       const hasOmChat = !!localStorage.getItem(chatKey);
 
-      const isCompleted = ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD, OrderStatus.ORDER_MANAGEMENT].includes(o.status);
+      const isCompleted = o.status === OrderStatus.DELIVERED;
       const isHold = o.status === OrderStatus.HOLD;
 
       const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
@@ -363,6 +359,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   };
 
   const handleOpenWorkspace = (item: any) => {
+    if (item.status === OrderStatus.DELIVERED) {
+      return;
+    }
     if (item.isOrder) {
       const fullOrder = orders.find(o => o.id === item.id);
       if (fullOrder) {
@@ -736,8 +735,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   return (
                     <tr
                       key={item.id}
-                      onClick={() => handleOpenWorkspace(item)}
-                      className={`cursor-pointer transition-all ${isSelected ? 'bg-purple-50/60 border-l-4 border-l-purple-500' : 'hover:bg-gray-50/60'}`}
+                      onClick={() => item.status !== OrderStatus.DELIVERED && handleOpenWorkspace(item)}
+                      className={cn(
+                        "transition-all",
+                        item.status === OrderStatus.DELIVERED
+                          ? "cursor-default opacity-85 hover:bg-transparent"
+                          : isSelected
+                            ? "bg-purple-50/60 border-l-4 border-l-purple-500 cursor-pointer"
+                            : "hover:bg-gray-50/60 cursor-pointer"
+                      )}
                     >
                       <td className="px-5 py-3">
                         <span className="font-black text-gray-500 text-sm">#{idx + 1}</span>
@@ -798,7 +804,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     item.assignedDesigner === '';
 
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50/30 transition-colors group">
+                    <tr key={item.id} className={cn(
+                      "transition-colors group",
+                      item.status === OrderStatus.DELIVERED
+                        ? "hover:bg-transparent cursor-default opacity-85"
+                        : "hover:bg-gray-50/30 cursor-pointer"
+                    )}>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <span className="font-mono text-xs font-black text-brand-primary">
@@ -849,10 +860,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               Completed âœ”
                             </span>
                             <button
-                              onClick={() => handleOpenWorkspace(item)}
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-black uppercase transition-all"
+                              disabled={true}
+                              className="px-2.5 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-[10px] font-black uppercase cursor-default border-none"
                             >
-                              Review Assets
+                              Locked (Delivered)
                             </button>
                           </div>
                         ) : isUnclaimed ? (
