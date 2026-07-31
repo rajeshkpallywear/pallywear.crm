@@ -685,7 +685,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="bg-white border border-gray-100 rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="sticky top-0 bg-white px-8 py-6 border-b border-gray-100 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-white px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 flex items-center justify-between z-10">
               <div className="flex items-center gap-4">
                 <h3 className="text-xl font-black text-gray-900 uppercase italic tracking-tight">
                   {editingOrderId ? 'Modify Order Details' : 'Create Intake Order'}
@@ -708,13 +708,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-8 text-left">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-4 sm:space-y-8 text-left">
               <section className="space-y-4">
                 <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
                   <User size={16} className="text-brand-primary" />
                   Customer Information
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5">Customer Name</label>
                     <input
@@ -771,7 +771,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   {formData.sizeBreakdown.length > 0 ? (
                     <div className="space-y-4">
                       {formData.sizeBreakdown.map((item, idx) => (
-                        <div key={idx} className="p-4 bg-gray-50/60 rounded-2xl border border-gray-100 shadow-xs relative group flex flex-col gap-3">
+                        <div key={idx} className="p-3 sm:p-4 bg-gray-50/60 rounded-xl sm:rounded-2xl border border-gray-100 shadow-xs relative group flex flex-col gap-3">
                           <button
                             type="button"
                             onClick={() => removeSizeQuantity(idx)}
@@ -803,11 +803,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] font-black text-gray-500 uppercase mb-1">Qty</label>
+                              <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase mb-0.5 sm:mb-1">Qty</label>
                               <select
                                 value={item.quantity}
                                 onChange={(e) => updateSizeQuantity(idx, 'quantity', parseInt(e.target.value))}
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
+                                className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
                               >
                                 {Array.from({ length: 1500 }, (_, i) => i + 1).map(n => (
                                   <option key={n} value={n} className="bg-white">{n}</option>
@@ -815,13 +815,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[10px] font-black text-gray-500 uppercase mb-1">Price (₹)</label>
+                              <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase mb-0.5 sm:mb-1">Price (₹)</label>
                               <input
                                 type="number"
                                 placeholder="0"
                                 value={item.price || ''}
                                 onChange={(e) => updateSizeQuantity(idx, 'price', parseFloat(e.target.value) || 0)}
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
+                                className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
                               />
                             </div>
                           </div>
@@ -860,13 +860,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 />
                               ) : (
                                 <div>
-                                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-1">Colour</label>
+                                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase mb-0.5 sm:mb-1">Colour</label>
                                   <input
                                     type="text"
                                     placeholder="White"
                                     value={item.colour || ''}
                                     onChange={(e) => updateSizeQuantity(idx, 'colour', e.target.value)}
-                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
+                                    className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
                                   />
                                 </div>
                               )}
@@ -1131,12 +1131,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
 function Select({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) {
   return (
-    <div className="space-y-1.5 text-left">
-      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</label>
+    <div className="space-y-1 sm:space-y-1.5 text-left">
+      <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase tracking-widest">{label}</label>
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-xs text-gray-800 focus:border-brand-primary outline-none"
+        className="w-full bg-white border border-gray-200 rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-xs text-gray-800 focus:border-brand-primary outline-none"
       >
         <option value="" disabled className="bg-white text-gray-400">Select {label}</option>
         {options.map(opt => <option key={opt} value={opt} className="bg-white text-gray-800">{opt}</option>)}

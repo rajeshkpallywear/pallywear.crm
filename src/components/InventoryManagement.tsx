@@ -276,7 +276,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         type: 'inward',
         vendor: 'Production Factory Intake',
         date: new Date().toISOString().split('T')[0],
-        product: order.category,
+        product: getDisplayCategory(order),
         productType: order.details || 'Production Finished Goods',
         sleeve: 'none',
         pocket: 'no',
@@ -310,7 +310,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         type: 'outward',
         customer: order.customerInfo?.name || 'Retail Client',
         date: new Date().toISOString().split('T')[0],
-        product: order.category,
+        product: getDisplayCategory(order),
         productType: order.details?.productType || 'Finished Goods Delivery',
         sleeve: 'none',
         pocket: 'no',
@@ -1085,7 +1085,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                               <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category} ({order.quantity} Pcs)</td>
+                          <td className="px-5 py-3.5 font-bold text-indigo-600">{getDisplayCategory(order)} ({order.quantity} Pcs)</td>
                           <td className="px-5 py-3.5">
                             <input
                               type="text"
@@ -1154,7 +1154,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                             <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 font-bold text-indigo-600">{order.category} ({order.quantity} Pcs)</td>
+                        <td className="px-5 py-3.5 font-bold text-indigo-600">{getDisplayCategory(order)} ({order.quantity} Pcs)</td>
                         <td className="px-5 py-3.5 text-slate-500 font-semibold">{order.details?.courierName || 'Standard Post'}</td>
                         <td className="px-5 py-3.5 font-mono text-slate-600 font-bold">{order.details?.trackingNumber || 'LOCAL-DELIVERY'}</td>
                         <td className="px-5 py-3.5 text-center">

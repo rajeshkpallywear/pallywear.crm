@@ -80,10 +80,10 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden"
       >
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="p-4 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
-              <h3 className="text-3xl font-black text-gray-900 tracking-tighter">Order Details</h3>
+              <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tighter">Order Details</h3>
               <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
                 {order.status.replace('_', ' ')}
               </span>
@@ -139,13 +139,13 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
           </div>
         </div>
 
-        <div className="p-8 flex flex-col gap-8 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-8 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
           <WorkflowVisualizer order={order} />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <div className="grid grid-cols-2 gap-8">
-                <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100/50 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
+                <div className="bg-gray-50/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[32px] border border-gray-100/50 shadow-sm">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Customer Contact</p>
                   <div className="space-y-3">
                     {isEditing ? (
@@ -263,7 +263,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                   {isEditing ? (
                     editedOrder.sizeBreakdown?.length ? (
                       editedOrder.sizeBreakdown.map((item, idx) => (
-                        <div key={idx} className="p-4 bg-white rounded-2xl border border-gray-200 space-y-3 shadow-sm">
+                        <div key={idx} className="p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border border-gray-200 space-y-3 shadow-sm">
                           <div className="flex justify-between items-center">
                             <span className="text-xs font-black text-brand-primary uppercase">{item.category}</span>
                             <input
@@ -392,7 +392,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                   ) : (
                     order.sizeBreakdown?.length ? (
                       order.sizeBreakdown.map((item, idx) => (
-                        <div key={idx} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-brand-primary/20 transition-all">
+                        <div key={idx} className="p-3 sm:p-4 bg-gray-50/50 rounded-xl sm:rounded-2xl border border-gray-100 hover:border-brand-primary/20 transition-all">
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-xs font-black text-brand-primary uppercase tracking-tight">{item.category}</span>
                             <span className="text-xs font-black text-gray-900 bg-white px-2 py-1 rounded-lg border border-gray-100 shadow-sm">{item.size}</span>
@@ -422,7 +422,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
               </div>
 
               {Object.keys(order.details || {}).length > 0 && (
-                <div className="bg-gray-50/30 rounded-[32px] p-6 border border-gray-100">
+                <div className="bg-gray-50/30 rounded-[20px] sm:rounded-[32px] p-4 sm:p-6 border border-gray-100">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Technical Details</p>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(order.details).map(([k, v]) => (
@@ -437,7 +437,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
             </div>
 
             <div className="space-y-6">
-              <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100/50 shadow-sm">
+              <div className="bg-gray-50/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[32px] border border-gray-100/50 shadow-sm">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Visual Evidence</p>
                 <div className="space-y-4">
                   <div>
@@ -694,7 +694,7 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
           </div>
         </div>
 
-        <div className="p-8 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="p-4 sm:p-8 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-6 text-gray-400">
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-widest">Timestamp</span>
