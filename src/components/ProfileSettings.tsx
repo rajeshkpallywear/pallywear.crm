@@ -1,14 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { useAuth, User as UserType } from '../context/AuthContext';
 import { Button } from './Button';
-import { X, User, Camera, Check, AlertCircle } from 'lucide-react';
+import { X, User, Camera, Check, AlertCircle, Mail, Lock, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
 export default function ProfileSettings({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-    const { user, updateProfile } = useAuth();
+    const { user, updateProfile, logout } = useAuth();
     const [name, setName] = useState(user?.name || '');
     const [avatar, setAvatar] = useState(user?.avatar || '');
+    const [password, setPassword] = useState('');
     const [success, setSuccess] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +38,7 @@ export default function ProfileSettings({ isOpen, onClose }: { isOpen: boolean; 
         setErrorMessage(null);
         setLoading(true);
         try {
-            await updateProfile({ name, avatar });
+            await updateProfile({ name, avatar, password: password.trim() || undefined });
             setSuccess(true);
             setTimeout(() => {
                 setSuccess(false);
@@ -120,6 +121,31 @@ export default function ProfileSettings({ isOpen, onClose }: { isOpen: boolean; 
 
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                                    <Mail className="w-3.5 h-3.5" /> Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    value={user?.email || ''}
+                                    disabled
+                                    className="w-full px-4 py-2.5 bg-gray-100 border border-gray-150 rounded-xl text-gray-500 font-medium text-sm cursor-not-allowed"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                                    <Lock className="w-3.5 h-3.5" /> Password
+                                </label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all font-medium text-sm"
+                                    placeholder="Enter new password to change"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
                                     <Camera className="w-3.5 h-3.5" /> Avatar URL
                                 </label>
                                 <input
@@ -131,16 +157,31 @@ export default function ProfileSettings({ isOpen, onClose }: { isOpen: boolean; 
                                 />
                             </div>
 
-                            <Button
-                                type="submit"
-                                disabled={loading || success}
-                                className={cn(
-                                    "w-full h-11 transition-all duration-300",
-                                    success ? "bg-green-500 hover:bg-green-500 shadow-green-200" : "shadow-brand-primary/20"
-                                )}
-                            >
-                                {loading ? 'Updating...' : success ? <><Check className="w-4 h-4 mr-2" /> Updated</> : 'Save Changes'}
-                            </Button>
+                            <div className="pt-2 border-t border-gray-100 flex flex-col gap-2">
+                                <Button
+                                    type="submit"
+                                    disabled={loading || success}
+                                    className={cn(
+                                        "w-full h-11 transition-all duration-300",
+                                        success ? "bg-green-500 hover:bg-green-500 shadow-green-200" : "shadow-brand-primary/20"
+                                    )}
+                                >
+                                    {loading ? 'Updating...' : success ? <><Check className="w-4 h-4 mr-2" /> Updated</> : 'Save Changes'}
+                                </Button>
+
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (window.confirm("Are you sure you want to log out?")) {
+                                            onClose();
+                                            await logout();
+                                        }
+                                    }}
+                                    className="w-full h-11 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                                >
+                                    <LogOut className="w-4 h-4" /> Log Out
+                                </button>
+                            </div>
                         </form>
                     </motion.div>
                 </div>

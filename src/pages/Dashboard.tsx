@@ -22,6 +22,7 @@ import Logo from '../components/Logo';
 import { cn } from '../lib/utils';
 import { UserRole, Order } from '../types';
 import { mockDataService } from '../service/mockDataService';
+import { getApiUrl } from '../lib/apiConfig';
 
 // Import New Role Dashboards
 import AccountsDashboard from '../components/AccountsDashboard';
@@ -167,7 +168,7 @@ export default function Dashboard() {
 
     const fetchNotifications = async (isInitial = false) => {
       try {
-        const res = await fetch(`/api/notifications?role=${user.role}`);
+        const res = await fetch(getApiUrl(`/api/notifications?role=${user.role}`));
         const data = await res.json();
         if (data.success) {
           const newNotifs = data.notifications || [];
@@ -199,7 +200,7 @@ export default function Dashboard() {
     setShowNotifications(nextShow);
     if (nextShow) {
       try {
-        await fetch('/api/notifications/read', {
+        await fetch(getApiUrl('/api/notifications/read'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ role: user?.role })
@@ -598,7 +599,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileOpen(true)}
-              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
+              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 hidden flex-shrink-0"
               aria-label="Toggle menu"
             >
               <Menu className="w-5 h-5" />

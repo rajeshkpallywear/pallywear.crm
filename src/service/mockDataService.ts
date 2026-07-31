@@ -198,7 +198,8 @@ export const mockDataService = {
       body: JSON.stringify({
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        password: user.password
       })
     });
     if (!res.ok) throw new Error('Failed to update user');

@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { mockDataService } from '../service/mockDataService';
 import SidebarChat from '../components/SidebarChat';
+import { getApiUrl } from '../lib/apiConfig';
 
 const COLORS = ['#3291B6', '#5CBFD4', '#EAF4F7', '#1F2937'];
 
@@ -121,7 +122,7 @@ export default function AdminDashboard() {
 
     const fetchNotifications = async (isInitial = false) => {
       try {
-        const res = await fetch(`/api/notifications?role=${user.role}`);
+        const res = await fetch(getApiUrl(`/api/notifications?role=${user.role}`));
         const data = await res.json();
         if (data.success) {
           const newNotifs = data.notifications || [];
@@ -153,7 +154,7 @@ export default function AdminDashboard() {
     setShowNotifications(nextShow);
     if (nextShow) {
       try {
-        await fetch('/api/notifications/read', {
+        await fetch(getApiUrl('/api/notifications/read'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ role: user?.role })
@@ -494,11 +495,11 @@ export default function AdminDashboard() {
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3 text-gray-400">
             <button
-              onClick={() => setIsMobileOpen(true)}
-              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 md:hidden flex-shrink-0"
-              aria-label="Toggle menu"
+               onClick={() => setIsMobileOpen(true)}
+               className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 hidden flex-shrink-0"
+               aria-label="Toggle menu"
             >
-              <Menu className="w-5 h-5" />
+               <Menu className="w-5 h-5" />
             </button>
             <span className="text-xs font-bold uppercase tracking-widest text-gray-700 flex items-center gap-2">
               Admin Control Panel

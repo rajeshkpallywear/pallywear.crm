@@ -129,7 +129,7 @@ export default function SidebarChat() {
       {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-2xl hover:scale-105 transition-all flex items-center justify-center border-none cursor-pointer group"
+        className="fixed bottom-20 md:bottom-6 right-6 z-50 p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-2xl hover:scale-105 transition-all flex items-center justify-center border-none cursor-pointer group"
         title="WhatsApp Team Chat"
       >
         <MessageSquare className="w-6 h-6 animate-pulse group-hover:scale-110" />

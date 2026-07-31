@@ -112,12 +112,19 @@ router.get('/users', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { email, name, role } = req.body;
+  const { email, name, role, password } = req.body;
   try {
-    await query(
-      'UPDATE users SET email = ?, name = ?, role = ? WHERE id = ?',
-      [email, name, role, id]
-    );
+    if (password) {
+      await query(
+        'UPDATE users SET email = ?, name = ?, role = ?, password = ? WHERE id = ?',
+        [email, name, role, password, id]
+      );
+    } else {
+      await query(
+        'UPDATE users SET email = ?, name = ?, role = ? WHERE id = ?',
+        [email, name, role, id]
+      );
+    }
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error updating user:', error);

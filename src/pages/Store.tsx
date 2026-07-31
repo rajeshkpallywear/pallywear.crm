@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
 import {
   Menu, X, TrendingUp, User, Zap, BarChart3, Layout, Globe, Shield,
-  Monitor, Smartphone, MessageSquare, Send, CheckCircle2, AlertCircle, PlusCircle, Sparkles, Settings
+  Monitor, Smartphone, MessageSquare, Send, CheckCircle2, AlertCircle, PlusCircle, Sparkles, Settings, ShoppingBag, Tag
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 export default function Store() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'system' | 'mobile'>('system');
-  const [activeMobileTab, setActiveMobileTab] = useState<'dashboard' | 'orders' | 'leads' | 'invoices' | 'chat'>('dashboard');
+  const [activeMobileTab, setActiveMobileTab] = useState<'store' | 'orders' | 'leads' | 'invoices' | 'chat'>('store');
   const [showSettings, setShowSettings] = useState(false);
   const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'https://pallywear.in');
 
@@ -227,21 +227,30 @@ export default function Store() {
                     className="absolute top-0 right-0 w-[500px] h-80 bg-white/90 backdrop-blur-2xl border border-white rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.1)] p-8 z-20"
                     style={{ transformStyle: 'preserve-3d' }}
                   >
-                    <div className="flex justify-between items-start mb-12">
+                    <div className="flex justify-between items-start mb-6">
                       <div>
-                        <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Live Revenue Stream</h3>
-                        <p className="text-5xl font-black text-gray-900 tracking-tighter">₹14,05,862.00</p>
+                        <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Store Catalog</h3>
+                        <p className="text-3xl font-black text-gray-900 tracking-tighter">Premium Apparel Collection</p>
                       </div>
                       <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
-                        <TrendingUp className="w-6 h-6" />
+                        <ShoppingBag className="w-6 h-6" />
                       </div>
                     </div>
-                    <div className="h-24 w-full flex items-end gap-1.5 px-2">
-                      {[40, 20, 60, 45, 80, 50, 90, 70, 85, 45, 65, 55].map((h, i) => (
-                        <div key={i} className="flex-1 bg-indigo-600/10 rounded-t-xl relative overflow-hidden h-full">
-                          <div className="absolute bottom-0 left-0 right-0 bg-indigo-500 rounded-full" style={{ height: `${h}%` }} />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/20 border border-indigo-100">
+                        <div className="flex items-center gap-3">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                          <span className="text-xs font-black text-gray-900">Custom Sublimation Jersey</span>
                         </div>
-                      ))}
+                        <span className="text-xs font-black text-indigo-600 bg-white px-2.5 py-1 rounded-xl shadow-xs">₹450 / pc</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/20 border border-indigo-100">
+                        <div className="flex items-center gap-3">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                          <span className="text-xs font-black text-gray-900">Custom Fleece Hoodie Sweatshirt</span>
+                        </div>
+                        <span className="text-xs font-black text-indigo-600 bg-white px-2.5 py-1 rounded-xl shadow-xs">₹850 / pc</span>
+                      </div>
                     </div>
                   </motion.div>
 
@@ -253,25 +262,24 @@ export default function Store() {
                     className="absolute -bottom-5 left-0 w-[380px] bg-white/90 backdrop-blur-2xl border border-white rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.1)] p-8 z-30"
                     style={{ transformStyle: 'preserve-3d' }}
                   >
-                    <div className="flex items-center justify-between mb-6">
-                      <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Active Leads</h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Store Specifications</h4>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {[
-                        { name: 'Jane Cooper', status: 'Completed', val: '₹93,500', color: 'bg-green-100 text-green-600' },
-                        { name: 'Arlene McCoy', status: 'Completed', val: '₹12,099', color: 'bg-green-100 text-green-600' }
+                        { label: 'Jersey Dry-Fit', desc: '100% Poly, Sublimation Print' },
+                        { label: 'Sweatshirt Fleece', desc: '80% Cotton, Heavy Embroidery' }
                       ].map((u, i) => (
                         <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/20 hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100 group">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-xl bg-indigo-50 p-2 text-indigo-500">
-                              <User className="w-full h-full" />
+                              <Tag className="w-full h-full" />
                             </div>
                             <div>
-                              <p className="text-xs font-black text-gray-900">{u.name}</p>
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{u.status}</span>
+                              <p className="text-xs font-black text-gray-900">{u.label}</p>
+                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{u.desc}</span>
                             </div>
                           </div>
-                          <p className="text-xs font-black text-gray-900 tracking-tighter">{u.val}</p>
                         </div>
                       ))}
                     </div>
@@ -283,36 +291,34 @@ export default function Store() {
                   <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-xl">
                     <div className="flex justify-between items-start mb-6">
                       <div>
-                        <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Live Revenue Stream</h3>
-                        <p className="text-3xl font-black text-gray-900 tracking-tighter">₹14,05,862.00</p>
+                        <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Store Catalog</h3>
+                        <p className="text-3xl font-black text-gray-900 tracking-tighter">Premium Collection</p>
                       </div>
                       <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
-                        <TrendingUp className="w-5 h-5" />
+                        <ShoppingBag className="w-5 h-5" />
                       </div>
                     </div>
-                    <div className="h-16 w-full flex items-end gap-1 px-1">
-                      {[30, 20, 50, 45, 75, 40, 80, 60, 70, 45, 55, 50].map((h, i) => (
-                        <div key={i} className="flex-1 bg-indigo-100 rounded-t-lg h-full relative">
-                          <div className="absolute bottom-0 left-0 right-0 bg-indigo-500 rounded-t-lg" style={{ height: `${h}%` }} />
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span className="text-xs font-bold text-gray-950">Sublimation Jersey</span>
+                        <span className="text-xs font-black text-indigo-600">₹450</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span className="text-xs font-bold text-gray-950">Hoodie Sweatshirt</span>
+                        <span className="text-xs font-black text-indigo-600">₹850</span>
+                      </div>
                     </div>
                   </div>
                   <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-xl">
-                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Active Leads</h4>
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Fabric Specifications</h4>
                     <div className="space-y-3">
                       {[
-                        { name: 'Jane Cooper', status: 'Completed', val: '₹93,500' },
-                        { name: 'Arlene McCoy', status: 'Completed', val: '₹12,099' }
+                        { name: 'Jersey Dry-Fit', val: '100% Poly' },
+                        { name: 'Sweatshirt Fleece', val: 'Heavy Cotton' }
                       ].map((u, i) => (
                         <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
-                              <User className="w-4 h-4" />
-                            </div>
-                            <span className="text-xs font-black text-gray-900">{u.name}</span>
-                          </div>
-                          <span className="text-xs font-black text-gray-900">{u.val}</span>
+                          <span className="text-xs font-black text-gray-900">{u.name}</span>
+                          <span className="text-xs font-bold text-gray-500">{u.val}</span>
                         </div>
                       ))}
                     </div>
@@ -363,54 +369,34 @@ export default function Store() {
 
                     {/* Screen Content Scrollable Area */}
                     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-                      {activeMobileTab === 'dashboard' && (
-                        /* DASHBOARD TAB */
-                        <div className="space-y-4 animate-fade-in">
-                          {/* Welcome Profile */}
-                          <div className="flex items-center justify-between bg-gradient-to-r from-indigo-600 to-indigo-700 p-4 rounded-2xl text-white shadow-md shadow-indigo-100">
-                            <div>
-                              <p className="text-[9px] font-bold opacity-75 uppercase tracking-widest">Logged In</p>
-                              <h4 className="text-sm font-black tracking-tight">Arun Kumar</h4>
-                              <p className="text-[9px] font-medium bg-white/20 inline-block px-1.5 py-0.5 rounded-md mt-1">Role: Sales Rep</p>
-                            </div>
-                            <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-white/10 flex items-center justify-center font-black">A</div>
+                      {activeMobileTab === 'store' && (
+                        /* STORE CATALOG TAB */
+                        <div className="space-y-4 animate-fade-in text-left">
+                          <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-4 rounded-2xl text-white shadow-md">
+                            <h4 className="text-sm font-black tracking-tight flex items-center gap-2">
+                              <ShoppingBag className="w-5 h-5" /> Sportswear Catalog
+                            </h4>
+                            <p className="text-[9px] font-bold opacity-75 uppercase tracking-widest mt-1">Direct Custom orders</p>
                           </div>
 
-                          {/* Quick Stats Grid */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Total Leads</p>
-                              <p className="text-lg font-black text-gray-900 mt-1">{leadsList.length}</p>
-                              <span className="text-[8px] text-green-500 font-bold">↑ 14% this month</span>
-                            </div>
-                            <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Forecast Value</p>
-                              <p className="text-lg font-black text-gray-900 mt-1">₹4.5L</p>
-                              <span className="text-[8px] text-indigo-500 font-bold">🎯 Target hit: 90%</span>
-                            </div>
-                          </div>
-
-                          {/* Performance Mini Chart */}
-                          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                            <div className="flex justify-between items-center mb-3">
-                              <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest">Leads Pipeline</span>
-                              <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-                            </div>
-                            <div className="h-20 w-full flex items-end gap-2.5 pt-2">
-                              {[35, 65, 40, 85, 55, 95].map((val, idx) => (
-                                <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
-                                  <div className="w-full bg-indigo-50 rounded-t-md relative h-16">
-                                    <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 rounded-t-md transition-all duration-500" style={{ height: `${val}%` }} />
-                                  </div>
-                                  <span className="text-[8px] font-bold text-gray-400">M{idx+1}</span>
+                          <div className="space-y-2">
+                            {[
+                              { name: 'Sublimation Jersey', price: '₹450', details: 'Dry-Fit fabric, V-Neck/Collar' },
+                              { name: 'Sweatshirt Hoodie', price: '₹850', details: 'Cotton fleece, Premium embroidery' },
+                              { name: 'Polo Sportswear', price: '₹550', details: 'Matty cotton, Custom chest logo' }
+                            ].map((prod, idx) => (
+                              <div key={idx} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center hover:border-indigo-100 transition-colors">
+                                <div>
+                                  <h5 className="text-[11px] font-bold text-gray-900 leading-none mb-1">{prod.name}</h5>
+                                  <span className="text-[8px] text-gray-400 font-medium block">{prod.details}</span>
                                 </div>
-                              ))}
-                            </div>
+                                <span className="text-xs font-black text-indigo-600 bg-indigo-50/50 px-2 py-0.5 rounded-lg">{prod.price}</span>
+                              </div>
+                            ))}
                           </div>
 
-                          {/* Demo Interactive Hint */}
-                          <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl text-orange-800 text-[10px] leading-relaxed">
-                            <span className="font-bold">Pro-tip:</span> Try adding a lead in the <span className="font-bold underline cursor-pointer" onClick={() => setActiveMobileTab('leads')}>Leads Tab</span> or toggle status in the <span className="font-bold underline cursor-pointer" onClick={() => setActiveMobileTab('invoices')}>Invoices Tab</span>!
+                          <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl text-orange-850 text-[10px] leading-relaxed">
+                            <span className="font-bold">Apparel Hub:</span> All products are fully custom made to size guidelines and catalog instructions.
                           </div>
                         </div>
                       )}
@@ -554,14 +540,14 @@ export default function Store() {
                     {/* Simulated Bottom Navigation */}
                     <nav className="absolute bottom-0 inset-x-0 h-12 bg-white border-t border-gray-100/80 px-2 flex justify-around items-center z-40">
                       <button
-                        onClick={() => setActiveMobileTab('dashboard')}
+                        onClick={() => setActiveMobileTab('store')}
                         className={cn(
                           "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                          activeMobileTab === 'dashboard' ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
+                          activeMobileTab === 'store' ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
                         )}
                       >
-                        <Layout className="w-4 h-4" />
-                        <span className="text-[8px] font-bold mt-0.5">Overview</span>
+                        <ShoppingBag className="w-4 h-4" />
+                        <span className="text-[8px] font-bold mt-0.5">Store</span>
                       </button>
                       <button
                         onClick={() => setActiveMobileTab('leads')}

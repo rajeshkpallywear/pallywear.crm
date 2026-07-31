@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const updateProfile = async (data: Partial<User>) => {
+  const updateProfile = async (data: Partial<User> & { password?: string }) => {
     if (!user) {
       return;
     }
@@ -172,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: nextUser.email,
       name: nextUser.name,
       role: nextUser.role as UserRole,
+      password: data.password
     });
     persistUser(nextUser);
   };
