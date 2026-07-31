@@ -7,6 +7,9 @@ import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { shareInvoiceToWhatsApp } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 interface InvoiceModalProps {
     invoice: Invoice | null;
@@ -112,26 +115,40 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
 
             const fileName = `Invoice-${invoice.invoiceNumber}.pdf`;
 
-            // On mobile / Capacitor apps, Web Share API allows saving/sending PDF natively
-            const pdfBlob = pdf.output('blob');
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        files: [file],
-                        title: fileName,
-                        text: `Invoice ${invoice.invoiceNumber} from Pallywear`,
-                    });
-                } catch (shareError: any) {
-                    // If sharing was cancelled, don't throw an alert, just fallback to standard save
-                    console.log('Sharing failed or cancelled, trying fallback save:', shareError);
-                    if (shareError?.name !== 'AbortError') {
-                        pdf.save(fileName);
-                    }
-                }
+            if (Capacitor.isNativePlatform()) {
+                const dataUriString = pdf.output('datauristring');
+                const base64 = dataUriString.split(';base64,')[1];
+                const writeResult = await Filesystem.writeFile({
+                    path: fileName,
+                    data: base64,
+                    directory: Directory.Cache,
+                });
+                
+                await Share.share({
+                    title: fileName,
+                    text: `Invoice ${invoice.invoiceNumber} from Pallywear`,
+                    url: writeResult.uri,
+                });
             } else {
-                pdf.save(fileName);
+                const pdfBlob = pdf.output('blob');
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: fileName,
+                            text: `Invoice ${invoice.invoiceNumber} from Pallywear`,
+                        });
+                    } catch (shareError: any) {
+                        console.log('Sharing failed or cancelled, trying fallback save:', shareError);
+                        if (shareError?.name !== 'AbortError') {
+                            pdf.save(fileName);
+                        }
+                    }
+                } else {
+                    pdf.save(fileName);
+                }
             }
         } catch (error: any) {
             console.error('PDF Generation Error:', error);

@@ -30,7 +30,7 @@ export default function InvoiceManager() {
         leadId: `L-${Math.random().toString(36).substring(2, 7)}`,
         invoiceNumber: `QT.${Math.floor(Math.random() * 9000) + 1000}`,
         dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        notes: 'Quality garments and merchandise solutions.',
+        notes: '',
         customerName: '',
         customerCompanyName: '',
         customerNumber: '',
