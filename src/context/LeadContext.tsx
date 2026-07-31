@@ -171,6 +171,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       await mockDataService.patchOrder(id, sanitizeForStorage(orderUpdate));
     } catch (err) {
       console.error("Background sync error:", err);
+      throw err;
     }
   };
 

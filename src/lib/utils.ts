@@ -41,26 +41,13 @@ export function shareInvoiceToWhatsApp(invoice: Invoice) {
   const defaultPhone = (invoice.billToPhone || invoice.customerPhoneNumber || '').trim();
   
   const phoneInput = prompt(
-    "Enter the WhatsApp phone number (with country code, e.g. 919876543210) to share this invoice:",
+    "Enter the WhatsApp phone number (with country code, e.g. 919876543210) to share this invoice.\n\nLeave empty to pick any contact directly inside WhatsApp:",
     defaultPhone
   );
 
   if (phoneInput === null) return; // User cancelled
 
   const phone = phoneInput.trim();
-  if (!phone) {
-    alert("Phone number is required to share via WhatsApp.");
-    return;
-  }
-
-  let cleanPhone = phone.replace(/[^\d+]/g, '');
-  
-  if (cleanPhone.length === 10 && !cleanPhone.startsWith('+')) {
-    cleanPhone = '91' + cleanPhone;
-  } else if (cleanPhone.startsWith('+')) {
-    cleanPhone = cleanPhone.substring(1);
-  }
-
   const itemsList = invoice.items?.map(item => `- ${item.description} (Qty: ${item.quantity})`).join('\n') || '';
   
   const message = `Hello *${invoice.billToName}*,\n\n` +
@@ -74,7 +61,19 @@ export function shareInvoiceToWhatsApp(invoice: Invoice) {
       `━━━━━━━━━━━━━━━━━━━\n\n` +
       `Please proceed with the payment. Thank you for choosing Pallywear!`;
 
-  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  let whatsappUrl = '';
+  if (phone) {
+    let cleanPhone = phone.replace(/[^\d+]/g, '');
+    if (cleanPhone.length === 10 && !cleanPhone.startsWith('+')) {
+      cleanPhone = '91' + cleanPhone;
+    } else if (cleanPhone.startsWith('+')) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+    whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  } else {
+    whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+  }
+
   window.open(whatsappUrl, '_blank');
 }
 

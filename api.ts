@@ -563,7 +563,7 @@ router.patch('/orders/:id', async (req, res) => {
   }
   
   try {
-    const existing = await query('SELECT status, original_design_file FROM orders WHERE id = ?', [id]) as any[];
+    const existing = await query('SELECT status, original_design_file, totalAmount, customerName, category, quantity FROM orders WHERE id = ?', [id]) as any[];
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Order not found.' });
     }
@@ -738,18 +738,20 @@ router.patch('/orders/:id', async (req, res) => {
     if (newStatus === 'accounts') {
       const revId = `rev-${id}`;
       const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
-      const financials = updates.financials || {};
-      const customer = updates.customerInfo || {};
+      const totalAmount = existing[0]?.totalAmount || 0;
+      const customerName = existing[0]?.customerName || 'Client';
+      const category = existing[0]?.category || 'Order';
+      const quantity = existing[0]?.quantity || 0;
       
       if (revExisting.length > 0) {
         await query(
           'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
           [
-            financials.totalAmount || 0,
-            customer.name || 'Client',
-            updates.category || 'Order',
-            String(updates.quantity || 0),
-            updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
+            totalAmount,
+            customerName,
+            category,
+            String(quantity),
+            updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
             revId
           ]
         );
@@ -762,15 +764,15 @@ router.patch('/orders/:id', async (req, res) => {
             'revenue',
             updates.createdBy || 'system',
             updates.createdByName || 'System',
-            customer.name || 'Client',
-            updates.category || 'Order',
-            String(updates.quantity || 0),
+            customerName,
+            category,
+            String(quantity),
             null,
             null,
-            financials.totalAmount || 0,
+            totalAmount,
             new Date().toISOString().split('T')[0],
             null,
-            updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
+            updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
             null,
             new Date().toLocaleString('en-US', { month: 'long' }),
             Date.now()
