@@ -51,6 +51,10 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
       }
       await onUpdateOrder(order.id, { ...editedOrder, category: computedCategory, updatedAt: Date.now() });
       setIsEditing(false);
+      if (editedOrder.id !== order.id) {
+        onClose();
+        alert(`Order ID updated successfully to ${editedOrder.id}!`);
+      }
     } catch (error) {
       alert("Failed to save changes.");
     } finally {
@@ -91,7 +95,19 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                 <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase">URGENT</span>
               )}
             </div>
-            <span className="text-xs font-mono text-gray-400 mt-1 uppercase tracking-widest">Access Protocol - ID: #{order.id}</span>
+            {isEditing ? (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">ID: #</span>
+                <input
+                  type="text"
+                  className="px-2 py-0.5 bg-white border border-gray-300 rounded font-mono text-xs text-gray-800 font-bold outline-none focus:border-purple-500"
+                  value={editedOrder.id}
+                  onChange={e => setEditedOrder({ ...editedOrder, id: e.target.value })}
+                />
+              </div>
+            ) : (
+              <span className="text-xs font-mono text-gray-400 mt-1 uppercase tracking-widest">Access Protocol - ID: #{order.id}</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {onUpdateOrder && !isEditing && (

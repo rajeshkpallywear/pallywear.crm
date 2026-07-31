@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Printer, Send, CreditCard, Laptop, MessageSquare, Share2 } from 'lucide-react';
 import { Invoice } from '../types';
 import Logo from './Logo';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { shareInvoiceToWhatsApp } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';

@@ -570,6 +570,14 @@ const handleUpdateOrderFields = async (req, res) => {
     const oldStatus = existing[0].status;
     const oldDesignFile = existing[0].original_design_file;
     
+    const newId = updates.id;
+    if (newId && newId !== id) {
+      const collision = await query('SELECT id FROM orders WHERE id = ?', [newId]) as any[];
+      if (collision.length > 0) {
+        return res.status(400).json({ success: false, message: `An order with ID "${newId}" already exists.` });
+      }
+    }
+    
     const fields: string[] = [];
     const params: any[] = [];
     
@@ -681,6 +689,11 @@ const handleUpdateOrderFields = async (req, res) => {
       }
     }
     
+    if (newId && newId !== id) {
+      fields.push('id = ?');
+      params.push(newId);
+    }
+    
     if (fields.length === 0) {
       return res.json({ success: true, message: 'No fields to update.' });
     }
@@ -692,6 +705,13 @@ const handleUpdateOrderFields = async (req, res) => {
     
     const sql = `UPDATE orders SET ${fields.join(', ')} WHERE id = ?`;
     await query(sql, params);
+
+    // Cascade ID updates to other referencing tables
+    if (newId && newId !== id) {
+      await query('UPDATE invoices SET order_id = ? WHERE order_id = ?', [newId, id]);
+      await query('UPDATE notifications SET orderId = ? WHERE orderId = ?', [newId, id]);
+      await query('UPDATE expenses SET id = ? WHERE id = ?', [`rev-${newId}`, `rev-${id}`]);
+    }
     
     const newStatus = updates.status;
     if (newStatus && oldStatus !== newStatus) {
