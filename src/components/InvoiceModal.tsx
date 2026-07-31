@@ -133,9 +133,10 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
             } else {
                 pdf.save(fileName);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('PDF Generation Error:', error);
-            alert('PDF generation failed. Please try using the "Print" button instead.');
+            const errMsg = error?.message || String(error);
+            alert('PDF generation failed: ' + errMsg + '. Please try using the "Print" button instead.');
         } finally {
             if (autoShare) {
                 onClose();
