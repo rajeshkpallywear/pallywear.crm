@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Printer, Send, CreditCard, Laptop, MessageSquare, Share2 } from 'lucide-react';
 import { Invoice } from '../types';
@@ -6,6 +6,7 @@ import Logo from './Logo';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { shareInvoiceToWhatsApp } from '../lib/utils';
+import { getApiUrl } from '../lib/apiConfig';
 
 interface InvoiceModalProps {
     invoice: Invoice | null;
@@ -17,6 +18,26 @@ interface InvoiceModalProps {
 export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = false }: InvoiceModalProps) {
     const invoiceRef = useRef<HTMLDivElement>(null);
     const [isQrOpen, setIsQrOpen] = useState(false);
+    const [logoBase64, setLogoBase64] = useState<string>('');
+
+    useEffect(() => {
+        const fetchLogo = async () => {
+            try {
+                const res = await fetch(getApiUrl('/logo.png'));
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setLogoBase64(reader.result as string);
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            } catch (err) {
+                console.error('Failed to convert logo to base64:', err);
+            }
+        };
+        fetchLogo();
+    }, []);
 
     React.useEffect(() => {
         if (isOpen && autoShare && invoice) {
@@ -225,7 +246,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                 <div className="scale-125 origin-top-left flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
                                         <img
-                                            src="/logo.png?v=2"
+                                            src={logoBase64 || getApiUrl('/logo.png')}
                                             alt="Pw"
                                             className="w-full h-full object-cover"
                                             referrerPolicy="no-referrer"
