@@ -22,17 +22,17 @@ router.post('/auth/login', async (req, res) => {
   const normalizedEmail = (email || '').trim().toLowerCase();
 
   try {
-    // Explicit check for default admin accounts
-    const defaultAdmins = [
+    // Explicit check for default accounts
+    const defaultAccounts = [
       { id: 'admin-1', uid: 'admin-1', email: 'admin', role: 'admin', name: 'Main Admin' },
       { id: 'admin-ceo', uid: 'admin-ceo', email: 'ceo@pallywear.com', role: 'admin', name: 'CEO Admin' },
       { id: 'admin-rajesh', uid: 'admin-rajesh', email: 'rajeshkpallywear@gmail.com', role: 'admin', name: 'Rajesh Admin' },
-      { id: 'admin-daniel', uid: 'admin-daniel', email: 'daniel.smpallywear@gmail.com', role: 'admin', name: 'Daniel Admin' }
+      { id: 'admin-daniel', uid: 'admin-daniel', email: 'daniel.smpallywear@gmail.com', role: 'marketing', name: 'Daniel Staff' }
     ];
 
-    const matchedAdmin = defaultAdmins.find(a => a.email === normalizedEmail);
-    if (matchedAdmin && password === 'pally@123') {
-      return res.json({ success: true, user: matchedAdmin });
+    const matchedAccount = defaultAccounts.find(a => a.email === normalizedEmail);
+    if (matchedAccount && password === 'pally@123') {
+      return res.json({ success: true, user: matchedAccount });
     }
 
     const rows = await query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]) as any[];
