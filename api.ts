@@ -1020,6 +1020,20 @@ router.post('/leaves', async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?)`,
       [id, userId, userName, userRole || 'staff', startDate, endDate, leaveType, reason || null, Date.now()]
     );
+
+    // Live notification for admin role with sound
+    await query(
+      `INSERT INTO notifications (id, userRole, title, message, isRead, createdAt) 
+      VALUES (?, ?, ?, ?, 0, ?)`,
+      [
+        `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        'admin',
+        'Leave Request Applied',
+        `${userName} (${userRole || 'staff'}) has applied for ${leaveType} leave starting ${startDate}`,
+        Date.now()
+      ]
+    );
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error creating leave:', error);

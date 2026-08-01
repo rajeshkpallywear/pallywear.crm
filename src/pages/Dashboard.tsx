@@ -173,7 +173,7 @@ export default function Dashboard() {
         if (data.success) {
           const newNotifs = data.notifications || [];
           const currentList = notificationsRef.current;
-          if (!isInitial && currentList.length > 0) {
+          if (!isInitial) {
             const hasNew = newNotifs.some((n: any) => n.isRead === 0 && !currentList.some(existing => existing.id === n.id));
             if (hasNew) {
               playNotificationSound();
