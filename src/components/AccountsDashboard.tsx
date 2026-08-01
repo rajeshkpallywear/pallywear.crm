@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store, Edit } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
@@ -329,7 +329,29 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <span className="text-xs font-mono text-gray-400">ORDER DETAILS</span>
-                    <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)}</h4>
+                      <button
+                        onClick={() => {
+                          const newId = window.prompt("Enter new Order ID:", selectedOrder.id);
+                          if (newId && newId.trim() && newId !== selectedOrder.id) {
+                            onUpdateOrder(selectedOrder.id, { id: newId.trim() })
+                              .then(() => {
+                                alert(`Order ID updated successfully to ${newId.trim()}!`);
+                                setSelectedOrder(prev => prev ? { ...prev, id: newId.trim() } : null);
+                              })
+                              .catch((err) => {
+                                console.error(err);
+                                alert("Failed to update Order ID. ID might already exist.");
+                              });
+                          }
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 transition-colors cursor-pointer border-none bg-transparent"
+                        title="Edit Order ID"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 mt-2 md:mt-0">
                     <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider">

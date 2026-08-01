@@ -31,7 +31,8 @@ import {
   Clock,
   AlertCircle,
   X,
-  Truck
+  Truck,
+  Edit
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
@@ -679,7 +680,29 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                 <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order verification workspace</span>
-                  <h4 className="text-base font-black text-slate-900">Order #{selectedOrder.id}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-black text-slate-900">Order #{selectedOrder.id}</h4>
+                    <button
+                      onClick={() => {
+                        const newId = window.prompt("Enter new Order ID:", selectedOrder.id);
+                        if (newId && newId.trim() && newId !== selectedOrder.id) {
+                          onUpdateOrder(selectedOrder.id, { id: newId.trim() })
+                            .then(() => {
+                              alert(`Order ID updated successfully to ${newId.trim()}!`);
+                              setSelectedOrder(prev => prev ? { ...prev, id: newId.trim() } : null);
+                            })
+                            .catch((err) => {
+                              console.error(err);
+                              alert("Failed to update Order ID. ID might already exist.");
+                            });
+                        }
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-slate-950 transition-colors cursor-pointer border-none bg-transparent"
+                      title="Edit Order ID"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-[10px] font-black uppercase">
