@@ -36,7 +36,7 @@ const MOCK_LOGS = [
 
 export default function AdminDashboard() {
   const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
-  const { leads, invoices, orders, updateOrder, deleteOrder } = useLeads();
+  const { leads, invoices, orders, updateOrder, deleteOrder, deleteInvoice } = useLeads();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'invoices' | 'security' | 'logs' | 'orders'>('overview');
   const [selectedDept, setSelectedDept] = useState<'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers'>('staff');
@@ -235,6 +235,21 @@ export default function AdminDashboard() {
       } catch (error) {
         console.error('Error deleting order:', error);
         alert('Failed to delete order.');
+      }
+    }
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (user?.role !== 'admin') {
+      alert('Only administrators can delete invoices.');
+      return;
+    }
+    if (confirm('Are you sure you want to delete this invoice? This action is irreversible.')) {
+      try {
+        await deleteInvoice(id);
+      } catch (error) {
+        console.error('Error deleting invoice:', error);
+        alert('Failed to delete invoice.');
       }
     }
   };
@@ -739,14 +754,25 @@ export default function AdminDashboard() {
                           <span className="font-black text-gray-900">₹{invoice.total.toLocaleString()}</span>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-brand-primary hover:bg-brand-secondary font-bold"
-                            onClick={() => setSelectedInvoice(invoice)}
-                          >
-                            <FileText className="w-4 h-4 mr-2" /> View PDF
-                          </Button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-brand-primary hover:bg-brand-secondary font-bold"
+                              onClick={() => setSelectedInvoice(invoice)}
+                            >
+                              <FileText className="w-4 h-4 mr-2" /> View PDF
+                            </Button>
+                            {user?.role === 'admin' && (
+                              <button
+                                onClick={() => handleDeleteInvoice(invoice.id)}
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                title="Delete Permanently"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

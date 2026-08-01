@@ -541,8 +541,31 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Calendar Section (Admin Only) */}
-          {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (
+          {/* Calendar Section (Visible to all team roles) */}
+          {(user?.role && [
+            UserRole.ADMIN,
+            UserRole.TELECALLER,
+            UserRole.MARKETING,
+            UserRole.STAFF,
+            UserRole.DESIGNER,
+            UserRole.DIGITIZER,
+            UserRole.PRODUCTION,
+            UserRole.ACCOUNTS,
+            UserRole.INVENTORY_MANAGEMENT,
+            UserRole.ORDER_MANAGEMENT,
+            UserRole.DELIVERY,
+            'admin',
+            'telecaller',
+            'marketing',
+            'staff',
+            'designer',
+            'digitizer',
+            'production',
+            'accounts',
+            'inventory_management',
+            'order_management',
+            'delivery'
+          ].includes(user.role as any)) && (
             <div className="pt-2 space-y-1 border-t border-gray-100 mt-2">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
@@ -1013,6 +1036,43 @@ export default function Dashboard() {
             >
               <Layout className="w-4 h-4" />
               <span>Portal</span>
+            </button>
+          )}
+          {user?.role && [
+            UserRole.ADMIN,
+            UserRole.TELECALLER,
+            UserRole.MARKETING,
+            UserRole.STAFF,
+            UserRole.DESIGNER,
+            UserRole.DIGITIZER,
+            UserRole.PRODUCTION,
+            UserRole.ACCOUNTS,
+            UserRole.INVENTORY_MANAGEMENT,
+            UserRole.ORDER_MANAGEMENT,
+            UserRole.DELIVERY,
+            'admin',
+            'telecaller',
+            'marketing',
+            'staff',
+            'designer',
+            'digitizer',
+            'production',
+            'accounts',
+            'inventory_management',
+            'order_management',
+            'delivery'
+          ].includes(user.role as any) && (
+            <button
+              onClick={() => selectTab('calendar')}
+              className={cn(
+                "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                activeTab === 'calendar'
+                  ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                  : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <CalendarIcon className="w-4 h-4" />
+              <span>Calendar</span>
             </button>
           )}
           <button
