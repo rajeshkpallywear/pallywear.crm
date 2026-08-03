@@ -959,22 +959,23 @@ router.post('/inventory', async (req, res) => {
       await query(
         `UPDATE inventory_movements SET type=?, vendor=?, customer=?, date=?, transportName=?, 
         transportNumber=?, orderId=?, product=?, productType=?, sleeve=?, pocket=?, quantity=?, 
-        createdAt=? WHERE id=?`,
+        colour=?, gsm=?, size=?, createdAt=? WHERE id=?`,
         [
           inv.type, inv.vendor, inv.customer, inv.date, inv.transportName,
           inv.transportNumber, inv.orderId, inv.product, inv.productType, inv.sleeve, inv.pocket,
-          inv.quantity, inv.createdAt, inv.id
+          inv.quantity, inv.colour || null, inv.gsm || null, inv.size || null, inv.createdAt, inv.id
         ]
       );
     } else {
       await query(
         `INSERT INTO inventory_movements (id, type, vendor, customer, date, transportName, 
-        transportNumber, orderId, product, productType, sleeve, pocket, quantity, createdAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        transportNumber, orderId, product, productType, sleeve, pocket, quantity, 
+        colour, gsm, size, createdAt) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           inv.id, inv.type, inv.vendor, inv.customer, inv.date, inv.transportName,
           inv.transportNumber, inv.orderId, inv.product, inv.productType, inv.sleeve, inv.pocket,
-          inv.quantity, inv.createdAt
+          inv.quantity, inv.colour || null, inv.gsm || null, inv.size || null, inv.createdAt
         ]
       );
     }

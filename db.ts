@@ -212,10 +212,24 @@ export async function initDB() {
         \`sleeve\` varchar(50) DEFAULT NULL,
         \`pocket\` varchar(50) DEFAULT NULL,
         \`quantity\` int NOT NULL,
+        \`colour\` varchar(100) DEFAULT NULL,
+        \`gsm\` varchar(50) DEFAULT NULL,
+        \`size\` varchar(50) DEFAULT NULL,
         \`createdAt\` bigint NOT NULL,
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
+
+    try {
+      await pool.execute('ALTER TABLE `inventory_movements` ADD COLUMN `colour` varchar(100) DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `inventory_movements` ADD COLUMN `gsm` varchar(50) DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `inventory_movements` ADD COLUMN `size` varchar(50) DEFAULT NULL');
+    } catch (_) {}
+
 
     // 6. Create leaves table if not exists
     await pool.execute(`

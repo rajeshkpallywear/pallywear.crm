@@ -38,12 +38,29 @@ import {
 } from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
 import { InventoryMovement, Order, OrderStatus } from '../types';
-import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS } from '../constants';
+import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS, SIZE_OPTIONS } from '../constants';
 import { cn, getDisplayCategory } from '../lib/utils';
 import FileUpload from './FileUpload';
 import { getApiBaseUrl } from '../lib/apiConfig';
 
 const API_BASE = getApiBaseUrl() + '/api';
+
+const PRODUCT_TYPE_OPTIONS: Record<string, string[]> = {
+  'T-Shirt': ['comfort polo', 'everyday polo', 'fethery polo', 'economic polo', 'other'],
+  'Hoodie': ['zipper', 'non zipper', 'other'],
+  'Jersey': ['Dot Knit 170', 'Dot Knit 190', 'Excel Selina', 'other'],
+  'Shirt': ['Magic Lovely', 'other'],
+  'Pant': ['sangam', 'other'],
+  'Oversized': ['Terry', 'other'],
+  'Corporate Gift': ['7 in 1', '6 in 1', '5 in 1', '4 in 1', '3 in 1', '2 in 1', 'other'],
+  'Sweatshirt': ['standard', 'other'],
+  'Pen': ['standard', 'other'],
+  'Mug': ['standard', 'other'],
+  'Dairy': ['standard', 'other'],
+  'Cap': ['standard', 'other'],
+  'Bag': ['standard', 'other'],
+  'Bottle': ['standard', 'other']
+};
 
 interface InventoryManagementProps {
   userRole?: string;
@@ -121,7 +138,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
 
   // Derived product list from inventory movements
   const productStock = Object.values(inventory.reduce((acc: any, item) => {
-    const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}`;
+    const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}-${item.size || 'none'}-${item.colour || 'none'}-${item.gsm || 'none'}`;
     if (!acc[key]) {
       acc[key] = {
         id: key,
@@ -129,6 +146,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         type: item.productType,
         sleeve: item.sleeve,
         pocket: item.pocket,
+        size: item.size || 'N/A',
+        colour: item.colour || 'N/A',
+        gsm: item.gsm || 'N/A',
         stock: 0,
         price: '---',
         status: 'Enabled'
@@ -141,70 +161,174 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
 
   const filteredProducts = productStock.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.type.toLowerCase().includes(searchTerm.toLowerCase())
+    p.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.size && p.size.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (p.colour && p.colour.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (p.gsm && p.gsm.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const [inwardForm, setInwardForm] = useState({
+  // Inward multi-row form state
+  const [inwardMeta, setInwardMeta] = useState({
     vendor: '',
     date: new Date().toISOString().split('T')[0],
-    product: CATEGORIES[0],
-    productType: '',
-    sleeve: SLEEVE_OPTIONS[0],
-    pocket: POCKET_OPTIONS[0],
     transportName: '',
-    transportNumber: '',
-    quantity: 1
+    transportNumber: ''
   });
 
-  const [outwardForm, setOutwardForm] = useState({
+  const [inwardRows, setInwardRows] = useState<Array<{
+    product: string;
+    productType: string;
+    customProductType: string;
+    size: string;
+    colour: string;
+    gsm: string;
+    quantity: number;
+  }>>([
+    { product: CATEGORIES[0], productType: (PRODUCT_TYPE_OPTIONS[CATEGORIES[0]] || ['standard', 'other'])[0], customProductType: '', size: '', colour: '', gsm: '', quantity: 1 }
+  ]);
+
+  // Outward multi-row form state
+  const [outwardMeta, setOutwardMeta] = useState({
     customer: '',
     date: new Date().toISOString().split('T')[0],
-    orderId: '',
-    quantity: 1,
-    productType: '',
-    sleeve: SLEEVE_OPTIONS[0],
-    pocket: POCKET_OPTIONS[0]
+    orderId: ''
   });
+
+  const [outwardRows, setOutwardRows] = useState<Array<{
+    product: string;
+    productType: string;
+    customProductType: string;
+    size: string;
+    colour: string;
+    gsm: string;
+    quantity: number;
+  }>>([
+    { product: CATEGORIES[0], productType: (PRODUCT_TYPE_OPTIONS[CATEGORIES[0]] || ['standard', 'other'])[0], customProductType: '', size: '', colour: '', gsm: '', quantity: 1 }
+  ]);
+
+  const handleInwardRowChange = (index: number, field: string, value: any) => {
+    setInwardRows(prev => {
+      const updated = [...prev];
+      const row = { ...updated[index], [field]: value };
+      if (field === 'product') {
+        const opts = PRODUCT_TYPE_OPTIONS[value] || ['standard', 'other'];
+        row.productType = opts[0];
+        row.customProductType = '';
+      }
+      updated[index] = row;
+      return updated;
+    });
+  };
+
+  const handleOutwardRowChange = (index: number, field: string, value: any) => {
+    setOutwardRows(prev => {
+      const updated = [...prev];
+      const row = { ...updated[index], [field]: value };
+      if (field === 'product') {
+        const opts = PRODUCT_TYPE_OPTIONS[value] || ['standard', 'other'];
+        row.productType = opts[0];
+        row.customProductType = '';
+      }
+      updated[index] = row;
+      return updated;
+    });
+  };
+
+  const addInwardRow = () => {
+    const defaultProduct = CATEGORIES[0];
+    const defaultType = (PRODUCT_TYPE_OPTIONS[defaultProduct] || ['standard', 'other'])[0];
+    setInwardRows(prev => [
+      ...prev,
+      { product: defaultProduct, productType: defaultType, customProductType: '', size: '', colour: '', gsm: '', quantity: 1 }
+    ]);
+  };
+
+  const removeInwardRow = (index: number) => {
+    if (inwardRows.length === 1) return;
+    setInwardRows(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addOutwardRow = () => {
+    const defaultProduct = CATEGORIES[0];
+    const defaultType = (PRODUCT_TYPE_OPTIONS[defaultProduct] || ['standard', 'other'])[0];
+    setOutwardRows(prev => [
+      ...prev,
+      { product: defaultProduct, productType: defaultType, customProductType: '', size: '', colour: '', gsm: '', quantity: 1 }
+    ]);
+  };
+
+  const removeOutwardRow = (index: number) => {
+    if (outwardRows.length === 1) return;
+    setOutwardRows(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleAddInward = async (e: React.FormEvent) => {
     e.preventDefault();
-    await addInventoryMovement({
-      type: 'inward',
-      ...inwardForm
-    });
-    setInwardForm({
-      vendor: '',
-      date: new Date().toISOString().split('T')[0],
-      product: CATEGORIES[0],
-      productType: '',
-      sleeve: SLEEVE_OPTIONS[0],
-      pocket: POCKET_OPTIONS[0],
-      transportName: '',
-      transportNumber: '',
-      quantity: 1
-    });
-    setMovementTab('logs');
-    alert('Inventory inward recorded successfully.');
+    if (inwardRows.length === 0) {
+      alert('Please add at least one item.');
+      return;
+    }
+    try {
+      await Promise.all(inwardRows.map(row => {
+        const finalProductType = row.productType === 'other' ? row.customProductType : row.productType;
+        if (!finalProductType || !finalProductType.trim()) {
+          throw new Error('Please specify product type/material for all items.');
+        }
+        return addInventoryMovement({
+          type: 'inward',
+          vendor: inwardMeta.vendor,
+          date: inwardMeta.date,
+          transportName: inwardMeta.transportName,
+          transportNumber: inwardMeta.transportNumber,
+          product: row.product,
+          productType: finalProductType,
+          size: row.size || undefined,
+          colour: row.colour || undefined,
+          gsm: row.gsm || undefined,
+          quantity: row.quantity
+        });
+      }));
+      setInwardRows([{ product: CATEGORIES[0], productType: (PRODUCT_TYPE_OPTIONS[CATEGORIES[0]] || ['standard', 'other'])[0], customProductType: '', size: '', colour: '', gsm: '', quantity: 1 }]);
+      setInwardMeta(prev => ({ ...prev, vendor: '', transportName: '', transportNumber: '' }));
+      setMovementTab('logs');
+      alert('Inventory inward recorded successfully.');
+    } catch (err: any) {
+      alert('Failed to record inward movement. Error: ' + err.message);
+    }
   };
 
   const handleAddOutward = async (e: React.FormEvent) => {
     e.preventDefault();
-    await addInventoryMovement({
-      type: 'outward',
-      product: inwardForm.product, // Default to selected category
-      ...outwardForm
-    });
-    setOutwardForm({
-      customer: '',
-      date: new Date().toISOString().split('T')[0],
-      orderId: '',
-      quantity: 1,
-      productType: '',
-      sleeve: SLEEVE_OPTIONS[0],
-      pocket: POCKET_OPTIONS[0]
-    });
-    setMovementTab('logs');
-    alert('Inventory outward recorded successfully.');
+    if (outwardRows.length === 0) {
+      alert('Please add at least one item.');
+      return;
+    }
+    try {
+      await Promise.all(outwardRows.map(row => {
+        const finalProductType = row.productType === 'other' ? row.customProductType : row.productType;
+        if (!finalProductType || !finalProductType.trim()) {
+          throw new Error('Please specify product type/material for all items.');
+        }
+        return addInventoryMovement({
+          type: 'outward',
+          customer: outwardMeta.customer,
+          date: outwardMeta.date,
+          orderId: outwardMeta.orderId,
+          product: row.product,
+          productType: finalProductType,
+          size: row.size || undefined,
+          colour: row.colour || undefined,
+          gsm: row.gsm || undefined,
+          quantity: row.quantity
+        });
+      }));
+      setOutwardRows([{ product: CATEGORIES[0], productType: (PRODUCT_TYPE_OPTIONS[CATEGORIES[0]] || ['standard', 'other'])[0], customProductType: '', size: '', colour: '', gsm: '', quantity: 1 }]);
+      setOutwardMeta(prev => ({ ...prev, customer: '', orderId: '' }));
+      setMovementTab('logs');
+      alert('Inventory outward recorded successfully.');
+    } catch (err: any) {
+      alert('Failed to record outward movement. Error: ' + err.message);
+    }
   };
 
   // Channel Listing Submit
@@ -342,7 +466,10 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
   const filteredInventory = inventory.filter(item =>
     (item.vendor || item.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.productType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.product.toLowerCase().includes(searchTerm.toLowerCase())
+    item.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.size && item.size.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.colour && item.colour.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.gsm && item.gsm.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // Completed production orders (orders in PRODUCTION state or completed logs ready for delivery)
@@ -500,6 +627,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                     <th className="px-5 py-3.5">Product Name</th>
                     <th className="px-5 py-3.5">Type/Material</th>
+                    <th className="px-5 py-3.5 text-center">Size</th>
+                    <th className="px-5 py-3.5 text-center">Colour</th>
+                    <th className="px-5 py-3.5 text-center">GSM</th>
                     <th className="px-5 py-3.5 text-right">Available Qty</th>
                   </tr>
                 </thead>
@@ -511,6 +641,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         {prod.name}
                       </td>
                       <td className="px-5 py-3.5 text-slate-500 font-semibold">{prod.type || 'Standard'}</td>
+                      <td className="px-5 py-3.5 text-center text-slate-500 font-semibold font-mono">{prod.size || 'N/A'}</td>
+                      <td className="px-5 py-3.5 text-center text-slate-500 font-semibold">{prod.colour || 'N/A'}</td>
+                      <td className="px-5 py-3.5 text-center text-slate-500 font-semibold font-mono">{prod.gsm || 'N/A'}</td>
                       <td className="px-5 py-3.5 text-right font-black text-xs">
                         <span className={cn(
                           "px-2.5 py-1 rounded-full",
@@ -579,7 +712,11 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         <th className="px-5 py-3">Type</th>
                         <th className="px-5 py-3">Vendor / Client</th>
                         <th className="px-5 py-3">Product Name</th>
-                        <th className="px-5 py-3">Date</th>
+                        <th className="px-5 py-3">Type/Material</th>
+                        <th className="px-5 py-3 text-center">Size</th>
+                        <th className="px-5 py-3 text-center">Colour</th>
+                        <th className="px-5 py-3 text-center">GSM</th>
+                        <th className="px-5 py-3 font-medium">Date</th>
                         <th className="px-5 py-3 text-right">Qty</th>
                         <th className="px-5 py-3 text-center">Action</th>
                       </tr>
@@ -599,9 +736,21 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                             {item.type === 'inward' ? item.vendor : item.customer}
                           </td>
                           <td className="px-5 py-3.5 font-bold text-slate-950">
-                            {item.product} <span className="text-[10px] text-gray-400 font-medium font-mono">{item.productType}</span>
+                            {item.product}
                           </td>
-                          <td className="px-5 py-3.5">{new Date(item.date).toLocaleDateString()}</td>
+                          <td className="px-5 py-3.5 text-gray-500 font-semibold">
+                            {item.productType}
+                          </td>
+                          <td className="px-5 py-3.5 text-center text-slate-500 font-semibold font-mono">
+                            {item.size || '-'}
+                          </td>
+                          <td className="px-5 py-3.5 text-center text-slate-500 font-semibold">
+                            {item.colour || '-'}
+                          </td>
+                          <td className="px-5 py-3.5 text-center text-slate-500 font-semibold font-mono">
+                            {item.gsm || '-'}
+                          </td>
+                          <td className="px-5 py-3.5 text-gray-500">{new Date(item.date).toLocaleDateString()}</td>
                           <td className="px-5 py-3.5 text-right font-black text-slate-900">{item.quantity}</td>
                           <td className="px-5 py-3.5 text-center">
                             <button
@@ -615,7 +764,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       ))}
                       {filteredInventory.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-gray-400 italic">No movement logs found.</td>
+                          <td colSpan={10} className="py-8 text-center text-gray-400 italic">No movement logs found.</td>
                         </tr>
                       )}
                     </tbody>
@@ -637,8 +786,8 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       required
                       placeholder="e.g. Cotton Mills Co"
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.vendor}
-                      onChange={e => setInwardForm({ ...inwardForm, vendor: e.target.value })}
+                      value={inwardMeta.vendor}
+                      onChange={e => setInwardMeta({ ...inwardMeta, vendor: e.target.value })}
                     />
                   </div>
 
@@ -648,31 +797,8 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       type="date"
                       required
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.date}
-                      onChange={e => setInwardForm({ ...inwardForm, date: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Product Category</label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.product}
-                      onChange={e => setInwardForm({ ...inwardForm, product: e.target.value })}
-                    >
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Product Type / Materials</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Cotton-180, Heavy Knit"
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.productType}
-                      onChange={e => setInwardForm({ ...inwardForm, productType: e.target.value })}
+                      value={inwardMeta.date}
+                      onChange={e => setInwardMeta({ ...inwardMeta, date: e.target.value })}
                     />
                   </div>
                 </div>
@@ -684,8 +810,8 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       type="text"
                       placeholder="e.g. DTDC Courier"
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.transportName}
-                      onChange={e => setInwardForm({ ...inwardForm, transportName: e.target.value })}
+                      value={inwardMeta.transportName}
+                      onChange={e => setInwardMeta({ ...inwardMeta, transportName: e.target.value })}
                     />
                   </div>
 
@@ -695,22 +821,126 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       type="text"
                       placeholder="e.g. MH-12-XX-1234"
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={inwardForm.transportNumber}
-                      onChange={e => setInwardForm({ ...inwardForm, transportNumber: e.target.value })}
+                      value={inwardMeta.transportNumber}
+                      onChange={e => setInwardMeta({ ...inwardMeta, transportNumber: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                    value={inwardForm.quantity}
-                    onChange={e => setInwardForm({ ...inwardForm, quantity: parseInt(e.target.value) || 1 })}
-                  />
+                <div className="space-y-4 pt-4 border-t border-gray-200/50">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-500">Items Specification Bench</h4>
+                    <button
+                      type="button"
+                      onClick={addInwardRow}
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none"
+                    >
+                      + Add Item Row
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {inwardRows.map((row, idx) => {
+                      const productTypes = PRODUCT_TYPE_OPTIONS[row.product] || ['standard', 'other'];
+                      return (
+                        <div key={idx} className="relative p-4 bg-white rounded-2xl border border-gray-150 shadow-xs space-y-3">
+                          {inwardRows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeInwardRow(idx)}
+                              className="absolute top-2.5 right-2.5 p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full border-none bg-transparent cursor-pointer transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Product Category</label>
+                              <select
+                                className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-800 outline-none"
+                                value={row.product}
+                                onChange={e => handleInwardRowChange(idx, 'product', e.target.value)}
+                              >
+                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Type / Material</label>
+                              <select
+                                className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-800 outline-none"
+                                value={row.productType}
+                                onChange={e => handleInwardRowChange(idx, 'productType', e.target.value)}
+                              >
+                                {productTypes.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Size (Optional)</label>
+                              <select
+                                className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-800 outline-none"
+                                value={row.size}
+                                onChange={e => handleInwardRowChange(idx, 'size', e.target.value)}
+                              >
+                                <option value="">Select Size (N/A)</option>
+                                {SIZE_OPTIONS.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Colour</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Black"
+                                className="w-full px-2.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none"
+                                value={row.colour}
+                                onChange={e => handleInwardRowChange(idx, 'colour', e.target.value)}
+                              />
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">GSM</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 180"
+                                className="w-full px-2.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none"
+                                value={row.gsm}
+                                onChange={e => handleInwardRowChange(idx, 'gsm', e.target.value)}
+                              />
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Quantity</label>
+                              <input
+                                type="number"
+                                required
+                                min={1}
+                                className="w-full px-2.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none"
+                                value={row.quantity}
+                                onChange={e => handleInwardRowChange(idx, 'quantity', parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                          </div>
+
+                          {row.productType === 'other' && (
+                            <div className="space-y-1 text-left max-w-xs pt-1">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Custom Type / Material</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. Cotton-180, Heavy Knit"
+                                className="w-full px-2.5 py-2 bg-slate-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400"
+                                value={row.customProductType}
+                                onChange={e => handleInwardRowChange(idx, 'customProductType', e.target.value)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <button
@@ -727,7 +957,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
               <form onSubmit={handleAddOutward} className="bg-slate-50 p-6 rounded-2xl border border-gray-150/40 space-y-4">
                 <h3 className="text-xs font-black uppercase tracking-wider text-orange-700 mb-2">Record Outward (Releases)</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <label className="text-[9px] font-black uppercase text-gray-400">Customer Name</label>
                     <input
@@ -735,8 +965,8 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       required
                       placeholder="e.g. Rajesh Kumar"
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.customer}
-                      onChange={e => setOutwardForm({ ...outwardForm, customer: e.target.value })}
+                      value={outwardMeta.customer}
+                      onChange={e => setOutwardMeta({ ...outwardMeta, customer: e.target.value })}
                     />
                   </div>
 
@@ -746,8 +976,8 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       type="date"
                       required
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.date}
-                      onChange={e => setOutwardForm({ ...outwardForm, date: e.target.value })}
+                      value={outwardMeta.date}
+                      onChange={e => setOutwardMeta({ ...outwardMeta, date: e.target.value })}
                     />
                   </div>
 
@@ -758,34 +988,126 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       required
                       placeholder="e.g. ORD-102938"
                       className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.orderId}
-                      onChange={e => setOutwardForm({ ...outwardForm, orderId: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase text-gray-400">Product Type</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Cotton-180"
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                      value={outwardForm.productType}
-                      onChange={e => setOutwardForm({ ...outwardForm, productType: e.target.value })}
+                      value={outwardMeta.orderId}
+                      onChange={e => setOutwardMeta({ ...outwardMeta, orderId: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-gray-400">Quantity (Units)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-semibold"
-                    value={outwardForm.quantity}
-                    onChange={e => setOutwardForm({ ...outwardForm, quantity: parseInt(e.target.value) || 1 })}
-                  />
+                <div className="space-y-4 pt-4 border-t border-gray-200/50">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-500">Items Specification Bench</h4>
+                    <button
+                      type="button"
+                      onClick={addOutwardRow}
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none"
+                    >
+                      + Add Item Row
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {outwardRows.map((row, idx) => {
+                      const productTypes = PRODUCT_TYPE_OPTIONS[row.product] || ['standard', 'other'];
+                      return (
+                        <div key={idx} className="relative p-4 bg-white rounded-2xl border border-gray-150 shadow-xs space-y-3">
+                          {outwardRows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeOutwardRow(idx)}
+                              className="absolute top-2.5 right-2.5 p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full border-none bg-transparent cursor-pointer transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Product Category</label>
+                              <select
+                                className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-800 outline-none"
+                                value={row.product}
+                                onChange={e => handleOutwardRowChange(idx, 'product', e.target.value)}
+                              >
+                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Type / Material</label>
+                              <select
+                                className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-800 outline-none"
+                                value={row.productType}
+                                onChange={e => handleOutwardRowChange(idx, 'productType', e.target.value)}
+                              >
+                                {productTypes.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Size (Optional)</label>
+                              <select
+                                className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-800 outline-none"
+                                value={row.size}
+                                onChange={e => handleOutwardRowChange(idx, 'size', e.target.value)}
+                              >
+                                <option value="">Select Size (N/A)</option>
+                                {SIZE_OPTIONS.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Colour</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Black"
+                                className="w-full px-2.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none"
+                                value={row.colour}
+                                onChange={e => handleOutwardRowChange(idx, 'colour', e.target.value)}
+                              />
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">GSM</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 180"
+                                className="w-full px-2.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none"
+                                value={row.gsm}
+                                onChange={e => handleOutwardRowChange(idx, 'gsm', e.target.value)}
+                              />
+                            </div>
+
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Quantity</label>
+                              <input
+                                type="number"
+                                required
+                                min={1}
+                                className="w-full px-2.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold outline-none"
+                                value={row.quantity}
+                                onChange={e => handleOutwardRowChange(idx, 'quantity', parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                          </div>
+
+                          {row.productType === 'other' && (
+                            <div className="space-y-1 text-left max-w-xs pt-1">
+                              <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">Custom Type / Material</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. Cotton-180, Heavy Knit"
+                                className="w-full px-2.5 py-2 bg-slate-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400"
+                                value={row.customProductType}
+                                onChange={e => handleOutwardRowChange(idx, 'customProductType', e.target.value)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <button

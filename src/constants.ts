@@ -57,4 +57,8 @@ export const OVERSIZED_COLOURS = ['Black', 'White'];
 
 export const CORPORATE_GIFT_OPTIONS = ['7 in 1', '6 in 1', '5 in 1', '4 in 1', '3 in 1', '2 in 1'];
 
-export const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
+export const SIZE_OPTIONS = [
+  'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL',
+  '2-3 Y', '3-4 Y', '5-6 Y', '7-8 Y', '9-10 Y', '11-12 Y', '13-14 Y', '15-16 Y'
+];
+

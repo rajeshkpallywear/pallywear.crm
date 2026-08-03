@@ -180,6 +180,9 @@ export interface InventoryMovement {
   sleeve?: string;
   pocket?: string;
   quantity: number;
+  colour?: string;
+  gsm?: string;
+  size?: string;
   createdAt: number;
 }
 
