@@ -951,12 +951,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               </section>
 
               {/* File Uploads */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-gray-150 pt-6">
+              <section className="border-t border-gray-150 pt-6">
                 <div className="space-y-3">
                   <FileUpload
                     label="Reference Blueprints (Images)"
                     accept="image/*"
-                    maxFiles={1}
+                    maxFiles={10}
                     onFilesSelected={(files) => setFormData({ ...formData, imageAttachments: files })}
                   />
                   {formData.imageAttachments.length > 0 && (
@@ -968,30 +968,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           className="w-12 h-12 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-brand-primary transition-all flex items-center justify-center bg-white group relative"
                         >
                           <img src={file} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <ZoomIn size={10} className="text-white" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <FileUpload
-                    label="Reference PDFs"
-                    accept=".pdf"
-                    onFilesSelected={(files) => setFormData({ ...formData, pdfAttachments: files })}
-                  />
-                  {formData.pdfAttachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {formData.pdfAttachments.map((file, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => setViewingImage(file)}
-                          className="w-12 h-12 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-brand-primary transition-all flex items-center justify-center bg-white group relative"
-                        >
-                          <FileText size={16} className="text-gray-400" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <ZoomIn size={10} className="text-white" />
                           </div>
