@@ -86,14 +86,27 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
       >
         <div className="p-4 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex flex-col">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tighter">Order Details</h3>
-              <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
-                {order.status.replace('_', ' ')}
-              </span>
-              {order.isUrgent && (
-                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase">URGENT</span>
-              )}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tighter">Order Details</h3>
+                <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
+                  {order.status.replace('_', ' ')}
+                </span>
+                {order.isUrgent && (
+                  <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase">URGENT</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                  <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
+                    🎨 Designer: {order.assignedDesigner}
+                  </span>
+                ) : (
+                  <span className="bg-gray-50 text-gray-400 border border-gray-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
+                    🎨 Designer: Unassigned
+                  </span>
+                )}
+              </div>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2 mt-1">

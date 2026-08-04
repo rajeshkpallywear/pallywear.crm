@@ -5,8 +5,10 @@ import {
   Layout, Bell, Settings, BarChart3,
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
-  LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone
+  LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
+  Edit
 } from 'lucide-react';
+import InvoiceFormModal from '../components/InvoiceFormModal';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   Tooltip, PieChart, Pie, Cell
@@ -18,7 +20,7 @@ import ProfileSettings from '../components/ProfileSettings';
 import Logo from '../components/Logo';
 import InvoiceModal from '../components/InvoiceModal';
 import OrderDetailModal from '../components/OrderDetailModal';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, Invoice } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { mockDataService } from '../service/mockDataService';
@@ -36,9 +38,30 @@ const MOCK_LOGS = [
 
 export default function AdminDashboard() {
   const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
-  const { leads, invoices, orders, updateOrder, deleteOrder, deleteInvoice } = useLeads();
+  const { leads, invoices, orders, updateOrder, deleteOrder, deleteInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'invoices' | 'security' | 'logs' | 'orders'>('overview');
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = useState(false);
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setIsInvoiceFormModalOpen(true);
+  };
+
+  const handleEditInvoiceSubmit = async (invoiceData: any) => {
+    if (editingInvoice) {
+      try {
+        await updateInvoice(editingInvoice.id, invoiceData);
+        alert("Invoice updated successfully!");
+        setIsInvoiceFormModalOpen(false);
+        setEditingInvoice(null);
+      } catch (err: any) {
+        console.error("Failed to update invoice:", err);
+        alert("Failed to update invoice.");
+      }
+    }
+  };
   const [selectedDept, setSelectedDept] = useState<'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers'>('staff');
   const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
@@ -763,10 +786,19 @@ export default function AdminDashboard() {
                             >
                               <FileText className="w-4 h-4 mr-2" /> View PDF
                             </Button>
+                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff') && (
+                              <button
+                                onClick={() => handleEditInvoice(invoice)}
+                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border-none bg-transparent cursor-pointer"
+                                title="Edit Invoice"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
                             {user?.role === 'admin' && (
                               <button
                                 onClick={() => handleDeleteInvoice(invoice.id)}
-                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border-none bg-transparent cursor-pointer"
                                 title="Delete Permanently"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1146,6 +1178,15 @@ export default function AdminDashboard() {
                             )}>
                               {o.status.replace('_', ' ')}
                             </span>
+                            {o.assignedDesigner && o.assignedDesigner !== 'Unassigned' && o.assignedDesigner !== 'Designer assigned' ? (
+                              <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+                                🎨 {o.assignedDesigner}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
+                                🎨 Unassigned
+                              </span>
+                            )}
                             {o.status === OrderStatus.HOLD && o.holdReason && (
                               <span className="text-[10px] text-red-500 italic block font-semibold">
                                 Reason: {o.holdReason}
@@ -1477,6 +1518,15 @@ export default function AdminDashboard() {
         invoice={selectedInvoice}
         isOpen={!!selectedInvoice}
         onClose={() => setSelectedInvoice(null)}
+      />
+      <InvoiceFormModal
+        isOpen={isInvoiceFormModalOpen}
+        onClose={() => {
+          setIsInvoiceFormModalOpen(false);
+          setEditingInvoice(null);
+        }}
+        invoice={editingInvoice}
+        onSubmit={handleEditInvoiceSubmit}
       />
       {selectedOrderDetail && (
         <OrderDetailModal

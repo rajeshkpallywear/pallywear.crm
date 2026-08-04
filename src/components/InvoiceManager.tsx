@@ -2,118 +2,27 @@ import React, { useState } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
 import {
-    Plus, Search, Download, FileText,
-    Trash2, Eye, Calendar, DollarSign, MessageSquare
+    Plus, Search, FileText, Trash2, Eye, MessageSquare, Edit
 } from 'lucide-react';
 import { Button } from './Button';
-import { motion, AnimatePresence } from 'motion/react';
 import InvoiceModal from './InvoiceModal';
+import InvoiceFormModal from './InvoiceFormModal';
 import { Invoice } from '../types';
-import { shareInvoiceToWhatsApp } from '../lib/utils';
 
 export default function InvoiceManager() {
-    const { leads, invoices, addInvoice, deleteInvoice } = useLeads();
+    const { leads, invoices, addInvoice, updateInvoice, deleteInvoice } = useLeads();
     const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
     const [autoSharePDF, setAutoSharePDF] = useState(false);
+    const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
     const handleShareInvoice = (invoice: Invoice) => {
         setSelectedInvoice(invoice);
         setAutoSharePDF(true);
         setIsModalOpen(true);
-    };
-
-    const [newInvoiceData, setNewInvoiceData] = useState({
-        leadId: `L-${Math.random().toString(36).substring(2, 7)}`,
-        invoiceNumber: `QT.${Math.floor(Math.random() * 9000) + 1000}`,
-        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        notes: '',
-        customerName: '',
-        customerCompanyName: '',
-        customerNumber: '',
-        productType: 'tshirt' as string,
-        productSubCategory: '' as string,
-        paymentMethod: 'GPay' as 'GPay' | 'PhonePay' | 'Cash' | 'Account' | 'UPI',
-        unitPrice: 499,
-        quantity: 1,
-        taxRate: 5,
-        shippingCost: 0,
-        discountRate: 0,
-        companySignature: 'Rajesh K.',
-        bankName: 'HDFC BANK',
-        bankAccountName: 'PALLYWEAR PVT LTD',
-        bankIfscCode: 'HDFC0008964',
-        bankAccountNumber: '50202110682524',
-        designName: '',
-        designAmount: 0,
-        designGst: 0,
-        designDiscount: 0,
-        designNotes: '',
-    });
-
-    const products = ['tshirt', 'jersey', 'hoodie', 'bottle', 'pen', 'mug', 'diary', 'keychain', 'cap', 'corporate gift', 'paint', 'shirt'];
-    const paymentMethods = ['GPay', 'PhonePay', 'Cash', 'Account', 'UPI'];
-
-    const productSubCategories: Record<string, string[]> = {
-        'tshirt': ['blended polo', 'economy polo', 'every day polo', 'feathery polo', 'comfort polo', 'affordable polo', 'round neck 180 gsm'],
-        'jersey': ['round neck', 'polo', 'kinds round neck', 'kinds polo'],
-        'corporate gift': ['7 in 1', '5 in 1', '4 in 1', '3 in 1', '2 in 1'],
-    };
-
-    const productPrices: Record<string, number> = {
-        'tshirt': 400,
-        'jersey': 650,
-        'hoodie': 2000,
-        'bottle': 999,
-        'pen': 300,
-        'mug': 600,
-        'diary': 600,
-        'keychain': 400,
-        'cap': 600,
-        'corporate gift': 1000,
-        'paint': 1000,
-        'shirt': 1000,
-    };
-
-    const subCategoryPrices: Record<string, number> = {
-        'blended polo': 600,
-        'economy polo': 600,
-        'every day polo': 700,
-        'feathery polo': 800,
-        'comfort polo': 900,
-        'affordable polo': 500,
-        'round neck 180 gsm': 400,
-        'round neck': 650,
-        'polo': 700,
-        'kinds round neck': 600,
-        'kinds polo': 650,
-    };
-
-    const calculatePrice = (type: string, sub: string) => {
-        if (sub && subCategoryPrices[sub]) return subCategoryPrices[sub];
-        return productPrices[type] || 0;
-    };
-
-    const handleProductChange = (type: string) => {
-        const price = calculatePrice(type, '');
-        setNewInvoiceData({
-            ...newInvoiceData,
-            productType: type,
-            productSubCategory: '',
-            unitPrice: price
-        });
-    };
-
-    const handleSubCategoryChange = (sub: string) => {
-        const price = calculatePrice(newInvoiceData.productType, sub);
-        setNewInvoiceData({
-            ...newInvoiceData,
-            productSubCategory: sub,
-            unitPrice: price
-        });
     };
 
     const filteredInvoices = invoices
@@ -128,117 +37,17 @@ export default function InvoiceManager() {
         setIsModalOpen(true);
     };
 
-    const handleLeadSelect = (leadId: string) => {
-        const lead = leads.find(l => l.id === leadId);
-        if (lead) {
-            setNewInvoiceData({
-                ...newInvoiceData,
-                leadId,
-                customerName: lead.name,
-                customerCompanyName: lead.companyName,
-                customerNumber: lead.number
-            });
-        } else {
-            setNewInvoiceData({ ...newInvoiceData, leadId: '' });
-        }
-    };
-
-    const handleCreateInvoice = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) return;
-
-        const subtotal = (newInvoiceData.unitPrice * newInvoiceData.quantity) + (Number(newInvoiceData.designAmount) || 0);
-        const discountTotal = (Number(newInvoiceData.discountRate) || 0) + (Number(newInvoiceData.designDiscount) || 0);
-        const itemTotalAfterDiscount = Math.max(0, subtotal - discountTotal);
-        // We calculate GST on the unit price portion and design portion
-        const baseGst = ((newInvoiceData.unitPrice * newInvoiceData.quantity - (Number(newInvoiceData.discountRate) || 0)) * newInvoiceData.taxRate) / 100;
-        const designGstVal = ((Number(newInvoiceData.designAmount) - Number(newInvoiceData.designDiscount)) * Number(newInvoiceData.designGst)) / 100;
-        const salesTax = Math.max(0, baseGst) + Math.max(0, designGstVal);
-        const shippingCost = newInvoiceData.shippingCost;
-        const total = itemTotalAfterDiscount + salesTax + shippingCost;
-
-        const invoice: Omit<Invoice, 'id'> = {
-            invoiceNumber: newInvoiceData.invoiceNumber,
-            date: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            dueDate: new Date(newInvoiceData.dueDate).toISOString(),
-            fromName: 'Pallywear Gifting Solutions',
-            fromEmail: 'pallywear@gmail.com',
-            fromPhone: '+91 9597528585',
-            fromAddress: 'Pallywear Gifting Solutions, 49/1, Mudichur Rd, near by Parvathi nagar, Shanthi Nagar, Old Perungalathur, Chennai, Tamil Nadu 600063',
-            billToName: newInvoiceData.customerName,
-            billToEmail: `${newInvoiceData.customerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-            billToPhone: newInvoiceData.customerNumber,
-            billToAddress: newInvoiceData.customerCompanyName,
-            items: [
-                {
-                    id: 'item-1',
-                    description: `${newInvoiceData.productType.toUpperCase()} ${newInvoiceData.productSubCategory ? `(${newInvoiceData.productSubCategory.toUpperCase()})` : ''}`,
-                    rate: newInvoiceData.unitPrice,
-                    quantity: newInvoiceData.quantity,
-                    tax: newInvoiceData.taxRate,
-                    discount: newInvoiceData.discountRate,
-                    amount: newInvoiceData.unitPrice * newInvoiceData.quantity
-                }
-            ],
-            subtotal,
-            discountTotal,
-            shippingCost,
-            salesTax,
-            total,
-            amountPaid: 0,
-            balanceDue: total,
-            notes: newInvoiceData.notes,
-            paymentMethod: newInvoiceData.paymentMethod,
-            productType: newInvoiceData.productType,
-            productSubCategory: newInvoiceData.productSubCategory,
-            customerPhoneNumber: newInvoiceData.customerNumber,
-            leadId: newInvoiceData.leadId,
-            createdBy: user.id,
-            createdByName: user.name,
-            companySignature: newInvoiceData.companySignature || 'Rajesh K.',
-            bankName: newInvoiceData.bankName || 'HDFC BANK',
-            bankAccountName: newInvoiceData.bankAccountName || 'PALLYWEAR PVT LTD',
-            bankIfscCode: newInvoiceData.bankIfscCode || 'HDFC0008964',
-            bankAccountNumber: newInvoiceData.bankAccountNumber || '50202110682524',
-            designName: newInvoiceData.designName,
-            designAmount: Number(newInvoiceData.designAmount),
-            designGst: Number(newInvoiceData.designGst),
-            designDiscount: Number(newInvoiceData.designDiscount),
-            designNotes: newInvoiceData.designNotes,
-        };
-
+    const handleFormSubmit = async (invoiceData: Omit<Invoice, 'id'>) => {
         try {
-            await addInvoice(invoice);
+            if (editingInvoice) {
+                await updateInvoice(editingInvoice.id, invoiceData);
+                alert("Invoice updated successfully!");
+            } else {
+                await addInvoice(invoiceData);
+                alert("Invoice created successfully!");
+            }
             setIsNewInvoiceModalOpen(false);
-            // Reset form
-            setNewInvoiceData({
-                leadId: `L-${Math.random().toString(36).substring(2, 7)}`,
-                invoiceNumber: `QT.${Math.floor(Math.random() * 9000) + 1000}`,
-                dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                notes: '',
-                customerName: '',
-                customerCompanyName: '',
-                customerNumber: '',
-                productType: 'tshirt',
-                productSubCategory: '',
-                paymentMethod: 'CASH',
-                unitPrice: 499,
-                quantity: 1,
-                taxRate: 5,
-                shippingCost: 0,
-                discountRate: 0,
-                companySignature: 'Rajesh K.',
-                bankName: 'HDFC BANK',
-                bankAccountName: 'PALLYWEAR PVT LTD',
-                bankIfscCode: 'HDFC0008964',
-                bankAccountNumber: '50202110682524',
-                designName: '',
-                designAmount: 0,
-                designGst: 0,
-                designDiscount: 0,
-                designNotes: '',
-            });
+            setEditingInvoice(null);
         } catch (err: any) {
             console.error("Failed to save invoice:", err);
             let errorMsg = "Error saving invoice.";
@@ -246,10 +55,15 @@ export default function InvoiceManager() {
                 const errorData = JSON.parse(err.message);
                 errorMsg = `Error: ${errorData.error}\nType: ${errorData.operationType}\nPath: ${errorData.path}`;
             } catch (e) {
-                errorMsg = err.message || "Please check your internet connection and Firestore permissions.";
+                errorMsg = err.message || "Please check your internet connection.";
             }
             alert(errorMsg);
         }
+    };
+
+    const handleEditInvoice = (inv: Invoice) => {
+        setEditingInvoice(inv);
+        setIsNewInvoiceModalOpen(true);
     };
 
     return (
@@ -260,12 +74,18 @@ export default function InvoiceManager() {
                     <input
                         type="text"
                         placeholder="Search invoices by number or client..."
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/10 transition-all font-medium"
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/10 transition-all font-medium outline-none"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button onClick={() => setIsNewInvoiceModalOpen(true)} className="w-full md:w-auto gap-2 shadow-lg shadow-brand-primary/20 bg-brand-primary hover:bg-brand-primary/90 text-white border-0 py-2.5 px-6 rounded-2xl">
+                <Button 
+                    onClick={() => {
+                        setEditingInvoice(null);
+                        setIsNewInvoiceModalOpen(true);
+                    }} 
+                    className="w-full md:w-auto gap-2 shadow-lg shadow-brand-primary/20 bg-brand-primary hover:bg-brand-primary/90 text-white border-0 py-2.5 px-6 rounded-2xl cursor-pointer"
+                >
                     <Plus className="w-4 h-4" /> Create Invoice
                 </Button>
             </div>
@@ -315,22 +135,31 @@ export default function InvoiceManager() {
                                         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => handleOpenInvoice(inv)}
-                                                className="p-2.5 hover:bg-white hover:shadow-sm rounded-xl text-brand-primary transition-all bg-brand-secondary/30"
+                                                className="p-2.5 hover:bg-white hover:shadow-sm rounded-xl text-brand-primary transition-all bg-brand-secondary/30 border-none cursor-pointer"
                                                 title="View & Download"
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleShareInvoice(inv)}
-                                                className="p-2.5 hover:bg-green-50 hover:shadow-sm text-green-600 rounded-xl transition-all bg-green-50/50"
+                                                className="p-2.5 hover:bg-green-50 hover:shadow-sm text-green-600 rounded-xl transition-all bg-green-50/50 border-none cursor-pointer"
                                                 title="Share to WhatsApp"
                                             >
                                                 <MessageSquare className="w-4 h-4" />
                                             </button>
+                                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff') && (
+                                                <button
+                                                    onClick={() => handleEditInvoice(inv)}
+                                                    className="p-2.5 hover:bg-indigo-50 hover:shadow-sm text-indigo-600 rounded-xl transition-all bg-indigo-55/10 border-none cursor-pointer"
+                                                    title="Edit Invoice"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                            )}
                                             {user?.role === 'admin' && (
                                                 <button
                                                     onClick={() => deleteInvoice(inv.id)}
-                                                    className="p-2.5 hover:bg-white hover:shadow-sm text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                                                    className="p-2.5 hover:bg-white hover:shadow-sm text-gray-400 hover:text-red-500 rounded-xl transition-all border-none cursor-pointer"
                                                     title="Delete Permanently"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -377,25 +206,34 @@ export default function InvoiceManager() {
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => handleOpenInvoice(inv)}
-                                                className="p-2 bg-brand-secondary/40 text-brand-primary hover:bg-brand-primary hover:text-white rounded-lg transition-colors"
+                                                className="p-2 bg-brand-secondary/40 text-brand-primary hover:bg-brand-primary hover:text-white rounded-lg transition-colors border-none cursor-pointer"
                                                 title="View & Download"
                                             >
-                                                <Eye className="w-4.5 h-4.5" />
+                                                <Eye size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleShareInvoice(inv)}
-                                                className="p-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-lg transition-colors"
+                                                className="p-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-lg transition-colors border-none cursor-pointer"
                                                 title="Share to WhatsApp"
                                             >
-                                                <MessageSquare className="w-4.5 h-4.5" />
+                                                <MessageSquare size={16} />
                                             </button>
+                                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff') && (
+                                                <button
+                                                    onClick={() => handleEditInvoice(inv)}
+                                                    className="p-2 bg-indigo-50/50 text-indigo-600 hover:bg-indigo-650 hover:text-white rounded-lg transition-colors border-none cursor-pointer"
+                                                    title="Edit Invoice"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                            )}
                                             {user?.role === 'admin' && (
                                                 <button
                                                     onClick={() => deleteInvoice(inv.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                                                    className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors border-none cursor-pointer"
                                                     title="Delete Permanently"
                                                 >
-                                                    <Trash2 className="w-4.5 h-4.5" />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             )}
                                         </div>
@@ -439,300 +277,15 @@ export default function InvoiceManager() {
                 autoShare={autoSharePDF}
             />
 
-            {/* New Invoice Modal */}
-            <AnimatePresence>
-                {isNewInvoiceModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setIsNewInvoiceModalOpen(false)}
-                            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-                            className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20 max-h-[90vh] flex flex-col"
-                        >
-                            <div className="p-1 flex flex-col h-full overflow-hidden">
-                                <div className="px-8 pt-8 pb-4 flex items-center justify-between flex-shrink-0">
-                                    <div className="space-y-1">
-                                        <h3 className="text-2xl font-black text-gray-900 tracking-tighter">Generate Invoice</h3>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-0.5">Professional Billing Solution</p>
-                                    </div>
-                                    <button onClick={() => setIsNewInvoiceModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 transition-colors">
-                                        <X className="w-6 h-6" />
-                                    </button>
-                                </div>
-
-                                <form onSubmit={handleCreateInvoice} className="px-8 pb-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Client Name</label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    value={newInvoiceData.customerName}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, customerName: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                    placeholder="e.g. John Doe"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Mobile Number</label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    value={newInvoiceData.customerNumber}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, customerNumber: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                    placeholder="+91 XXXX..."
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Company / Organization</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={newInvoiceData.customerCompanyName}
-                                                onChange={(e) => setNewInvoiceData({ ...newInvoiceData, customerCompanyName: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                placeholder="Organization Name"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
-                                                <select
-                                                    value={newInvoiceData.productType}
-                                                    onChange={(e) => handleProductChange(e.target.value)}
-                                                    className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
-                                                >
-                                                    {products.map(p => (
-                                                        <option key={p} value={p}>{p}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {(newInvoiceData.productType === 'tshirt' || newInvoiceData.productType === 'jersey' || newInvoiceData.productType === 'corporate gift') && (
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Style Selection</label>
-                                                    <select
-                                                        value={newInvoiceData.productSubCategory}
-                                                        onChange={(e) => handleSubCategoryChange(e.target.value)}
-                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
-                                                    >
-                                                        <option value="">Select Option</option>
-                                                        {(productSubCategories[newInvoiceData.productType] || []).map(s => (
-                                                            <option key={s} value={s}>{s}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Price (₹)</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">₹</span>
-                                                    <input
-                                                        type="number"
-                                                        value={newInvoiceData.unitPrice}
-                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, unitPrice: Number(e.target.value) })}
-                                                        className="w-full bg-brand-secondary/20 border-0 rounded-2xl pl-9 pr-5 py-3.5 text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    required
-                                                    value={newInvoiceData.quantity}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, quantity: Number(e.target.value) })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment via</label>
-                                                <select
-                                                    value={newInvoiceData.paymentMethod}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, paymentMethod: e.target.value as any })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                >
-                                                    {paymentMethods.map(pm => (
-                                                        <option key={pm} value={pm}>{pm}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    value={newInvoiceData.discountRate}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, discountRate: Number(e.target.value) })}
-                                                    className="w-full bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                    placeholder="0"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="border-t border-gray-100 pt-4 mt-2">
-                                            <h4 className="text-xs font-black uppercase tracking-widest text-brand-primary mb-3">Design Services</h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-1.5 col-span-2">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Scope / Name</label>
-                                                    <input
-                                                        type="text"
-                                                        value={newInvoiceData.designName}
-                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designName: e.target.value })}
-                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                        placeholder="e.g. Logo vectorization / Custom art setup"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Charge (₹)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newInvoiceData.designAmount}
-                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designAmount: Number(e.target.value) })}
-                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design GST (%)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newInvoiceData.designGst}
-                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designGst: Number(e.target.value) })}
-                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                        placeholder="18"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Discount (₹)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newInvoiceData.designDiscount}
-                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designDiscount: Number(e.target.value) })}
-                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5 col-span-2">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Design Notes</label>
-                                                    <textarea
-                                                        value={newInvoiceData.designNotes}
-                                                        onChange={(e) => setNewInvoiceData({ ...newInvoiceData, designNotes: e.target.value })}
-                                                        rows={2}
-                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none resize-none"
-                                                        placeholder="Internal designer guidance notes..."
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Shipping (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    value={newInvoiceData.shippingCost}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, shippingCost: Number(e.target.value) })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">GST / Tax (%)</label>
-                                                <input
-                                                    type="number"
-                                                    value={newInvoiceData.taxRate}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, taxRate: Number(e.target.value) })}
-                                                    className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Hidden bank and signature details */}
-                                        <input type="hidden" value={newInvoiceData.bankName} />
-                                        <input type="hidden" value={newInvoiceData.bankAccountName} />
-                                        <input type="hidden" value={newInvoiceData.bankIfscCode} />
-                                        <input type="hidden" value={newInvoiceData.bankAccountNumber} />
-                                        <input type="hidden" value={newInvoiceData.companySignature} />
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Reference ID</label>
-                                                <input
-                                                    type="text"
-                                                    value={newInvoiceData.invoiceNumber}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, invoiceNumber: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Valid Until</label>
-                                                <input
-                                                    type="date"
-                                                    value={newInvoiceData.dueDate}
-                                                    onChange={(e) => setNewInvoiceData({ ...newInvoiceData, dueDate: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-2 flex flex-col gap-3 flex-shrink-0">
-                                        <Button type="submit" className="w-full py-4 text-white bg-brand-primary rounded-2xl font-black text-base shadow-xl shadow-brand-primary/30 hover:scale-[1.02] active:scale-95 transition-all outline-none">
-                                            Generate & Save Invoice
-                                        </Button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsNewInvoiceModalOpen(false)}
-                                            className="w-full py-3 text-[11px] font-black uppercase text-gray-400 tracking-widest hover:text-gray-600 transition-colors"
-                                        >
-                                            Dismiss Form
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            <InvoiceFormModal
+                isOpen={isNewInvoiceModalOpen}
+                onClose={() => {
+                    setIsNewInvoiceModalOpen(false);
+                    setEditingInvoice(null);
+                }}
+                invoice={editingInvoice}
+                onSubmit={handleFormSubmit}
+            />
         </div>
-    );
-}
-
-function X({ className, ...props }: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={className}
-            {...props}
-        >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-        </svg>
     );
 }

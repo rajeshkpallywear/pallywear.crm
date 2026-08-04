@@ -454,6 +454,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
                             {order.status.replace('_', ' ')}
                           </span>
+                          {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                            <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
+                              🎨 {order.assignedDesigner}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                              🎨 Unassigned
+                            </span>
+                          )}
                           {order.status === OrderStatus.PENDING && (
                             <div className="flex gap-1.5 mt-1">
                               <button
@@ -555,6 +564,18 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
                           {order.status.replace('_', ' ')}
                         </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs mt-1">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Designer:</span>
+                        {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                          <span className="text-[10px] text-slate-200 font-bold flex items-center gap-1">
+                            🎨 {order.assignedDesigner}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                            🎨 Unassigned
+                          </span>
+                        )}
                       </div>
 
                       {order.status === OrderStatus.HOLD && order.holdReason && (
