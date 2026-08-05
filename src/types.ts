@@ -149,6 +149,7 @@ export interface Order {
   orderManagementAttachments: string[];
   designAttachments?: string[];
   machineFiles?: string[];
+  sentByAccounts?: boolean;
   createdAt: number;
   updatedAt: number;
   holdReason?: string;

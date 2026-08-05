@@ -142,6 +142,7 @@ export async function initDB() {
         \`digitizer_filename\` varchar(255) DEFAULT NULL,
         \`is_hold\` tinyint DEFAULT '0',
         \`balance_received_notes\` text,
+        \`sentByAccounts\` tinyint(1) DEFAULT '0',
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
@@ -361,6 +362,7 @@ export async function initDB() {
       "ALTER TABLE `orders` ADD COLUMN `accountsNotes` text DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `original_design_file` LONGTEXT DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `original_design_filename` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `sentByAccounts` tinyint(1) DEFAULT 0",
     ];
 
     for (const q of alterQueries) {

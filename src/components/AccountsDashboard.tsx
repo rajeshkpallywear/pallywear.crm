@@ -38,11 +38,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
-    if (selectedOrder && (!selectedOrder.accountsAttachments || selectedOrder.accountsAttachments.length === 0)) {
+    if (selectedOrder) {
       loadOrderAttachments(selectedOrder.id).then(attachments => {
         setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
       });
     }
+  }, [selectedOrder?.id]);
+
+  useEffect(() => {
+    setBillingFiles([]);
   }, [selectedOrder?.id]);
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
@@ -93,6 +97,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.DESIGN,
         accountsAttachments: billingFiles,
+        sentByAccounts: true,
         updatedAt: Date.now()
       });
       setSelectedOrder(null);

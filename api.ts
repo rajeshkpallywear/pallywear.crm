@@ -253,7 +253,7 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename 
+             original_design_filename, sentByAccounts
       FROM orders
     `) as any[];
 
@@ -301,6 +301,7 @@ router.get('/orders', async (req, res) => {
       accountsNotes: r.accountsNotes || '',
       original_design_file: '',
       original_design_filename: r.original_design_filename || '',
+      sentByAccounts: r.sentByAccounts === 1,
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -367,6 +368,7 @@ router.post('/orders', async (req, res) => {
         designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=?, 
         assignedDesigner=?, holdReason=?, previousStatus=?, createdBy=?, createdByName=?, accountsNotes=?,
         original_design_file=?, original_design_filename=?,
+        sentByAccounts=?,
         updatedAt=? WHERE id=?`,
         [
           customer.name, customer.company, customer.phone, customer.address,
@@ -381,6 +383,7 @@ router.post('/orders', async (req, res) => {
           order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
           order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
           order.original_design_file || null, order.original_design_filename || null,
+          order.sentByAccounts ? 1 : 0,
           Date.now(), order.id
         ]
       );
@@ -451,8 +454,9 @@ router.post('/orders', async (req, res) => {
         designName, designAmount, designGst, designDiscount, designNotes,
         assignedDesigner, holdReason, previousStatus, createdBy, createdByName, accountsNotes,
         original_design_file, original_design_filename,
+        sentByAccounts,
         createdAt, updatedAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.id, customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -466,6 +470,7 @@ router.post('/orders', async (req, res) => {
           order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
           order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
           order.original_design_file || null, order.original_design_filename || null,
+          order.sentByAccounts ? 1 : 0,
           Date.now(), Date.now()
         ]
       );

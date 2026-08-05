@@ -178,7 +178,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN;
       const isCompletedDesign = o.status === OrderStatus.DELIVERED;
-      const isMarketing = !o.accountsAttachments || o.accountsAttachments.length === 0;
+      const isMarketing = !o.sentByAccounts && (!o.accountsAttachments || o.accountsAttachments.length === 0);
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing && !isAssignedToOther(o.assignedDesigner || '');
     })
     .map(o => {
@@ -244,7 +244,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
       const isCompletedDesign = o.status === OrderStatus.DELIVERED;
-      const isAccounts = o.accountsAttachments && o.accountsAttachments.length > 0;
+      const isAccounts = o.sentByAccounts || (o.accountsAttachments && o.accountsAttachments.length > 0);
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts && !isAssignedToOther(o.assignedDesigner || '');
     })
     .map(o => {

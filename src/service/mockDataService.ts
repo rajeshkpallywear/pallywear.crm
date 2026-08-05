@@ -63,6 +63,7 @@ export const mockDataService = {
       staffPdfs: orderData.staffPdfs || [],
       accountsAttachments: [],
       orderManagementAttachments: [],
+      sentByAccounts: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...orderData

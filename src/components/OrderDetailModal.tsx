@@ -798,6 +798,9 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
                         };
                         if (noteModal.target === 'design') {
                           updates.designNotes = noteModal.noteText.trim();
+                          if (order.status === OrderStatus.ACCOUNTS) {
+                            updates.sentByAccounts = true;
+                          }
                         } else {
                           updates.accountsNotes = noteModal.noteText.trim();
                         }
