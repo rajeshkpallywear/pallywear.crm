@@ -456,10 +456,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       {(selectedOrder.staffPdfs || []).length === 0 && <p className="text-xs text-gray-400 italic">No PDFs</p>}
                     </div>
                   </div>
-                  {((selectedOrder.designAttachments?.length || 0) > 0 || (selectedOrder.machineFiles?.length || 0) > 0) && (
+                  {(selectedOrder.original_design_file || (selectedOrder.designAttachments?.length || 0) > 0 || (selectedOrder.machineFiles?.length || 0) > 0) && (
                     <div className="md:col-span-2">
                       <h5 className="text-sm font-bold text-purple-400 uppercase tracking-widest mb-4 border-t border-gray-50 pt-4">Design Studio Output</h5>
                       <div className="flex flex-wrap gap-3">
+                        {selectedOrder.original_design_file && (
+                          <div onClick={() => setViewingImage(selectedOrder.original_design_file!)} className="w-16 h-16 bg-pink-50 rounded-xl border border-pink-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-pink-500 overflow-hidden" title="Original Design file">
+                            {selectedOrder.original_design_file.startsWith('data:image/') ? <img src={selectedOrder.original_design_file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
+                          </div>
+                        )}
                         {selectedOrder.designAttachments?.map((file, idx) => (
                           <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-purple-500 overflow-hidden">
                             {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
