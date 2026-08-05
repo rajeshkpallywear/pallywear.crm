@@ -215,9 +215,14 @@ export default function Dashboard() {
   const handleUpdateOrder = async (id: string, updates: Partial<Order>) => {
     try {
       await updateOrder(id, updates);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update order:", error);
-      alert("Sync failed: Data might be too large (Max 100MB per order in current setup). Try using smaller images.");
+      const msg = error?.message || '';
+      if (msg.toLowerCase().includes('too large') || msg.toLowerCase().includes('payload') || msg.toLowerCase().includes('size')) {
+        alert("Sync failed: Data might be too large (Max 100MB per order in current setup). Try using smaller images.");
+      } else {
+        alert(`An error occurred while sending the order: ${msg || 'Unknown error'}`);
+      }
       throw error;
     }
   };
