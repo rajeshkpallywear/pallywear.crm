@@ -1250,6 +1250,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           )}
                         </div>
                         <FileUpload
+                          key={selectedOrder.id}
                           label=""
                           accept=".pdf,image/*,.zip"
                           onFilesSelected={(files) => setDesignFiles(prev => [...prev, ...files])}
@@ -1282,6 +1283,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             )}
                           </div>
                           <FileUpload
+                            key={selectedOrder.id}
                             label=""
                             accept="image/*,.pdf,.zip,.emb,.dst,.cdr"
                             onFilesSelected={(files) => {

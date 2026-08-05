@@ -108,7 +108,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       if (e?.message?.includes("exceeds the maximum allowed size")) {
         alert("Action failed: The order document is now too large (Max 100MB). Please reduce the number of attachments.");
       } else {
-        alert("An error occurred while sending the order.");
+        alert("An error occurred while sending the order: " + (e?.message || e));
       }
     } finally {
       setIsProcessing(false);
@@ -484,6 +484,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 <section className="space-y-4">
                   <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Billing Action</h5>
                   <FileUpload
+                    key={selectedOrder.id}
                     label="Add Billing PDF or Picture (Auto-Optimized)"
                     onFilesSelected={(files) => setBillingFiles(files)}
                   />

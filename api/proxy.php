@@ -1,4 +1,8 @@
 <?php
+// Increase memory limit and execution time to handle large base64 file payloads up to 100MB
+@ini_set('memory_limit', '512M');
+@set_time_limit(300);
+
 // PHP Proxy Script for routing /api requests to local Node.js Express server on port 118
 
 // Allow CORS for Capacitor Android/iOS apps
@@ -47,7 +51,7 @@ if (!empty($headers)) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 }
 
-curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_TIMEOUT, 300);
 
 // Execute request
 $response = curl_exec($ch);
