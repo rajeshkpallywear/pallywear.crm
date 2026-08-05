@@ -13,6 +13,11 @@ function safeJSONParse(str: string | null, fallback: any = []) {
   }
 }
 
+// Strip # and URL-fragment chars from IDs (cPanel Apache may partially decode them)
+function sanitizeId(id: string): string {
+  return (id || '').replace(/#/g, '');
+}
+
 // ----------------------------------------------------
 // USERS & AUTHENTICATION ENDPOINTS
 // ----------------------------------------------------
@@ -311,7 +316,7 @@ router.get('/orders', async (req, res) => {
 });
 
 router.get('/orders/:id/attachments', async (req, res) => {
-  const { id } = req.params;
+  const id = sanitizeId(req.params.id);
   try {
     const rows = await query(
       `SELECT staffImages, staffPdfs, staffAttachments, accountsAttachments, 
@@ -549,7 +554,7 @@ router.post('/orders', async (req, res) => {
 });
 
 router.delete('/orders/:id', async (req, res) => {
-  const { id } = req.params;
+  const id = sanitizeId(req.params.id);
   try {
     await query('DELETE FROM orders WHERE id = ?', [id]);
     res.json({ success: true });
@@ -560,7 +565,7 @@ router.delete('/orders/:id', async (req, res) => {
 });
 
 const handleUpdateOrderFields = async (req, res) => {
-  const { id } = req.params;
+  const id = sanitizeId(req.params.id);
   const updates = req.body;
   
   if (!id) {

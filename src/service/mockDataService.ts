@@ -10,6 +10,16 @@ function notifyUpdate() {
   window.dispatchEvent(new Event('pallywear-data-updated'));
 }
 
+/**
+ * Sanitize an ID for use in URL paths.
+ * Strips # and other URL-unsafe characters that Apache/cPanel decode
+ * and interpret as URL fragments, breaking the proxy routing.
+ */
+function sanitizeId(id: string): string {
+  // Replace # with empty string - the # prefix is display-only
+  return id.replace(/#/g, '');
+}
+
 export const mockDataService = {
   getOrders: async (): Promise<Order[]> => {
     const res = await fetch(getApiUrl('/api/orders'));
@@ -18,13 +28,13 @@ export const mockDataService = {
   },
 
   getOrderAttachments: async (id: string): Promise<any> => {
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(id)}/attachments`));
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}/attachments`));
     if (!res.ok) throw new Error('Failed to fetch order attachments');
     return res.json();
   },
 
   patchOrder: async (id: string, updates: any): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
@@ -84,7 +94,7 @@ export const mockDataService = {
   },
 
   deleteOrder: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete order');
@@ -108,7 +118,7 @@ export const mockDataService = {
   },
 
   deleteLead: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete lead');
@@ -140,7 +150,7 @@ export const mockDataService = {
   },
 
   deleteInvoice: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete invoice');
@@ -164,7 +174,7 @@ export const mockDataService = {
   },
 
   deleteInventoryMovement: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete inventory movement');
