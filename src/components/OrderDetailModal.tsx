@@ -35,7 +35,8 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   }, [order]);
 
   useEffect(() => {
-    if (initialOrder && !initialOrder.original_design_file && (!initialOrder.staffImages || initialOrder.staffImages.length === 0)) {
+    // Always load fresh attachments from server when modal opens
+    if (initialOrder?.id) {
       loadOrderAttachments(initialOrder.id);
     }
   }, [initialOrder?.id]);
