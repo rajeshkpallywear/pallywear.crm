@@ -488,6 +488,49 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
   };
 
+  const handleSendToOrderManagement = async () => {
+    if (!selectedOrder || isProcessing) return;
+
+    const nextOrderState = {
+      ...selectedOrder,
+      original_design_file: originalFile,
+      original_design_filename: originalFilename,
+      designAttachments: designFiles,
+      machineFiles: machineFiles,
+      designNotes: designNotesText
+    };
+
+    if (!isOrderSizeValid(nextOrderState)) {
+      alert("Error: Total order data limit exceeded (Max 100MB). Please use a smaller file size.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await onUpdateOrder(selectedOrder.id, {
+        status: OrderStatus.ORDER_MANAGEMENT,
+        original_design_file: originalFile,
+        original_design_filename: originalFilename,
+        designAttachments: designFiles,
+        machineFiles: machineFiles,
+        designNotes: designNotesText,
+        updatedAt: Date.now()
+      });
+      setSelectedOrder(null);
+      setDesignFiles([]);
+      setMachineFiles([]);
+      setDesignNotesText('');
+      setOriginalFile('');
+      setOriginalFilename('');
+      alert("Success: Original design file uploaded and order sent to Order Management.");
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred while sending to Order Management.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleReturnToCreator = () => {
     if (!selectedOrder || isProcessing) return;
 
@@ -1356,15 +1399,25 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
               {/* Show action buttons depending on whether it is Accounts Sent vs Marketing Sent */}
               {(activeChannel === 'accounts_queue' || (selectedOrder.accountsAttachments || []).length > 0) ? (
-                /* Accounts Sent Order -> Send to Digitizer */
-                <button
-                  disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                  onClick={handleSendToDigitizer}
-                  className="flex-1 py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isProcessing ? 'Processing files...' : 'Send to Digitizer'}
-                  <CheckCircle size={15} />
-                </button>
+                /* Accounts Sent Order -> Send to Digitizer & Send to Order Management */
+                <>
+                  <button
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    onClick={handleSendToDigitizer}
+                    className="flex-1 py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Processing files...' : 'Send to Digitizer'}
+                    <CheckCircle size={15} />
+                  </button>
+                  <button
+                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                    onClick={handleSendToOrderManagement}
+                    className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Processing...' : 'Send to Order Management'}
+                    <CheckCircle size={15} />
+                  </button>
+                </>
               ) : (
                 /* Marketing Sent Order -> Return to Marketing & Send to Marketing */
                 <>
