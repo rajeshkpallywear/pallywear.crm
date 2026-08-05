@@ -18,13 +18,13 @@ export const mockDataService = {
   },
 
   getOrderAttachments: async (id: string): Promise<any> => {
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(id)}/attachments`));
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(encodeURIComponent(id))}/attachments`));
     if (!res.ok) throw new Error('Failed to fetch order attachments');
     return res.json();
   },
 
   patchOrder: async (id: string, updates: any): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(encodeURIComponent(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
@@ -84,7 +84,7 @@ export const mockDataService = {
   },
 
   deleteOrder: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(encodeURIComponent(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete order');
@@ -108,7 +108,7 @@ export const mockDataService = {
   },
 
   deleteLead: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(encodeURIComponent(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete lead');
@@ -140,7 +140,7 @@ export const mockDataService = {
   },
 
   deleteInvoice: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(encodeURIComponent(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete invoice');
@@ -164,7 +164,7 @@ export const mockDataService = {
   },
 
   deleteInventoryMovement: async (id: string): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(id)}`), {
+    const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(encodeURIComponent(id))}`), {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete inventory movement');
