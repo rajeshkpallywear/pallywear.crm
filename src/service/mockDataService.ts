@@ -29,7 +29,17 @@ export const mockDataService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
-    if (!res.ok) throw new Error('Failed to update order');
+    if (!res.ok) {
+      const errText = await res.text();
+      let errMsg = 'Failed to update order';
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson.error || errJson.message || errMsg;
+      } catch (e) {
+        if (errText) errMsg = errText;
+      }
+      throw new Error(errMsg);
+    }
     notifyUpdate();
   },
 
