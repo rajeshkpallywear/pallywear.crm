@@ -16,7 +16,10 @@ interface OrderDetailModalProps {
   onEdit?: (order: Order) => void;
 }
 
-export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
+export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
+  const { loadOrderAttachments, orders } = useLeads();
+  const order = orders.find(o => o.id === initialOrder.id) || initialOrder;
+
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState<Order>(order);
@@ -27,14 +30,15 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus, onUpd
     noteText: string;
   } | null>(null);
 
-  const { loadOrderAttachments } = useLeads();
-
   useEffect(() => {
     setEditedOrder(order);
-    if (order && !order.original_design_file && (!order.staffImages || order.staffImages.length === 0)) {
-      loadOrderAttachments(order.id);
-    }
   }, [order]);
+
+  useEffect(() => {
+    if (initialOrder && !initialOrder.original_design_file && (!initialOrder.staffImages || initialOrder.staffImages.length === 0)) {
+      loadOrderAttachments(initialOrder.id);
+    }
+  }, [initialOrder?.id]);
 
   const handleSave = async () => {
     if (!onUpdateOrder) return;
