@@ -14,8 +14,19 @@ function safeJSONParse(str: string | null, fallback: any = []) {
 }
 
 // Strip # and URL-fragment chars from IDs (cPanel Apache may partially decode them)
+// Returns the sanitized ID without #
 function sanitizeId(id: string): string {
   return (id || '').replace(/#/g, '');
+}
+
+// Look up the ACTUAL id stored in DB, trying both with and without # prefix.
+// Existing orders may be stored as '#PW26-ORD-0664' in DB while frontend sends 'PW26-ORD-0664'.
+async function resolveOrderId(rawId: string): Promise<string | null> {
+  const clean = sanitizeId(rawId);
+  // Try without # first
+  const rows = await query('SELECT id FROM orders WHERE id = ? OR id = ?', [clean, '#' + clean]) as any[];
+  if (rows.length > 0) return rows[0].id; // return the actual stored ID
+  return null;
 }
 
 // ----------------------------------------------------
@@ -316,7 +327,7 @@ router.get('/orders', async (req, res) => {
 });
 
 router.get('/orders/:id/attachments', async (req, res) => {
-  const id = sanitizeId(req.params.id);
+  const id = (await resolveOrderId(req.params.id)) || sanitizeId(req.params.id);
   try {
     const rows = await query(
       `SELECT staffImages, staffPdfs, staffAttachments, accountsAttachments, 
@@ -554,9 +565,9 @@ router.post('/orders', async (req, res) => {
 });
 
 router.delete('/orders/:id', async (req, res) => {
-  const id = sanitizeId(req.params.id);
+  const id = (await resolveOrderId(req.params.id)) || sanitizeId(req.params.id);
   try {
-    await query('DELETE FROM orders WHERE id = ?', [id]);
+    await query('DELETE FROM orders WHERE id = ? OR id = ?', [id, '#' + id]);
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting order:', error);
@@ -565,18 +576,20 @@ router.delete('/orders/:id', async (req, res) => {
 });
 
 const handleUpdateOrderFields = async (req, res) => {
-  const id = sanitizeId(req.params.id);
+  const rawId = sanitizeId(req.params.id);
   const updates = req.body;
   
-  if (!id) {
+  if (!rawId) {
     return res.status(400).json({ success: false, message: 'Order ID is required.' });
   }
   
   try {
-    const existing = await query('SELECT status, original_design_file, totalAmount, customerName, category, quantity FROM orders WHERE id = ?', [id]) as any[];
-    if (existing.length === 0) {
+    // Resolve the actual ID stored in DB (handles both #ID and ID forms)
+    const id = await resolveOrderId(rawId);
+    if (!id) {
       return res.status(404).json({ success: false, message: 'Order not found.' });
     }
+    const existing = await query('SELECT status, original_design_file, totalAmount, customerName, category, quantity FROM orders WHERE id = ?', [id]) as any[];
     const oldStatus = existing[0].status;
     const oldDesignFile = existing[0].original_design_file;
     
