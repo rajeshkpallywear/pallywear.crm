@@ -15,7 +15,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$route = isset($_GET['route']) ? $_GET['route'] : '';
+// Read route from raw QUERY_STRING to preserve URL-encoded characters like %23 (#)
+// Apache URL-decodes $_GET values, which strips the # and breaks order IDs.
+// Parsing QUERY_STRING directly preserves encoded chars like %23 intact.
+$rawQuery = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
+$route = '';
+foreach (explode('&', $rawQuery) as $param) {
+    if (strpos($param, 'route=') === 0) {
+        $route = substr($param, 6); // preserve raw encoding, do NOT urldecode
+        break;
+    }
+}
 
 // The target URL of the Node.js server running on your VPS
 $targetUrl = 'http://118.139.167.81:3000/api/' . $route;
