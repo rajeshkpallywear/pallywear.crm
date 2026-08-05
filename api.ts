@@ -605,6 +605,7 @@ const handleUpdateOrderFields = async (req, res) => {
       accountsNotes: 'accountsNotes',
       original_design_file: 'original_design_file',
       original_design_filename: 'original_design_filename',
+      sentByAccounts: 'sentByAccounts',
       vendorName: 'vendorName',
       vendorNumber: 'vendorNumber',
       vendorCompany: 'vendorCompany',

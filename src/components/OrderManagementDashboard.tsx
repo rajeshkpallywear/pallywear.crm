@@ -42,6 +42,7 @@ import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
 import Logo from './Logo';
 import OrdersChart from './OrdersChart';
+import { useLeads } from '../context/LeadContext';
 import { getApiBaseUrl } from '../lib/apiConfig';
 
 export interface ChatMessage {
@@ -62,6 +63,7 @@ interface OrderManagementDashboardProps {
 }
 
 export default function OrderManagementDashboard({ orders, inventory = [], onUpdateOrder, onDeleteOrder, isAdmin }: OrderManagementDashboardProps) {
+  const { loadOrderAttachments } = useLeads();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed' | 'vendors'>('recent');
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
@@ -95,6 +97,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   useEffect(() => {
     fetchVendorsAndExpenses();
   }, []);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      loadOrderAttachments(selectedOrder.id).then(attachments => {
+        setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedOrder?.id]);
 
   // Filter lists based on selected tabs
   const filteredOrders = orders.filter(o => {
@@ -816,6 +826,41 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                     <p className="text-xs text-gray-400 italic">No designer outputs found.</p>
                   )}
                 </div>
+
+                {/* Design Vector Tracing Outputs */}
+                {selectedOrder.designAttachments && selectedOrder.designAttachments.length > 0 && (
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-gray-250/20 text-left">
+                    <h5 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider mb-3">Vector Tracing Outputs (Designs)</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {selectedOrder.designAttachments.map((file, i) => (
+                        <div key={i} className="flex flex-col gap-2 p-2 bg-white rounded-xl border border-gray-150 group relative">
+                          <div className="aspect-square rounded-lg overflow-hidden relative bg-gray-50 flex items-center justify-center border border-gray-100">
+                            {file.startsWith('data:image/') ? (
+                              <img src={file} className="w-full h-full object-cover" />
+                            ) : (
+                              <FileText size={24} className="text-purple-500" />
+                            )}
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setViewingImage(file)}
+                                className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white border-none cursor-pointer"
+                              >
+                                {file.startsWith('data:image/') ? <ZoomIn size={12} /> : <ExternalLink size={12} />}
+                              </button>
+                              <a
+                                href={file}
+                                download={`vector_design_${i + 1}_order_${selectedOrder.id.slice(-6)}`}
+                                className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white cursor-pointer"
+                              >
+                                <Download size={12} />
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Digitizer's zip garage files */}
                 <div className="bg-slate-50 p-5 rounded-2xl border border-gray-250/20 text-left">

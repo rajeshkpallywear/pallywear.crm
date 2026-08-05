@@ -41,6 +41,7 @@ import { InventoryMovement, Order, OrderStatus } from '../types';
 import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS, SIZE_OPTIONS } from '../constants';
 import { cn, getDisplayCategory } from '../lib/utils';
 import FileUpload from './FileUpload';
+import ImageViewer from './ImageViewer';
 import { getApiBaseUrl } from '../lib/apiConfig';
 
 const API_BASE = getApiBaseUrl() + '/api';
@@ -80,7 +81,8 @@ interface ChannelListing {
 
 export default function InventoryManagement({ userRole }: InventoryManagementProps) {
   const isStaff = userRole === 'staff';
-  const { inventory, orders, addInventoryMovement, deleteInventoryMovement, updateOrder } = useLeads();
+  const { inventory, orders, addInventoryMovement, deleteInventoryMovement, updateOrder, loadOrderAttachments } = useLeads();
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   
   // Sidebar Sub-View tabs
   const [activeSubView, setActiveSubView] = useState<'products' | 'movement_logs' | 'amazon' | 'flipkart' | 'meesho' | 'production_orders'>('products');
@@ -135,6 +137,14 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
       setListingForm({ productName: '', sku: '', price: '', stock: '', details: '' });
     }
   }, [activeSubView]);
+
+  useEffect(() => {
+    if (selectedIntakeOrder) {
+      loadOrderAttachments(selectedIntakeOrder.id).then(attachments => {
+        setSelectedIntakeOrder(prev => prev && prev.id === selectedIntakeOrder.id ? { ...prev, ...attachments } : prev);
+      });
+    }
+  }, [selectedIntakeOrder?.id]);
 
   // Derived product list from inventory movements
   const productStock = Object.values(inventory.reduce((acc: any, item) => {
@@ -1340,7 +1350,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => o.status === OrderStatus.DELIVERY).map(order => (
+                    {orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.status)).map(order => (
                       <tr
                         key={order.id}
                         onClick={() => {
@@ -1349,7 +1359,19 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         }}
                         className="hover:bg-slate-50 cursor-pointer transition-colors"
                       >
-                        <td className="px-5 py-3.5 font-mono font-black text-indigo-600">#{order.id.slice(-8)}</td>
+                        <td className="px-5 py-3.5 font-mono font-black text-indigo-600">
+                          <div>
+                            <span>#{order.id.slice(-8)}</span>
+                            <span className={cn(
+                              "text-[8px] block font-black uppercase tracking-tight py-0.5 px-1.5 rounded-md border w-fit mt-1",
+                              order.status === OrderStatus.PRODUCTION
+                                ? "bg-amber-50 text-amber-700 border-amber-100"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            )}>
+                              {order.status === OrderStatus.PRODUCTION ? 'In Production' : 'Ready / Completed'}
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-5 py-3.5 font-bold text-slate-900">
                           <div>
                             <span>{order.customerInfo?.name}</span>
@@ -1372,9 +1394,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         </td>
                       </tr>
                     ))}
-                    {orders.filter(o => o.status === OrderStatus.DELIVERY).length === 0 && (
+                    {orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.status)).length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-400 italic font-medium">No completed orders waiting in delivery queue.</td>
+                        <td colSpan={5} className="py-8 text-center text-gray-400 italic font-medium">No active or completed production orders waiting in queue.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1608,6 +1630,68 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                 </div>
               )}
 
+              {/* Order Attachments Viewer */}
+              {((selectedIntakeOrder.staffImages || []).length > 0 ||
+                (selectedIntakeOrder.staffPdfs || []).length > 0 ||
+                (selectedIntakeOrder.accountsAttachments || []).length > 0 ||
+                (selectedIntakeOrder.designAttachments || []).length > 0 ||
+                (selectedIntakeOrder.machineFiles || []).length > 0) && (
+                <div className="space-y-2.5">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Visuals & Production Files</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Staff Files */}
+                    {((selectedIntakeOrder.staffImages || []).length > 0 || (selectedIntakeOrder.staffPdfs || []).length > 0) && (
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-3">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block">Staff References</span>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedIntakeOrder.staffImages || []).map((file, idx) => (
+                            <div key={idx} onClick={() => setViewingImage(file)} className="w-12 h-12 bg-white rounded-lg border border-gray-200 flex items-center justify-center cursor-pointer hover:shadow-md overflow-hidden shrink-0">
+                              <img src={file} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {(selectedIntakeOrder.staffPdfs || []).map((file, idx) => (
+                            <div key={idx} onClick={() => setViewingImage(file)} className="w-12 h-12 bg-white rounded-lg border border-gray-200 flex items-center justify-center cursor-pointer hover:shadow-md text-gray-400 shrink-0">
+                              <FileText size={20} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Billing/Invoice Attachments */}
+                    {(selectedIntakeOrder.accountsAttachments || []).length > 0 && (
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-3">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block">Billing Invoices</span>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedIntakeOrder.accountsAttachments || []).map((file, idx) => (
+                            <div key={idx} onClick={() => setViewingImage(file)} className="w-12 h-12 bg-white rounded-lg border border-gray-200 flex items-center justify-center cursor-pointer hover:shadow-md text-indigo-500 overflow-hidden shrink-0">
+                              {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover" /> : <FileText size={20} />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Design Outputs */}
+                    {((selectedIntakeOrder.designAttachments || []).length > 0 || (selectedIntakeOrder.machineFiles || []).length > 0) && (
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-3 md:col-span-2">
+                        <span className="text-[9px] font-black text-purple-600 uppercase block">Design Studio Outputs</span>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedIntakeOrder.designAttachments || []).map((file, idx) => (
+                            <div key={idx} onClick={() => setViewingImage(file)} className="w-12 h-12 bg-purple-50 rounded-lg border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md text-purple-500 overflow-hidden shrink-0">
+                              {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover" /> : <FileText size={20} />}
+                            </div>
+                          ))}
+                          {(selectedIntakeOrder.machineFiles || []).map((file, idx) => (
+                            <a key={idx} href={file} download={`machine_file_${idx+1}_order_${selectedIntakeOrder.id}`} className="w-12 h-12 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center hover:shadow-md text-indigo-500 shrink-0">
+                              <Download size={18} />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* DISPATCH ACTION OPTIONS */}
               <div className="bg-slate-50 p-5 rounded-2xl border border-gray-200 space-y-4">
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Select Dispatch Method for this Intake Order</h4>
@@ -1744,6 +1828,14 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
           </div>
         )}
       </AnimatePresence>
+
+      {viewingImage && (
+        <ImageViewer
+          src={viewingImage}
+          onClose={() => setViewingImage(null)}
+          fileName={`Inventory_Verification_${selectedIntakeOrder?.id}`}
+        />
+      )}
     </div>
   );
 }
