@@ -8,6 +8,7 @@ import { Upload, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
 interface FileUploadProps {
+  key?: string;
   label: string;
   onFilesSelected: (files: string[]) => void;
   maxFiles?: number;
