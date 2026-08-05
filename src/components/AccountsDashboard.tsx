@@ -428,13 +428,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                     <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Staff Pictures</h5>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {(selectedOrder.staffImages || []).map((file, idx) => (
-                        <div key={idx} className="aspect-square bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center group relative overflow-hidden">
+                        <div key={idx} onClick={() => setViewingImage(file)} className="aspect-square bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center group relative overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all">
                           <img src={file} className="w-full h-full object-cover" />
                           <div
-                            onClick={() => setViewingImage(file)}
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                           >
-                            <ZoomIn size={16} className="text-white" />
+                            <ZoomIn size={20} className="text-white" />
                           </div>
                         </div>
                       ))}
@@ -445,30 +444,29 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                     <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Staff PDFs</h5>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {(selectedOrder.staffPdfs || []).map((file, idx) => (
-                        <div key={idx} className="aspect-square bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center group relative overflow-hidden">
+                        <div key={idx} onClick={() => setViewingImage(file)} className="aspect-square bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center group relative overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all">
                           <FileText size={24} className="text-gray-400" />
                           <div
-                            onClick={() => setViewingImage(file)}
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                           >
-                            <ExternalLink size={16} className="text-white" />
+                            <ExternalLink size={20} className="text-white" />
                           </div>
                         </div>
                       ))}
                       {(selectedOrder.staffPdfs || []).length === 0 && <p className="text-xs text-gray-400 italic">No PDFs</p>}
                     </div>
                   </div>
-                  {(selectedOrder.designAttachments?.length || 0) > 0 && (
+                  {((selectedOrder.designAttachments?.length || 0) > 0 || (selectedOrder.machineFiles?.length || 0) > 0) && (
                     <div className="md:col-span-2">
                       <h5 className="text-sm font-bold text-purple-400 uppercase tracking-widest mb-4 border-t border-gray-50 pt-4">Design Studio Output</h5>
                       <div className="flex flex-wrap gap-3">
                         {selectedOrder.designAttachments?.map((file, idx) => (
-                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-purple-500">
+                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-purple-500 overflow-hidden">
                             {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
                           </div>
                         ))}
-                        {selectedOrder.designMachineFiles?.map((file, idx) => (
-                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-indigo-500">
+                        {selectedOrder.machineFiles?.map((file, idx) => (
+                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-indigo-500">
                             <Download size={24} />
                           </div>
                         ))}
