@@ -118,22 +118,22 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
       return o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus);
     }
     if (selectedSection === 'completed') {
-      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status);
+      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any));
     }
     if (selectedSection === 'process') {
-      return o.status === OrderStatus.PRODUCTION;
+      return o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
     }
     if (selectedSection === 'vendors') {
       return o.status === OrderStatus.ORDER_MANAGEMENT;
     }
-    // 'recent' shows Order Management active queue
-    return o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
+    // 'recent' shows Order Management active queue (excluding holds)
+    return o.status === OrderStatus.ORDER_MANAGEMENT;
   });
 
-  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT)).length;
-  const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
+  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
+  const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length;
   const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus)).length;
-  const completedOrdersCount = orders.filter(o => [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)).length;
+  const completedOrdersCount = orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any))).length;
 
   // Auto-select first order if none is selected (except completed tab)
   useEffect(() => {

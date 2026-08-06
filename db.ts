@@ -330,6 +330,19 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // Create user_activity_logs table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`user_activity_logs\` (
+        \`id\` int NOT NULL AUTO_INCREMENT,
+        \`userId\` varchar(50) NOT NULL,
+        \`userName\` varchar(100) NOT NULL,
+        \`userEmail\` varchar(100) NOT NULL,
+        \`loginTime\` bigint NOT NULL,
+        \`logoutTime\` bigint DEFAULT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // 8. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [

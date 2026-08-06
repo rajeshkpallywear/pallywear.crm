@@ -40,7 +40,32 @@ export default function AdminDashboard() {
   const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
   const { leads, invoices, orders, updateOrder, deleteOrder, deleteInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'invoices' | 'security' | 'logs' | 'orders'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs'>('overview');
+  const [userLogs, setUserLogs] = useState<any[]>([]);
+  const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
+  const [userLogsLoading, setUserLogsLoading] = useState(false);
+
+  const fetchUserLogs = async () => {
+    setUserLogsLoading(true);
+    try {
+      const data = await mockDataService.getActivityLogs();
+      if (data && data.success) {
+        setUserLogs(data.logs || []);
+        setUserLoginCounts(data.counts || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch activity logs:', e);
+    } finally {
+      setUserLogsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'user-logs') {
+      fetchUserLogs();
+    }
+  }, [activeTab]);
+
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = useState(false);
 
@@ -299,7 +324,10 @@ export default function AdminDashboard() {
         if (selectedSection === 'hold') {
           return orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
         } else if (selectedSection === 'completed') {
-          return orders.filter(o => o.status !== OrderStatus.PENDING && o.status !== OrderStatus.DRAFT && o.status !== OrderStatus.HOLD);
+          return orders.filter(o => {
+            const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return effStatus !== OrderStatus.PENDING && effStatus !== OrderStatus.DRAFT && !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+          });
         } else {
           return orders;
         }
@@ -308,27 +336,45 @@ export default function AdminDashboard() {
         if (selectedSection === 'hold') {
           return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
         } else if (selectedSection === 'completed') {
-          return orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.HOLD].includes(o.status));
+          return orders.filter(o => {
+            const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return effStatus && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(effStatus) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+          });
         } else {
-          return orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING].includes(o.status));
+          return orders.filter(o => {
+            const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return effStatus && ![OrderStatus.DRAFT, OrderStatus.PENDING].includes(effStatus);
+          });
         }
 
       case 'order_management':
         if (selectedSection === 'hold') {
           return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
         } else if (selectedSection === 'completed') {
-          return orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
+          });
         } else {
-          return orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(o.status));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff);
+          });
         }
 
       case 'production':
         if (selectedSection === 'hold') {
           return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
         } else if (selectedSection === 'completed') {
-          return orders.filter(o => [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
+          });
         } else {
-          return orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT].includes(o.status));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT].includes(eff);
+          });
         }
 
       case 'delivery':
@@ -337,16 +383,25 @@ export default function AdminDashboard() {
         } else if (selectedSection === 'completed') {
           return orders.filter(o => o.status === OrderStatus.DELIVERED);
         } else {
-          return orders.filter(o => [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
+          });
         }
 
       case 'designers':
         if (selectedSection === 'hold') {
           return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
         } else if (selectedSection === 'completed') {
-          return orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
+          });
         } else {
-          return orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status));
+          return orders.filter(o => {
+            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(eff);
+          });
         }
 
       default:
@@ -362,33 +417,63 @@ export default function AdminDashboard() {
     switch (dept) {
       case 'staff':
         holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
-        completedCount = orders.filter(o => o.status !== OrderStatus.PENDING && o.status !== OrderStatus.DRAFT && o.status !== OrderStatus.HOLD).length;
+        completedCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT && !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+        }).length;
         totalCount = orders.length;
         break;
       case 'accounts':
         holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-        completedCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.HOLD].includes(o.status)).length;
-        totalCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING].includes(o.status)).length;
+        completedCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(eff) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+        }).length;
+        totalCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING].includes(eff);
+        }).length;
         break;
       case 'order_management':
         holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
-        completedCount = orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)).length;
-        totalCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(o.status)).length;
+        completedCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
+        }).length;
+        totalCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff);
+        }).length;
         break;
       case 'production':
         holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
-        completedCount = orders.filter(o => [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)).length;
-        totalCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT].includes(o.status)).length;
+        completedCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
+        }).length;
+        totalCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT].includes(eff);
+        }).length;
         break;
       case 'delivery':
         holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
         completedCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
-        totalCount = orders.filter(o => [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length;
+        totalCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
+        }).length;
         break;
       case 'designers':
         holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN).length;
-        completedCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.HOLD].includes(o.status)).length;
-        totalCount = orders.filter(o => ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(o.status)).length;
+        completedCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
+        }).length;
+        totalCount = orders.filter(o => {
+          const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+          return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(eff);
+        }).length;
         break;
     }
 
@@ -486,6 +571,17 @@ export default function AdminDashboard() {
             title={isSidebarCollapsed ? "Audit Logs" : ""}
           >
             <FileText className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Audit Logs</span>}
+          </button>
+          <button
+            onClick={() => selectTab('user-logs')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+              isSidebarCollapsed && "md:justify-center md:px-0",
+              activeTab === 'user-logs' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+            )}
+            title={isSidebarCollapsed ? "User Logins" : ""}
+          >
+            <Clock className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>User Logins</span>}
           </button>
           <button
             onClick={() => selectTab('security')}
@@ -1300,6 +1396,111 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          ) : activeTab === 'user-logs' ? (
+            <div className="space-y-8 animate-fadeIn">
+              {/* Login frequency stats */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider mb-4">Login Frequencies</h3>
+                {userLogsLoading ? (
+                  <p className="text-xs text-gray-500 italic">Loading login metrics...</p>
+                ) : userLoginCounts.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {userLoginCounts.map((countItem, idx) => {
+                      const regUser = registeredUsers.find(ru => ru.id === countItem.userId);
+                      const displayName = regUser?.name || countItem.userName || countItem.userId;
+                      const displayEmail = regUser?.email || countItem.userEmail || 'No email';
+                      return (
+                        <div key={idx} className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between shadow-xs animate-fadeIn">
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs text-slate-800 truncate">{displayName}</p>
+                            <p className="text-[10px] text-slate-400 truncate mt-0.5">{displayEmail}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                              {countItem.count} Logins
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">No login records found.</p>
+                )}
+              </div>
+
+              {/* Detailed session history table */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+                <div className="p-6 border-b border-gray-100">
+                  <h3 className="font-bold text-gray-800 text-sm">Detailed Session Logs</h3>
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Chronological record of user logins and logouts</p>
+                </div>
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-100">
+                    <tr>
+                      <th className="px-6 py-4">User</th>
+                      <th className="px-6 py-4">Email</th>
+                      <th className="px-6 py-4">Login Time</th>
+                      <th className="px-6 py-4">Logout Time</th>
+                      <th className="px-6 py-4 text-right">Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {userLogsLoading ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-xs text-gray-400 italic">Loading audit logs...</td>
+                      </tr>
+                    ) : userLogs.length > 0 ? (
+                      userLogs.map((log) => {
+                        const regUser = registeredUsers.find(ru => ru.id === log.userId);
+                        const displayName = regUser?.name || log.userName || log.userId;
+                        const displayEmail = regUser?.email || log.userEmail || 'No email';
+
+                        const loginDateStr = new Date(log.loginTime).toLocaleString();
+                        const logoutDateStr = log.logoutTime ? new Date(log.logoutTime).toLocaleString() : null;
+
+                        let durationStr = 'Active Now';
+                        if (log.logoutTime) {
+                          const diffMs = log.logoutTime - log.loginTime;
+                          const diffMins = Math.round(diffMs / 60000);
+                          if (diffMins < 1) {
+                            durationStr = 'Under a minute';
+                          } else if (diffMins < 60) {
+                            durationStr = `${diffMins} min${diffMins > 1 ? 's' : ''}`;
+                          } else {
+                            const hours = Math.floor(diffMins / 60);
+                            const mins = diffMins % 60;
+                            durationStr = `${hours} hr${hours > 1 ? 's' : ''} ${mins} min${mins > 1 ? 's' : ''}`;
+                          }
+                        }
+
+                        return (
+                          <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 font-bold text-gray-800 text-xs">{displayName}</td>
+                            <td className="px-6 py-4 text-xs text-gray-500 font-medium">{displayEmail}</td>
+                            <td className="px-6 py-4 text-xs text-gray-500 font-medium">{loginDateStr}</td>
+                            <td className="px-6 py-4 text-xs text-gray-500 font-medium">
+                              {logoutDateStr ? (
+                                logoutDateStr
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 text-[9px] font-black uppercase rounded border border-green-100">
+                                  ● Active
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-xs text-gray-700">{durationStr}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-xs text-gray-400 italic">No session logs recorded yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
             <div className="bg-white p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
               <div className="w-16 h-16 bg-brand-secondary rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-md">
@@ -1358,6 +1559,16 @@ export default function AdminDashboard() {
           >
             <Shield className="w-5 h-5" />
             <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Workflow</span>
+          </button>
+          <button
+            onClick={() => selectTab('user-logs')}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
+              activeTab === 'user-logs' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Clock className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Logins</span>
           </button>
           <button
             onClick={() => setShowProfileModal(true)}

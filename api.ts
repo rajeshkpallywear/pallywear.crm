@@ -109,6 +109,55 @@ router.post('/auth/register', async (req, res) => {
   }
 });
 
+router.post('/auth/log-login', async (req, res) => {
+  const { userId, name, email } = req.body;
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'Missing userId' });
+  }
+
+  try {
+    const loginTime = Date.now();
+    await query(
+      'INSERT INTO user_activity_logs (userId, userName, userEmail, loginTime) VALUES (?, ?, ?, ?)',
+      [userId, name || '', email || '', loginTime]
+    );
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error logging login:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/auth/log-logout', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'Missing userId' });
+  }
+
+  try {
+    const logoutTime = Date.now();
+    await query(
+      'UPDATE user_activity_logs SET logoutTime = ? WHERE userId = ? AND logoutTime IS NULL ORDER BY loginTime DESC LIMIT 1',
+      [logoutTime, userId]
+    );
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error logging logout:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/auth/activity-logs', async (req, res) => {
+  try {
+    const logs = await query('SELECT * FROM user_activity_logs ORDER BY loginTime DESC') as any[];
+    const counts = await query('SELECT userId, COUNT(*) as count FROM user_activity_logs GROUP BY userId') as any[];
+    res.json({ success: true, logs, counts });
+  } catch (error: any) {
+    console.error('Error fetching activity logs:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/users', async (req, res) => {
   try {
     const rows = await query('SELECT id, email, name, role FROM users') as any[];

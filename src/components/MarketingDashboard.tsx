@@ -296,31 +296,33 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     if (!matchesSearch) return false;
 
     if (selectedSection === 'hold') {
-      return o.status === OrderStatus.HOLD;
+      return o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT);
     }
     if (selectedSection === 'completed') {
-      return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED;
+      return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
     }
     if (selectedSection === 'process') {
-      return o.status !== OrderStatus.DELIVERY &&
-             o.status !== OrderStatus.DELIVERED && 
-             o.status !== OrderStatus.HOLD && 
-             o.status !== OrderStatus.PENDING && 
-             o.status !== OrderStatus.DRAFT;
+      const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+      return effStatus !== OrderStatus.DELIVERY &&
+             effStatus !== OrderStatus.DELIVERED &&
+             effStatus !== OrderStatus.PENDING &&
+             effStatus !== OrderStatus.DRAFT &&
+             !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
     }
     return o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT;
   });
 
   const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
-  const processOrdersCount = orders.filter(o => 
-    o.status !== OrderStatus.DELIVERY && 
-    o.status !== OrderStatus.DELIVERED && 
-    o.status !== OrderStatus.HOLD && 
-    o.status !== OrderStatus.PENDING && 
-    o.status !== OrderStatus.DRAFT
-  ).length;
-  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
-  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED).length;
+  const processOrdersCount = orders.filter(o => {
+    const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+    return effStatus !== OrderStatus.DELIVERY &&
+           effStatus !== OrderStatus.DELIVERED &&
+           effStatus !== OrderStatus.PENDING &&
+           effStatus !== OrderStatus.DRAFT &&
+           !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+  }).length;
+  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
+  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length;
 
   return (
     <div className="bg-white text-gray-900 p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8 animate-in fade-in duration-300">

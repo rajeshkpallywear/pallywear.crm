@@ -41,7 +41,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
     if (selectedSection === 'process') {
       return o.status === OrderStatus.DELIVERY;
     }
-    return o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
+    return o.status === OrderStatus.DELIVERY;
   });
 
   // Auto-select first order when section or filtered order list changes

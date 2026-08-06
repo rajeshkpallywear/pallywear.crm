@@ -62,8 +62,15 @@ export default function Dashboard() {
       return orders;
     }
     
-    return orders.filter(o => o.createdBy === user.id || o.createdBy === user.uid);
+    return orders.filter(o => o.createdBy === user.id || o.createdBy === (user as any).uid);
   }, [orders, user]);
+
+  // Hold orders — only shown in the dedicated hold section
+  const holdOrders = React.useMemo(() => filteredOrders.filter(o => o.status === 'hold'), [filteredOrders]);
+
+  // Active (non-hold) orders — passed to all role dashboards so held orders don't appear there
+  const activeOrders = React.useMemo(() => filteredOrders.filter(o => o.status !== 'hold'), [filteredOrders]);
+
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>(() => {
     const saved = localStorage.getItem('pallywear_active_tab');

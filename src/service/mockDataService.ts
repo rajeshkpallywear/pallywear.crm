@@ -283,5 +283,29 @@ export const mockDataService = {
     });
     if (!res.ok) throw new Error('Failed to delete invitation');
     notifyUpdate();
+  },
+
+  logLogin: async (userId: string, name: string, email: string): Promise<void> => {
+    const res = await fetch(getApiUrl('/api/auth/log-login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, name, email })
+    });
+    if (!res.ok) throw new Error('Failed to log login');
+  },
+
+  logLogout: async (userId: string): Promise<void> => {
+    const res = await fetch(getApiUrl('/api/auth/log-logout'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    if (!res.ok) throw new Error('Failed to log logout');
+  },
+
+  getActivityLogs: async (): Promise<{ success: boolean; logs: any[]; counts: any[] }> => {
+    const res = await fetch(getApiUrl('/api/auth/activity-logs'));
+    if (!res.ok) throw new Error('Failed to fetch activity logs');
+    return res.json();
   }
 };

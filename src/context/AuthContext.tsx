@@ -125,6 +125,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const nextUser = profileToUser(userProfile);
     persistUser(nextUser);
+    try {
+      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email);
+    } catch (e) {
+      console.error('Failed to log login:', e);
+    }
     return { success: true, user: nextUser };
   };
 
@@ -137,6 +142,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const nextUser = profileToUser(userProfile);
     persistUser(nextUser);
+    try {
+      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email);
+    } catch (e) {
+      console.error('Failed to log Google login:', e);
+    }
     return { success: true, user: nextUser };
   };
 
@@ -205,6 +215,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    if (user) {
+      try {
+        await mockDataService.logLogout(user.id);
+      } catch (e) {
+        console.error('Failed to log logout:', e);
+      }
+    }
     persistUser(null);
   };
 

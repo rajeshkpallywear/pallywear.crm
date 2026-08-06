@@ -125,9 +125,10 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
         try {
           await onUpdateOrder(selectedOrder.id, {
             status: newStatus,
+            previousStatus: undefined,
             updatedAt: Date.now()
           });
-          setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+          setSelectedOrder(prev => prev ? { ...prev, status: newStatus, previousStatus: undefined } : null);
           alert("Order released.");
         } catch (e) {
           alert("Action failed.");

@@ -64,8 +64,9 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
 
     // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
     // If in DESIGN status, only show if the original design file uploader is complete (ready for digitizing)
-    const isOrderReady = o.status !== OrderStatus.DESIGN || !!o.original_design_file;
-    const relevantStatus = [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(o.status) && isOrderReady;
+    const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+    const isOrderReady = effStatus !== OrderStatus.DESIGN || !!o.original_design_file;
+    const relevantStatus = effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady;
 
     if (viewMode === 'pending') {
       return matchesSearch && relevantStatus && !o.machineFiles?.length;
@@ -199,7 +200,10 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ⏳ Pending ({orders.filter(o => [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(o.status) && (o.status !== OrderStatus.DESIGN || !!o.original_design_file) && !o.machineFiles?.length).length})
+            ⏳ Pending ({orders.filter(o => {
+              const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && (effStatus !== OrderStatus.DESIGN || !!o.original_design_file) && !o.machineFiles?.length;
+            }).length})
           </button>
           <button
             onClick={() => { setViewMode('completed'); setSelectedOrder(null); }}
