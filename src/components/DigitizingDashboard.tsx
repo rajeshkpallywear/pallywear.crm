@@ -65,7 +65,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
     // If in DESIGN status, only show if the original design file uploader is complete (ready for digitizing)
     const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-    const isOrderReady = effStatus !== OrderStatus.DESIGN || !!o.original_design_file;
+    const isOrderReady = !!o.original_design_file;
     const relevantStatus = effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady;
 
     if (viewMode === 'pending') {
@@ -202,7 +202,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
           >
             ⏳ Pending ({orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && (effStatus !== OrderStatus.DESIGN || !!o.original_design_file) && !o.machineFiles?.length;
+              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && !!o.original_design_file && !o.machineFiles?.length;
             }).length})
           </button>
           <button
