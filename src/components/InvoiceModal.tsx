@@ -26,6 +26,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
     const [sealBase64, setSealBase64] = useState<string>('');
     const [sigBase64, setSigBase64] = useState<string>('');
 
+    const isMarketingStaff = invoice ? (invoice.creatorRole === 'marketing' || invoice.creatorRole === 'staff' || invoice.createdByName?.toLowerCase().includes('marketing') || false) : false;
+
     useEffect(() => {
         const fetchAsset = async (urlPath: string, setter: (val: string) => void) => {
             try {
@@ -266,8 +268,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                         </div>
 
                         {/* Invoice Content (Modeled after the image) */}
-                        <div ref={invoiceRef} data-invoice-container className="p-12 text-gray-800 bg-white">
-                            <div className="flex justify-between items-start mb-16">
+                        <div ref={invoiceRef} data-invoice-container className="p-4 sm:p-12 text-gray-800 bg-white">
+                            <div className="flex flex-col sm:flex-row justify-between items-start mb-8 sm:mb-16 gap-6">
                                 <div className="scale-125 origin-top-left flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
                                         <img
@@ -279,8 +281,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                     </div>
                                     <span className="text-2xl font-black text-gray-900 tracking-tighter">Pallywear</span>
                                 </div>
-                                <div className="text-right">
-                                    <h1 className="text-4xl font-black text-white p-0 m-0">.</h1>
+                                <div className="text-left sm:text-right w-full sm:w-auto">
+                                    <h1 className="text-4xl font-black text-white p-0 m-0 hidden sm:block">.</h1>
                                     <div className="mt-4 space-y-1 text-sm text-gray-500 font-medium">
                                         <p>Invoice no: <span className="text-gray-900 font-bold ml-2">{invoice.invoiceNumber}</span></p>
                                         <p>Invoice date: <span className="text-gray-900 font-bold ml-2">{new Date(invoice.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></p>
@@ -289,56 +291,58 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-12 mb-16">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 mb-8 sm:mb-16">
                                 <div>
-                                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">From</h2>
+                                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 sm:mb-4">From</h2>
                                     <div className="space-y-1">
-                                        <p className="text-xl font-black text-gray-900">{invoice.fromName || 'Pallywear Gifting Solutions'}</p>
-                                        <p className="text-sm font-medium text-gray-500 prose whitespace-pre-line">
+                                        <p className="text-lg sm:text-xl font-black text-gray-900">{invoice.fromName || 'Pallywear Gifting Solutions'}</p>
+                                        <p className="text-xs sm:text-sm font-medium text-gray-500 prose whitespace-pre-line">
                                             {invoice.fromAddress || 'Pallywear Gifting Solutions, Bus stop, 49/1, Mudichur Rd, near by Parvathi nagar, Shanthi Nagar, Old Perungalathur, Chennai, Tamil Nadu 600063'}
                                         </p>
-                                        <p className="text-sm font-medium text-gray-500">{invoice.fromPhone || '+91 9597528585'}</p>
+                                        <p className="text-xs sm:text-sm font-medium text-gray-500">{invoice.fromPhone || '+91 9597528585'}</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Bill to</h2>
+                                <div className="text-left sm:text-right">
+                                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 sm:mb-4">Bill to</h2>
                                     <div className="space-y-1">
-                                        <p className="text-xl font-black text-gray-900">{invoice.billToName}</p>
-                                        <p className="text-sm font-medium text-gray-500">{invoice.billToEmail}</p>
-                                        <p className="text-sm font-medium text-gray-500">{invoice.billToPhone}</p>
-                                        <p className="text-sm font-medium text-gray-500 whitespace-pre-line">{invoice.billToAddress}</p>
+                                        <p className="text-lg sm:text-xl font-black text-gray-900">{invoice.billToName}</p>
+                                        <p className="text-xs sm:text-sm font-medium text-gray-500">{invoice.billToEmail}</p>
+                                        <p className="text-xs sm:text-sm font-medium text-gray-500">{invoice.billToPhone}</p>
+                                        <p className="text-xs sm:text-sm font-medium text-gray-500 whitespace-pre-line">{invoice.billToAddress}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Items Table */}
-                            <div className="mb-12 overflow-hidden rounded-xl border border-gray-100">
-                                <table className="w-full text-sm text-left">
+                            <div className="mb-6 sm:mb-12 overflow-x-auto rounded-xl border border-gray-100">
+                                <table className="w-full text-xs sm:text-sm text-left min-w-[600px] sm:min-w-0">
                                     <thead>
                                         <tr className="bg-brand-primary bg-gradient-to-r from-brand-primary to-brand-secondary text-white">
-                                            <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Description</th>
-                                            <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Rate, Cada</th>
-                                            <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-center">Qty</th>
-                                            <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Tax</th>
-                                            <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Disc</th>
-                                            <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Amount, Cada</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px]">Description</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Rate, Cada</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-center">Qty</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Tax</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Disc</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Amount, Cada</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
                                         {invoice.items.map((item, i) => (
                                             <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-6 min-w-[300px]">
+                                                <td className="px-3 py-4 sm:px-6 sm:py-6 min-w-[200px] sm:min-w-[300px]">
                                                     <p className="font-bold text-gray-900 mb-1">{item.description}</p>
                                                     <p className="text-[10px] text-gray-400 italic">
                                                         Category: {invoice.productType?.toUpperCase()}
                                                         {invoice.productSubCategory ? ` - ${invoice.productSubCategory.toUpperCase()}` : ''}
                                                     </p>
                                                 </td>
-                                                <td className="px-6 py-6 text-right font-medium">₹{item.rate.toLocaleString()}</td>
-                                                <td className="px-6 py-6 text-center font-medium">{item.quantity}</td>
-                                                <td className="px-6 py-6 text-right font-medium">{item.tax}%</td>
-                                                <td className="px-6 py-6 text-right font-medium">{item.discount}%</td>
-                                                <td className="px-6 py-6 text-right font-black text-gray-900">₹{item.amount.toLocaleString()}</td>
+                                                <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">₹{item.rate.toLocaleString()}</td>
+                                                <td className="px-3 py-4 sm:px-6 sm:py-6 text-center font-medium">{item.quantity}</td>
+                                                <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">{item.tax}%</td>
+                                                <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">
+                                                    {isMarketingStaff ? `₹${item.discount.toLocaleString()}` : `${item.discount}%`}
+                                                </td>
+                                                <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-black text-gray-900">₹{item.amount.toLocaleString()}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -346,7 +350,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                             </div>
 
                             {/* Bottom Section */}
-                            <div className="grid grid-cols-2 gap-12">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12">
                                 <div>
                                     <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Payment & Terms</h2>
                                     <div className="space-y-4">
@@ -359,9 +363,9 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                                 <p className="text-sm font-black text-gray-900">{invoice.paymentMethod || 'GPay'}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-start gap-8">
+                                        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-8">
                                             <div
-                                                className="flex-shrink-0 w-48 h-48 bg-white border border-gray-100 rounded-3xl overflow-hidden p-1 shadow-md cursor-zoom-in hover:scale-105 transition-transform duration-300"
+                                                className="flex-shrink-0 w-36 h-36 sm:w-48 sm:h-48 bg-white border border-gray-100 rounded-3xl overflow-hidden p-1 shadow-md cursor-zoom-in hover:scale-105 transition-transform duration-300 mx-auto sm:mx-0"
                                                 onClick={() => setIsQrOpen(true)}
                                             >
                                                 <img
@@ -371,7 +375,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                                     referrerPolicy="no-referrer"
                                                 />
                                             </div>
-                                            <div className="space-y-1.5 pt-3">
+                                            <div className="space-y-1.5 pt-1 sm:pt-3 text-left w-full sm:w-auto">
                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Company Bank Details</p>
                                                 <p className="text-[11px] font-black text-gray-900 leading-tight">Bank: <span className="text-brand-primary">{invoice.bankName || 'HDFC BANK'}</span></p>
                                                 <p className="text-[11px] font-black text-gray-900 leading-tight">Acc Name: <span className="text-gray-600">{invoice.bankAccountName || 'PALLYWEAR PVT LTD'}</span></p>
@@ -380,7 +384,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                             </div>
                                         </div>
                                         {invoice.notes && (
-                                            <div className="mt-8">
+                                            <div className="mt-8 text-left">
                                                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Notes</h2>
                                                 <p className="text-xs text-gray-400 font-medium leading-relaxed">{invoice.notes}</p>
                                             </div>
@@ -394,7 +398,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                         <span className="font-black text-gray-900">₹{invoice.subtotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="font-bold text-gray-500">Discount ({invoice.items[0]?.discount || 0}%):</span>
+                                        <span className="font-bold text-gray-500">Discount {isMarketingStaff ? '' : `(${invoice.items[0]?.discount || 0}%)`}:</span>
                                         <span className="font-black text-gray-900">₹{invoice.discountTotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
@@ -413,17 +417,17 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                         <span className="font-bold text-gray-500">Amount paid:</span>
                                         <span className="font-black text-gray-900">₹{invoice.amountPaid.toLocaleString()}</span>
                                     </div>
-                                    <div className="flex justify-between items-center p-5 bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 rounded-2xl mt-6 border border-brand-primary/5">
+                                    <div className="flex justify-between items-center p-4 sm:p-5 bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 rounded-2xl mt-6 border border-brand-primary/5">
                                         <span className="text-sm font-black text-brand-primary uppercase tracking-widest">Balance Due:</span>
-                                        <span className="text-xl font-black text-brand-primary">₹{invoice.balanceDue.toLocaleString()}</span>
+                                        <span className="text-lg sm:text-xl font-black text-brand-primary">₹{invoice.balanceDue.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Signature area (matching image) */}
-                            <div className="mt-20 flex justify-between items-end px-4">
+                            <div className="mt-12 sm:mt-20 flex flex-col sm:flex-row justify-between items-center sm:items-end px-4 gap-8">
                                 {/* Seal on the left */}
-                                <div className="relative w-48 h-48 opacity-80 pointer-events-none rotate-[-8deg] mb-8">
+                                <div className="relative w-32 h-32 sm:w-48 sm:h-48 opacity-80 pointer-events-none rotate-[-8deg] mb-2 sm:mb-8">
                                     <img
                                         src={sealBase64 || getApiUrl('/SEAL.png')}
                                         alt="Company Seal"
@@ -433,16 +437,16 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                 </div>
 
                                 {/* Signature on the right */}
-                                <div className="relative text-center">
-                                    <div className="h-32 flex items-end justify-center mb-2 px-4">
+                                <div className="relative text-center w-full sm:w-auto flex flex-col items-center">
+                                    <div className="h-24 sm:h-32 flex items-end justify-center mb-2 px-4">
                                         <img
                                             src={sigBase64 || getApiUrl('/signature.png')}
                                             alt="Authorized Signature"
-                                            className="h-24 object-contain translate-x-4 opacity-95"
+                                            className="h-16 sm:h-24 object-contain translate-x-4 opacity-95"
                                             referrerPolicy="no-referrer"
                                         />
                                     </div>
-                                    <div className="w-64 h-px bg-gray-300" />
+                                    <div className="w-full sm:w-64 h-px bg-gray-300" />
                                     <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest mt-4">Authorized Signature</p>
                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">Pallywear Pvt. Ltd.</p>
                                 </div>

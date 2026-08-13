@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { UserRole, UserProfile } from '../types';
 import { mockDataService } from '../service/mockDataService';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 export interface User {
   id: string;
@@ -223,6 +225,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     persistUser(null);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await App.exitApp();
+      } catch (e) {
+        console.error('Failed to exit native app on logout:', e);
+      }
+    }
   };
 
   const updateAdminOnlyRegistration = (value: boolean) => {

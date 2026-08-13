@@ -196,6 +196,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
             bankAccountNumber: formData.bankAccountNumber,
             createdBy: invoice?.createdBy || user?.id || user?.uid || 'system',
             createdByName: invoice?.createdByName || user?.name || 'System',
+            creatorRole: invoice?.creatorRole || user?.role || 'system',
             designName: formData.designName,
             designAmount: Number(formData.designAmount),
             designGst: Number(formData.designGst),
@@ -221,10 +222,10 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                         initial={{ opacity: 0, y: 30, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 30, scale: 0.95 }}
-                        className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20 max-h-[90vh] flex flex-col"
+                        className="relative bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20 max-h-[95vh] sm:max-h-[90vh] flex flex-col"
                     >
                         <div className="p-1 flex flex-col h-full overflow-hidden">
-                            <div className="px-8 pt-8 pb-4 flex items-center justify-between flex-shrink-0">
+                            <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-3 sm:pb-4 flex items-center justify-between flex-shrink-0">
                                 <div className="space-y-1">
                                     <h3 className="text-2xl font-black text-gray-900 tracking-tighter">
                                         {invoice ? 'Modify Invoice' : 'Generate Invoice'}
@@ -236,7 +237,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="px-8 pb-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow text-left">
+                            <form onSubmit={handleSubmit} className="px-4 sm:px-8 pb-6 sm:pb-10 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-grow text-left">
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
@@ -246,7 +247,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 required
                                                 value={formData.customerName}
                                                 onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                 placeholder="e.g. John Doe"
                                             />
                                         </div>
@@ -257,7 +258,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 required
                                                 value={formData.customerNumber}
                                                 onChange={(e) => setFormData({ ...formData, customerNumber: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                 placeholder="+91 XXXX..."
                                             />
                                         </div>
@@ -270,7 +271,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                             required
                                             value={formData.customerCompanyName}
                                             onChange={(e) => setFormData({ ...formData, customerCompanyName: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             placeholder="Organization Name"
                                         />
                                     </div>
@@ -281,7 +282,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                             <select
                                                 value={formData.productType}
                                                 onChange={(e) => handleProductChange(e.target.value)}
-                                                className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
+                                                className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
                                             >
                                                 {products.map(p => (
                                                     <option key={p} value={p}>{p}</option>
@@ -315,7 +316,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                     type="number"
                                                     value={formData.unitPrice}
                                                     onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
-                                                    className="w-full bg-brand-secondary/20 border-0 rounded-2xl pl-9 pr-5 py-3.5 text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none"
+                                                    className="w-full bg-brand-secondary/20 border-0 rounded-2xl pl-9 pr-4 py-2.5 sm:pr-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none"
                                                 />
                                             </div>
                                         </div>
@@ -327,7 +328,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 required
                                                 value={formData.quantity}
                                                 onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             />
                                         </div>
                                     </div>
@@ -338,7 +339,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                             <select
                                                 value={formData.paymentMethod}
                                                 onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as any })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             >
                                                 {paymentMethods.map(pm => (
                                                     <option key={pm} value={pm}>{pm}</option>
@@ -351,7 +352,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 type="number"
                                                 value={formData.discountRate}
                                                 onChange={(e) => setFormData({ ...formData, discountRate: Number(e.target.value) })}
-                                                className="w-full bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -366,7 +367,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                     type="text"
                                                     value={formData.designName}
                                                     onChange={(e) => setFormData({ ...formData, designName: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                     placeholder="e.g. Logo vectorization / Custom art setup"
                                                 />
                                             </div>
@@ -376,7 +377,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                     type="number"
                                                     value={formData.designAmount}
                                                     onChange={(e) => setFormData({ ...formData, designAmount: Number(e.target.value) })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                     placeholder="0"
                                                 />
                                             </div>
@@ -386,7 +387,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                     type="number"
                                                     value={formData.designGst}
                                                     onChange={(e) => setFormData({ ...formData, designGst: Number(e.target.value) })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                     placeholder="18"
                                                 />
                                             </div>
@@ -396,7 +397,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                     type="number"
                                                     value={formData.designDiscount}
                                                     onChange={(e) => setFormData({ ...formData, designDiscount: Number(e.target.value) })}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                     placeholder="0"
                                                 />
                                             </div>
@@ -406,7 +407,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                     value={formData.designNotes}
                                                     onChange={(e) => setFormData({ ...formData, designNotes: e.target.value })}
                                                     rows={2}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none resize-none"
+                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none resize-none"
                                                     placeholder="Internal designer guidance notes..."
                                                 />
                                             </div>
@@ -420,7 +421,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 type="number"
                                                 value={formData.shippingCost}
                                                 onChange={(e) => setFormData({ ...formData, shippingCost: Number(e.target.value) })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
@@ -429,7 +430,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 type="number"
                                                 value={formData.taxRate}
                                                 onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })}
-                                                className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             />
                                         </div>
                                     </div>
@@ -448,7 +449,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 type="text"
                                                 value={formData.invoiceNumber}
                                                 onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
@@ -457,7 +458,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 type="date"
                                                 value={formData.dueDate}
                                                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             />
                                         </div>
                                     </div>

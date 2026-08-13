@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Upload, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
@@ -13,12 +13,43 @@ interface FileUploadProps {
   onFilesSelected: (files: string[]) => void;
   maxFiles?: number;
   accept?: string;
+  initialFiles?: string[];
 }
 
-export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accept = "image/*,.pdf" }: FileUploadProps) {
+export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accept = "image/*,.pdf", initialFiles }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<{ name: string, type: string, size: number, data: string }[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastInitialFilesRef = useRef<string[] | null>(null);
+
+  // Sync initialFiles from parent to local state safely
+  useEffect(() => {
+    const initialJSON = JSON.stringify(initialFiles || []);
+    const lastJSON = JSON.stringify(lastInitialFilesRef.current || []);
+    if (initialJSON !== lastJSON) {
+      lastInitialFilesRef.current = initialFiles || [];
+      const mapped = (initialFiles || []).map((data, idx) => {
+        let name = `File ${idx + 1}`;
+        let type = 'image/jpeg';
+        let size = 0;
+        
+        if (data.startsWith('data:')) {
+          const parts = data.split(';');
+          type = parts[0].substring(5);
+          const base64Str = parts[1]?.split(',')[1] || '';
+          size = Math.round((base64Str.length * 3) / 4);
+          
+          if (type.includes('image')) {
+            name = `Image ${idx + 1}`;
+          } else if (type.includes('pdf')) {
+            name = `Document ${idx + 1}`;
+          }
+        }
+        return { name, type, size, data };
+      });
+      setSelectedFiles(mapped);
+    }
+  }, [initialFiles]);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -35,7 +66,6 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
         continue;
       }
       try {
-        // Read raw file directly for 100% untouched Full HD quality & crystal clarity
         const reader = new FileReader();
         const data = await new Promise<string>((resolve, reject) => {
           reader.onload = (event) => resolve(event.target?.result as string);
@@ -56,17 +86,22 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
 
     const updated = [...selectedFiles, ...processedFiles].slice(-maxFiles);
     setSelectedFiles(updated);
-    onFilesSelected(updated.map(f => f.data));
+    
+    const updatedData = updated.map(f => f.data);
+    lastInitialFilesRef.current = updatedData;
+    onFilesSelected(updatedData);
     setIsCompressing(false);
 
-    // Clear input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeFile = (index: number) => {
     const updated = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(updated);
-    onFilesSelected(updated.map(f => f.data));
+    
+    const updatedData = updated.map(f => f.data);
+    lastInitialFilesRef.current = updatedData;
+    onFilesSelected(updatedData);
   };
 
   return (

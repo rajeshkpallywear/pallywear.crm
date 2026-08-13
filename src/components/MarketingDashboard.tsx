@@ -980,24 +980,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     label="Reference Blueprints (Images)"
                     accept="image/*"
                     maxFiles={10}
+                    initialFiles={formData.imageAttachments}
                     onFilesSelected={(files) => setFormData({ ...formData, imageAttachments: files })}
                   />
-                  {formData.imageAttachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {formData.imageAttachments.map((file, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => setViewingImage(file)}
-                          className="w-12 h-12 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-brand-primary transition-all flex items-center justify-center bg-white group relative"
-                        >
-                          <img src={file} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <ZoomIn size={10} className="text-white" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </section>
 

@@ -87,7 +87,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden"
+        className="bg-white rounded-t-[2rem] sm:rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col"
       >
         <div className="p-4 sm:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex flex-col">
@@ -173,7 +173,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
           </div>
         </div>
 
-        <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-8 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
+        <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-8 overflow-y-auto flex-grow">
           <WorkflowVisualizer order={order} />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

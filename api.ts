@@ -897,6 +897,7 @@ router.get('/invoices', async (req, res) => {
              balanceDue, notes, paymentInstructions, paymentMethod, productType, 
              productSubCategory, customerPhoneNumber, bankName, bankAccountName, 
              bankIfscCode, bankAccountNumber, createdBy, createdByName, leadId, 
+             creatorRole, 
              invoice_file_name, order_id, type, client, amount, status, description, 
              invoice_date, created_at, designName, designAmount, designGst, 
              designDiscount, designNotes 
@@ -951,14 +952,14 @@ router.post('/invoices', async (req, res) => {
         discountTotal=?, shippingCost=?, salesTax=?, total=?, amountPaid=?, balanceDue=?, notes=?, 
         paymentInstructions=?, paymentMethod=?, productType=?, productSubCategory=?, customerPhoneNumber=?, 
         companySignature=?, bankName=?, bankAccountName=?, bankIfscCode=?, bankAccountNumber=?, createdBy=?, 
-        createdByName=?, leadId=?, designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=? WHERE id=?`,
+        createdByName=?, leadId=?, creatorRole=?, designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=? WHERE id=?`,
         [
           inv.invoiceNumber, inv.date, inv.createdAt, inv.dueDate, inv.billToName, inv.billToEmail,
           inv.billToPhone, inv.billToAddress, inv.shipToAddress, inv.trackingNumber, JSON.stringify(inv.items || []),
           inv.subtotal, inv.discountTotal, inv.shippingCost, inv.salesTax, inv.total, inv.amountPaid, inv.balanceDue,
           inv.notes, inv.paymentInstructions, inv.paymentMethod, inv.productType, inv.productSubCategory,
           inv.customerPhoneNumber, inv.companySignature, inv.bankName, inv.bankAccountName, inv.bankIfscCode,
-          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId,
+          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId, inv.creatorRole || null,
           inv.designName || null, Number(inv.designAmount || 0), Number(inv.designGst || 0), Number(inv.designDiscount || 0),
           inv.designNotes || null, inv.id
         ]
@@ -970,15 +971,15 @@ router.post('/invoices', async (req, res) => {
         shippingCost, salesTax, total, amountPaid, balanceDue, notes, paymentInstructions, 
         paymentMethod, productType, productSubCategory, customerPhoneNumber, companySignature, 
         bankName, bankAccountName, bankIfscCode, bankAccountNumber, createdBy, createdByName, leadId,
-        designName, designAmount, designGst, designDiscount, designNotes) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        creatorRole, designName, designAmount, designGst, designDiscount, designNotes) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           inv.id, inv.invoiceNumber, inv.date, inv.createdAt, inv.dueDate, inv.billToName, inv.billToEmail,
           inv.billToPhone, inv.billToAddress, inv.shipToAddress, inv.trackingNumber, JSON.stringify(inv.items || []),
           inv.subtotal, inv.discountTotal, inv.shippingCost, inv.salesTax, inv.total, inv.amountPaid, inv.balanceDue,
           inv.notes, inv.paymentInstructions, inv.paymentMethod, inv.productType, inv.productSubCategory,
           inv.customerPhoneNumber, inv.companySignature, inv.bankName, inv.bankAccountName, inv.bankIfscCode,
-          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId,
+          inv.bankAccountNumber, inv.createdBy, inv.createdByName, inv.leadId, inv.creatorRole || null,
           inv.designName || null, Number(inv.designAmount || 0), Number(inv.designGst || 0), Number(inv.designDiscount || 0),
           inv.designNotes || null
         ]

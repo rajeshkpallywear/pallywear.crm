@@ -182,6 +182,7 @@ export async function initDB() {
         \`bankAccountNumber\` varchar(50) DEFAULT NULL,
         \`createdBy\` varchar(50) DEFAULT NULL,
         \`createdByName\` varchar(100) DEFAULT NULL,
+        \`creatorRole\` varchar(100) DEFAULT NULL,
         \`leadId\` varchar(50) DEFAULT NULL,
         \`invoice_file\` longtext,
         \`invoice_file_name\` varchar(255) DEFAULT NULL,
@@ -229,6 +230,9 @@ export async function initDB() {
     } catch (_) {}
     try {
       await pool.execute('ALTER TABLE `inventory_movements` ADD COLUMN `size` varchar(50) DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `invoices` ADD COLUMN `creatorRole` varchar(100) DEFAULT NULL');
     } catch (_) {}
 
 

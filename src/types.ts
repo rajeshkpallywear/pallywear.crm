@@ -65,6 +65,7 @@ export interface Invoice {
   bankAccountNumber?: string;
   createdBy: string;
   createdByName: string;
+  creatorRole?: string;
   leadId: string;
   designName?: string;
   designAmount?: number;
