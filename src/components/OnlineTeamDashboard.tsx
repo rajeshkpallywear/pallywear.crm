@@ -63,6 +63,11 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
     (l.description && l.description.trim() !== '')
   );
 
+  const filteredOrders = React.useMemo(() => {
+    if (!user) return [];
+    return orders.filter(o => o.createdBy === user.id || o.createdBy === user.uid);
+  }, [orders, user]);
+
   const handleUpdateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLead) return;
@@ -407,7 +412,7 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
       {activeTab === 'orders' && (
         <div className="text-left">
           <MarketingDashboard 
-            orders={orders} 
+            orders={filteredOrders} 
             inventory={inventory} 
             onCreateOrder={addOrder} 
             onUpdateOrder={updateOrder} 

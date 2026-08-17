@@ -37,7 +37,10 @@ export default function InvoiceManager() {
     };
 
     const filteredInvoices = invoices
-        .filter(inv => user?.role === 'admin' || user?.role === 'staff' || user?.role === 'onlineteam' || inv.createdBy === user?.id || inv.createdBy === user?.uid)
+        .filter(inv => {
+            if (user?.role === 'admin' || user?.role === 'staff') return true;
+            return inv.createdBy === user?.id || inv.createdBy === user?.uid;
+        })
         .filter(inv =>
             inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
             inv.billToName.toLowerCase().includes(searchTerm.toLowerCase())
