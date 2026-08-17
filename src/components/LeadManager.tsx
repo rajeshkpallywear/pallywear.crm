@@ -449,16 +449,15 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
             </tbody>
           </table>
         </div>
-
         {/* Mobile View (Flipkart/Amazon style Card List) */}
-        <div className="block md:hidden space-y-3.5">
+        <div className="block md:hidden space-y-2">
           {filteredLeads.map((lead) => (
-            <div key={lead.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col gap-3 relative">
+            <div key={lead.id} className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm flex flex-col gap-2 relative">
               {/* Header: Avatar, Info, Status Badge */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg text-white shadow-sm shrink-0",
+                    "w-7 h-7 rounded-full flex items-center justify-center font-black text-xs text-white shadow-sm shrink-0",
                     lead.leadType === 'Hot' ? "bg-red-500" :
                       lead.leadType === 'Warm' ? "bg-amber-500" :
                         "bg-blue-500"
@@ -466,14 +465,14 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                     {lead.name.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm leading-tight">{lead.name}</h4>
-                    <a href={`tel:${lead.number}`} className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-semibold hover:text-brand-primary">
-                      <Phone className="w-3 h-3 text-brand-primary shrink-0" /> {lead.number}
+                    <h4 className="font-bold text-gray-900 text-xs leading-tight">{lead.name}</h4>
+                    <a href={`tel:${lead.number}`} className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5 font-semibold hover:text-brand-primary">
+                      <Phone className="w-2.5 h-2.5 text-brand-primary shrink-0" /> {lead.number}
                     </a>
                   </div>
                 </div>
                 <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                  "px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border",
                   lead.leadType === 'Hot' ? "bg-red-50 text-red-700 border-red-100" :
                     lead.leadType === 'Warm' ? "bg-amber-550 text-amber-700 border-amber-100" :
                       "bg-blue-50 text-blue-700 border-blue-100"
@@ -483,64 +482,64 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
               </div>
 
               {/* Body details */}
-              <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-gray-50">
-                <div className="space-y-1">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Company</p>
-                  <div className="flex items-center gap-1.5 text-gray-700 font-bold truncate">
-                    <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <div className="grid grid-cols-2 gap-1.5 text-[10px] py-0.5 border-t border-b border-gray-50">
+                <div className="space-y-0.5">
+                  <p className="text-[8px] text-gray-400 uppercase tracking-widest font-black">Company</p>
+                  <div className="flex items-center gap-1 text-gray-700 font-bold truncate">
+                    <Building2 className="w-3 h-3 text-gray-400 shrink-0" />
                     <span className="truncate">{lead.companyName || 'Individual'}</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 font-mono tracking-wider">{lead.gst || 'No GST'}</p>
+                  <p className="text-[8px] text-gray-400 font-mono tracking-wider">{lead.gst || 'No GST'}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Staff</p>
-                  <div className="flex items-center gap-1.5 text-gray-700 font-bold">
-                    <div className="w-4 h-4 rounded-full bg-brand-primary flex items-center justify-center text-[8px] font-black text-white shrink-0">
+                <div className="space-y-0.5">
+                  <p className="text-[8px] text-gray-400 uppercase tracking-widest font-black">Staff</p>
+                  <div className="flex items-center gap-1 text-gray-700 font-bold">
+                    <div className="w-3.5 h-3.5 rounded-full bg-brand-primary flex items-center justify-center text-[7px] font-black text-white shrink-0">
                       {lead.createdByName?.charAt(0) || 'U'}
                     </div>
                     <span className="truncate">{lead.createdByName}</span>
                   </div>
-                  <p className="text-[9px] text-gray-400">{lead.entryDate}</p>
+                  <p className="text-[8px] text-gray-400">{lead.entryDate}</p>
                 </div>
               </div>
 
               {/* Pricing details like E-commerce discounts */}
-              <div className="flex items-center justify-between py-1 bg-gray-50/50 px-2 rounded-xl border border-gray-100/50">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Estimated Deal</span>
+              <div className="flex items-center justify-between py-0.5 bg-gray-50/50 px-1.5 rounded-lg border border-gray-100/50">
+                <span className="text-[8px] text-gray-400 font-black uppercase tracking-wider">Estimated Deal</span>
                 <div className="text-right">
                   {lead.discountAmount ? (
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <span className="text-[10px] line-through text-gray-400">₹{lead.totalOrderValue?.toLocaleString()}</span>
-                      <span className="text-sm font-black text-emerald-600">₹{lead.netTotal?.toLocaleString()}</span>
+                    <div className="flex items-center gap-1 justify-end">
+                      <span className="text-[8px] line-through text-gray-400">₹{lead.totalOrderValue?.toLocaleString()}</span>
+                      <span className="text-xs font-black text-emerald-600">₹{lead.netTotal?.toLocaleString()}</span>
                     </div>
                   ) : (
-                    <span className="text-sm font-black text-gray-900">₹{lead.totalOrderValue?.toLocaleString()}</span>
+                    <span className="text-xs font-black text-gray-900">₹{lead.totalOrderValue?.toLocaleString()}</span>
                   )}
                 </div>
               </div>
 
               {/* Actions row: Flipkart/Amazon-style buttons (Permanently visible) */}
               {canManage(lead) && (
-                <div className="grid grid-cols-3 gap-2 pt-1">
+                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
                   <button
                     onClick={() => handleConvertOrder(lead)}
-                    className="flex items-center justify-center gap-1.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-100 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-black text-[10px] border border-emerald-100 transition-colors cursor-pointer"
                   >
-                    <Zap className="w-3.5 h-3.5" />
+                    <Zap className="w-3 h-3" />
                     <span>Convert</span>
                   </button>
                   <button
                     onClick={() => handleOpenEdit(lead)}
-                    className="flex items-center justify-center gap-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs border border-indigo-100 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-black text-[10px] border border-indigo-100 transition-colors cursor-pointer"
                   >
-                    <Edit2 className="w-3.5 h-3.5" />
+                    <Edit2 className="w-3 h-3" />
                     <span>Edit</span>
                   </button>
                   <button
                     onClick={() => deleteLead(lead.id)}
-                    className="flex items-center justify-center gap-1.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs border border-red-100 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1 py-1.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-lg font-black text-[10px] border border-red-100 transition-colors cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3" />
                     <span>Delete</span>
                   </button>
                 </div>

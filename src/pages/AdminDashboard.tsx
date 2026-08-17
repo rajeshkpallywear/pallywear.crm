@@ -2633,176 +2633,196 @@ export default function AdminDashboard() {
           invoice={editingInvoice}
           onSubmit={handleEditInvoiceSubmit}
         />
-        {isAdminOrderModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/40 backdrop-blur-xs">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn">
-              <div className="bg-brand-primary px-4 py-3 flex items-center justify-between text-white">
-                <div>
-                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest">Admin Control</p>
-                  <h3 className="text-sm font-black mt-0.5">Create New Order</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAdminOrderModalOpen(false)}
-                  className="w-6 h-6 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleCreateAdminOrder} className="p-4 space-y-2.5 text-left">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="col-span-2">
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Customer Name *</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. John Doe"
-                      value={adminOrderForm.customerName}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, customerName: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                    />
-                  </div>
+        <AnimatePresence>
+          {isAdminOrderModalOpen && (
+            <div className="fixed inset-0 z-50 flex justify-end">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsAdminOrderModalOpen(false)}
+                className="absolute inset-0 bg-black/40 backdrop-blur-xs cursor-pointer"
+              />
+              {/* Slide-over Drawer Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                className="relative bg-white h-screen w-full max-w-md shadow-2xl flex flex-col z-10 overflow-hidden"
+              >
+                <div className="bg-brand-primary px-4 py-3.5 flex items-center justify-between text-white shadow-sm shrink-0">
                   <div>
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Phone *</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="Phone number"
-                      value={adminOrderForm.phone}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, phone: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                    />
+                    <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest">Admin Control</p>
+                    <h3 className="text-sm font-black mt-0.5">Create New Order</h3>
                   </div>
-                  <div>
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Category *</label>
-                    <select
-                      required
-                      value={adminOrderForm.category}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, category: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all cursor-pointer"
-                    >
-                      <option value="Jersey">Jersey</option>
-                      <option value="T-Shirt">T-Shirt</option>
-                      <option value="Shirt">Shirt</option>
-                      <option value="Pant">Pant</option>
-                      <option value="Hoodie">Hoodie</option>
-                      <option value="Sweatshirt">Sweatshirt</option>
-                      <option value="Corporate Gift">Corporate Gift</option>
-                    </select>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Address *</label>
-                    <textarea
-                      required
-                      rows={1.5}
-                      placeholder="Delivery address"
-                      value={adminOrderForm.address}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, address: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Total Amount (₹) *</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={adminOrderForm.totalAmount}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, totalAmount: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Advance Pay (₹) *</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={adminOrderForm.advancePay}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, advancePay: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Send Order To *</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: 'Pending', status: OrderStatus.PENDING, desc: 'Stay in staff list' },
-                        { label: 'Designs', status: OrderStatus.DESIGN, desc: 'Send to designers' },
-                        { label: 'Accounts', status: OrderStatus.ACCOUNTS, desc: 'Send to billing' }
-                      ].map((item) => (
-                        <label
-                          key={item.status}
-                          className={cn(
-                            "border rounded-xl p-2 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-gray-50/50 select-none",
-                            adminOrderForm.status === item.status ? "border-brand-primary bg-brand-primary/5 text-brand-primary ring-2 ring-brand-primary/5" : "border-gray-200 text-gray-600"
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="adminOrderDestination"
-                            value={item.status}
-                            checked={adminOrderForm.status === item.status}
-                            onChange={() => setAdminOrderForm({ ...adminOrderForm, status: item.status })}
-                            className="hidden"
-                          />
-                          <span className="text-[10px] font-black uppercase tracking-wider">{item.label}</span>
-                          <span className="text-[7px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">{item.desc}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <FileUpload
-                      label="Upload Order Pictures / Designs"
-                      accept="image/*"
-                      maxFiles={5}
-                      initialFiles={adminOrderForm.staffImages}
-                      onFilesSelected={files => setAdminOrderForm({ ...adminOrderForm, staffImages: files })}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Notes</label>
-                    <textarea
-                      rows={1.5}
-                      placeholder="Special instructions..."
-                      value={adminOrderForm.notes}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, notes: e.target.value })}
-                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
-                    />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1.5 py-0.5">
-                    <input
-                      type="checkbox"
-                      id="adminIsUrgent"
-                      checked={adminOrderForm.isUrgent}
-                      onChange={e => setAdminOrderForm({ ...adminOrderForm, isUrgent: e.target.checked })}
-                      className="w-3.5 h-3.5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary/10 cursor-pointer"
-                    />
-                    <label htmlFor="adminIsUrgent" className="text-[10px] font-bold text-red-500 uppercase cursor-pointer select-none">Mark order as Urgent ⚡</label>
-                  </div>
-                </div>
-                <div className="flex gap-2.5 pt-3 border-t border-gray-50">
                   <button
                     type="button"
                     onClick={() => setIsAdminOrderModalOpen(false)}
-                    className="flex-1 py-2 border border-gray-200 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent"
+                    className="w-6 h-6 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white text-xs"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2 bg-brand-primary hover:opacity-90 text-white text-xs font-black rounded-xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/15 uppercase tracking-wider"
-                  >
-                    Submit Order
+                    ✕
                   </button>
                 </div>
-              </form>
+                <form onSubmit={handleCreateAdminOrder} className="flex-1 flex flex-col h-full overflow-hidden">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4 text-left pb-24">
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <div className="col-span-2">
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Customer Name *</label>
+                        <input
+                          required
+                          type="text"
+                          placeholder="e.g. John Doe"
+                          value={adminOrderForm.customerName}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, customerName: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Phone *</label>
+                        <input
+                          required
+                          type="text"
+                          placeholder="Phone number"
+                          value={adminOrderForm.phone}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, phone: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Category *</label>
+                        <select
+                          required
+                          value={adminOrderForm.category}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, category: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all cursor-pointer"
+                        >
+                          <option value="Jersey">Jersey</option>
+                          <option value="T-Shirt">T-Shirt</option>
+                          <option value="Shirt">Shirt</option>
+                          <option value="Pant">Pant</option>
+                          <option value="Hoodie">Hoodie</option>
+                          <option value="Sweatshirt">Sweatshirt</option>
+                          <option value="Corporate Gift">Corporate Gift</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Address *</label>
+                        <textarea
+                          required
+                          rows={2}
+                          placeholder="Delivery address"
+                          value={adminOrderForm.address}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, address: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Total Amount (₹) *</label>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={adminOrderForm.totalAmount}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, totalAmount: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Advance Pay (₹) *</label>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={adminOrderForm.advancePay}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, advancePay: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Send Order To *</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: 'Pending', status: OrderStatus.PENDING, desc: 'Stay in staff list' },
+                            { label: 'Designs', status: OrderStatus.DESIGN, desc: 'Send to designers' },
+                            { label: 'Accounts', status: OrderStatus.ACCOUNTS, desc: 'Send to billing' }
+                          ].map((item) => (
+                            <label
+                              key={item.status}
+                              className={cn(
+                                "border rounded-xl p-2.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-gray-50/50 select-none",
+                                adminOrderForm.status === item.status ? "border-brand-primary bg-brand-primary/5 text-brand-primary ring-2 ring-brand-primary/5" : "border-gray-200 text-gray-600"
+                              )}
+                            >
+                              <input
+                                type="radio"
+                                name="adminOrderDestination"
+                                value={item.status}
+                                checked={adminOrderForm.status === item.status}
+                                onChange={() => setAdminOrderForm({ ...adminOrderForm, status: item.status })}
+                                className="hidden"
+                              />
+                              <span className="text-[10px] font-black uppercase tracking-wider">{item.label}</span>
+                              <span className="text-[7px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">{item.desc}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <FileUpload
+                          label="Upload Order Pictures / Designs"
+                          accept="image/*"
+                          maxFiles={5}
+                          initialFiles={adminOrderForm.staffImages}
+                          onFilesSelected={files => setAdminOrderForm({ ...adminOrderForm, staffImages: files })}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Notes</label>
+                        <textarea
+                          rows={2}
+                          placeholder="Special instructions..."
+                          value={adminOrderForm.notes}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, notes: e.target.value })}
+                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
+                        />
+                      </div>
+                      <div className="col-span-2 flex items-center gap-1.5 py-0.5">
+                        <input
+                          type="checkbox"
+                          id="adminIsUrgent"
+                          checked={adminOrderForm.isUrgent}
+                          onChange={e => setAdminOrderForm({ ...adminOrderForm, isUrgent: e.target.checked })}
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary/10 cursor-pointer"
+                        />
+                        <label htmlFor="adminIsUrgent" className="text-[10px] font-bold text-red-500 uppercase cursor-pointer select-none">Mark order as Urgent ⚡</label>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Fixed Footer */}
+                  <div className="absolute bottom-0 inset-x-0 p-4 bg-gray-50 border-t border-gray-100 flex gap-3 z-20 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsAdminOrderModalOpen(false)}
+                      className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-100 transition-all cursor-pointer bg-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 bg-brand-primary hover:opacity-90 text-white text-xs font-black rounded-xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/15 uppercase tracking-wider"
+                    >
+                      Submit Order
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
         {selectedOrderDetail && (
           <OrderDetailModal
             order={selectedOrderDetail}
