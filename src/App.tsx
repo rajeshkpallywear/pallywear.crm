@@ -14,6 +14,7 @@ const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Store = lazy(() => import('./pages/Store'));
+const LeadDashboard = lazy(() => import('./pages/LeadDashboard'));
 
 import { UserRole } from './types';
 
@@ -130,6 +131,15 @@ function AppRoutes() {
             element={
               <ProtectedRoute adminOnly={true}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/lead-dashboard"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <LeadDashboard />
               </ProtectedRoute>
             }
           />

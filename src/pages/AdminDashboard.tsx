@@ -37,7 +37,7 @@ const MOCK_LOGS = [
 ];
 
 // ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
-function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder }: any) {
+function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder, addLead, deleteLead }: any) {
   const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
   const [orderSearch, setOrderSearch] = React.useState('');
   const [leadSearch, setLeadSearch] = React.useState('');
@@ -49,6 +49,91 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
   const [savingRevenue, setSavingRevenue] = React.useState(false);
   const [deletingOrderId, setDeletingOrderId] = React.useState<string | null>(null);
   const [manualRevenues, setManualRevenues] = React.useState<any[]>([]);
+
+  // Add Lead Convert modal state
+  const [showAddLeadConvert, setShowAddLeadConvert] = React.useState(false);
+  const [savingLeadConvert, setSavingLeadConvert] = React.useState(false);
+  const [deletingLeadId, setDeletingLeadId] = React.useState<string | null>(null);
+  const [manualLeads, setManualLeads] = React.useState<any[]>([]);
+  const [leadConvertForm, setLeadConvertForm] = React.useState({
+    createdBy: '',
+    leadName: '',
+    companyName: '',
+    leadType: 'Hot',
+    convertedValue: '',
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  const handleAddLeadConvert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadConvertForm.createdBy || !leadConvertForm.convertedValue) {
+      alert('Please fill in at least Created By and Converted Value.');
+      return;
+    }
+    setSavingLeadConvert(true);
+    try {
+      const valAmount = Number(leadConvertForm.convertedValue) || 0;
+      const dateTimestamp = leadConvertForm.date ? new Date(leadConvertForm.date).getTime() : Date.now();
+      const newLeadData = {
+        createdByName: leadConvertForm.createdBy,
+        name: leadConvertForm.leadName || 'Manual Lead',
+        companyName: leadConvertForm.companyName || '',
+        leadType: leadConvertForm.leadType,
+        totalOrderValue: valAmount,
+        forecastedValue: valAmount,
+        status: 'Converted',
+        entryDate: leadConvertForm.date,
+        createdAt: dateTimestamp,
+        updatedAt: Date.now(),
+        phone: '',
+        email: '',
+        address: '',
+        notes: 'Admin manual lead convert entry',
+        createdBy: '',
+      } as any;
+      if (addLead) {
+        await addLead(newLeadData);
+      } else {
+        await (window as any).mockDataService?.saveLead(newLeadData);
+      }
+      const entry = {
+        id: `manual-lead-${Date.now()}`,
+        createdByName: leadConvertForm.createdBy,
+        createdBy: '',
+        name: leadConvertForm.leadName || 'Manual Lead',
+        companyName: leadConvertForm.companyName,
+        leadType: leadConvertForm.leadType,
+        totalOrderValue: valAmount,
+        entryDate: leadConvertForm.date,
+        createdAt: dateTimestamp,
+        isManual: true,
+      };
+      setManualLeads(prev => [entry, ...prev]);
+      setLeadConvertForm({ createdBy: '', leadName: '', companyName: '', leadType: 'Hot', convertedValue: '', date: new Date().toISOString().split('T')[0] });
+      setShowAddLeadConvert(false);
+      setDrillMode('leads');
+      alert('Lead Convert Revenue saved to Database!');
+    } catch (err: any) {
+      console.error('Error saving lead convert to DB:', err);
+      alert('Failed to save: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setSavingLeadConvert(false);
+    }
+  };
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!leadId || !deleteLead) return;
+    if (!window.confirm('Delete this lead convert entry? This cannot be undone.')) return;
+    setDeletingLeadId(leadId);
+    try {
+      await deleteLead(leadId);
+      setManualLeads(prev => prev.filter(l => l.id !== leadId));
+    } catch (err: any) {
+      alert('Failed to delete: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setDeletingLeadId(null);
+    }
+  };
   const [revenueForm, setRevenueForm] = React.useState({
     createdBy: '',
     client: '',
@@ -134,7 +219,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
   };
 
   const allDeliveredOrders = [...manualRevenues, ...mktDeliveredOrders, ...otDeliveredOrders];
-  const allConvertedLeads = [...mktConvertedLeads, ...otConvertedLeads];
+  const allConvertedLeads = [...manualLeads, ...mktConvertedLeads, ...otConvertedLeads];
 
   // Month / Date Filtering logic
   const matchesMonthAndDate = (itemDateStr?: string, itemCreatedAt?: number) => {
@@ -417,6 +502,15 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                 )}
               </div>
 
+              {/* Add Lead Convert Button */}
+              <button
+                onClick={() => setShowAddLeadConvert(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl border-none cursor-pointer transition-all shadow-sm shadow-violet-400/20"
+              >
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                Add Lead Convert
+              </button>
+
               {/* Search Staff */}
               <div className="relative w-44">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
@@ -442,29 +536,113 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                   <th className="px-4 py-3">Company</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3 text-right">Converted Value</th>
+                  <th className="px-4 py-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredLeads.length === 0 ? (
-                  <tr><td colSpan={5} className="py-8 text-center text-gray-400 italic">No converted leads match the selected filters.</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-gray-400 italic">No converted leads match the selected filters.</td></tr>
                 ) : filteredLeads.map((l: any) => (
-                  <tr key={l.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={l.id} className={`hover:bg-gray-50/50 transition-colors ${l.isManual ? 'bg-violet-50/30' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[9px] font-bold">
                           {(l.createdByName || userNameMap[l.createdBy] || 'U').charAt(0)}
                         </div>
                         <span className="font-bold text-gray-800">{l.createdByName || userNameMap[l.createdBy] || 'Unknown'}</span>
+                        {l.isManual && <span className="text-[8px] font-black text-violet-600/70 uppercase bg-violet-100 px-1.5 py-0.5 rounded-md">Manual</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-700">{l.name}</td>
                     <td className="px-4 py-3 text-gray-500">{l.companyName || '—'}</td>
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${l.leadType === 'Hot' ? 'bg-red-50 text-red-700 border-red-100' : l.leadType === 'Warm' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{l.leadType}</span></td>
                     <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(l.totalOrderValue) || 0).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleDeleteLead(l.id)}
+                        disabled={deletingLeadId === l.id}
+                        title="Delete this lead convert entry"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
+                      >
+                        {deletingLeadId === l.id ? (
+                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        ) : (
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                        )}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Lead Convert Modal ─────────────────────────────────────────── */}
+      {showAddLeadConvert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="bg-violet-600 px-6 py-5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Admin Lead Entry</p>
+                <h3 className="text-lg font-black text-white mt-0.5">Add Lead Convert Revenue (Saves to DB)</h3>
+              </div>
+              <button
+                onClick={() => setShowAddLeadConvert(false)}
+                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer"
+              >
+                <svg width="14" height="14" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form onSubmit={handleAddLeadConvert} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className={labelCls}>Created By <span className="text-red-400">*</span></label>
+                  <input required type="text" placeholder="Staff / Person name" value={leadConvertForm.createdBy}
+                    onChange={e => setLeadConvertForm({ ...leadConvertForm, createdBy: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Lead Name</label>
+                  <input type="text" placeholder="Client / Lead name" value={leadConvertForm.leadName}
+                    onChange={e => setLeadConvertForm({ ...leadConvertForm, leadName: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Company Name</label>
+                  <input type="text" placeholder="Company" value={leadConvertForm.companyName}
+                    onChange={e => setLeadConvertForm({ ...leadConvertForm, companyName: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Lead Type</label>
+                  <select value={leadConvertForm.leadType}
+                    onChange={e => setLeadConvertForm({ ...leadConvertForm, leadType: e.target.value })} className={inputCls}>
+                    <option value="Hot">Hot</option>
+                    <option value="Warm">Warm</option>
+                    <option value="Cold">Cold</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Converted Value (₹) <span className="text-red-400">*</span></label>
+                  <input required type="number" min="0" placeholder="0" value={leadConvertForm.convertedValue}
+                    onChange={e => setLeadConvertForm({ ...leadConvertForm, convertedValue: e.target.value })} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Date (Day / Month / Year)</label>
+                  <input type="date" value={leadConvertForm.date}
+                    onChange={e => setLeadConvertForm({ ...leadConvertForm, date: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2 border-t border-gray-50">
+                <button type="button" onClick={() => setShowAddLeadConvert(false)} disabled={savingLeadConvert}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent disabled:opacity-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingLeadConvert}
+                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-violet-400/20 uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2">
+                  {savingLeadConvert ? 'Saving to DB...' : 'Add Lead Convert'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -594,7 +772,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
 
 export default function AdminDashboard() {
     const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
-    const { leads, invoices, orders, addOrder, updateOrder, deleteOrder, deleteInvoice, updateInvoice } = useLeads();
+    const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs'>('overview');
     const [userLogs, setUserLogs] = useState<any[]>([]);
@@ -1192,6 +1370,14 @@ export default function AdminDashboard() {
                 {layoutMode === 'mobile' ? <Smartphone className="w-3.5 h-3.5 text-brand-primary" /> : <Monitor className="w-3.5 h-3.5 text-gray-500" />}
                 <span className="hidden sm:inline">{layoutMode === 'mobile' ? 'Mobile View' : 'System View'}</span>
               </button>
+              <button
+                onClick={() => navigate('/lead-dashboard')}
+                className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-brand-primary/30 bg-brand-primary/5 hover:bg-brand-primary/10 text-brand-primary flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Lead Dashboard"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lead Dashboard</span>
+              </button>
               <div className="relative">
                 <button
                   onClick={handleToggleNotifications}
@@ -1351,6 +1537,8 @@ export default function AdminDashboard() {
                       userNameMap={userNameMap}
                       addOrder={addOrder}
                       deleteOrder={deleteOrder}
+                      addLead={addLead}
+                      deleteLead={deleteLead}
                     />
                   );
                 })()}
