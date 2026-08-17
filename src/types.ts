@@ -160,6 +160,7 @@ export interface Order {
   assignedDesigner?: string;
   createdBy?: string;
   createdByName?: string;
+  clientName?: string;
   designName?: string;
   designAmount?: number;
   designGst?: number;

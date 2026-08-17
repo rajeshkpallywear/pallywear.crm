@@ -37,13 +37,16 @@ const MOCK_LOGS = [
 ];
 
 // ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
-function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap }: any) {
+function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder }: any) {
   const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
   const [orderSearch, setOrderSearch] = React.useState('');
   const [leadSearch, setLeadSearch] = React.useState('');
+  const [monthFilter, setMonthFilter] = React.useState('');
+  const [dateFilter, setDateFilter] = React.useState('');
 
   // Add Revenue modal state
   const [showAddRevenue, setShowAddRevenue] = React.useState(false);
+  const [savingRevenue, setSavingRevenue] = React.useState(false);
   const [manualRevenues, setManualRevenues] = React.useState<any[]>([]);
   const [revenueForm, setRevenueForm] = React.useState({
     createdBy: '',
@@ -54,41 +57,110 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
     date: new Date().toISOString().split('T')[0],
   });
 
-  const handleAddRevenue = (e: React.FormEvent) => {
+  const handleAddRevenue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!revenueForm.createdBy || !revenueForm.amount) {
       alert('Please fill in at least Created By and Amount.');
       return;
     }
-    const entry = {
-      id: `manual-${Date.now()}`,
-      createdByName: revenueForm.createdBy,
-      createdBy: '',
-      clientName: revenueForm.client,
-      category: revenueForm.category,
-      status: revenueForm.status,
-      date: revenueForm.date,
-      financials: { totalAmount: Number(revenueForm.amount) || 0 },
-      isManual: true,
-    };
-    setManualRevenues(prev => [entry, ...prev]);
-    setRevenueForm({ createdBy: '', client: '', category: '', status: 'pending', amount: '', date: new Date().toISOString().split('T')[0] });
-    setShowAddRevenue(false);
-    // Auto-open orders drill-down to show the new entry
-    setDrillMode('orders');
+
+    setSavingRevenue(true);
+    try {
+      const amountVal = Number(revenueForm.amount) || 0;
+      const dateTimestamp = revenueForm.date ? new Date(revenueForm.date).getTime() : Date.now();
+
+      // Construct Order object to save to Database / API
+      const newOrderData: Partial<Order> = {
+        createdByName: revenueForm.createdBy,
+        clientName: revenueForm.client,
+        customerInfo: { name: revenueForm.client || 'Client', phone: '', address: '' },
+        category: revenueForm.category || 'General',
+        status: (revenueForm.status === 'delivery' ? OrderStatus.DELIVERY : revenueForm.status === 'delivered' ? OrderStatus.DELIVERED : OrderStatus.PENDING) as any,
+        financials: {
+          totalAmount: amountVal,
+          advancePay: 0,
+          balanceAmount: amountVal
+        },
+        createdAt: dateTimestamp,
+        updatedAt: Date.now()
+      };
+
+      if (addOrder) {
+        await addOrder(newOrderData);
+      } else {
+        await mockDataService.createOrder(newOrderData);
+      }
+
+      // Also append to local list for immediate visual confirmation
+      const entry = {
+        id: `manual-${Date.now()}`,
+        createdByName: revenueForm.createdBy,
+        createdBy: '',
+        clientName: revenueForm.client,
+        category: revenueForm.category,
+        status: revenueForm.status,
+        date: revenueForm.date,
+        financials: { totalAmount: amountVal },
+        isManual: true,
+      };
+      setManualRevenues(prev => [entry, ...prev]);
+
+      setRevenueForm({ createdBy: '', client: '', category: '', status: 'pending', amount: '', date: new Date().toISOString().split('T')[0] });
+      setShowAddRevenue(false);
+      setDrillMode('orders');
+      alert('Revenue successfully saved to Database!');
+    } catch (err: any) {
+      console.error('Error saving revenue to DB:', err);
+      alert('Failed to save to Database: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setSavingRevenue(false);
+    }
   };
 
   const allDeliveredOrders = [...manualRevenues, ...mktDeliveredOrders, ...otDeliveredOrders];
   const allConvertedLeads = [...mktConvertedLeads, ...otConvertedLeads];
 
+  // Month / Date Filtering logic
+  const matchesMonthAndDate = (itemDateStr?: string, itemCreatedAt?: number) => {
+    let dateObj: Date | null = null;
+    if (itemDateStr) {
+      dateObj = new Date(itemDateStr);
+    } else if (itemCreatedAt) {
+      dateObj = new Date(itemCreatedAt);
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      if (monthFilter || dateFilter) return false;
+      return true;
+    }
+
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    const itemMonth = `${yyyy}-${mm}`;
+    const itemDate = `${yyyy}-${mm}-${dd}`;
+
+    if (monthFilter && itemMonth !== monthFilter && mm !== monthFilter) {
+      return false;
+    }
+    if (dateFilter && itemDate !== dateFilter) {
+      return false;
+    }
+    return true;
+  };
+
   const filteredOrders = allDeliveredOrders.filter(o => {
     const name = (o.createdByName || userNameMap[o.createdBy] || '').toLowerCase();
-    return name.includes(orderSearch.toLowerCase()) || (o.clientName || '').toLowerCase().includes(orderSearch.toLowerCase());
+    const matchesSearch = !orderSearch || name.includes(orderSearch.toLowerCase()) || (o.clientName || '').toLowerCase().includes(orderSearch.toLowerCase());
+    const matchesDate = matchesMonthAndDate(o.date, o.createdAt);
+    return matchesSearch && matchesDate;
   });
 
   const filteredLeads = allConvertedLeads.filter(l => {
     const name = (l.createdByName || userNameMap[l.createdBy] || '').toLowerCase();
-    return name.includes(leadSearch.toLowerCase()) || l.name?.toLowerCase().includes(leadSearch.toLowerCase());
+    const matchesSearch = !leadSearch || name.includes(leadSearch.toLowerCase()) || l.name?.toLowerCase().includes(leadSearch.toLowerCase());
+    const matchesDate = matchesMonthAndDate(l.entryDate || l.date, l.createdAt);
+    return matchesSearch && matchesDate;
   });
 
   const inputCls = "w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all";
@@ -176,13 +248,41 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
 
       {/* Drill-down: Delivered Orders */}
       {drillMode === 'orders' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Delivered Orders — All Staff</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{allDeliveredOrders.length} total entries</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{filteredOrders.length} of {allDeliveredOrders.length} entries shown</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Month Filter */}
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Month:</span>
+                <input
+                  type="month"
+                  value={monthFilter}
+                  onChange={e => setMonthFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
+                />
+                {monthFilter && (
+                  <button onClick={() => setMonthFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
+                )}
+              </div>
+
+              {/* Date Filter */}
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Date:</span>
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={e => setDateFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
+                />
+                {dateFilter && (
+                  <button onClick={() => setDateFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
+                )}
+              </div>
+
               {/* Add Revenue Button */}
               <button
                 onClick={() => setShowAddRevenue(true)}
@@ -191,11 +291,21 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                 <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                 Add Revenue
               </button>
-              {/* Search */}
-              <div className="relative w-48">
+
+              {/* Search Staff */}
+              <div className="relative w-44">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
                 <input type="text" placeholder="Filter by staff name..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
               </div>
+
+              {(monthFilter || dateFilter || orderSearch) && (
+                <button
+                  onClick={() => { setMonthFilter(''); setDateFilter(''); setOrderSearch(''); }}
+                  className="text-[10px] font-bold text-red-500 hover:text-red-700 underline bg-transparent border-none cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -212,7 +322,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredOrders.length === 0 ? (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-400 italic">No delivered orders match the filter.</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-gray-400 italic">No delivered orders match the selected filters.</td></tr>
                 ) : filteredOrders.map((o: any) => (
                   <tr key={o.id} className={`hover:bg-gray-50/50 transition-colors ${o.isManual ? 'bg-brand-primary/3' : ''}`}>
                     <td className="px-4 py-3">
@@ -224,13 +334,13 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                         {o.isManual && <span className="text-[8px] font-black text-brand-primary/70 uppercase bg-brand-primary/10 px-1.5 py-0.5 rounded-md">Manual</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-gray-700">{o.clientName || '—'}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-700">{o.clientName || o.customerInfo?.name || '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{o.category || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${o.status === 'delivered' || o.status === 'delivery' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
                         }`}>{o.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 font-mono">{o.date ? new Date(o.date).toLocaleDateString('en-IN') : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono">{o.date ? new Date(o.date).toLocaleDateString('en-IN') : (o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—')}</td>
                     <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(o.financials?.totalAmount) || 0).toLocaleString('en-IN')}</td>
                   </tr>
                 ))}
@@ -242,15 +352,55 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
 
       {/* Drill-down: Converted Leads */}
       {drillMode === 'leads' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Converted Leads — All Staff</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{allConvertedLeads.length} total converted leads</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{filteredLeads.length} of {allConvertedLeads.length} leads shown</p>
             </div>
-            <div className="relative w-56">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
-              <input type="text" placeholder="Filter by staff name..." value={leadSearch} onChange={e => setLeadSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Month Filter */}
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Month:</span>
+                <input
+                  type="month"
+                  value={monthFilter}
+                  onChange={e => setMonthFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
+                />
+                {monthFilter && (
+                  <button onClick={() => setMonthFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
+                )}
+              </div>
+
+              {/* Date Filter */}
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Date:</span>
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={e => setDateFilter(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
+                />
+                {dateFilter && (
+                  <button onClick={() => setDateFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
+                )}
+              </div>
+
+              {/* Search Staff */}
+              <div className="relative w-44">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
+                <input type="text" placeholder="Filter by staff name..." value={leadSearch} onChange={e => setLeadSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
+              </div>
+
+              {(monthFilter || dateFilter || leadSearch) && (
+                <button
+                  onClick={() => { setMonthFilter(''); setDateFilter(''); setLeadSearch(''); }}
+                  className="text-[10px] font-bold text-red-500 hover:text-red-700 underline bg-transparent border-none cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -266,7 +416,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredLeads.length === 0 ? (
-                  <tr><td colSpan={5} className="py-8 text-center text-gray-400 italic">No converted leads match the filter.</td></tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-gray-400 italic">No converted leads match the selected filters.</td></tr>
                 ) : filteredLeads.map((l: any) => (
                   <tr key={l.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3">
@@ -297,7 +447,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
             <div className="bg-brand-primary px-6 py-5 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Admin Revenue Entry</p>
-                <h3 className="text-lg font-black text-white mt-0.5">Add Revenue Record</h3>
+                <h3 className="text-lg font-black text-white mt-0.5">Add Revenue Record (Saves to DB)</h3>
               </div>
               <button
                 onClick={() => setShowAddRevenue(false)}
@@ -393,15 +543,17 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                 <button
                   type="button"
                   onClick={() => setShowAddRevenue(false)}
-                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent"
+                  disabled={savingRevenue}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/20 uppercase tracking-wider"
+                  disabled={savingRevenue}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/20 uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Add Revenue
+                  {savingRevenue ? 'Saving to DB...' : 'Add Revenue'}
                 </button>
               </div>
             </form>
@@ -414,7 +566,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
 
 export default function AdminDashboard() {
     const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
-    const { leads, invoices, orders, updateOrder, deleteOrder, deleteInvoice, updateInvoice } = useLeads();
+    const { leads, invoices, orders, addOrder, updateOrder, deleteOrder, deleteInvoice, updateInvoice } = useLeads();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs'>('overview');
     const [userLogs, setUserLogs] = useState<any[]>([]);
@@ -1170,6 +1322,7 @@ export default function AdminDashboard() {
                       otLeadsCount={leads.filter(l => isOnlineTeam(l.createdBy)).length}
                       fmt={fmt}
                       userNameMap={userNameMap}
+                      addOrder={addOrder}
                     />
                   );
                 })()}
