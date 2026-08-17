@@ -75,9 +75,12 @@ export default function LeadDashboard() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
 
-  // Build per-user lead stats
+  // Build per-user lead stats (Only Marketing, Staff, and Online Team roles)
   const userLeadStats = useMemo(() => {
-    return registeredUsers.map((u: any) => {
+    const allowedRoles = ['marketing', 'staff', 'onlineteam', 'UserRole.STAFF', 'UserRole.MARKETING', 'UserRole.ONLINETEAM'];
+    const filteredStaff = registeredUsers.filter((u: any) => allowedRoles.includes(u.role));
+
+    return filteredStaff.map((u: any) => {
       const userLeads = leads.filter(l =>
         l.createdBy === u.id || l.createdBy === u.uid || l.createdByName === u.name
       );
@@ -92,11 +95,11 @@ export default function LeadDashboard() {
     });
   }, [registeredUsers, leads]);
 
-  // Totals
-  const totalLeads = leads.length;
-  const totalForecasted = leads.reduce((s, l) => s + (Number(l.forecastedValue) || 0), 0);
-  const totalConverted = leads.reduce((s, l) => s + (Number(l.totalOrderValue) || 0), 0);
-  const totalHot = leads.filter(l => l.leadType === 'Hot').length;
+  // Totals calculated from filtered roles only
+  const totalLeads = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.totalLeads, 0), [userLeadStats]);
+  const totalForecasted = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.forecastedValue, 0), [userLeadStats]);
+  const totalConverted = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.convertedValue, 0), [userLeadStats]);
+  const totalHot = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.hotLeads, 0), [userLeadStats]);
 
   // Chart: leads by role
   const byRoleChartData = useMemo(() => {
@@ -109,7 +112,9 @@ export default function LeadDashboard() {
   }, [userLeadStats]);
 
   // Top performers
-  const topPerformers = [...userLeadStats].sort((a: any, b: any) => b.convertedValue - a.convertedValue).slice(0, 3);
+  const topPerformers = useMemo(() => {
+    return [...userLeadStats].sort((a: any, b: any) => b.convertedValue - a.convertedValue).slice(0, 3);
+  }, [userLeadStats]);
 
   // Filter users
   const filteredUsers = useMemo(() => {
@@ -120,7 +125,11 @@ export default function LeadDashboard() {
     });
   }, [userLeadStats, search, roleFilter]);
 
-  const uniqueRoles = Array.from(new Set(registeredUsers.map((u: any) => u.role)));
+  const uniqueRoles = useMemo(() => {
+    const allowed = ['marketing', 'staff', 'onlineteam'];
+    return Array.from(new Set(registeredUsers.map((u: any) => u.role)))
+      .filter((role: string) => allowed.includes(role));
+  }, [registeredUsers]);
 
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 

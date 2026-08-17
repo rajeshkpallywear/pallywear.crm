@@ -94,8 +94,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     const nextLead: Lead = sanitizeForStorage({
       ...lead,
       id: createId('lead'),
-      createdBy: user.id,
-      createdByName: user.name,
+      createdBy: lead.createdBy || user.id,
+      createdByName: lead.createdByName || user.name,
     });
     await mockDataService.saveLead(nextLead);
     setLeads((prev) => [...prev, nextLead]);
@@ -149,8 +149,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const nextOrder = await mockDataService.createOrder({
       ...orderData,
-      createdBy: user.id,
-      createdByName: user.name,
+      createdBy: orderData.createdBy || user.id,
+      createdByName: orderData.createdByName || user.name,
     });
     setOrders((prev) => [...prev, nextOrder]);
   };
