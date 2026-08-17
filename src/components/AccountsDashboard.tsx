@@ -298,6 +298,9 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                     </span>
                   </div>
                   <div className="font-bold truncate">{order.customerInfo.name}</div>
+                  <div className={cn("text-[9px] font-bold uppercase tracking-wide", selectedOrder?.id === order.id ? "text-gray-300" : "text-brand-primary")}>
+                    By: {order.createdByName || 'System'}
+                  </div>
                   {order.status === OrderStatus.HOLD && order.holdReason && (
                     <div className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 px-1.5 py-0.5 rounded italic border border-red-100">
                       Reason: {order.holdReason}
@@ -336,7 +339,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   <div>
                     <span className="text-xs font-mono text-gray-400">ORDER DETAILS</span>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)}</h4>
+                      <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)} <span className="text-xs text-gray-500 font-bold ml-2">(Created by: {selectedOrder.createdByName || 'System'})</span></h4>
                       <button
                         onClick={() => {
                           const newId = window.prompt("Enter new Order ID:", selectedOrder.id);

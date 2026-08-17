@@ -808,6 +808,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <td className="px-5 py-3">
                         <div className="flex flex-col gap-0.5">
                           <span className="font-black text-gray-800 text-xs">{item.customerName}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                            By: {item.createdByName || 'System'}
+                          </span>
                           <span className="font-mono text-[9px] text-brand-primary font-bold">#{item.id.slice(-8)}</span>
                           <span className="text-[9px] text-gray-400 font-semibold">{getDisplayCategory(item as any)}</span>
                         </div>
@@ -884,6 +887,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             {item.isUrgent && (
                               <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
                             )}
+                          </div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                            By: {item.createdByName || 'System'}
                           </div>
                           <div className="text-xs text-gray-500 font-semibold">{item.phone}</div>
                         </div>
@@ -982,6 +988,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     {/* Customer Spec Info */}
                     <div className="space-y-1">
                       <div className="font-black text-gray-900 text-sm">{item.customerName}</div>
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                        By: {item.createdByName || 'System'}
+                      </div>
                       <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5">
                         <Phone size={12} className="text-brand-primary" /> {item.phone}
                       </a>
@@ -1139,6 +1148,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo.name}</p>
+                        <p className="text-[9.5px] font-bold uppercase tracking-wider text-brand-primary">Created by: {selectedOrder.createdByName || 'System'}</p>
                       </div>
                     </div>
 

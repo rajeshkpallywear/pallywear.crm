@@ -138,6 +138,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     const finalOrderData = {
       status: existingOrder ? existingOrder.status : OrderStatus.PENDING,
       category: computedCategory,
+      createdBy: existingOrder ? existingOrder.createdBy : (user?.id || user?.uid || 'unknown'),
+      createdByName: existingOrder ? existingOrder.createdByName : (user?.name || 'Unknown'),
       customerInfo: {
         name: formData.customerName,
         phone: formData.phone,

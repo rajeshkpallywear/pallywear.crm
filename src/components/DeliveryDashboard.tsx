@@ -172,6 +172,9 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
 
                   <div className="font-bold text-base uppercase italic leading-tight">{order.customerInfo.name}</div>
+                  <div className={cn("text-[10px] font-bold uppercase tracking-wider", selectedOrder?.id === order.id ? "text-orange-100" : "text-brand-primary")}>
+                    Created by: {order.createdByName || 'System'}
+                  </div>
 
                   {order.status === OrderStatus.HOLD && order.holdReason && (
                     <div className="text-[9px] text-red-600 font-bold bg-red-50 p-2 rounded italic border border-red-200/50">
@@ -225,7 +228,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                 </button>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest font-bold">Delivery Active Node</span>
+                  <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest font-bold">Delivery Active Node • Created by: {selectedOrder.createdByName || 'System'}</span>
                   <h4 className="text-2xl font-black text-slate-900 uppercase italic mt-0.5">#{selectedOrder.id.slice(-8)}</h4>
                 </div>
                 <div className="flex items-center gap-3">

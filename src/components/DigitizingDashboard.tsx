@@ -273,6 +273,9 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                     </div>
 
                     <div className="font-bold text-xs truncate">{order.customerInfo.name}</div>
+                    <div className={cn("text-[9px] font-bold uppercase tracking-wide", selectedOrder?.id === order.id ? "text-indigo-200" : "text-brand-primary")}>
+                      By: {order.createdByName || 'System'}
+                    </div>
 
                     <div className="flex justify-between items-center text-[10px] opacity-75 mt-1">
                       <span>Qty: {order.quantity}</span>
@@ -317,7 +320,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order workspace</span>
-                  <h4 className="text-base font-black text-slate-900">#{selectedOrder.id}</h4>
+                  <h4 className="text-base font-black text-slate-900">#{selectedOrder.id} <span className="text-xs text-gray-500 font-bold ml-2">(Created by: {selectedOrder.createdByName || 'System'})</span></h4>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-black uppercase">

@@ -95,6 +95,8 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
         },
         category: 'Apparel', // Default
         quantity: 1,
+        createdBy: user?.id || 'unknown',
+        createdByName: user?.name || 'Unknown',
         details: {
           company: lead.companyName,
           gst: lead.gst,
@@ -177,7 +179,15 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
     exportToExcel(exportData, 'Leads_Report');
   };
 
-  const filteredLeads = leads.filter(l => {
+  const visibleLeads = React.useMemo(() => {
+    if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return leads;
+    if (user?.role === 'onlineteam') {
+      return leads.filter(l => l.createdBy === user?.id || l.createdBy === user?.uid);
+    }
+    return leads;
+  }, [leads, user]);
+
+  const filteredLeads = visibleLeads.filter(l => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = l.name.toLowerCase().includes(query) ||
       l.companyName.toLowerCase().includes(query) ||

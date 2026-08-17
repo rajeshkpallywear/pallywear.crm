@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { Button } from './Button';
 import { motion, AnimatePresence } from 'motion/react';
 import { Invoice } from '../types';
@@ -10,6 +10,17 @@ interface InvoiceFormModalProps {
     onClose: () => void;
     invoice?: Invoice | null; // if provided, we are editing; else creating
     onSubmit: (invoiceData: any) => Promise<void>;
+}
+
+interface InvoiceItemInput {
+    id: string;
+    productType: string;
+    productSubCategory: string;
+    size: string;
+    unitPrice: number;
+    quantity: number;
+    taxRate: number;
+    discountRate: number;
 }
 
 export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }: InvoiceFormModalProps) {
@@ -65,14 +76,20 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
         customerName: '',
         customerCompanyName: '',
         customerNumber: '',
-        productType: 'tshirt',
-        productSubCategory: '',
+        items: [
+            {
+                id: 'item-1',
+                productType: 'tshirt',
+                productSubCategory: '',
+                size: '',
+                unitPrice: 400,
+                quantity: 1,
+                taxRate: 5,
+                discountRate: 0
+            }
+        ] as InvoiceItemInput[],
         paymentMethod: 'GPay' as 'GPay' | 'PhonePay' | 'Cash' | 'Account' | 'UPI',
-        unitPrice: 400,
-        quantity: 1,
-        taxRate: 5,
         shippingCost: 0,
-        discountRate: 0,
         companySignature: 'Rajesh K.',
         bankName: 'HDFC BANK',
         bankAccountName: 'PALLYWEAR PVT LTD',
@@ -89,6 +106,58 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
 
     useEffect(() => {
         if (invoice) {
+            const mappedItems = invoice.items?.map((item, idx) => {
+                let productType = 'tshirt';
+                let productSubCategory = '';
+                let size = '';
+
+                const desc = item.description || '';
+                const parts = desc.split(' - Size: ');
+                if (parts.length > 1) {
+                    size = parts[1].trim();
+                }
+
+                const mainDesc = parts[0].trim();
+                const matchedProduct = products.find(p => mainDesc.toLowerCase().startsWith(p.toLowerCase()));
+                if (matchedProduct) {
+                    productType = matchedProduct;
+                    const subMatch = mainDesc.match(/\(([^)]+)\)/);
+                    if (subMatch) {
+                        productSubCategory = subMatch[1].toLowerCase();
+                    }
+                } else {
+                    const subMatch = mainDesc.match(/\(([^)]+)\)/);
+                    if (subMatch) {
+                        productSubCategory = subMatch[1].toLowerCase();
+                        productType = mainDesc.replace(/\([^)]+\)/, '').trim().toLowerCase();
+                    } else {
+                        productType = mainDesc.toLowerCase();
+                    }
+                }
+
+                return {
+                    id: item.id || `item-${idx}-${Math.random()}`,
+                    productType,
+                    productSubCategory,
+                    size,
+                    unitPrice: item.rate,
+                    quantity: item.quantity,
+                    taxRate: item.tax ?? 5,
+                    discountRate: item.discount ?? 0
+                };
+            }) || [
+                {
+                    id: 'item-1',
+                    productType: 'tshirt',
+                    productSubCategory: '',
+                    size: '',
+                    unitPrice: 400,
+                    quantity: 1,
+                    taxRate: 5,
+                    discountRate: 0
+                }
+            ];
+
             setFormData({
                 leadId: invoice.leadId || '',
                 invoiceNumber: invoice.invoiceNumber || '',
@@ -97,14 +166,9 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                 customerName: invoice.billToName || '',
                 customerCompanyName: invoice.billToAddress || '',
                 customerNumber: invoice.billToPhone || '',
-                productType: invoice.productType || 'tshirt',
-                productSubCategory: invoice.productSubCategory || '',
+                items: mappedItems,
                 paymentMethod: invoice.paymentMethod || 'GPay',
-                unitPrice: invoice.items?.[0]?.rate ?? 400,
-                quantity: invoice.items?.[0]?.quantity ?? 1,
-                taxRate: invoice.items?.[0]?.tax ?? 5,
                 shippingCost: invoice.shippingCost || 0,
-                discountRate: invoice.items?.[0]?.discount ?? 0,
                 companySignature: invoice.companySignature || 'Rajesh K.',
                 bankName: invoice.bankName || 'HDFC BANK',
                 bankAccountName: invoice.bankAccountName || 'PALLYWEAR PVT LTD',
@@ -121,34 +185,118 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
         }
     }, [invoice, isOpen]);
 
-    const handleProductChange = (type: string) => {
+    const handleItemProductChange = (idx: number, type: string) => {
         const price = calculatePrice(type, '');
-        setFormData({
-            ...formData,
-            productType: type,
-            productSubCategory: '',
-            unitPrice: price
+        setFormData(prev => {
+            const nextItems = [...prev.items];
+            nextItems[idx] = {
+                ...nextItems[idx],
+                productType: type,
+                productSubCategory: '',
+                unitPrice: price
+            };
+            return {
+                ...prev,
+                items: nextItems
+            };
         });
     };
 
-    const handleSubCategoryChange = (sub: string) => {
-        const price = calculatePrice(formData.productType, sub);
-        setFormData({
-            ...formData,
-            productSubCategory: sub,
-            unitPrice: price
+    const handleItemSubCategoryChange = (idx: number, sub: string) => {
+        const price = calculatePrice(formData.items[idx].productType, sub);
+        setFormData(prev => {
+            const nextItems = [...prev.items];
+            nextItems[idx] = {
+                ...nextItems[idx],
+                productSubCategory: sub,
+                unitPrice: price
+            };
+            return {
+                ...prev,
+                items: nextItems
+            };
         });
+    };
+
+    const handleItemFieldChange = (idx: number, field: keyof InvoiceItemInput, val: any) => {
+        setFormData(prev => {
+            const nextItems = [...prev.items];
+            nextItems[idx] = {
+                ...nextItems[idx],
+                [field]: val
+            };
+            return {
+                ...prev,
+                items: nextItems
+            };
+        });
+    };
+
+    const handleAddItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            items: [
+                ...prev.items,
+                {
+                    id: `item-${Date.now()}-${Math.random()}`,
+                    productType: 'tshirt',
+                    productSubCategory: '',
+                    size: '',
+                    unitPrice: 400,
+                    quantity: 1,
+                    taxRate: 5,
+                    discountRate: 0
+                }
+            ]
+        }));
+    };
+
+    const handleRemoveItem = (idx: number) => {
+        if (formData.items.length <= 1) return;
+        setFormData(prev => ({
+            ...prev,
+            items: prev.items.filter((_, i) => i !== idx)
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const subtotal = (formData.unitPrice * formData.quantity) + (Number(formData.designAmount) || 0);
-        const discountTotal = (Number(formData.discountRate) || 0) + (Number(formData.designDiscount) || 0);
+        let subtotal = 0;
+        let discountTotal = 0;
+        let salesTax = 0;
+
+        const invoiceItems = formData.items.map((item, idx) => {
+            const itemSubtotal = item.unitPrice * item.quantity;
+            const itemDiscount = item.discountRate;
+            const itemTaxable = Math.max(0, itemSubtotal - itemDiscount);
+            const itemTax = (itemTaxable * item.taxRate) / 100;
+
+            subtotal += itemSubtotal;
+            discountTotal += itemDiscount;
+            salesTax += itemTax;
+
+            const description = `${item.productType.toUpperCase()}${item.productSubCategory ? ` (${item.productSubCategory.toUpperCase()})` : ''}${item.size ? ` - Size: ${item.size.toUpperCase()}` : ''}`;
+
+            return {
+                id: item.id || `item-${idx}-${Math.random()}`,
+                description,
+                rate: item.unitPrice,
+                quantity: item.quantity,
+                tax: item.taxRate,
+                discount: item.discountRate,
+                amount: itemSubtotal
+            };
+        });
+
+        // Add design services
+        subtotal += Number(formData.designAmount) || 0;
+        discountTotal += Number(formData.designDiscount) || 0;
+        const designTaxable = Math.max(0, (Number(formData.designAmount) || 0) - (Number(formData.designDiscount) || 0));
+        const designGstVal = (designTaxable * Number(formData.designGst)) / 100;
+        salesTax += designGstVal;
+
         const itemTotalAfterDiscount = Math.max(0, subtotal - discountTotal);
-        const baseGst = ((formData.unitPrice * formData.quantity - (Number(formData.discountRate) || 0)) * formData.taxRate) / 100;
-        const designGstVal = ((Number(formData.designAmount) - Number(formData.designDiscount)) * Number(formData.designGst)) / 100;
-        const salesTax = Math.max(0, baseGst) + Math.max(0, designGstVal);
         const shippingCost = formData.shippingCost;
         const total = itemTotalAfterDiscount + salesTax + shippingCost;
 
@@ -165,17 +313,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
             billToEmail: `${formData.customerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
             billToPhone: formData.customerNumber,
             billToAddress: formData.customerCompanyName,
-            items: [
-                {
-                    id: 'item-1',
-                    description: `${formData.productType.toUpperCase()} ${formData.productSubCategory ? `(${formData.productSubCategory.toUpperCase()})` : ''}`,
-                    rate: formData.unitPrice,
-                    quantity: formData.quantity,
-                    tax: formData.taxRate,
-                    discount: formData.discountRate,
-                    amount: formData.unitPrice * formData.quantity
-                }
-            ],
+            items: invoiceItems,
             subtotal,
             discountTotal,
             shippingCost,
@@ -185,8 +323,8 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
             balanceDue: total - (invoice?.amountPaid || 0),
             notes: formData.notes,
             paymentMethod: formData.paymentMethod,
-            productType: formData.productType,
-            productSubCategory: formData.productSubCategory,
+            productType: formData.items[0]?.productType || 'tshirt',
+            productSubCategory: formData.items[0]?.productSubCategory || '',
             customerPhoneNumber: formData.customerNumber,
             leadId: invoice?.leadId || formData.leadId,
             companySignature: formData.companySignature,
@@ -222,7 +360,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                         initial={{ opacity: 0, y: 30, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 30, scale: 0.95 }}
-                        className="relative bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20 max-h-[95vh] sm:max-h-[90vh] flex flex-col"
+                        className="relative bg-white w-full max-w-xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden shadow-black/30 border border-white/20 max-h-[95vh] sm:max-h-[90vh] flex flex-col"
                     >
                         <div className="p-1 flex flex-col h-full overflow-hidden">
                             <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-3 sm:pb-4 flex items-center justify-between flex-shrink-0">
@@ -230,7 +368,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                     <h3 className="text-2xl font-black text-gray-900 tracking-tighter">
                                         {invoice ? 'Modify Invoice' : 'Generate Invoice'}
                                     </h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-0.5">Professional Billing Solution</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-0.5">Multi-Item Billing Solution</p>
                                 </div>
                                 <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 transition-colors border-none bg-transparent cursor-pointer">
                                     <X className="w-6 h-6" />
@@ -239,6 +377,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
 
                             <form onSubmit={handleSubmit} className="px-4 sm:px-8 pb-6 sm:pb-10 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-grow text-left">
                                 <div className="space-y-4">
+                                    {/* Client Details Section */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Client Name</label>
@@ -278,63 +417,6 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
-                                            <select
-                                                value={formData.productType}
-                                                onChange={(e) => handleProductChange(e.target.value)}
-                                                className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
-                                            >
-                                                {products.map(p => (
-                                                    <option key={p} value={p}>{p}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {(formData.productType === 'tshirt' || formData.productType === 'jersey' || formData.productType === 'corporate gift') && (
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Style Selection</label>
-                                                <select
-                                                    value={formData.productSubCategory}
-                                                    onChange={(e) => handleSubCategoryChange(e.target.value)}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
-                                                >
-                                                    <option value="">Select Option</option>
-                                                    {(productSubCategories[formData.productType] || []).map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Price (₹)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">₹</span>
-                                                <input
-                                                    type="number"
-                                                    value={formData.unitPrice}
-                                                    onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
-                                                    className="w-full bg-brand-secondary/20 border-0 rounded-2xl pl-9 pr-4 py-2.5 sm:pr-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                required
-                                                value={formData.quantity}
-                                                onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment via</label>
                                             <select
                                                 value={formData.paymentMethod}
@@ -347,17 +429,148 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                             </select>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount (₹)</label>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Shipping Cost (₹)</label>
                                             <input
                                                 type="number"
-                                                value={formData.discountRate}
-                                                onChange={(e) => setFormData({ ...formData, discountRate: Number(e.target.value) })}
-                                                className="w-full bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                placeholder="0"
+                                                value={formData.shippingCost}
+                                                onChange={(e) => setFormData({ ...formData, shippingCost: Number(e.target.value) })}
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                             />
                                         </div>
                                     </div>
 
+                                    {/* Multiple Items Section */}
+                                    <div className="border-t border-gray-100 pt-4 mt-2">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="text-xs font-black uppercase tracking-widest text-brand-primary">Invoice Products & Items</h4>
+                                            <button
+                                                type="button"
+                                                onClick={handleAddItem}
+                                                className="px-3 py-1.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1"
+                                            >
+                                                <Plus size={12} /> Add Item
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-5">
+                                            {formData.items.map((item, idx) => (
+                                                <div key={item.id} className="p-4 sm:p-5 bg-gray-50/50 rounded-3xl border border-gray-150 space-y-4 relative text-left">
+                                                    {formData.items.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveItem(idx)}
+                                                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 hover:scale-105 transition-all border-none bg-transparent cursor-pointer flex items-center gap-0.5"
+                                                        >
+                                                            <Trash2 size={12} /> <span className="text-[9px] font-black uppercase tracking-wider">Remove</span>
+                                                        </button>
+                                                    )}
+
+                                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Item #{idx + 1}</div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
+                                                            <select
+                                                                value={item.productType}
+                                                                onChange={(e) => handleItemProductChange(idx, e.target.value)}
+                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
+                                                            >
+                                                                {products.map(p => (
+                                                                    <option key={p} value={p}>{p}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+
+                                                        {(item.productType === 'tshirt' || item.productType === 'jersey' || item.productType === 'corporate gift') ? (
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Style Selection</label>
+                                                                <select
+                                                                    value={item.productSubCategory}
+                                                                    onChange={(e) => handleItemSubCategoryChange(idx, e.target.value)}
+                                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
+                                                                >
+                                                                    <option value="">Select Option</option>
+                                                                    {(productSubCategories[item.productType] || []).map(s => (
+                                                                        <option key={s} value={s}>{s}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Style Selection</label>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="e.g. Standard"
+                                                                    value={item.productSubCategory}
+                                                                    onChange={(e) => handleItemFieldChange(idx, 'productSubCategory', e.target.value)}
+                                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Size</label>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="e.g. L, XL, M-10"
+                                                                value={item.size}
+                                                                onChange={(e) => handleItemFieldChange(idx, 'size', e.target.value)}
+                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Price (₹)</label>
+                                                            <input
+                                                                type="number"
+                                                                value={item.unitPrice}
+                                                                onChange={(e) => handleItemFieldChange(idx, 'unitPrice', Number(e.target.value))}
+                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                required
+                                                                value={item.quantity}
+                                                                onChange={(e) => handleItemFieldChange(idx, 'quantity', Number(e.target.value))}
+                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">GST / Tax (%)</label>
+                                                            <input
+                                                                type="number"
+                                                                value={item.taxRate}
+                                                                onChange={(e) => handleItemFieldChange(idx, 'taxRate', Number(e.target.value))}
+                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount (₹)</label>
+                                                            <input
+                                                                type="number"
+                                                                value={item.discountRate}
+                                                                onChange={(e) => handleItemFieldChange(idx, 'discountRate', Number(e.target.value))}
+                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Design Services Section */}
                                     <div className="border-t border-gray-100 pt-4 mt-2">
                                         <h4 className="text-xs font-black uppercase tracking-widest text-brand-primary mb-3">Design Services</h4>
                                         <div className="grid grid-cols-2 gap-4">
@@ -414,28 +627,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Shipping (₹)</label>
-                                            <input
-                                                type="number"
-                                                value={formData.shippingCost}
-                                                onChange={(e) => setFormData({ ...formData, shippingCost: Number(e.target.value) })}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">GST / Tax (%)</label>
-                                            <input
-                                                type="number"
-                                                value={formData.taxRate}
-                                                onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })}
-                                                className="w-full bg-gray-100 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Hidden bank and signature details */}
+                                    {/* hidden metadata fields */}
                                     <input type="hidden" value={formData.bankName} />
                                     <input type="hidden" value={formData.bankAccountName} />
                                     <input type="hidden" value={formData.bankIfscCode} />

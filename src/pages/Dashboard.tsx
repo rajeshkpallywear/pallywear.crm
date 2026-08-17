@@ -470,6 +470,21 @@ export default function Dashboard() {
                 onClick={() => {
                   selectTab('dashboard');
                   window.dispatchEvent(new CustomEvent('onlineteam-change-tab', { detail: 'leads' }));
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Online Team Leads" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Team Leads</span>}
+              </button>
+
+              <button
+                onClick={() => {
+                  selectTab('dashboard');
+                  window.dispatchEvent(new CustomEvent('onlineteam-change-tab', { detail: 'leads' }));
                   setTimeout(() => {
                     window.dispatchEvent(new Event('onlineteam-create-lead'));
                   }, 100);
@@ -481,7 +496,7 @@ export default function Dashboard() {
                 )}
                 title={isSidebarCollapsed ? "Create Lead" : ""}
               >
-                <Users className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Lead</span>}
+                <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Lead</span>}
               </button>
             </div>
           )}

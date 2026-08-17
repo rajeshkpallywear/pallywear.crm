@@ -49,8 +49,16 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
     };
   }, []);
 
+  const visibleLeads = React.useMemo(() => {
+    if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return leads;
+    if (user?.role === 'onlineteam') {
+      return leads.filter(l => l.createdBy === user?.id || l.createdBy === user?.uid);
+    }
+    return leads;
+  }, [leads, user]);
+
   // Filter leads for the quick status updater on Overview tab
-  const filteredLeads = leads.filter(l => {
+  const filteredLeads = visibleLeads.filter(l => {
     const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           l.number.includes(searchTerm);
@@ -58,7 +66,7 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
   });
 
   // Call Logs are leads that have already been called or have description notes
-  const callLogs = leads.filter(l => 
+  const callLogs = visibleLeads.filter(l => 
     ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status) || 
     (l.description && l.description.trim() !== '')
   );
@@ -96,10 +104,10 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
     }
   };
 
-  const totalLeadsCount = leads.length;
+  const totalLeadsCount = visibleLeads.length;
   const calledCount = callLogs.length;
-  const interestedCount = leads.filter(l => l.status === 'Interested').length;
-  const pendingCount = leads.filter(l => l.status === 'New' || !l.status).length;
+  const interestedCount = visibleLeads.filter(l => l.status === 'Interested').length;
+  const pendingCount = visibleLeads.filter(l => l.status === 'New' || !l.status).length;
 
   return (
     <div className="space-y-6">

@@ -331,10 +331,6 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                             <tr key={i} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 min-w-[200px] sm:min-w-[300px]">
                                                     <p className="font-bold text-gray-900 mb-1">{item.description}</p>
-                                                    <p className="text-[10px] text-gray-400 italic">
-                                                        Category: {invoice.productType?.toUpperCase()}
-                                                        {invoice.productSubCategory ? ` - ${invoice.productSubCategory.toUpperCase()}` : ''}
-                                                    </p>
                                                 </td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">₹{item.rate.toLocaleString()}</td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-center font-medium">{item.quantity}</td>

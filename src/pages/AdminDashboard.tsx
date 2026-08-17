@@ -1257,6 +1257,7 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4">
                           <p className="font-bold text-gray-800">{o.customerInfo.name}</p>
                           <p className="text-[10px] text-gray-400 font-medium">{o.customerInfo.phone || 'No phone'}</p>
+                          <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider mt-0.5">Created by: {o.createdByName || 'System'}</p>
                         </td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium text-gray-700 capitalize">
