@@ -594,19 +594,7 @@ export default function AdminDashboard() {
           >
             <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
           </button>
-          <button
-            onClick={() => {
-              setIsMobileOpen(false);
-              navigate('/dashboard');
-            }}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm text-gray-500 hover:text-brand-primary hover:bg-brand-secondary transition-all",
-              isSidebarCollapsed && "md:justify-center md:px-0"
-            )}
-            title={isSidebarCollapsed ? "Return to User App" : ""}
-          >
-            <Layout className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Return to User App</span>}
-          </button>
+
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
@@ -746,6 +734,117 @@ export default function AdminDashboard() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* Role Revenue Breakdown: Marketing vs Online Team */}
+              {(() => {
+                // Build a lookup: userId → role
+                const userRoleMap: Record<string, string> = {};
+                registeredUsers.forEach((u: any) => { userRoleMap[u.id] = u.role; });
+
+                const isMarketing = (createdBy: string) => {
+                  const role = userRoleMap[createdBy];
+                  return role === 'marketing' || role === 'staff';
+                };
+                const isOnlineTeam = (createdBy: string) => {
+                  const role = userRoleMap[createdBy];
+                  return role === 'onlineteam' || role === 'UserRole.ONLINETEAM';
+                };
+
+                // Orders Revenue
+                const mktOrdersRevenue = orders
+                  .filter(o => isMarketing(o.createdBy || ''))
+                  .reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
+                const otOrdersRevenue = orders
+                  .filter(o => isOnlineTeam(o.createdBy || ''))
+                  .reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
+                const mktOrderCount = orders.filter(o => isMarketing(o.createdBy || '')).length;
+                const otOrderCount = orders.filter(o => isOnlineTeam(o.createdBy || '')).length;
+
+                // Leads Forecasted Value
+                const mktLeadsForecast = leads
+                  .filter(l => isMarketing(l.createdBy))
+                  .reduce((sum, l) => sum + (l.forecastedValue || 0), 0);
+                const otLeadsForecast = leads
+                  .filter(l => isOnlineTeam(l.createdBy))
+                  .reduce((sum, l) => sum + (l.forecastedValue || 0), 0);
+
+                // Leads Converted Value (totalOrderValue on leads = converted)
+                const mktLeadsConverted = leads
+                  .filter(l => isMarketing(l.createdBy))
+                  .reduce((sum, l) => sum + (l.totalOrderValue || 0), 0);
+                const otLeadsConverted = leads
+                  .filter(l => isOnlineTeam(l.createdBy))
+                  .reduce((sum, l) => sum + (l.totalOrderValue || 0), 0);
+
+                const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+                const panels = [
+                  {
+                    title: 'Orders Revenue',
+                    subtitle: 'Total order value created by each team',
+                    mktVal: fmt(mktOrdersRevenue),
+                    mktSub: `${mktOrderCount} order${mktOrderCount !== 1 ? 's' : ''}`,
+                    otVal: fmt(otOrdersRevenue),
+                    otSub: `${otOrderCount} order${otOrderCount !== 1 ? 's' : ''}`,
+                    mktColor: 'bg-blue-50 text-blue-700 border-blue-100',
+                    otColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                  },
+                  {
+                    title: 'Leads Forecasted Value',
+                    subtitle: 'Pipeline forecast from each department',
+                    mktVal: fmt(mktLeadsForecast),
+                    mktSub: `${leads.filter(l => isMarketing(l.createdBy)).length} leads`,
+                    otVal: fmt(otLeadsForecast),
+                    otSub: `${leads.filter(l => isOnlineTeam(l.createdBy)).length} leads`,
+                    mktColor: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+                    otColor: 'bg-teal-50 text-teal-700 border-teal-100',
+                  },
+                  {
+                    title: 'Leads Converted Value',
+                    subtitle: 'Actual converted revenue from leads',
+                    mktVal: fmt(mktLeadsConverted),
+                    mktSub: `Marketing team`,
+                    otVal: fmt(otLeadsConverted),
+                    otSub: `Online team`,
+                    mktColor: 'bg-violet-50 text-violet-700 border-violet-100',
+                    otColor: 'bg-cyan-50 text-cyan-700 border-cyan-100',
+                  },
+                ];
+
+                return (
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-5 bg-brand-primary rounded-full" />
+                      <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Role Revenue Breakdown</h3>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider ml-1">Marketing vs Online Team</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {panels.map((panel, i) => (
+                        <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                          <div className="border-b border-gray-50 pb-3">
+                            <p className="text-xs font-black text-gray-800">{panel.title}</p>
+                            <p className="text-[10px] text-gray-400 font-medium mt-0.5">{panel.subtitle}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Marketing */}
+                            <div className={`rounded-xl border p-3 ${panel.mktColor}`}>
+                              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
+                              <p className="text-base font-black">{panel.mktVal}</p>
+                              <p className="text-[9px] font-bold opacity-60 mt-0.5">{panel.mktSub}</p>
+                            </div>
+                            {/* Online Team */}
+                            <div className={`rounded-xl border p-3 ${panel.otColor}`}>
+                              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
+                              <p className="text-base font-black">{panel.otVal}</p>
+                              <p className="text-[9px] font-bold opacity-60 mt-0.5">{panel.otSub}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
