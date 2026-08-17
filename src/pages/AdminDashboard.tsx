@@ -36,6 +36,206 @@ const MOCK_LOGS = [
   { id: 4, action: 'Exported leads', user: 'Mike L.', time: '3 hours ago', details: 'Exported Leads_Report.xlsx' },
 ];
 
+// ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
+function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap }: any) {
+  const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
+  const [orderSearch, setOrderSearch] = React.useState('');
+  const [leadSearch, setLeadSearch] = React.useState('');
+
+  const allDeliveredOrders = [...mktDeliveredOrders, ...otDeliveredOrders];
+  const allConvertedLeads = [...mktConvertedLeads, ...otConvertedLeads];
+
+  const filteredOrders = allDeliveredOrders.filter(o => {
+    const name = (o.createdByName || userNameMap[o.createdBy] || '').toLowerCase();
+    return name.includes(orderSearch.toLowerCase()) || o.clientName?.toLowerCase().includes(orderSearch.toLowerCase());
+  });
+
+  const filteredLeads = allConvertedLeads.filter(l => {
+    const name = (l.createdByName || userNameMap[l.createdBy] || '').toLowerCase();
+    return name.includes(leadSearch.toLowerCase()) || l.name?.toLowerCase().includes(leadSearch.toLowerCase());
+  });
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1 h-5 bg-brand-primary rounded-full" />
+        <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Role Revenue Breakdown</h3>
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider ml-1">Marketing vs Online Team</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Orders Revenue Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="border-b border-gray-50 pb-3 flex items-start justify-between">
+            <div>
+              <p className="text-xs font-black text-gray-800">Orders Revenue</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Delivered orders only</p>
+            </div>
+            <button onClick={() => setDrillMode(drillMode === 'orders' ? null : 'orders')} className="text-[9px] font-black text-brand-primary uppercase tracking-wider border border-brand-primary/20 px-2 py-0.5 rounded-lg hover:bg-brand-primary/5 transition-all cursor-pointer bg-transparent">
+              {drillMode === 'orders' ? 'Close' : 'View'}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border bg-blue-50 text-blue-700 border-blue-100 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
+              <p className="text-base font-black">{fmt(mktOrdersRevenue)}</p>
+              <p className="text-[9px] font-bold opacity-60 mt-0.5">{mktDeliveredOrders.length} delivered</p>
+            </div>
+            <div className="rounded-xl border bg-emerald-50 text-emerald-700 border-emerald-100 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
+              <p className="text-base font-black">{fmt(otOrdersRevenue)}</p>
+              <p className="text-[9px] font-bold opacity-60 mt-0.5">{otDeliveredOrders.length} delivered</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Leads Forecasted Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="border-b border-gray-50 pb-3">
+            <p className="text-xs font-black text-gray-800">Leads Forecasted Value</p>
+            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Pipeline forecast from each department</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-100 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
+              <p className="text-base font-black">{fmt(mktLeadsForecast)}</p>
+              <p className="text-[9px] font-bold opacity-60 mt-0.5">{mktLeadsCount} leads</p>
+            </div>
+            <div className="rounded-xl border bg-teal-50 text-teal-700 border-teal-100 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
+              <p className="text-base font-black">{fmt(otLeadsForecast)}</p>
+              <p className="text-[9px] font-bold opacity-60 mt-0.5">{otLeadsCount} leads</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Leads Converted Value Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="border-b border-gray-50 pb-3 flex items-start justify-between">
+            <div>
+              <p className="text-xs font-black text-gray-800">Leads Converted Value</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Actual converted revenue from leads</p>
+            </div>
+            <button onClick={() => setDrillMode(drillMode === 'leads' ? null : 'leads')} className="text-[9px] font-black text-brand-primary uppercase tracking-wider border border-brand-primary/20 px-2 py-0.5 rounded-lg hover:bg-brand-primary/5 transition-all cursor-pointer bg-transparent">
+              {drillMode === 'leads' ? 'Close' : 'View'}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border bg-violet-50 text-violet-700 border-violet-100 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
+              <p className="text-base font-black">{fmt(mktLeadsConverted)}</p>
+              <p className="text-[9px] font-bold opacity-60 mt-0.5">{mktConvertedLeads.length} converted</p>
+            </div>
+            <div className="rounded-xl border bg-cyan-50 text-cyan-700 border-cyan-100 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
+              <p className="text-base font-black">{fmt(otLeadsConverted)}</p>
+              <p className="text-[9px] font-bold opacity-60 mt-0.5">{otConvertedLeads.length} converted</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Drill-down: Delivered Orders */}
+      {drillMode === 'orders' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Delivered Orders — All Staff</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{allDeliveredOrders.length} total delivered orders</p>
+            </div>
+            <div className="relative w-56">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
+              <input type="text" placeholder="Filter by staff name..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
+                <tr>
+                  <th className="px-4 py-3">Created By</th>
+                  <th className="px-4 py-3">Client</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredOrders.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-gray-400 italic">No delivered orders match the filter.</td></tr>
+                ) : filteredOrders.map(o => (
+                  <tr key={o.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center text-[9px] font-bold">
+                          {(o.createdByName || userNameMap[o.createdBy] || 'U').charAt(0)}
+                        </div>
+                        <span className="font-bold text-gray-800">{o.createdByName || userNameMap[o.createdBy] || 'Unknown'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-gray-700">{o.clientName || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{o.category || '—'}</td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[9px] font-bold uppercase">{o.status}</span></td>
+                    <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(o.financials?.totalAmount) || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Drill-down: Converted Leads */}
+      {drillMode === 'leads' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Converted Leads — All Staff</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{allConvertedLeads.length} total converted leads</p>
+            </div>
+            <div className="relative w-56">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
+              <input type="text" placeholder="Filter by staff name..." value={leadSearch} onChange={e => setLeadSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
+                <tr>
+                  <th className="px-4 py-3">Added By</th>
+                  <th className="px-4 py-3">Lead Name</th>
+                  <th className="px-4 py-3">Company</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3 text-right">Converted Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredLeads.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-gray-400 italic">No converted leads match the filter.</td></tr>
+                ) : filteredLeads.map(l => (
+                  <tr key={l.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[9px] font-bold">
+                          {(l.createdByName || userNameMap[l.createdBy] || 'U').charAt(0)}
+                        </div>
+                        <span className="font-bold text-gray-800">{l.createdByName || userNameMap[l.createdBy] || 'Unknown'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-gray-700">{l.name}</td>
+                    <td className="px-4 py-3 text-gray-500">{l.companyName || '—'}</td>
+                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${l.leadType === 'Hot' ? 'bg-red-50 text-red-700 border-red-100' : l.leadType === 'Warm' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{l.leadType}</span></td>
+                    <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(l.totalOrderValue) || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
   const { leads, invoices, orders, updateOrder, deleteOrder, deleteInvoice, updateInvoice } = useLeads();
@@ -737,9 +937,13 @@ export default function AdminDashboard() {
 
               {/* Role Revenue Breakdown: Marketing vs Online Team */}
               {(() => {
-                // Build a lookup: userId → role
+                // Build a lookup: userId → role & name
                 const userRoleMap: Record<string, string> = {};
-                registeredUsers.forEach((u: any) => { userRoleMap[u.id] = u.role; });
+                const userNameMap: Record<string, string> = {};
+                registeredUsers.forEach((u: any) => {
+                  userRoleMap[u.id] = u.role;
+                  userNameMap[u.id] = u.name;
+                });
 
                 const isMarketing = (createdBy: string) => {
                   const role = userRoleMap[createdBy];
@@ -750,101 +954,50 @@ export default function AdminDashboard() {
                   return role === 'onlineteam' || role === 'UserRole.ONLINETEAM';
                 };
 
-                // Orders Revenue
-                const mktOrdersRevenue = orders
-                  .filter(o => isMarketing(o.createdBy || ''))
-                  .reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
-                const otOrdersRevenue = orders
-                  .filter(o => isOnlineTeam(o.createdBy || ''))
-                  .reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
-                const mktOrderCount = orders.filter(o => isMarketing(o.createdBy || '')).length;
-                const otOrderCount = orders.filter(o => isOnlineTeam(o.createdBy || '')).length;
+                // Delivered orders only
+                const deliveredOrders = orders.filter(o =>
+                  o.status === OrderStatus.DELIVERED || o.status === OrderStatus.DELIVERY
+                );
+
+                const mktDeliveredOrders = deliveredOrders.filter(o => isMarketing(o.createdBy || ''));
+                const otDeliveredOrders = deliveredOrders.filter(o => isOnlineTeam(o.createdBy || ''));
+                const mktOrdersRevenue = mktDeliveredOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
+                const otOrdersRevenue = otDeliveredOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
 
                 // Leads Forecasted Value
-                const mktLeadsForecast = leads
-                  .filter(l => isMarketing(l.createdBy))
-                  .reduce((sum, l) => sum + (l.forecastedValue || 0), 0);
-                const otLeadsForecast = leads
-                  .filter(l => isOnlineTeam(l.createdBy))
-                  .reduce((sum, l) => sum + (l.forecastedValue || 0), 0);
+                const mktLeadsForecast = leads.filter(l => isMarketing(l.createdBy))
+                  .reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
+                const otLeadsForecast = leads.filter(l => isOnlineTeam(l.createdBy))
+                  .reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
 
-                // Leads Converted Value (totalOrderValue on leads = converted)
-                const mktLeadsConverted = leads
-                  .filter(l => isMarketing(l.createdBy))
-                  .reduce((sum, l) => sum + (l.totalOrderValue || 0), 0);
-                const otLeadsConverted = leads
-                  .filter(l => isOnlineTeam(l.createdBy))
-                  .reduce((sum, l) => sum + (l.totalOrderValue || 0), 0);
+                // Leads Converted Value
+                const mktConvertedLeads = leads.filter(l => isMarketing(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
+                const otConvertedLeads = leads.filter(l => isOnlineTeam(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
+                const mktLeadsConverted = mktConvertedLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
+                const otLeadsConverted = otConvertedLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
 
                 const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
-                const panels = [
-                  {
-                    title: 'Orders Revenue',
-                    subtitle: 'Total order value created by each team',
-                    mktVal: fmt(mktOrdersRevenue),
-                    mktSub: `${mktOrderCount} order${mktOrderCount !== 1 ? 's' : ''}`,
-                    otVal: fmt(otOrdersRevenue),
-                    otSub: `${otOrderCount} order${otOrderCount !== 1 ? 's' : ''}`,
-                    mktColor: 'bg-blue-50 text-blue-700 border-blue-100',
-                    otColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                  },
-                  {
-                    title: 'Leads Forecasted Value',
-                    subtitle: 'Pipeline forecast from each department',
-                    mktVal: fmt(mktLeadsForecast),
-                    mktSub: `${leads.filter(l => isMarketing(l.createdBy)).length} leads`,
-                    otVal: fmt(otLeadsForecast),
-                    otSub: `${leads.filter(l => isOnlineTeam(l.createdBy)).length} leads`,
-                    mktColor: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-                    otColor: 'bg-teal-50 text-teal-700 border-teal-100',
-                  },
-                  {
-                    title: 'Leads Converted Value',
-                    subtitle: 'Actual converted revenue from leads',
-                    mktVal: fmt(mktLeadsConverted),
-                    mktSub: `Marketing team`,
-                    otVal: fmt(otLeadsConverted),
-                    otSub: `Online team`,
-                    mktColor: 'bg-violet-50 text-violet-700 border-violet-100',
-                    otColor: 'bg-cyan-50 text-cyan-700 border-cyan-100',
-                  },
-                ];
-
                 return (
-                  <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1 h-5 bg-brand-primary rounded-full" />
-                      <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Role Revenue Breakdown</h3>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider ml-1">Marketing vs Online Team</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {panels.map((panel, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-                          <div className="border-b border-gray-50 pb-3">
-                            <p className="text-xs font-black text-gray-800">{panel.title}</p>
-                            <p className="text-[10px] text-gray-400 font-medium mt-0.5">{panel.subtitle}</p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            {/* Marketing */}
-                            <div className={`rounded-xl border p-3 ${panel.mktColor}`}>
-                              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
-                              <p className="text-base font-black">{panel.mktVal}</p>
-                              <p className="text-[9px] font-bold opacity-60 mt-0.5">{panel.mktSub}</p>
-                            </div>
-                            {/* Online Team */}
-                            <div className={`rounded-xl border p-3 ${panel.otColor}`}>
-                              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
-                              <p className="text-base font-black">{panel.otVal}</p>
-                              <p className="text-[9px] font-bold opacity-60 mt-0.5">{panel.otSub}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <RoleBreakdown
+                    mktOrdersRevenue={mktOrdersRevenue}
+                    otOrdersRevenue={otOrdersRevenue}
+                    mktDeliveredOrders={mktDeliveredOrders}
+                    otDeliveredOrders={otDeliveredOrders}
+                    mktLeadsForecast={mktLeadsForecast}
+                    otLeadsForecast={otLeadsForecast}
+                    mktLeadsConverted={mktLeadsConverted}
+                    otLeadsConverted={otLeadsConverted}
+                    mktConvertedLeads={mktConvertedLeads}
+                    otConvertedLeads={otConvertedLeads}
+                    mktLeadsCount={leads.filter(l => isMarketing(l.createdBy)).length}
+                    otLeadsCount={leads.filter(l => isOnlineTeam(l.createdBy)).length}
+                    fmt={fmt}
+                    userNameMap={userNameMap}
+                  />
                 );
               })()}
+
 
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
