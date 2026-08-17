@@ -95,7 +95,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF && user.role !== UserRole.ONLINETEAM && user.role !== 'onlineteam')) {
+      if (!user || (
+        user.role !== UserRole.ADMIN && 
+        user.role !== UserRole.STAFF && 
+        user.role !== UserRole.ONLINETEAM && 
+        user.role !== 'onlineteam' &&
+        user.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com'
+      )) {
         setRegisteredUsers([]);
         return;
       }

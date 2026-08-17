@@ -80,13 +80,13 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
 
   const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
   const isStaff = user.role === UserRole.STAFF || user.role === 'staff';
+  const isDaniel = user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
 
-  // Admin and Staff can access admin panel
-  if (adminOnly && !isAdmin && !isStaff) {
+  // Admin, Staff, and Daniel can access admin panel/lead-dashboard
+  if (adminOnly && !isAdmin && !isStaff && !isDaniel) {
     return <Navigate to="/dashboard" />;
   }
 
-  // Staff and other roles should stay on /dashboard to see their portals
   return children;
 };
 
