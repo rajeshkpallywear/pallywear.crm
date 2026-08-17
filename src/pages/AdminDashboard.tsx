@@ -37,7 +37,7 @@ const MOCK_LOGS = [
 ];
 
 // ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
-function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder }: any) {
+function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder }: any) {
   const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
   const [orderSearch, setOrderSearch] = React.useState('');
   const [leadSearch, setLeadSearch] = React.useState('');
@@ -47,15 +47,31 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
   // Add Revenue modal state
   const [showAddRevenue, setShowAddRevenue] = React.useState(false);
   const [savingRevenue, setSavingRevenue] = React.useState(false);
+  const [deletingOrderId, setDeletingOrderId] = React.useState<string | null>(null);
   const [manualRevenues, setManualRevenues] = React.useState<any[]>([]);
   const [revenueForm, setRevenueForm] = React.useState({
     createdBy: '',
     client: '',
     category: '',
-    status: 'pending',
+    status: 'delivery',
     amount: '',
     date: new Date().toISOString().split('T')[0],
   });
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!orderId || !deleteOrder) return;
+    if (!window.confirm('Delete this revenue entry? This cannot be undone.')) return;
+    setDeletingOrderId(orderId);
+    try {
+      await deleteOrder(orderId);
+      // Also remove from local manual list if it was manual
+      setManualRevenues(prev => prev.filter(r => r.id !== orderId));
+    } catch (err: any) {
+      alert('Failed to delete: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
 
   const handleAddRevenue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +121,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
       };
       setManualRevenues(prev => [entry, ...prev]);
 
-      setRevenueForm({ createdBy: '', client: '', category: '', status: 'pending', amount: '', date: new Date().toISOString().split('T')[0] });
+      setRevenueForm({ createdBy: '', client: '', category: '', status: 'delivery', amount: '', date: new Date().toISOString().split('T')[0] });
       setShowAddRevenue(false);
       setDrillMode('orders');
       alert('Revenue successfully saved to Database!');
@@ -318,11 +334,12 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredOrders.length === 0 ? (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-400 italic">No delivered orders match the selected filters.</td></tr>
+                  <tr><td colSpan={7} className="py-8 text-center text-gray-400 italic">No delivery orders match the selected filters.</td></tr>
                 ) : filteredOrders.map((o: any) => (
                   <tr key={o.id} className={`hover:bg-gray-50/50 transition-colors ${o.isManual ? 'bg-brand-primary/3' : ''}`}>
                     <td className="px-4 py-3">
@@ -337,11 +354,24 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                     <td className="px-4 py-3 font-semibold text-gray-700">{o.clientName || o.customerInfo?.name || '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{o.category || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${o.status === 'delivered' || o.status === 'delivery' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                        }`}>{o.status}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border bg-emerald-50 text-emerald-700 border-emerald-100">{o.status}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 font-mono">{o.date ? new Date(o.date).toLocaleDateString('en-IN') : (o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—')}</td>
                     <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(o.financials?.totalAmount) || 0).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleDeleteOrder(o.id)}
+                        disabled={deletingOrderId === o.id}
+                        title="Delete this revenue entry"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
+                      >
+                        {deletingOrderId === o.id ? (
+                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        ) : (
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                        )}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -506,9 +536,7 @@ function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, 
                     onChange={e => setRevenueForm({ ...revenueForm, status: e.target.value })}
                     className={inputCls}
                   >
-                    <option value="pending">Pending</option>
                     <option value="delivery">Delivery</option>
-                    <option value="delivered">Delivered</option>
                   </select>
                 </div>
 
@@ -1281,9 +1309,9 @@ export default function AdminDashboard() {
                     return !isOnlineTeam(createdBy);
                   };
 
-                  // Active revenue orders (Delivered, Delivery, Pending)
+                  // Revenue orders: Delivery status only
                   const deliveredOrders = orders.filter(o =>
-                    o.status === OrderStatus.DELIVERED || o.status === OrderStatus.DELIVERY || o.status === OrderStatus.PENDING || (o.financials?.totalAmount || 0) > 0
+                    o.status === OrderStatus.DELIVERY
                   );
 
                   const mktDeliveredOrders = deliveredOrders.filter(o => isMarketing(o.createdBy || ''));
@@ -1322,6 +1350,7 @@ export default function AdminDashboard() {
                       fmt={fmt}
                       userNameMap={userNameMap}
                       addOrder={addOrder}
+                      deleteOrder={deleteOrder}
                     />
                   );
                 })()}
