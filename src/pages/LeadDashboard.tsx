@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import Logo from '../components/Logo';
 import { cn } from '../lib/utils';
-import { UserRole } from '../types';
+import { UserRole, OrderStatus } from '../types';
 
 const ROLE_COLORS: Record<string, string> = {
   admin: '#1A0B91',
@@ -68,12 +68,111 @@ function LeadTypeBadge({ type }: { type: string }) {
 
 export default function LeadDashboard() {
   const { user, registeredUsers, logout } = useAuth();
-  const { leads } = useLeads();
+  const { leads, orders, addLead, addOrder } = useLeads();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
+
+  // Modals for adding manual entries for a specific staff member
+  const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+  const [showAddRevenueModal, setShowAddRevenueModal] = useState(false);
+  const [targetStaffName, setTargetStaffName] = useState('');
+  const [savingEntry, setSavingEntry] = useState(false);
+
+  // Add Lead Form State
+  const [leadForm, setLeadForm] = useState({
+    leadName: '',
+    companyName: '',
+    leadType: 'Hot',
+    convertedValue: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  // Add Revenue Form State
+  const [revenueForm, setRevenueForm] = useState({
+    client: '',
+    category: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const handleAddLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadForm.convertedValue) {
+      alert('Please enter a converted value.');
+      return;
+    }
+    setSavingEntry(true);
+    try {
+      const valAmount = Number(leadForm.convertedValue) || 0;
+      const dateTimestamp = leadForm.date ? new Date(leadForm.date).getTime() : Date.now();
+      const newLeadData = {
+        createdByName: targetStaffName,
+        name: leadForm.leadName || 'Manual Lead',
+        companyName: leadForm.companyName || '',
+        leadType: leadForm.leadType as any,
+        totalOrderValue: valAmount,
+        forecastedValue: valAmount,
+        status: 'Converted',
+        entryDate: leadForm.date,
+        createdAt: dateTimestamp,
+        updatedAt: dateTimestamp,
+        phone: '',
+        email: '',
+        address: '',
+        notes: 'Admin manual lead convert entry',
+        createdBy: ''
+      };
+      await addLead(newLeadData);
+      alert('Lead Convert Revenue saved to Database!');
+      setShowAddLeadModal(false);
+      setLeadForm({ leadName: '', companyName: '', leadType: 'Hot', convertedValue: '', date: new Date().toISOString().split('T')[0] });
+    } catch (err: any) {
+      alert('Error saving: ' + (err.message || 'Failed'));
+    } finally {
+      setSavingEntry(false);
+    }
+  };
+
+  const handleAddRevenueSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revenueForm.amount) {
+      alert('Please enter an amount.');
+      return;
+    }
+    setSavingEntry(true);
+    try {
+      const amountVal = Number(revenueForm.amount) || 0;
+      const dateTimestamp = revenueForm.date ? new Date(revenueForm.date).getTime() : Date.now();
+      const newOrderData = {
+        createdByName: targetStaffName,
+        clientName: revenueForm.client,
+        customerInfo: { name: revenueForm.client || 'Client', phone: '', address: '' },
+        category: revenueForm.category || 'General',
+        status: OrderStatus.DELIVERY,
+        financials: {
+          totalAmount: amountVal,
+          advancePay: 0,
+          balanceAmount: amountVal
+        },
+        createdAt: dateTimestamp,
+        updatedAt: Date.now()
+      };
+      await addOrder(newOrderData);
+      alert('Revenue successfully saved to Database!');
+      setShowAddRevenueModal(false);
+      setRevenueForm({ client: '', category: '', amount: '', date: new Date().toISOString().split('T')[0] });
+    } catch (err: any) {
+      alert('Error saving: ' + (err.message || 'Failed'));
+    } finally {
+      setSavingEntry(false);
+    }
+  };
+
+  const inputCls = "w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all";
+  const labelCls = "block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5";
 
   // Build per-user lead stats (Only Marketing, Staff, and Online Team roles)
   const userLeadStats = useMemo(() => {
@@ -84,16 +183,21 @@ export default function LeadDashboard() {
       const userLeads = leads.filter(l =>
         l.createdBy === u.id || l.createdBy === u.uid || l.createdByName === u.name
       );
+      // Converted revenue strictly from Delivery status orders
+      const userOrders = orders.filter(o =>
+        (o.createdBy === u.id || o.createdBy === u.uid || o.createdByName === u.name) &&
+        o.status === OrderStatus.DELIVERY
+      );
       const totalLeads = userLeads.length;
       const hotLeads = userLeads.filter(l => l.leadType === 'Hot').length;
       const warmLeads = userLeads.filter(l => l.leadType === 'Warm').length;
       const coldLeads = userLeads.filter(l => l.leadType === 'Cold').length;
       const forecastedValue = userLeads.reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
-      const convertedValue = userLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
+      const convertedValue = userOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
       const conversionRate = totalLeads > 0 ? Math.round((userLeads.filter(l => (Number(l.totalOrderValue) || 0) > 0).length / totalLeads) * 100) : 0;
       return { ...u, totalLeads, hotLeads, warmLeads, coldLeads, forecastedValue, convertedValue, conversionRate, leads: userLeads };
     });
-  }, [registeredUsers, leads]);
+  }, [registeredUsers, leads, orders]);
 
   // Totals calculated from filtered roles only
   const totalLeads = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.totalLeads, 0), [userLeadStats]);
@@ -398,30 +502,60 @@ export default function LeadDashboard() {
                           </div>
                         </div>
                       </td>
-
                       {/* Expand */}
                       <td className="px-5 py-3 text-center">
-                        {u.totalLeads > 0 ? (
-                          <button
-                            onClick={() => setExpandedUser(expandedUser === (u.id || u.uid) ? null : (u.id || u.uid))}
-                            className="w-7 h-7 rounded-lg bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary flex items-center justify-center border-none cursor-pointer transition-all mx-auto"
-                          >
-                            {expandedUser === (u.id || u.uid) ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          </button>
-                        ) : (
-                          <span className="text-gray-300 text-[10px]">—</span>
-                        )}
+                        <button
+                          onClick={() => setExpandedUser(expandedUser === (u.id || u.uid) ? null : (u.id || u.uid))}
+                          className="w-7 h-7 rounded-lg bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary flex items-center justify-center border-none cursor-pointer transition-all mx-auto"
+                        >
+                          {expandedUser === (u.id || u.uid) ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
                       </td>
                     </motion.tr>
 
                     {/* Expanded Lead Details */}
-                    {expandedUser === (u.id || u.uid) && u.leads.length > 0 && (
+                    {expandedUser === (u.id || u.uid) && (
                       <tr>
                         <td colSpan={10} className="bg-gray-50/80 px-5 py-4 border-t border-gray-100">
                           <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-xs">
-                            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
-                              <Activity className="w-3.5 h-3.5 text-brand-primary" />
-                              <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{u.name}'s Leads ({u.leads.length})</span>
+                            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <Activity className="w-3.5 h-3.5 text-brand-primary" />
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{u.name}'s Leads ({u.leads.length})</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setTargetStaffName(u.name);
+                                    setLeadForm({
+                                      leadName: '',
+                                      companyName: '',
+                                      leadType: 'Hot',
+                                      convertedValue: '',
+                                      date: new Date().toISOString().split('T')[0]
+                                    });
+                                    setShowAddLeadModal(true);
+                                  }}
+                                  className="px-2.5 py-1 bg-violet-600 hover:bg-violet-700 text-white text-[9px] font-black uppercase tracking-wider rounded-lg border-none cursor-pointer transition-all flex items-center gap-1 shadow-sm"
+                                >
+                                  + Add Lead Convert
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setTargetStaffName(u.name);
+                                    setRevenueForm({
+                                      client: '',
+                                      category: 'Jersey',
+                                      amount: '',
+                                      date: new Date().toISOString().split('T')[0]
+                                    });
+                                    setShowAddRevenueModal(true);
+                                  }}
+                                  className="px-2.5 py-1 bg-brand-primary hover:bg-brand-primary/95 text-white text-[9px] font-black uppercase tracking-wider rounded-lg border-none cursor-pointer transition-all flex items-center gap-1 shadow-sm"
+                                >
+                                  + Add Revenue
+                                </button>
+                              </div>
                             </div>
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs text-left">
@@ -436,22 +570,30 @@ export default function LeadDashboard() {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                  {u.leads.map((l: any) => (
-                                    <tr key={l.id} className="hover:bg-gray-50/60 transition-colors">
-                                      <td className="px-4 py-2.5 font-semibold text-gray-800">{l.name || '—'}</td>
-                                      <td className="px-4 py-2.5 text-gray-500">{l.companyName || '—'}</td>
-                                      <td className="px-4 py-2.5"><LeadTypeBadge type={l.leadType} /></td>
-                                      <td className="px-4 py-2.5 text-gray-500 font-mono">
-                                        {l.entryDate ? new Date(l.entryDate).toLocaleDateString('en-IN') : '—'}
-                                      </td>
-                                      <td className="px-4 py-2.5 text-right font-bold text-gray-700">
-                                        {(Number(l.forecastedValue) || 0) > 0 ? fmt(Number(l.forecastedValue)) : <span className="text-gray-300">—</span>}
-                                      </td>
-                                      <td className="px-4 py-2.5 text-right font-black text-emerald-700">
-                                        {(Number(l.totalOrderValue) || 0) > 0 ? fmt(Number(l.totalOrderValue)) : <span className="text-gray-300">—</span>}
+                                  {u.leads.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={6} className="py-6 text-center text-gray-400 italic">
+                                        No leads found for this staff member. Click "+ Add Lead Convert" above to add one.
                                       </td>
                                     </tr>
-                                  ))}
+                                  ) : (
+                                    u.leads.map((l: any) => (
+                                      <tr key={l.id} className="hover:bg-gray-50/60 transition-colors">
+                                        <td className="px-4 py-2.5 font-semibold text-gray-800">{l.name || '—'}</td>
+                                        <td className="px-4 py-2.5 text-gray-500">{l.companyName || '—'}</td>
+                                        <td className="px-4 py-2.5"><LeadTypeBadge type={l.leadType} /></td>
+                                        <td className="px-4 py-2.5 text-gray-500 font-mono">
+                                          {l.entryDate ? new Date(l.entryDate).toLocaleDateString('en-IN') : '—'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-gray-700">
+                                          {(Number(l.forecastedValue) || 0) > 0 ? fmt(Number(l.forecastedValue)) : <span className="text-gray-300">—</span>}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-black text-emerald-700">
+                                          {(Number(l.totalOrderValue) || 0) > 0 ? fmt(Number(l.totalOrderValue)) : <span className="text-gray-300">—</span>}
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -467,6 +609,145 @@ export default function LeadDashboard() {
         </div>
 
       </main>
+
+      {/* ── Add Revenue Modal ───────────────────────────────────────────────── */}
+      {showAddRevenueModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn">
+            <div className="bg-brand-primary px-6 py-5 flex items-center justify-between text-white">
+              <div>
+                <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Manual Entry</p>
+                <h3 className="text-base font-black mt-0.5">Add Revenue for {targetStaffName}</h3>
+              </div>
+              <button
+                onClick={() => setShowAddRevenueModal(false)}
+                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleAddRevenueSubmit} className="p-6 space-y-4 text-left">
+              <div>
+                <label className={labelCls}>Staff Member</label>
+                <input disabled type="text" value={targetStaffName} className="w-full text-xs border border-gray-200 bg-gray-100 rounded-xl px-3 py-2.5 outline-none font-bold text-gray-500" />
+              </div>
+              <div>
+                <label className={labelCls}>Client Name *</label>
+                <input required type="text" placeholder="Client / Customer name" value={revenueForm.client}
+                  onChange={e => setRevenueForm({ ...revenueForm, client: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Category / Item *</label>
+                <select required value={revenueForm.category}
+                  onChange={e => setRevenueForm({ ...revenueForm, category: e.target.value })} className={inputCls}>
+                  <option value="Jersey">Jersey</option>
+                  <option value="T-Shirt">T-Shirt</option>
+                  <option value="Shirt">Shirt</option>
+                  <option value="Pant">Pant</option>
+                  <option value="Hoodie">Hoodie</option>
+                  <option value="Sweatshirt">Sweatshirt</option>
+                  <option value="Corporate Gift">Corporate Gift</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Status</label>
+                  <input disabled type="text" value="Delivery" className="w-full text-xs border border-gray-200 bg-gray-100 rounded-xl px-3 py-2.5 outline-none font-bold text-gray-500" />
+                </div>
+                <div>
+                  <label className={labelCls}>Amount (₹) *</label>
+                  <input required type="number" min="0" placeholder="0" value={revenueForm.amount}
+                    onChange={e => setRevenueForm({ ...revenueForm, amount: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Date</label>
+                <input type="date" value={revenueForm.date}
+                  onChange={e => setRevenueForm({ ...revenueForm, date: e.target.value })} className={inputCls} />
+              </div>
+              <div className="flex gap-3 pt-2 border-t border-gray-50">
+                <button type="button" onClick={() => setShowAddRevenueModal(false)} disabled={savingEntry}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent disabled:opacity-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingEntry}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/20 uppercase tracking-wider disabled:opacity-50">
+                  {savingEntry ? 'Saving...' : 'Add Revenue'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Lead Convert Modal ─────────────────────────────────────────── */}
+      {showAddLeadModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn">
+            <div className="bg-violet-650 px-6 py-5 flex items-center justify-between text-white">
+              <div>
+                <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Manual Entry</p>
+                <h3 className="text-base font-black mt-0.5">Add Lead Convert for {targetStaffName}</h3>
+              </div>
+              <button
+                onClick={() => setShowAddLeadModal(false)}
+                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleAddLeadSubmit} className="p-6 space-y-4 text-left">
+              <div>
+                <label className={labelCls}>Staff Member</label>
+                <input disabled type="text" value={targetStaffName} className="w-full text-xs border border-gray-200 bg-gray-100 rounded-xl px-3 py-2.5 outline-none font-bold text-gray-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Lead Name *</label>
+                  <input required type="text" placeholder="Client / Lead name" value={leadForm.leadName}
+                    onChange={e => setLeadForm({ ...leadForm, leadName: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Company Name</label>
+                  <input type="text" placeholder="Company" value={leadForm.companyName}
+                    onChange={e => setLeadForm({ ...leadForm, companyName: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Lead Type</label>
+                  <select value={leadForm.leadType}
+                    onChange={e => setLeadForm({ ...leadForm, leadType: e.target.value })} className={inputCls}>
+                    <option value="Hot">Hot</option>
+                    <option value="Warm">Warm</option>
+                    <option value="Cold">Cold</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Converted Value (₹) *</label>
+                  <input required type="number" min="0" placeholder="0" value={leadForm.convertedValue}
+                    onChange={e => setLeadForm({ ...leadForm, convertedValue: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Date</label>
+                <input type="date" value={leadForm.date}
+                  onChange={e => setLeadForm({ ...leadForm, date: e.target.value })} className={inputCls} />
+              </div>
+              <div className="flex gap-3 pt-2 border-t border-gray-50">
+                <button type="button" onClick={() => setShowAddLeadModal(false)} disabled={savingEntry}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent disabled:opacity-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingEntry}
+                  className="flex-1 py-3 bg-violet-650 hover:bg-violet-755 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-violet-400/20 uppercase tracking-wider disabled:opacity-50">
+                  {savingEntry ? 'Saving...' : 'Add Lead Convert'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

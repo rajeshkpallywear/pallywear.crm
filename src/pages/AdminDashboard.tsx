@@ -9,6 +9,7 @@ import {
   Edit, Plus
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
+import FileUpload from '../components/FileUpload';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   Tooltip, PieChart, Pie, Cell
@@ -813,7 +814,9 @@ export default function AdminDashboard() {
       totalAmount: '',
       advancePay: '',
       notes: '',
-      isUrgent: false
+      isUrgent: false,
+      status: OrderStatus.PENDING,
+      staffImages: [] as string[]
     });
 
     const handleCreateAdminOrder = async (e: React.FormEvent) => {
@@ -834,9 +837,13 @@ export default function AdminDashboard() {
             advancePay: adv,
             balanceAmount: amt - adv
           },
-          status: OrderStatus.PENDING,
+          status: adminOrderForm.status,
           isUrgent: adminOrderForm.isUrgent,
           notes: adminOrderForm.notes,
+          designNotes: adminOrderForm.notes,
+          staffImages: adminOrderForm.staffImages,
+          staffPdfs: [] as string[],
+          staffAttachments: adminOrderForm.staffImages,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           createdBy: user?.id || user?.uid || '',
@@ -853,7 +860,9 @@ export default function AdminDashboard() {
           totalAmount: '',
           advancePay: '',
           notes: '',
-          isUrgent: false
+          isUrgent: false,
+          status: OrderStatus.PENDING,
+          staffImages: [] as string[]
         });
       } catch (err: any) {
         alert('Failed to create order: ' + (err?.message || 'Error'));
@@ -2714,6 +2723,44 @@ export default function AdminDashboard() {
                       value={adminOrderForm.advancePay}
                       onChange={e => setAdminOrderForm({ ...adminOrderForm, advancePay: e.target.value })}
                       className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Send Order To *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: 'Pending', status: OrderStatus.PENDING, desc: 'Stay in Staff list' },
+                        { label: 'Designs', status: OrderStatus.DESIGN, desc: 'Forward to designers' },
+                        { label: 'Accounts', status: OrderStatus.ACCOUNTS, desc: 'Forward to billing' }
+                      ].map((item) => (
+                        <label
+                          key={item.status}
+                          className={cn(
+                            "border rounded-2xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-gray-50/50 select-none",
+                            adminOrderForm.status === item.status ? "border-brand-primary bg-brand-primary/5 text-brand-primary ring-2 ring-brand-primary/10" : "border-gray-200 text-gray-600"
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="adminOrderDestination"
+                            value={item.status}
+                            checked={adminOrderForm.status === item.status}
+                            onChange={() => setAdminOrderForm({ ...adminOrderForm, status: item.status })}
+                            className="hidden"
+                          />
+                          <span className="text-xs font-black uppercase tracking-wider">{item.label}</span>
+                          <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">{item.desc}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <FileUpload
+                      label="Upload Order Pictures / Designs"
+                      accept="image/*"
+                      maxFiles={5}
+                      initialFiles={adminOrderForm.staffImages}
+                      onFilesSelected={files => setAdminOrderForm({ ...adminOrderForm, staffImages: files })}
                     />
                   </div>
                   <div className="col-span-2">
