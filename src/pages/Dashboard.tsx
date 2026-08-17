@@ -38,10 +38,12 @@ import OnlineTeamDashboard from '../components/OnlineTeamDashboard';
 import VendorDashboard from '../components/VendorDashboard';
 import OrdersChart from '../components/OrdersChart';
 import SidebarChat from '../components/SidebarChat';
+import { RoleBreakdown } from './AdminDashboard';
+import { OrderStatus } from '../types';
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const { leads, orders, inventory, addOrder, updateOrder, deleteOrder } = useLeads();
+  const { user, logout, registeredUsers } = useAuth();
+  const { leads, orders, inventory, addOrder, updateOrder, deleteOrder, addLead, deleteLead } = useLeads();
   const navigate = useNavigate();
 
   const filteredOrders = React.useMemo(() => {
@@ -908,7 +910,66 @@ export default function Dashboard() {
           ) : activeTab === 'digitizer_comm' ? (
             <DigitizerCommunication orders={filteredOrders} onUpdateOrder={handleUpdateOrder} />
           ) : activeTab === 'dashboard' ? (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-fadeIn">
+              {/* Show Role Revenue Breakdown Panel for specific user */}
+              {user?.email === 'daniel.smpallywear@gmail.com' && (() => {
+                const userRoleMap: Record<string, string> = {};
+                const userNameMap: Record<string, string> = {};
+                registeredUsers.forEach((u: any) => {
+                  userRoleMap[u.id] = u.role;
+                  userNameMap[u.id] = u.name;
+                });
+
+                const isOnlineTeam = (createdBy: string) => {
+                  const role = userRoleMap[createdBy];
+                  return role === 'onlineteam' || role === 'UserRole.ONLINETEAM';
+                };
+                const isMarketing = (createdBy: string) => {
+                  return !isOnlineTeam(createdBy);
+                };
+
+                const deliveredOrders = orders.filter(o => o.status === OrderStatus.DELIVERY);
+                const mktDeliveredOrders = deliveredOrders.filter(o => isMarketing(o.createdBy || ''));
+                const otDeliveredOrders = deliveredOrders.filter(o => isOnlineTeam(o.createdBy || ''));
+                const mktOrdersRevenue = mktDeliveredOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
+                const otOrdersRevenue = otDeliveredOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
+
+                const mktLeadsForecast = leads.filter(l => isMarketing(l.createdBy))
+                  .reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
+                const otLeadsForecast = leads.filter(l => isOnlineTeam(l.createdBy))
+                  .reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
+
+                const mktConvertedLeads = leads.filter(l => isMarketing(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
+                const otConvertedLeads = leads.filter(l => isOnlineTeam(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
+                const mktLeadsConverted = mktConvertedLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
+                const otLeadsConverted = otConvertedLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
+
+                const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+                return (
+                  <RoleBreakdown
+                    mktOrdersRevenue={mktOrdersRevenue}
+                    otOrdersRevenue={otOrdersRevenue}
+                    mktDeliveredOrders={mktDeliveredOrders}
+                    otDeliveredOrders={otDeliveredOrders}
+                    mktLeadsForecast={mktLeadsForecast}
+                    otLeadsForecast={otLeadsForecast}
+                    mktLeadsConverted={mktLeadsConverted}
+                    otLeadsConverted={otLeadsConverted}
+                    mktConvertedLeads={mktConvertedLeads}
+                    otConvertedLeads={otConvertedLeads}
+                    mktLeadsCount={leads.filter(l => isMarketing(l.createdBy)).length}
+                    otLeadsCount={leads.filter(l => isOnlineTeam(l.createdBy)).length}
+                    fmt={fmt}
+                    userNameMap={userNameMap}
+                    addOrder={addOrder}
+                    deleteOrder={deleteOrder}
+                    addLead={addLead}
+                    deleteLead={deleteLead}
+                  />
+                );
+              })()}
+
               {[UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
                 <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} leadManagerComponent={<LeadManager />} />
               ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (

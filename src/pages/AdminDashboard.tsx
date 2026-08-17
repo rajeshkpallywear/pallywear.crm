@@ -6,7 +6,7 @@ import {
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
-  Edit
+  Edit, Plus
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import {
@@ -37,7 +37,7 @@ const MOCK_LOGS = [
 ];
 
 // ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
-function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder, addLead, deleteLead }: any) {
+export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder, addLead, deleteLead }: any) {
   const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
   const [orderSearch, setOrderSearch] = React.useState('');
   const [leadSearch, setLeadSearch] = React.useState('');
@@ -803,6 +803,63 @@ export default function AdminDashboard() {
     const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
     const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = useState(false);
 
+    // Admin Create Order Form State
+    const [isAdminOrderModalOpen, setIsAdminOrderModalOpen] = useState(false);
+    const [adminOrderForm, setAdminOrderForm] = useState({
+      customerName: '',
+      phone: '',
+      address: '',
+      category: 'Jersey',
+      totalAmount: '',
+      advancePay: '',
+      notes: '',
+      isUrgent: false
+    });
+
+    const handleCreateAdminOrder = async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        const amt = Number(adminOrderForm.totalAmount) || 0;
+        const adv = Number(adminOrderForm.advancePay) || 0;
+        const newOrder = {
+          customerInfo: {
+            name: adminOrderForm.customerName,
+            phone: adminOrderForm.phone,
+            address: adminOrderForm.address
+          },
+          category: adminOrderForm.category,
+          quantity: 1,
+          financials: {
+            totalAmount: amt,
+            advancePay: adv,
+            balanceAmount: amt - adv
+          },
+          status: OrderStatus.PENDING,
+          isUrgent: adminOrderForm.isUrgent,
+          notes: adminOrderForm.notes,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          createdBy: user?.id || user?.uid || '',
+          createdByName: user?.name || 'Admin'
+        };
+        await addOrder(newOrder);
+        alert('Order created successfully!');
+        setIsAdminOrderModalOpen(false);
+        setAdminOrderForm({
+          customerName: '',
+          phone: '',
+          address: '',
+          category: 'Jersey',
+          totalAmount: '',
+          advancePay: '',
+          notes: '',
+          isUrgent: false
+        });
+      } catch (err: any) {
+        alert('Failed to create order: ' + (err?.message || 'Error'));
+      }
+    };
+
     const handleEditInvoice = (invoice: Invoice) => {
       setEditingInvoice(invoice);
       setIsInvoiceFormModalOpen(true);
@@ -1328,6 +1385,32 @@ export default function AdminDashboard() {
               >
                 <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
               </button>
+
+              <div className="pt-4 mt-2 border-t border-gray-100 space-y-2">
+                <button
+                  onClick={() => setIsAdminOrderModalOpen(true)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-primary/95 transition-all shadow-md shadow-brand-primary/15 border-none cursor-pointer",
+                    isSidebarCollapsed && "md:justify-center md:px-0"
+                  )}
+                  title={isSidebarCollapsed ? "Create Order" : ""}
+                >
+                  <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingInvoice(null);
+                    setIsInvoiceFormModalOpen(true);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-650 transition-all shadow-md shadow-emerald-500/15 border-none cursor-pointer",
+                    isSidebarCollapsed && "md:justify-center md:px-0"
+                  )}
+                  title={isSidebarCollapsed ? "Create Invoice" : ""}
+                >
+                  <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Invoice</span>}
+                </button>
+              </div>
 
             </nav>
 
@@ -2541,6 +2624,138 @@ export default function AdminDashboard() {
           invoice={editingInvoice}
           onSubmit={handleEditInvoiceSubmit}
         />
+        {isAdminOrderModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fadeIn">
+              <div className="bg-brand-primary px-6 py-5 flex items-center justify-between text-white">
+                <div>
+                  <p className="text-[10px] font-black text-white/75 uppercase tracking-widest">Admin Control</p>
+                  <h3 className="text-lg font-black mt-0.5">Create New Order</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminOrderModalOpen(false)}
+                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleCreateAdminOrder} className="p-6 space-y-4 text-left">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Customer Name *</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. John Doe"
+                      value={adminOrderForm.customerName}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, customerName: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Phone *</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Phone number"
+                      value={adminOrderForm.phone}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, phone: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
+                    <select
+                      required
+                      value={adminOrderForm.category}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, category: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all cursor-pointer"
+                    >
+                      <option value="Jersey">Jersey</option>
+                      <option value="T-Shirt">T-Shirt</option>
+                      <option value="Shirt">Shirt</option>
+                      <option value="Pant">Pant</option>
+                      <option value="Hoodie">Hoodie</option>
+                      <option value="Sweatshirt">Sweatshirt</option>
+                      <option value="Corporate Gift">Corporate Gift</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Address *</label>
+                    <textarea
+                      required
+                      rows={2}
+                      placeholder="Delivery address"
+                      value={adminOrderForm.address}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, address: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Total Amount (₹) *</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={adminOrderForm.totalAmount}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, totalAmount: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Advance Pay (₹) *</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={adminOrderForm.advancePay}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, advancePay: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Notes</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Special instructions..."
+                      value={adminOrderForm.notes}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, notes: e.target.value })}
+                      className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all resize-none"
+                    />
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      id="adminIsUrgent"
+                      checked={adminOrderForm.isUrgent}
+                      onChange={e => setAdminOrderForm({ ...adminOrderForm, isUrgent: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary/20 cursor-pointer"
+                    />
+                    <label htmlFor="adminIsUrgent" className="text-xs font-bold text-red-500 uppercase cursor-pointer select-none">Mark order as Urgent ⚡</label>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-4 border-t border-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminOrderModalOpen(false)}
+                    className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-brand-primary hover:opacity-90 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/15 uppercase tracking-wider"
+                  >
+                    Submit Order
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
         {selectedOrderDetail && (
           <OrderDetailModal
             order={selectedOrderDetail}
