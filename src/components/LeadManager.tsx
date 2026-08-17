@@ -195,7 +195,12 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
         return !isCreatorOnlineTeam;
       });
     }
-    return leads;
+    // Marketing/staff/other roles: DO NOT show marketing uploaded leads!
+    return leads.filter(l => {
+      const creator = registeredUsers?.find(u => u.id === l.createdBy || u.uid === l.createdBy || u.name === l.createdByName);
+      const isMarketingCreator = creator?.role === 'marketing' || creator?.role === 'staff' || creator?.role === 'UserRole.MARKETING' || creator?.role === 'UserRole.STAFF';
+      return !isMarketingCreator;
+    });
   }, [leads, user, registeredUsers]);
 
   const filteredLeads = visibleLeads.filter(l => {

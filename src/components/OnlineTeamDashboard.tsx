@@ -586,6 +586,22 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
           </div>
         </div>
       )}
+
+      {/* Hidden container to mount helper managers and register trigger listeners */}
+      <div className="absolute w-0 h-0 overflow-hidden pointer-events-none">
+        <LeadManager />
+        <MarketingDashboard
+          orders={orders}
+          inventory={inventory}
+          onCreateOrder={addOrder}
+          onUpdateOrder={updateOrder}
+          onDeleteOrder={deleteOrder}
+          isAdmin={false}
+          user={user}
+          leadManagerComponent={<LeadManager />}
+        />
+        <InvoiceManager />
+      </div>
     </div>
   );
 }
