@@ -1273,18 +1273,17 @@ export default function AdminDashboard() {
                     userNameMap[u.id] = u.name;
                   });
 
-                  const isMarketing = (createdBy: string) => {
-                    const role = userRoleMap[createdBy];
-                    return role === 'marketing' || role === 'staff';
-                  };
                   const isOnlineTeam = (createdBy: string) => {
                     const role = userRoleMap[createdBy];
                     return role === 'onlineteam' || role === 'UserRole.ONLINETEAM';
                   };
+                  const isMarketing = (createdBy: string) => {
+                    return !isOnlineTeam(createdBy);
+                  };
 
-                  // Delivered orders only
+                  // Active revenue orders (Delivered, Delivery, Pending)
                   const deliveredOrders = orders.filter(o =>
-                    o.status === OrderStatus.DELIVERED || o.status === OrderStatus.DELIVERY
+                    o.status === OrderStatus.DELIVERED || o.status === OrderStatus.DELIVERY || o.status === OrderStatus.PENDING || (o.financials?.totalAmount || 0) > 0
                   );
 
                   const mktDeliveredOrders = deliveredOrders.filter(o => isMarketing(o.createdBy || ''));
