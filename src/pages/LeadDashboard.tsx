@@ -174,10 +174,12 @@ export default function LeadDashboard() {
   const inputCls = "w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all";
   const labelCls = "block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5";
 
-  // Build per-user lead stats (Only Marketing, Staff, and Online Team roles)
+  // Build per-user lead stats (Only Marketing, Staff, and Online Team roles, plus daniel.smpallywear@gmail.com)
   const userLeadStats = useMemo(() => {
     const allowedRoles = ['marketing', 'staff', 'onlineteam', 'UserRole.STAFF', 'UserRole.MARKETING', 'UserRole.ONLINETEAM'];
-    const filteredStaff = registeredUsers.filter((u: any) => allowedRoles.includes(u.role));
+    const filteredStaff = registeredUsers.filter((u: any) => 
+      allowedRoles.includes(u.role) || u.email?.toLowerCase() === 'daniel.smpallywear@gmail.com'
+    );
 
     return filteredStaff.map((u: any) => {
       const userLeads = leads.filter(l =>
@@ -230,7 +232,7 @@ export default function LeadDashboard() {
   }, [userLeadStats, search, roleFilter]);
 
   const uniqueRoles = useMemo(() => {
-    const allowed = ['marketing', 'staff', 'onlineteam'];
+    const allowed = ['marketing', 'staff', 'onlineteam', 'admin'];
     return Array.from(new Set(registeredUsers.map((u: any) => u.role)))
       .filter((role: string) => allowed.includes(role));
   }, [registeredUsers]);
