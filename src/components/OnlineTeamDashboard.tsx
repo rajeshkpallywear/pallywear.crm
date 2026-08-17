@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Users, CheckCircle2, Clock, Search, Save, ClipboardList } from 'lucide-react';
+import { Phone, Users, CheckCircle2, Clock, Search, Save, ClipboardList, FileText, BarChart3, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
+import LeadManager from './LeadManager';
+import MarketingDashboard from './MarketingDashboard';
+import InvoiceManager from './InvoiceManager';
 
 interface Lead {
   id: string;
@@ -25,47 +28,37 @@ interface OnlineTeamDashboardProps {
 }
 
 export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) {
-  const { leads, updateLead } = useLeads();
-  const { registeredUsers } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'call_logs'>('overview');
+  const { leads, orders, invoices, inventory, addOrder, updateOrder, deleteOrder, updateLead } = useLeads();
+  const [activeTab, setActiveTab] = useState<'overview' | 'leads' | 'call_logs' | 'orders' | 'invoices'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editStatus, setEditStatus] = useState('New');
   const [editNotes, setEditNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Identify marketing / staff / admin user IDs
-  const marketingUserIds = React.useMemo(() => {
-    return registeredUsers
-      .filter(u => u.role === 'marketing' || u.role === 'staff' || u.role === 'admin')
-      .map(u => u.id);
-  }, [registeredUsers]);
-
-  // Filter leads to only include those uploaded by marketing, staff, or admin
-  const marketingLeads = React.useMemo(() => {
-    return leads.filter(l => {
-      const isCreatedByMarketing = marketingUserIds.includes(l.createdBy) ||
-        ['admin', 'ceo@pallywear.com', 'rajeshkpallywear@gmail.com', 'daniel.smpallywear@gmail.com', 'admin-1', 'admin-ceo', 'admin-rajesh', 'admin-daniel'].includes(l.createdBy.toLowerCase()) ||
-        l.createdByName?.toLowerCase().includes('admin') ||
-        l.createdByName?.toLowerCase().includes('ceo') ||
-        l.createdByName?.toLowerCase().includes('daniel') ||
-        l.createdByName?.toLowerCase().includes('marketing') ||
-        l.createdByName?.toLowerCase().includes('staff') ||
-        !l.createdBy || l.createdBy === 'unknown';
-      return isCreatedByMarketing;
-    });
-  }, [leads, marketingUserIds]);
+  useEffect(() => {
+    const handleChangeTab = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setActiveTab(customEvent.detail);
+      }
+    };
+    window.addEventListener('onlineteam-change-tab', handleChangeTab);
+    return () => {
+      window.removeEventListener('onlineteam-change-tab', handleChangeTab);
+    };
+  }, []);
 
   // Filter leads for the quick status updater on Overview tab
-  const filteredLeads = marketingLeads.filter(l => {
+  const filteredLeads = leads.filter(l => {
     const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           l.number.includes(searchTerm);
     return matchesSearch;
   });
 
-  // Call Logs are marketing leads that have already been called or have description notes
-  const callLogs = marketingLeads.filter(l => 
+  // Call Logs are leads that have already been called or have description notes
+  const callLogs = leads.filter(l => 
     ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status) || 
     (l.description && l.description.trim() !== '')
   );
@@ -98,10 +91,10 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
     }
   };
 
-  const totalLeadsCount = marketingLeads.length;
+  const totalLeadsCount = leads.length;
   const calledCount = callLogs.length;
-  const interestedCount = marketingLeads.filter(l => l.status === 'Interested').length;
-  const pendingCount = marketingLeads.filter(l => l.status === 'New' || !l.status).length;
+  const interestedCount = leads.filter(l => l.status === 'Interested').length;
+  const pendingCount = leads.filter(l => l.status === 'New' || !l.status).length;
 
   return (
     <div className="space-y-6">
@@ -111,7 +104,7 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
         <div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">Online Team Operations</h2>
           <p className="text-gray-500 text-xs mt-0.5 font-semibold uppercase tracking-wider">
-            Consolidated portal for call logs tracking and updating marketing lead statuses
+            Consolidated portal for lead generation, call tracking, order processing & client invoicing
           </p>
         </div>
         
@@ -120,6 +113,9 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
           {[
             { id: 'overview', label: 'Overview', icon: ClipboardList },
             { id: 'call_logs', label: 'Call Logs', icon: Phone },
+            { id: 'leads', label: 'All Leads', icon: Users },
+            { id: 'orders', label: 'Orders (Marketing)', icon: FileText },
+            { id: 'invoices', label: 'Invoice Center', icon: BarChart3 },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -200,7 +196,7 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
                   <Search className="text-gray-400" size={18} />
                   <input
                     type="text"
-                    placeholder="Quick search marketing leads to log status..."
+                    placeholder="Quick search leads to log status..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="w-full bg-transparent border-none focus:ring-0 text-sm placeholder:text-gray-400 outline-none"
@@ -393,6 +389,44 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* All Leads Tab (Renders LeadManager) */}
+      {activeTab === 'leads' && (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-150 shadow-sm text-left">
+          <div className="border-b border-gray-100 pb-3 mb-6">
+            <h3 className="text-lg font-bold text-gray-900">Lead Registry Center</h3>
+            <p className="text-xs text-gray-500">Register new clients, convert them to orders, and manage sales funnels</p>
+          </div>
+          <LeadManager />
+        </div>
+      )}
+
+      {/* Orders Tab (Renders MarketingDashboard) */}
+      {activeTab === 'orders' && (
+        <div className="text-left">
+          <MarketingDashboard 
+            orders={orders} 
+            inventory={inventory} 
+            onCreateOrder={addOrder} 
+            onUpdateOrder={updateOrder} 
+            onDeleteOrder={deleteOrder} 
+            isAdmin={user?.role === 'admin'} 
+            user={user} 
+            leadManagerComponent={<LeadManager />} 
+          />
+        </div>
+      )}
+
+      {/* Invoices Tab (Renders InvoiceManager) */}
+      {activeTab === 'invoices' && (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-150 shadow-sm text-left">
+          <div className="border-b border-gray-100 pb-3 mb-6">
+            <h3 className="text-lg font-bold text-gray-900">Online Team Billing Center</h3>
+            <p className="text-xs text-gray-500">Create, review, and issue payment invoices to clients</p>
+          </div>
+          <InvoiceManager />
         </div>
       )}
 
