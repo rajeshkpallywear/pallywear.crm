@@ -26,7 +26,7 @@ export default function InvoiceManager() {
     };
 
     const filteredInvoices = invoices
-        .filter(inv => user?.role === 'admin' || user?.role === 'staff' || inv.createdBy === user?.id || inv.createdBy === user?.uid)
+        .filter(inv => user?.role === 'admin' || user?.role === 'staff' || user?.role === 'onlineteam' || inv.createdBy === user?.id || inv.createdBy === user?.uid)
         .filter(inv =>
             inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
             inv.billToName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -147,7 +147,7 @@ export default function InvoiceManager() {
                                             >
                                                 <MessageSquare className="w-4 h-4" />
                                             </button>
-                                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff') && (
+                                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff' || user?.role === 'onlineteam') && (
                                                 <button
                                                     onClick={() => handleEditInvoice(inv)}
                                                     className="p-2.5 hover:bg-indigo-50 hover:shadow-sm text-indigo-600 rounded-xl transition-all bg-indigo-55/10 border-none cursor-pointer"
@@ -218,7 +218,7 @@ export default function InvoiceManager() {
                                             >
                                                 <MessageSquare size={16} />
                                             </button>
-                                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff') && (
+                                            {(user?.role === 'admin' || user?.role === 'marketing' || user?.role === 'staff' || user?.role === 'onlineteam') && (
                                                 <button
                                                     onClick={() => handleEditInvoice(inv)}
                                                     className="p-2 bg-indigo-50/50 text-indigo-600 hover:bg-indigo-650 hover:text-white rounded-lg transition-colors border-none cursor-pointer"

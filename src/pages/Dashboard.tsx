@@ -34,7 +34,7 @@ import DesignDashboard from '../components/DesignDashboard';
 import DigitizingDashboard from '../components/DigitizingDashboard';
 import DigitizerCommunication from '../components/DigitizerCommunication';
 import CalendarView from '../components/CalendarView';
-import TelecallerDashboard from '../components/TelecallerDashboard';
+import OnlineTeamDashboard from '../components/OnlineTeamDashboard';
 import VendorDashboard from '../components/VendorDashboard';
 import OrdersChart from '../components/OrdersChart';
 import SidebarChat from '../components/SidebarChat';
@@ -275,6 +275,7 @@ export default function Dashboard() {
   const userRoleDisplay = React.useMemo(() => {
     if (!user?.role) return 'User';
     if (user.role === 'admin' || user.role === UserRole.ADMIN) return 'Pallywear';
+    if (user.role === 'onlineteam' || user.role === UserRole.ONLINETEAM) return 'Online Team';
     return String(user.role).replace('_', ' ');
   }, [user?.role]);
 
@@ -556,7 +557,7 @@ export default function Dashboard() {
           {/* Calendar Section (Visible to all team roles) */}
           {(user?.role && [
             UserRole.ADMIN,
-            UserRole.TELECALLER,
+            UserRole.ONLINETEAM,
             UserRole.MARKETING,
             UserRole.STAFF,
             UserRole.DESIGNER,
@@ -567,7 +568,7 @@ export default function Dashboard() {
             UserRole.ORDER_MANAGEMENT,
             UserRole.DELIVERY,
             'admin',
-            'telecaller',
+            'onlineteam',
             'marketing',
             'staff',
             'designer',
@@ -922,8 +923,8 @@ export default function Dashboard() {
                 <DigitizingDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} isAdmin={user?.role === 'admin'} />
               ) : user?.role === UserRole.DELIVERY || user?.role === 'delivery' ? (
                 <DeliveryDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} />
-              ) : user?.role === UserRole.TELECALLER || user?.role === 'telecaller' ? (
-                <TelecallerDashboard user={user} />
+              ) : user?.role === UserRole.ONLINETEAM || user?.role === 'onlineteam' ? (
+                <OnlineTeamDashboard user={user} />
               ) : user?.role === UserRole.VENDOR || user?.role === 'vendor' ? (
                 <VendorDashboard user={user} />
               ) : user?.role === UserRole.INVENTORY_MANAGEMENT || user?.role === 'inventory_management' ? (
@@ -1052,7 +1053,7 @@ export default function Dashboard() {
           )}
           {user?.role && [
             UserRole.ADMIN,
-            UserRole.TELECALLER,
+            UserRole.ONLINETEAM,
             UserRole.MARKETING,
             UserRole.STAFF,
             UserRole.DESIGNER,
@@ -1063,7 +1064,7 @@ export default function Dashboard() {
             UserRole.ORDER_MANAGEMENT,
             UserRole.DELIVERY,
             'admin',
-            'telecaller',
+            'onlineteam',
             'marketing',
             'staff',
             'designer',

@@ -84,7 +84,7 @@ export enum UserRole {
   MARKETING = 'marketing',
   DESIGNER = 'designer',
   DIGITIZER = 'digitizer',
-  TELECALLER = 'telecaller',
+  ONLINETEAM = 'onlineteam',
   VENDOR = 'vendor',
   INVENTORY_MANAGEMENT = 'inventory_management'
 }

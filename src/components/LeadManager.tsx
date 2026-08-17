@@ -181,7 +181,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
   });
 
   const canManage = (lead: Lead) => {
-    if (user?.role === 'admin') return true;
+    if (user?.role === 'admin' || user?.role === 'onlineteam' || user?.role === 'staff') return true;
     return lead.createdBy === user?.id;
   };
 

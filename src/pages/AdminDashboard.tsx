@@ -1646,7 +1646,7 @@ export default function AdminDashboard() {
                       <option value="production">Production (Factory)</option>
                       <option value="digitizer">Digitizing & Embroidery</option>
                       <option value="delivery">Delivery</option>
-                      <option value="telecaller">Telecaller</option>
+                      <option value="onlineteam">Online Team</option>
                       <option value="vendor">Vendor</option>
                       <option value="admin">Administrator</option>
                     </select>
