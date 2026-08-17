@@ -29,6 +29,7 @@ interface OnlineTeamDashboardProps {
 
 export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) {
   const { leads, orders, invoices, inventory, addOrder, updateOrder, deleteOrder, updateLead } = useLeads();
+  const { registeredUsers } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'leads' | 'call_logs' | 'orders' | 'invoices'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -52,10 +53,15 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
   const visibleLeads = React.useMemo(() => {
     if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return leads;
     if (user?.role === 'onlineteam') {
-      return leads.filter(l => l.createdBy === user?.id || l.createdBy === user?.uid);
+      return leads.filter(l => {
+        const isCreatorOnlineTeam = registeredUsers?.some(
+          u => u.id === l.createdBy && (u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM')
+        );
+        return !isCreatorOnlineTeam;
+      });
     }
     return leads;
-  }, [leads, user]);
+  }, [leads, user, registeredUsers]);
 
   // Filter leads for the quick status updater on Overview tab
   const filteredLeads = visibleLeads.filter(l => {

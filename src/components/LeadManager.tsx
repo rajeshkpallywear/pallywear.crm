@@ -20,7 +20,7 @@ interface LeadManagerProps {
 
 export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
   const { leads, addLead, updateLead, deleteLead, addOrder } = useLeads();
-  const { user } = useAuth();
+  const { user, registeredUsers } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -182,10 +182,15 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
   const visibleLeads = React.useMemo(() => {
     if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return leads;
     if (user?.role === 'onlineteam') {
-      return leads.filter(l => l.createdBy === user?.id || l.createdBy === user?.uid);
+      return leads.filter(l => {
+        const isCreatorOnlineTeam = registeredUsers?.some(
+          u => u.id === l.createdBy && (u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM')
+        );
+        return !isCreatorOnlineTeam;
+      });
     }
     return leads;
-  }, [leads, user]);
+  }, [leads, user, registeredUsers]);
 
   const filteredLeads = visibleLeads.filter(l => {
     const query = searchQuery.toLowerCase();
@@ -204,6 +209,20 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
     if (user?.role === 'admin' || user?.role === 'onlineteam' || user?.role === 'staff') return true;
     return lead.createdBy === user?.id;
   };
+
+  const searchedStaffInfo = React.useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const query = searchQuery.toLowerCase().trim();
+    const staffLeads = visibleLeads.filter(l => l.createdByName && l.createdByName.toLowerCase().includes(query));
+    if (staffLeads.length > 0) {
+      const uniqueNames = Array.from(new Set(staffLeads.map(l => l.createdByName)));
+      return {
+        names: uniqueNames,
+        count: staffLeads.length
+      };
+    }
+    return null;
+  }, [searchQuery, visibleLeads]);
 
   return (
     <div className="space-y-6">
@@ -267,6 +286,22 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
           )}
         </div>
       </div>
+
+      {searchedStaffInfo && (
+        <div className="bg-brand-primary/5 border border-brand-primary/10 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-sm">
+              {searchedStaffInfo.names[0]?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-[10px] text-brand-primary font-black uppercase tracking-widest">Staff Activity Summary</p>
+              <p className="text-sm font-black text-gray-900 mt-0.5">
+                {searchedStaffInfo.names.join(', ')} has added <span className="text-brand-primary text-base font-black">{searchedStaffInfo.count}</span> lead{searchedStaffInfo.count !== 1 ? 's' : ''} in total.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Responsive Leads View */}
       <div className="space-y-4">
