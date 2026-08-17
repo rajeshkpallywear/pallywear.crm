@@ -313,34 +313,34 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
       <div className="space-y-4">
         {/* Desktop View (Table) */}
         <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-gray-50 text-gray-500 font-black uppercase tracking-wider text-[9px] border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Staff</th>
-                <th className="px-6 py-4">Lead Info</th>
-                <th className="px-6 py-4">Company & GST</th>
-                <th className="px-6 py-4">Assigned To</th>
-                <th className="px-6 py-4">Type</th>
-                <th className="px-6 py-4">Entry Date</th>
-                <th className="px-6 py-4 text-right">Financials</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-4 py-2.5">Staff</th>
+                <th className="px-4 py-2.5">Lead Info</th>
+                <th className="px-4 py-2.5">Company & GST</th>
+                <th className="px-4 py-2.5">Assigned To</th>
+                <th className="px-4 py-2.5">Type</th>
+                <th className="px-4 py-2.5">Entry Date</th>
+                <th className="px-4 py-2.5 text-right">Financials</th>
+                <th className="px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-brand-primary/20">
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-7 h-7 rounded-full bg-brand-primary flex items-center justify-center text-[10px] font-bold text-white shadow-sm shadow-brand-primary/20">
                         {lead.createdByName?.charAt(0) || 'U'}
                       </div>
-                      <span className="text-xs text-gray-600 font-medium">{lead.createdByName}</span>
+                      <span className="text-[11px] text-gray-600 font-bold">{lead.createdByName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
                       <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-md shadow-black/5",
+                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-md shadow-black/5",
                         lead.leadType === 'Hot' ? "bg-red-500" :
                           lead.leadType === 'Warm' ? "bg-amber-500" :
                             "bg-blue-500"
@@ -348,31 +348,31 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                         {lead.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900">{lead.name}</p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                          <Phone className="w-3 h-3" /> {lead.number}
+                        <p className="font-bold text-gray-900 text-xs">{lead.name}</p>
+                        <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                          <Phone className="w-2.5 h-2.5 text-brand-primary" /> {lead.number}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="font-medium text-gray-700">{lead.companyName}</span>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <Building2 className="w-3 h-3 text-gray-400" />
+                      <span className="font-bold text-gray-700 text-[11px]">{lead.companyName}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="text-xs text-gray-400 font-mono uppercase">{lead.gst || 'No GST'}</span>
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] text-gray-400 font-mono uppercase">{lead.gst || 'No GST'}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs text-gray-700 font-bold uppercase tracking-wider">
+                  <td className="px-4 py-2.5">
+                    <span className="text-[10px] text-gray-700 font-black uppercase tracking-wider">
                       {lead.assignedToName || <span className="text-gray-300 italic">Unassigned</span>}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2.5">
                     <span className={cn(
-                      "px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider",
+                      "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
                       lead.leadType === 'Hot' ? "bg-red-100 text-red-700" :
                         lead.leadType === 'Warm' ? "bg-amber-100 text-amber-700" :
                           "bg-blue-100 text-blue-700"
@@ -380,36 +380,36 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                       {lead.leadType}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <td className="px-4 py-2.5 text-gray-600 font-mono text-[10px]">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3 text-gray-400" />
                       <span>{lead.entryDate}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="space-y-1">
-                      <p className="text-xs">
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="space-y-0.5">
+                      <p className="text-[10px]">
                         <span className="text-gray-400">Total Value:</span>
                         <span className="font-bold text-gray-700 ml-1">₹{lead.totalOrderValue?.toLocaleString()}</span>
                       </p>
                       {lead.discountAmount ? (
                         <>
-                          <p className="text-[10px] text-green-600 font-bold flex items-center justify-end gap-1">
-                            <Check className="w-3 h-3" /> Discount ({lead.discountCode}): -₹{lead.discountAmount.toLocaleString()}
+                          <p className="text-[9px] text-green-600 font-bold flex items-center justify-end gap-1">
+                            <Check className="w-2.5 h-2.5" /> Discount ({lead.discountCode}): -₹{lead.discountAmount.toLocaleString()}
                           </p>
-                          <p className="text-sm font-black text-brand-primary">
+                          <p className="text-xs font-black text-brand-primary">
                             ₹{lead.netTotal?.toLocaleString()}
                           </p>
                         </>
                       ) : (
-                        <p className="text-sm font-black text-gray-900">
+                        <p className="text-xs font-black text-gray-900">
                           ₹{lead.totalOrderValue?.toLocaleString()}
                         </p>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
                       {canManage(lead) && (
                         <>
                           <button
