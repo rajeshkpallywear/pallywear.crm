@@ -122,11 +122,14 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     if (user && (user.role === 'marketing' || user.role === 'staff' || user.role === UserRole.MARKETING || user.role === UserRole.STAFF)) {
-      if (!localStorage.getItem('pallywear_active_tab')) {
+      if (user.email === 'daniel.smpallywear@gmail.com' && activeTab === 'dashboard') {
+        setActiveTab('marketing_orders');
+        localStorage.setItem('pallywear_active_tab', 'marketing_orders');
+      } else if (!localStorage.getItem('pallywear_active_tab')) {
         setActiveTab('marketing_orders');
       }
     }
-  }, [user]);
+  }, [user, activeTab]);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -382,12 +385,24 @@ export default function Dashboard() {
           )}
 
           {/* Marketing/Staff Lead Management Tabs (No Dashboard/Reports) */}
-          {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === 'user') && user?.email !== 'daniel.smpallywear@gmail.com' && (
+          {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === 'user') && (
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
                 isSidebarCollapsed && "md:hidden"
               )}>Lead Management</p>
+              {user?.email === 'daniel.smpallywear@gmail.com' && (
+                <button
+                  onClick={() => navigate('/lead-dashboard')}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
+                    isSidebarCollapsed && "md:justify-center md:px-0"
+                  )}
+                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
+                >
+                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
+                </button>
+              )}
               <button
                 onClick={() => selectTab('clients')}
                 className={cn(
@@ -425,7 +440,7 @@ export default function Dashboard() {
           )}
 
           {/* Online Team Portal Sidebar Navigation */}
-          {(user?.role === UserRole.ONLINETEAM || user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
+          {(user?.role === UserRole.ONLINETEAM || user?.role === 'onlineteam') && (
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
@@ -443,19 +458,6 @@ export default function Dashboard() {
               >
                 <Layout className="w-4 h-4 flex-shrink-0 animate-pulse text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span className="font-bold text-gray-900">Dashboard</span>}
               </button>
-
-              {user?.email === 'daniel.smpallywear@gmail.com' && (
-                <button
-                  onClick={() => navigate('/lead-dashboard')}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
-                    isSidebarCollapsed && "md:justify-center md:px-0"
-                  )}
-                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
-                >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
-                </button>
-              )}
 
               <button
                 onClick={() => selectTab('clients')}
