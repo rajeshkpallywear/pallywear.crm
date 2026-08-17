@@ -382,24 +382,12 @@ export default function Dashboard() {
           )}
 
           {/* Marketing/Staff Lead Management Tabs (No Dashboard/Reports) */}
-          {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === 'user') && (
+          {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === 'user') && user?.email !== 'daniel.smpallywear@gmail.com' && (
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
                 isSidebarCollapsed && "md:hidden"
               )}>Lead Management</p>
-              {user?.email === 'daniel.smpallywear@gmail.com' && (
-                <button
-                  onClick={() => navigate('/lead-dashboard')}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
-                    isSidebarCollapsed && "md:justify-center md:px-0"
-                  )}
-                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
-                >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
-                </button>
-              )}
               <button
                 onClick={() => selectTab('clients')}
                 className={cn(
@@ -432,6 +420,65 @@ export default function Dashboard() {
                 title={isSidebarCollapsed ? "Create Order" : ""}
               >
                 <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+              </button>
+            </div>
+          )}
+
+          {/* Online Team Portal Sidebar Navigation */}
+          {(user?.role === UserRole.ONLINETEAM || user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
+            <div className="space-y-1">
+              <p className={cn(
+                "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+                isSidebarCollapsed && "md:hidden"
+              )}>Online Team Portal</p>
+              
+              <button
+                onClick={() => selectTab('dashboard')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'dashboard' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Dashboard" : ""}
+              >
+                <Layout className="w-4 h-4 flex-shrink-0 animate-pulse text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span className="font-bold text-gray-900">Dashboard</span>}
+              </button>
+
+              {user?.email === 'daniel.smpallywear@gmail.com' && (
+                <button
+                  onClick={() => navigate('/lead-dashboard')}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
+                    isSidebarCollapsed && "md:justify-center md:px-0"
+                  )}
+                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
+                >
+                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
+                </button>
+              )}
+
+              <button
+                onClick={() => selectTab('clients')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'clients' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Clients" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Clients</span>}
+              </button>
+
+              <button
+                onClick={() => selectTab('invoices')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Invoices" : ""}
+              >
+                <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
               </button>
             </div>
           )}
