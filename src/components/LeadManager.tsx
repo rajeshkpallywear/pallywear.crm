@@ -40,6 +40,8 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
     discountCode: '',
     discountAmount: 0,
     netTotal: 0,
+    assignedTo: '',
+    assignedToName: '',
   });
 
   const isFirstLead = leads.filter(l => l.createdBy === user?.id).length === 0;
@@ -59,6 +61,8 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
       discountCode: isFirstLead ? 'FIRST10' : '',
       discountAmount: 0,
       netTotal: 0,
+      assignedTo: '',
+      assignedToName: '',
     });
     setIsModalOpen(true);
   };
@@ -141,6 +145,8 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
       discountCode: lead.discountCode || '',
       discountAmount: lead.discountAmount || 0,
       netTotal: lead.netTotal || lead.totalOrderValue,
+      assignedTo: lead.assignedTo || '',
+      assignedToName: lead.assignedToName || '',
     });
     setIsModalOpen(true);
   };
@@ -313,6 +319,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                 <th className="px-6 py-4">Staff</th>
                 <th className="px-6 py-4">Lead Info</th>
                 <th className="px-6 py-4">Company & GST</th>
+                <th className="px-6 py-4">Assigned To</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Entry Date</th>
                 <th className="px-6 py-4 text-right">Financials</th>
@@ -357,6 +364,11 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                       <FileText className="w-3.5 h-3.5 text-gray-400" />
                       <span className="text-xs text-gray-400 font-mono uppercase">{lead.gst || 'No GST'}</span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-gray-700 font-bold uppercase tracking-wider">
+                      {lead.assignedToName || <span className="text-gray-300 italic">Unassigned</span>}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={cn(
@@ -686,6 +698,34 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Assignment selection dropdown */}
+                {(user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Assign Lead To (Online Team Member)</label>
+                    <select
+                      value={formData.assignedTo}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const onlineTeamMembers = registeredUsers?.filter(u => u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM') || [];
+                        const matchedMember = onlineTeamMembers.find(m => m.id === selectedId);
+                        setFormData({
+                          ...formData,
+                          assignedTo: selectedId,
+                          assignedToName: matchedMember ? matchedMember.name : ''
+                        });
+                      }}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-primary/10"
+                    >
+                      <option value="">-- Unassigned --</option>
+                      {(registeredUsers?.filter(u => u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM') || []).map(member => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} ({member.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Financial Values */}
                 <div className="space-y-1.5">

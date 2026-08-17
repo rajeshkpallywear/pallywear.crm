@@ -16,6 +16,8 @@ export interface Lead {
   netTotal?: number;
   createdBy: string; // User ID
   createdByName: string;
+  assignedTo?: string;
+  assignedToName?: string;
 }
 
 export interface InvoiceItem {
