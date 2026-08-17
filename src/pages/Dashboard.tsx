@@ -388,6 +388,18 @@ export default function Dashboard() {
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
                 isSidebarCollapsed && "md:hidden"
               )}>Lead Management</p>
+              {user?.email === 'daniel.smpallywear@gmail.com' && (
+                <button
+                  onClick={() => navigate('/lead-dashboard')}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
+                    isSidebarCollapsed && "md:justify-center md:px-0"
+                  )}
+                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
+                >
+                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
+                </button>
+              )}
               <button
                 onClick={() => selectTab('clients')}
                 className={cn(

@@ -43,6 +43,9 @@
 }
 
 @layer base {
+  html, body {
+    @apply overflow-x-hidden;
+  }
   body {
     @apply font-sans text-brand-dark bg-white;
   }
