@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -18,6 +18,17 @@ export default function InvoiceManager() {
     const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
     const [autoSharePDF, setAutoSharePDF] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+
+    useEffect(() => {
+        const handleCreateInvoiceEvent = () => {
+            setEditingInvoice(null);
+            setIsNewInvoiceModalOpen(true);
+        };
+        window.addEventListener('onlineteam-create-invoice', handleCreateInvoiceEvent);
+        return () => {
+            window.removeEventListener('onlineteam-create-invoice', handleCreateInvoiceEvent);
+        };
+    }, []);
 
     const handleShareInvoice = (invoice: Invoice) => {
         setSelectedInvoice(invoice);

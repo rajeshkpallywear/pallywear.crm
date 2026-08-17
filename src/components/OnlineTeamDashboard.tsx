@@ -34,6 +34,19 @@ export default function OnlineTeamDashboard({ user }: OnlineTeamDashboardProps) 
   const [editNotes, setEditNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    const handleChangeTab = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setActiveTab(customEvent.detail);
+      }
+    };
+    window.addEventListener('onlineteam-change-tab', handleChangeTab);
+    return () => {
+      window.removeEventListener('onlineteam-change-tab', handleChangeTab);
+    };
+  }, []);
+
   // Filter leads for the quick status updater on Overview tab
   const filteredLeads = leads.filter(l => {
     const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

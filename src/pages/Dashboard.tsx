@@ -422,6 +422,70 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Online Team Sidebar Section */}
+          {(user?.role === UserRole.ONLINETEAM || user?.role === 'onlineteam') && (
+            <div className="space-y-1">
+              <p className={cn(
+                "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
+                isSidebarCollapsed && "md:hidden"
+              )}>Online Team Console</p>
+              
+              <button
+                onClick={() => {
+                  selectTab('dashboard');
+                  window.dispatchEvent(new CustomEvent('onlineteam-change-tab', { detail: 'orders' }));
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event('onlineteam-create-order'));
+                  }, 100);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Create Order" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+              </button>
+
+              <button
+                onClick={() => {
+                  selectTab('dashboard');
+                  window.dispatchEvent(new CustomEvent('onlineteam-change-tab', { detail: 'invoices' }));
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event('onlineteam-create-invoice'));
+                  }, 100);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Create Invoice" : ""}
+              >
+                <Activity className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Invoice</span>}
+              </button>
+
+              <button
+                onClick={() => {
+                  selectTab('dashboard');
+                  window.dispatchEvent(new CustomEvent('onlineteam-change-tab', { detail: 'leads' }));
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event('onlineteam-create-lead'));
+                  }, 100);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Create Lead" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Lead</span>}
+              </button>
+            </div>
+          )}
+
           {/* Digitizing Portal link in sidebar if applicable */}
           {user?.role === UserRole.DIGITIZER && (
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
@@ -444,7 +508,7 @@ export default function Dashboard() {
           )}
 
           {/* Department Portals */}
-          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, UserRole.ACCOUNTS, 'accounts', 'user', 'admin'].includes(user.role as any) && (
+          {user?.role && ![UserRole.ADMIN, UserRole.MARKETING, UserRole.DIGITIZER, UserRole.ACCOUNTS, 'accounts', 'user', 'admin', UserRole.ONLINETEAM, 'onlineteam'].includes(user.role as any) && (
             <div className="bg-brand-primary/5 p-3 rounded-2xl border border-brand-primary/10 mb-2">
               <p className={cn(
                 "text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-2 px-1",

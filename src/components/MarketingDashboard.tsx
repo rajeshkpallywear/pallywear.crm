@@ -108,6 +108,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     setEditingOrderId(null);
   };
 
+  useEffect(() => {
+    const handleCreateOrderEvent = () => {
+      resetForm();
+      setIsCreating(true);
+    };
+    window.addEventListener('onlineteam-create-order', handleCreateOrderEvent);
+    return () => {
+      window.removeEventListener('onlineteam-create-order', handleCreateOrderEvent);
+    };
+  }, [orders]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isProcessing) return;

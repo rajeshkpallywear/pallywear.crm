@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
 import { Lead, LeadType } from '../types';
@@ -62,6 +62,16 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
     });
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    const handleCreateLeadEvent = () => {
+      handleOpenAdd();
+    };
+    window.addEventListener('onlineteam-create-lead', handleCreateLeadEvent);
+    return () => {
+      window.removeEventListener('onlineteam-create-lead', handleCreateLeadEvent);
+    };
+  }, [leads, user]);
 
   const calculateFinancials = (total: number, code: string) => {
     let discount = 0;
