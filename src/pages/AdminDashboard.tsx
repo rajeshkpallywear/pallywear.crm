@@ -1519,6 +1519,10 @@ export default function AdminDashboard() {
 
                   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
+                  if (user?.email !== 'daniel.smpallywear@gmail.com') {
+                    return null;
+                  }
+
                   return (
                     <RoleBreakdown
                       mktOrdersRevenue={mktOrdersRevenue}
