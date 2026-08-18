@@ -74,7 +74,7 @@ export default function Dashboard() {
   const activeOrders = React.useMemo(() => filteredOrders.filter(o => o.status !== 'hold'), [filteredOrders]);
 
   const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar'>(() => {
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar' | 'online_leads'>(() => {
     const saved = localStorage.getItem('pallywear_active_tab');
     if (saved && ['dashboard', 'reports', 'clients', 'invoices', 'inventory', 'history', 'digitizer_comm', 'marketing_orders', 'calendar'].includes(saved)) {
       return saved as any;
@@ -494,6 +494,20 @@ export default function Dashboard() {
               >
                 <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
               </button>
+
+              {user?.email === 'daniel.smpallywear@gmail.com' && (
+                <button
+                  onClick={() => selectTab('online_leads')}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
+                    activeTab === 'online_leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                  )}
+                  title={isSidebarCollapsed ? "Online Leads" : ""}
+                >
+                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
+                </button>
+              )}
             </div>
           )}
 
@@ -766,7 +780,9 @@ export default function Dashboard() {
         </header>
 
         <div className="p-4 sm:p-6 md:p-8">
-          {activeTab === 'inventory' ? (
+          {activeTab === 'online_leads' ? (
+            <OnlineTeamDashboard user={user} defaultTab="all_online_leads" />
+          ) : activeTab === 'inventory' ? (
             <InventoryManagement userRole={user?.role as any} />
           ) : activeTab === 'history' ? (
             <div className="space-y-6">
@@ -1174,6 +1190,20 @@ export default function Dashboard() {
                 <BarChart3 className="w-4 h-4" />
                 <span>Invoices</span>
               </button>
+              {user?.email === 'daniel.smpallywear@gmail.com' && (
+                <button
+                  onClick={() => selectTab('online_leads')}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                    activeTab === 'online_leads'
+                      ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
+                      : "text-gray-400 hover:text-gray-600"
+                  )}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Leads</span>
+                </button>
+              )}
             </>
           ) : (
             <button

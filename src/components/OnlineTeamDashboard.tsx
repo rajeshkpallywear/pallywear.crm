@@ -22,10 +22,14 @@ interface Lead {
   createdByName?: string;
 }
 
-export default function OnlineTeamDashboard({ user }: { user: any }) {
+export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' }: { user: any; defaultTab?: 'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads' }) {
   const { leads, updateLead, addLead } = useLeads();
   const { registeredUsers } = useAuth();
-  const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'>('active_leads');
+  const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'>(defaultTab);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAdminLogsModal, setShowAdminLogsModal] = useState(false);
   const [selectedLeadForAdminLogs, setSelectedLeadForAdminLogs] = useState<Lead | null>(null);
