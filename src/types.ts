@@ -18,6 +18,8 @@ export interface Lead {
   createdByName: string;
   assignedTo?: string;
   assignedToName?: string;
+  status?: string;
+  description?: string;
 }
 
 export interface InvoiceItem {
