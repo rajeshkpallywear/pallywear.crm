@@ -73,6 +73,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     e.preventDefault();
     if (!newLeadName || !newLeadPhone) return;
     setIsSubmittingNewLead(true);
+    const isJimCreator = user?.email === 'jimpallywear@gmail.com';
     try {
       await addLead({
         name: newLeadName,
@@ -88,7 +89,10 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
         createdByName: user?.name || 'Online Team',
         status: 'New',
         description: '',
-        isOnlineLead: true
+        isOnlineLead: true,
+        assignedTo: isJimCreator ? (user?.id || user?.uid) : undefined,
+        assignedToName: isJimCreator ? user?.name : undefined,
+        isTaken: isJimCreator ? true : false
       });
       // Reset form
       setNewLeadName('');
@@ -791,7 +795,15 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
       ) : (
         <div className="space-y-6 animate-fadeIn text-left">
           {(() => {
-            const otLeads = leads.filter(l => isOnlineTeam(l.createdBy) || l.isOnlineLead);
+            const otLeads = leads.filter(l => {
+              const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
+              if (!matchesBase) return false;
+              
+              const isOverallManager = user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com';
+              if (isOverallManager) return true;
+              
+              return l.createdBy === user?.id || l.createdBy === user?.uid;
+            });
             const isManager = user?.email === 'daniel.smpallywear@gmail.com';
             const isJim = user?.email === 'jimpallywear@gmail.com';
             const canAssign = user?.role === 'admin' || isManager || isJim;
