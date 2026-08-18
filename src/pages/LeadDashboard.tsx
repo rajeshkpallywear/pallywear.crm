@@ -197,7 +197,8 @@ export default function LeadDashboard() {
       const forecastedValue = userLeads.reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
       const convertedValue = userOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
       const conversionRate = totalLeads > 0 ? Math.round((userLeads.filter(l => (Number(l.totalOrderValue) || 0) > 0).length / totalLeads) * 100) : 0;
-      return { ...u, totalLeads, hotLeads, warmLeads, coldLeads, forecastedValue, convertedValue, conversionRate, leads: userLeads };
+      const deliveryOrdersCount = userOrders.length;
+      return { ...u, totalLeads, hotLeads, warmLeads, coldLeads, forecastedValue, convertedValue, conversionRate, deliveryOrdersCount, leads: userLeads };
     });
   }, [registeredUsers, leads, orders]);
 
@@ -429,6 +430,7 @@ export default function LeadDashboard() {
                   <th className="px-5 py-3 text-center">❄ Cold</th>
                   <th className="px-5 py-3 text-right">Forecasted</th>
                   <th className="px-5 py-3 text-right">Converted</th>
+                  <th className="px-5 py-3 text-center">Total Delivery Orders</th>
                   <th className="px-5 py-3 text-center">Conv. Rate</th>
                   <th className="px-5 py-3 text-center">Details</th>
                 </tr>
@@ -436,7 +438,7 @@ export default function LeadDashboard() {
               <tbody className="divide-y divide-gray-50">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-gray-400 italic text-xs">No staff members match your search.</td>
+                    <td colSpan={11} className="py-12 text-center text-gray-400 italic text-xs">No staff members match your search.</td>
                   </tr>
                 ) : filteredUsers.map((u: any, idx: number) => (
                   <React.Fragment key={u.id || u.uid}>
@@ -490,6 +492,11 @@ export default function LeadDashboard() {
                       <td className="px-5 py-3 text-right font-bold text-gray-700">{u.forecastedValue > 0 ? fmt(u.forecastedValue) : <span className="text-gray-300">—</span>}</td>
                       <td className="px-5 py-3 text-right font-black text-emerald-700">{u.convertedValue > 0 ? fmt(u.convertedValue) : <span className="text-gray-300">—</span>}</td>
 
+                      {/* Delivery Orders */}
+                      <td className="px-5 py-3 text-center">
+                        <span className={cn('font-bold', u.deliveryOrdersCount > 0 ? 'text-gray-700' : 'text-gray-300')}>{u.deliveryOrdersCount}</span>
+                      </td>
+
                       {/* Conversion Rate */}
                       <td className="px-5 py-3 text-center">
                         <div className="flex flex-col items-center gap-1">
@@ -518,7 +525,7 @@ export default function LeadDashboard() {
                     {/* Expanded Lead Details */}
                     {expandedUser === (u.id || u.uid) && (
                       <tr>
-                        <td colSpan={10} className="bg-gray-50/80 px-5 py-4 border-t border-gray-100">
+                        <td colSpan={11} className="bg-gray-50/80 px-5 py-4 border-t border-gray-100">
                           <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-xs">
                             <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
                               <div className="flex items-center gap-2">

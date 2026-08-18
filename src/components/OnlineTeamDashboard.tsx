@@ -257,7 +257,7 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
       </div>
 
       {/* Hidden Manager components to listen for modal dispatcher events */}
-      <div className="absolute w-0 h-0 overflow-hidden pointer-events-none">
+      <div className="absolute w-0 h-0 overflow-hidden">
         <LeadManager />
         <MarketingDashboard
           orders={orders}
