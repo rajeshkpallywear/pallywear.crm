@@ -23,7 +23,7 @@ interface Lead {
 }
 
 export default function OnlineTeamDashboard({ user }: { user: any }) {
-  const { leads, updateLead } = useLeads();
+  const { leads, updateLead, addLead } = useLeads();
   const { registeredUsers } = useAuth();
   const [activeTab, setActiveTab] = useState<'assign_leads' | 'marketing_leads'>('assign_leads');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +33,62 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
   const [editStatus, setEditStatus] = useState('New');
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Add Call Log Form State
+  const [isAddLogOpen, setIsAddLogOpen] = useState(false);
+  const [addLogName, setAddLogName] = useState('');
+  const [addLogPhone, setAddLogPhone] = useState('');
+  const [addLogRequirement, setAddLogRequirement] = useState('');
+  const [addLogNotes, setAddLogNotes] = useState('');
+  const [isAddingLog, setIsAddingLog] = useState(false);
+
+  const resetAddLogForm = () => {
+    setAddLogName('');
+    setAddLogPhone('');
+    setAddLogRequirement('');
+    setAddLogNotes('');
+  };
+
+  const handleAddCallLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addLogName.trim() || !addLogPhone.trim()) return;
+    setIsAddingLog(true);
+    try {
+      const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+      const initialLog = addLogNotes.trim()
+        ? `[${timestamp}] ${user?.name || 'Online Team'}: ${addLogNotes.trim()}`
+        : '';
+      const fullDescription = addLogRequirement.trim()
+        ? `Requirements: ${addLogRequirement.trim()}${initialLog ? `\n\n${initialLog}` : ''}`
+        : initialLog;
+
+      await addLead({
+        name: addLogName.trim(),
+        number: addLogPhone.trim(),
+        companyName: addLogRequirement.trim(),
+        status: 'Called',
+        leadType: 'Warm',
+        entryDate: new Date().toLocaleDateString('en-US'),
+        description: fullDescription,
+        assignedTo: user?.id || user?.uid,
+        assignedToName: user?.name,
+        createdBy: user?.id || user?.uid,
+        createdByName: user?.name,
+        forecastedValue: 0,
+        convertedValue: 0,
+        totalOrderValue: 0,
+      });
+
+      setIsAddLogOpen(false);
+      resetAddLogForm();
+      alert('Call log added successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add call log.');
+    } finally {
+      setIsAddingLog(false);
+    }
+  };
 
   // Filter leads assigned to the logged-in Online Team member
   // Daniel and Admin can view all leads in the assignment dashboard
@@ -131,26 +187,34 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
           </p>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex items-center gap-1.5 p-1 bg-gray-100 border border-gray-200 rounded-2xl w-full md:w-auto">
+        {/* Tab Selection & Add Call Log Action */}
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
           <button
-            onClick={() => { setActiveTab('assign_leads'); setSearchTerm(''); }}
-            className={cn(
-              "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-              activeTab === 'assign_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-            )}
+            onClick={() => setIsAddLogOpen(true)}
+            className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
           >
-            Assign Leads
+            <Plus size={14} /> Add Call Log
           </button>
-          <button
-            onClick={() => { setActiveTab('marketing_leads'); setSearchTerm(''); }}
-            className={cn(
-              "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-              activeTab === 'marketing_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-            )}
-          >
-            Marketing Leads
-          </button>
+          <div className="flex items-center gap-1.5 p-1 bg-gray-100 border border-gray-250 rounded-2xl">
+            <button
+              onClick={() => { setActiveTab('assign_leads'); setSearchTerm(''); }}
+              className={cn(
+                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                activeTab === 'assign_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+              )}
+            >
+              Assign Leads
+            </button>
+            <button
+              onClick={() => { setActiveTab('marketing_leads'); setSearchTerm(''); }}
+              className={cn(
+                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                activeTab === 'marketing_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+              )}
+            >
+              Marketing Leads
+            </button>
+          </div>
         </div>
       </div>
 
@@ -423,6 +487,97 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add Call Log Modal Form */}
+      {isAddLogOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Record New Client Interaction</span>
+                <h3 className="text-lg font-black text-gray-900">Add Call Log</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAddLogOpen(false);
+                  resetAddLogForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddCallLog} className="p-6 space-y-4 text-left">
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Client Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={addLogName}
+                  onChange={(e) => setAddLogName(e.target.value)}
+                  placeholder="e.g. Rajesh Kumar"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-bold text-gray-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Phone Number *</label>
+                <input
+                  type="tel"
+                  required
+                  value={addLogPhone}
+                  onChange={(e) => setAddLogPhone(e.target.value)}
+                  placeholder="e.g. +91 98765 43210"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-mono text-gray-800 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Requirement / Company Name</label>
+                <input
+                  type="text"
+                  value={addLogRequirement}
+                  onChange={(e) => setAddLogRequirement(e.target.value)}
+                  placeholder="e.g. 50 Customized Hoodies"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-bold text-gray-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Call Notes / Discussion Details</label>
+                <textarea
+                  rows={4}
+                  value={addLogNotes}
+                  onChange={(e) => setAddLogNotes(e.target.value)}
+                  placeholder="Enter details of conversation..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-medium text-gray-800"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddLogOpen(false);
+                    resetAddLogForm();
+                  }}
+                  className="flex-1 py-3 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAddingLog}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                >
+                  {isAddingLog ? 'Submitting...' : 'Save Call log'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

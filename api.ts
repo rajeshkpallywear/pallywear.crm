@@ -233,22 +233,22 @@ router.post('/leads', async (req, res) => {
       await query(
         `UPDATE leads SET name=?, number=?, companyName=?, gst=?, leadType=?, entryDate=?, 
         forecastedValue=?, convertedValue=?, totalOrderValue=?, discountCode=?, discountAmount=?, 
-        netTotal=?, createdBy=?, createdByName=? WHERE id=?`,
+        netTotal=?, createdBy=?, createdByName=?, description=?, assignedTo=?, assignedToName=?, status=? WHERE id=?`,
         [
           lead.name, lead.number, lead.companyName, lead.gst, lead.leadType, lead.entryDate,
           lead.forecastedValue, lead.convertedValue, lead.totalOrderValue, lead.discountCode, lead.discountAmount,
-          lead.netTotal, lead.createdBy, lead.createdByName, lead.id
+          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status, lead.id
         ]
       );
     } else {
       await query(
         `INSERT INTO leads (id, name, number, companyName, gst, leadType, entryDate, 
         forecastedValue, convertedValue, totalOrderValue, discountCode, discountAmount, 
-        netTotal, createdBy, createdByName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        netTotal, createdBy, createdByName, description, assignedTo, assignedToName, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           lead.id, lead.name, lead.number, lead.companyName, lead.gst, lead.leadType, lead.entryDate,
           lead.forecastedValue, lead.convertedValue, lead.totalOrderValue, lead.discountCode, lead.discountAmount,
-          lead.netTotal, lead.createdBy, lead.createdByName
+          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status
         ]
       );
     }

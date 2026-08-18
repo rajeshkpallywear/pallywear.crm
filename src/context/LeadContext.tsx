@@ -153,6 +153,38 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       createdByName: orderData.createdByName || user.name,
     });
     setOrders((prev) => [...prev, nextOrder]);
+
+    // Automatically sync/create Client (Lead)
+    const phone = nextOrder.customerInfo?.phone;
+    if (phone) {
+      const existingLead = leads.find(l => l.number === phone);
+      const orderAmount = nextOrder.financials?.totalAmount || 0;
+      if (existingLead) {
+        await updateLead(existingLead.id, {
+          totalOrderValue: (existingLead.totalOrderValue || 0) + orderAmount,
+          convertedValue: (existingLead.convertedValue || 0) + orderAmount,
+          status: 'Converted'
+        });
+      } else {
+        await addLead({
+          name: nextOrder.customerInfo?.name || 'Client',
+          number: phone,
+          companyName: nextOrder.customerInfo?.address || nextOrder.details?.company || '',
+          gst: nextOrder.details?.gst || '',
+          leadType: 'Hot',
+          entryDate: new Date().toLocaleDateString('en-US'),
+          status: 'Converted',
+          createdBy: nextOrder.createdBy || user.id,
+          createdByName: nextOrder.createdByName || user.name,
+          assignedTo: nextOrder.createdBy || user.id,
+          assignedToName: nextOrder.createdByName || user.name,
+          forecastedValue: orderAmount,
+          convertedValue: orderAmount,
+          totalOrderValue: orderAmount,
+          description: `Automatically created from Order #${nextOrder.id.slice(-8)}`
+        });
+      }
+    }
   };
 
   const updateOrder = async (id: string, orderUpdate: Partial<Order>) => {
@@ -169,6 +201,27 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
     try {
       await mockDataService.patchOrder(id, sanitizeForStorage(orderUpdate));
+
+      // Sync changes to the associated Lead/Client
+      const phone = nextOrder.customerInfo?.phone || existing.customerInfo?.phone;
+      if (phone) {
+        const associatedLead = leads.find(l => l.number === phone);
+        if (associatedLead) {
+          const updates: Partial<Lead> = {};
+          if (orderUpdate.customerInfo?.name) updates.name = orderUpdate.customerInfo.name;
+          if (orderUpdate.customerInfo?.address) updates.companyName = orderUpdate.customerInfo.address;
+          
+          // Re-calculate sum of all order amounts for this client phone number
+          const clientOrders = orders.map(o => o.id === id ? nextOrder : o)
+            .filter(o => o.customerInfo?.phone === phone);
+          const totalValue = clientOrders.reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
+          updates.totalOrderValue = totalValue;
+          updates.convertedValue = totalValue;
+          updates.status = 'Converted';
+
+          await updateLead(associatedLead.id, updates);
+        }
+      }
     } catch (err) {
       console.error("Background sync error:", err);
       throw err;
