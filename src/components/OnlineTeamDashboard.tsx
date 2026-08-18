@@ -793,7 +793,8 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
           {(() => {
             const otLeads = leads.filter(l => isOnlineTeam(l.createdBy) || l.isOnlineLead);
             const isManager = user?.email === 'daniel.smpallywear@gmail.com';
-            const canAssign = user?.role === 'admin' || isManager;
+            const isJim = user?.email === 'jimpallywear@gmail.com';
+            const canAssign = user?.role === 'admin' || isManager || isJim;
 
             // Removed manager-only registration card overlay to display the registry dashboard to regular online team members
 
@@ -927,7 +928,8 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                       value={lead.assignedTo || ''}
                                       onChange={async (e) => {
                                         const agentId = e.target.value;
-                                        const agent = marketingAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                        const targetAgents = isJim ? onlineTeamAgents : marketingAgents;
+                                        const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
                                         const agentName = agent ? agent.name : '';
                                         try {
                                           const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
@@ -956,7 +958,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                       className="bg-gray-50 border border-gray-150 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
                                     >
                                       <option value="">Unassigned</option>
-                                      {marketingAgents.map((agent: any) => (
+                                      {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
                                         <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
                                           {agent.name}
                                         </option>
