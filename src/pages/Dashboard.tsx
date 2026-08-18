@@ -793,7 +793,7 @@ export default function Dashboard() {
 
         <div className="p-4 sm:p-6 md:p-8">
           {activeTab === 'online_leads' ? (
-            <OnlineTeamDashboard user={user} defaultTab="all_online_leads" />
+            <OnlineTeamDashboard user={user} defaultTab="all_online_leads" hideHeaderAndTabs={true} />
           ) : activeTab === 'inventory' ? (
             <InventoryManagement userRole={user?.role as any} />
           ) : activeTab === 'history' ? (

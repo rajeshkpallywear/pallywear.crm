@@ -22,11 +22,14 @@ interface Lead {
   createdByName?: string;
 }
 
-export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' }: { user: any; defaultTab?: 'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads' }) {
+export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads', hideHeaderAndTabs = false }: { user: any; defaultTab?: 'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'; hideHeaderAndTabs?: boolean }) {
   const { leads, updateLead, addLead } = useLeads();
   const { registeredUsers } = useAuth();
   const onlineTeamAgents = React.useMemo(() => {
     return registeredUsers?.filter((u: any) => u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM') || [];
+  }, [registeredUsers]);
+  const marketingAgents = React.useMemo(() => {
+    return registeredUsers?.filter((u: any) => u.role === 'marketing' || u.role === 'UserRole.MARKETING') || [];
   }, [registeredUsers]);
   const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'>(defaultTab);
 
@@ -281,91 +284,93 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
     <div className="space-y-6">
       
       {/* Top Banner Header & Tab Selection */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-150 pb-4">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-            {activeTab === 'active_leads' 
-              ? 'My Active Leads' 
-              : activeTab === 'assign_leads'
-              ? 'Assign / Claim Leads'
-              : activeTab === 'marketing_leads' 
-              ? 'Marketing Leads Dashboard' 
-              : activeTab === 'call_logs'
-              ? 'Call Logs Timeline'
-              : 'Online Leads Dashboard'}
-          </h2>
-          <p className="text-gray-500 text-xs mt-0.5 font-semibold uppercase tracking-wider">
-            {activeTab === 'active_leads' 
-              ? 'Call tracking and status management for your assigned leads' 
-              : activeTab === 'assign_leads'
-              ? 'Claim unassigned leads to work on them in your active workspace'
-              : activeTab === 'marketing_leads' 
-              ? 'Monitor and review marketing uploaded pools and prospects'
-              : activeTab === 'call_logs'
-              ? 'Chronological timeline of all your recorded interaction notes'
-              : 'Comprehensive statistics and registry of all online team leads'}
-          </p>
-        </div>
+      {!hideHeaderAndTabs && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-150 pb-4">
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+              {activeTab === 'active_leads' 
+                ? 'My Active Leads' 
+                : activeTab === 'assign_leads'
+                ? 'Assign / Claim Leads'
+                : activeTab === 'marketing_leads' 
+                ? 'Marketing Leads Dashboard' 
+                : activeTab === 'call_logs'
+                ? 'Call Logs Timeline'
+                : 'Online Leads Dashboard'}
+            </h2>
+            <p className="text-gray-500 text-xs mt-0.5 font-semibold uppercase tracking-wider">
+              {activeTab === 'active_leads' 
+                ? 'Call tracking and status management for your assigned leads' 
+                : activeTab === 'assign_leads'
+                ? 'Claim unassigned leads to work on them in your active workspace'
+                : activeTab === 'marketing_leads' 
+                ? 'Monitor and review marketing uploaded pools and prospects'
+                : activeTab === 'call_logs'
+                ? 'Chronological timeline of all your recorded interaction notes'
+                : 'Comprehensive statistics and registry of all online team leads'}
+            </p>
+          </div>
 
-        {/* Tab Selection & Add Call Log Action */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-          <button
-            onClick={() => setIsAddLogOpen(true)}
-            className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
-          >
-            <Plus size={14} /> Add Call Log
-          </button>
-          <div className="flex items-center gap-1.5 p-1 bg-gray-100 border border-gray-250 rounded-2xl">
+          {/* Tab Selection & Add Call Log Action */}
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
             <button
-              onClick={() => { setActiveTab('active_leads'); setSearchTerm(''); }}
-              className={cn(
-                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-                activeTab === 'active_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-              )}
+              onClick={() => setIsAddLogOpen(true)}
+              className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
             >
-              Active Leads
+              <Plus size={14} /> Add Call Log
             </button>
-            <button
-              onClick={() => { setActiveTab('assign_leads'); setSearchTerm(''); }}
-              className={cn(
-                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-                activeTab === 'assign_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-              )}
-            >
-              Assign Leads
-            </button>
-            <button
-              onClick={() => { setActiveTab('marketing_leads'); setSearchTerm(''); }}
-              className={cn(
-                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-                activeTab === 'marketing_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-              )}
-            >
-              Marketing Leads
-            </button>
-            <button
-              onClick={() => { setActiveTab('call_logs'); setSearchTerm(''); }}
-              className={cn(
-                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-                activeTab === 'call_logs' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-              )}
-            >
-              Call History Log
-            </button>
-            {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
+            <div className="flex items-center gap-1.5 p-1 bg-gray-100 border border-gray-250 rounded-2xl">
               <button
-                onClick={() => { setActiveTab('all_online_leads'); setSearchTerm(''); }}
+                onClick={() => { setActiveTab('active_leads'); setSearchTerm(''); }}
                 className={cn(
                   "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-                  activeTab === 'all_online_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+                  activeTab === 'active_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
                 )}
               >
-                Online Leads Dashboard
+                Active Leads
               </button>
-            )}
+              <button
+                onClick={() => { setActiveTab('assign_leads'); setSearchTerm(''); }}
+                className={cn(
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  activeTab === 'assign_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+                )}
+              >
+                Assign Leads
+              </button>
+              <button
+                onClick={() => { setActiveTab('marketing_leads'); setSearchTerm(''); }}
+                className={cn(
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  activeTab === 'marketing_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+                )}
+              >
+                Marketing Leads
+              </button>
+              <button
+                onClick={() => { setActiveTab('call_logs'); setSearchTerm(''); }}
+                className={cn(
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  activeTab === 'call_logs' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+                )}
+              >
+                Call History Log
+              </button>
+              {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
+                <button
+                  onClick={() => { setActiveTab('all_online_leads'); setSearchTerm(''); }}
+                  className={cn(
+                    "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                    activeTab === 'all_online_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+                  )}
+                >
+                  Online Leads Dashboard
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
 
       {/* Tab content rendering */}
@@ -830,53 +835,55 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
 
             return (
               <>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                      <ClipboardList size={20} />
+                {!hideHeaderAndTabs && (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <ClipboardList size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Online Leads</p>
+                        <p className="text-2xl font-black text-gray-900 mt-1">{otLeads.length}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Online Leads</p>
-                      <p className="text-2xl font-black text-gray-900 mt-1">{otLeads.length}</p>
-                    </div>
-                  </div>
 
-                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                      <Phone size={20} />
+                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <Phone size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Called / Followed Up</p>
+                        <p className="text-2xl font-black text-gray-900 mt-1">
+                          {otLeads.filter(l => ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status || '')).length}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Called / Followed Up</p>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {otLeads.filter(l => ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status || '')).length}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                    <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                      <AlertCircle size={20} />
+                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                      <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <AlertCircle size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested (Hot)</p>
+                        <p className="text-2xl font-black text-gray-900 mt-1">
+                          {otLeads.filter(l => l.status === 'Interested' || l.leadType === 'Hot').length}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested (Hot)</p>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {otLeads.filter(l => l.status === 'Interested' || l.leadType === 'Hot').length}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                      <CheckCircle2 size={20} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Converted Deals</p>
-                      <p className="text-2xl font-black text-gray-900 mt-1">
-                        {otLeads.filter(l => l.status === 'Converted' || l.convertedValue > 0).length}
-                      </p>
+                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <CheckCircle2 size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Converted Deals</p>
+                        <p className="text-2xl font-black text-gray-900 mt-1">
+                          {otLeads.filter(l => l.status === 'Converted' || l.convertedValue > 0).length}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Table of Leads */}
                 <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
@@ -956,7 +963,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                                       value={lead.assignedTo || ''}
                                       onChange={async (e) => {
                                         const agentId = e.target.value;
-                                        const agent = onlineTeamAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                        const agent = marketingAgents.find((u: any) => u.id === agentId || u.uid === agentId);
                                         const agentName = agent ? agent.name : '';
                                         try {
                                           const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
@@ -985,7 +992,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                                       className="bg-gray-50 border border-gray-150 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
                                     >
                                       <option value="">Unassigned</option>
-                                      {onlineTeamAgents.map((agent: any) => (
+                                      {marketingAgents.map((agent: any) => (
                                         <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
                                           {agent.name}
                                         </option>
