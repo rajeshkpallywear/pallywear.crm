@@ -6,7 +6,7 @@ import {
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
-  Edit, Plus
+  Edit, Plus, Phone, Flame
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
@@ -559,18 +559,32 @@ export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredO
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${l.leadType === 'Hot' ? 'bg-red-50 text-red-700 border-red-100' : l.leadType === 'Warm' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{l.leadType}</span></td>
                     <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(l.totalOrderValue) || 0).toLocaleString('en-IN')}</td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleDeleteLead(l.id)}
-                        disabled={deletingLeadId === l.id}
-                        title="Delete this lead convert entry"
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
-                      >
-                        {deletingLeadId === l.id ? (
-                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                        ) : (
-                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                      <div className="flex justify-center items-center gap-1.5">
+                        {l.description && (
+                          <button
+                            onClick={() => {
+                              setSelectedAdminLeadForLogs(l);
+                              setShowAdminLogsModal(true);
+                            }}
+                            title="View Call Logs"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
+                          >
+                            <FileText size={13} />
+                          </button>
                         )}
-                      </button>
+                        <button
+                          onClick={() => handleDeleteLead(l.id)}
+                          disabled={deletingLeadId === l.id}
+                          title="Delete this lead convert entry"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
+                        >
+                          {deletingLeadId === l.id ? (
+                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                          ) : (
+                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -775,9 +789,12 @@ export default function AdminDashboard() {
     const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
     const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads'>('overview');
     const [userLogs, setUserLogs] = useState<any[]>([]);
     const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
+    const [adminLeadSearch, setAdminLeadSearch] = useState('');
+    const [showAdminLogsModal, setShowAdminLogsModal] = useState(false);
+    const [selectedAdminLeadForLogs, setSelectedAdminLeadForLogs] = useState<Lead | null>(null);
     const [userLogsLoading, setUserLogsLoading] = useState(false);
 
     const fetchUserLogs = async () => {
@@ -1360,6 +1377,17 @@ export default function AdminDashboard() {
                 title={isSidebarCollapsed ? "Invoices" : ""}
               >
                 <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
+              </button>
+              <button
+                onClick={() => selectTab('online-leads')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'online-leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Online Leads" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
               </button>
               <button
                 onClick={() => selectTab('logs')}
@@ -2395,6 +2423,167 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+            ) : activeTab === 'online-leads' ? (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Online Leads & Call Logs</h2>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">Monitor client interactions, requirements, and call log histories</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddLeadConvert(true)}
+                    className="px-4 py-2.5 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95"
+                  >
+                    <Plus size={14} /> Add Lead / Client
+                  </button>
+                </div>
+
+                {/* Stats cards for leads */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                      <Users size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Leads</p>
+                      <p className="text-2xl font-black text-gray-900 mt-1">{leads.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                      <Phone size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Called / Followed Up</p>
+                      <p className="text-2xl font-black text-gray-900 mt-1">
+                        {leads.filter(l => ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status || '')).length}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                    <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                      <Flame size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested (Hot)</p>
+                      <p className="text-2xl font-black text-gray-900 mt-1">
+                        {leads.filter(l => l.status === 'Interested' || l.leadType === 'Hot').length}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Converted Deals</p>
+                      <p className="text-2xl font-black text-gray-900 mt-1">
+                        {leads.filter(l => l.status === 'Converted' || l.convertedValue > 0).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table of Leads */}
+                <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
+                    <h3 className="text-lg font-bold text-gray-900">Leads Registry & Call Logs</h3>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search leads..."
+                        value={adminLeadSearch}
+                        onChange={(e) => setAdminLeadSearch(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
+                        <tr>
+                          <th className="px-4 py-3">Agent</th>
+                          <th className="px-4 py-3">Client Name</th>
+                          <th className="px-4 py-3">Phone</th>
+                          <th className="px-4 py-3">Company</th>
+                          <th className="px-4 py-3 text-center">Status</th>
+                          <th className="px-4 py-3">Latest Call Log</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {leads
+                          .filter(l => 
+                            l.name.toLowerCase().includes(adminLeadSearch.toLowerCase()) ||
+                            (l.companyName || '').toLowerCase().includes(adminLeadSearch.toLowerCase()) ||
+                            l.number.includes(adminLeadSearch) ||
+                            (l.createdByName || '').toLowerCase().includes(adminLeadSearch.toLowerCase())
+                          )
+                          .map((lead) => {
+                            const logs = lead.description ? lead.description.split('\n\n') : [];
+                            const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
+
+                            return (
+                              <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
+                                <td className="px-4 py-3 font-bold text-gray-700">
+                                  {lead.createdByName || 'System'}
+                                </td>
+                                <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
+                                <td className="px-4 py-3 font-mono text-gray-600">{lead.number}</td>
+                                <td className="px-4 py-3 text-gray-500 font-semibold">{lead.companyName || '—'}</td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={cn(
+                                    "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                                    lead.status === 'Converted' ? "bg-emerald-50 text-emerald-700 border-emerald-150" :
+                                    lead.status === 'Interested' ? "bg-red-50 text-red-700 border-red-150" :
+                                    lead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-150" :
+                                    "bg-amber-50 text-amber-700 border-amber-150"
+                                  )}>
+                                    {lead.status || 'New'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 max-w-xs truncate text-gray-500 font-medium italic animate-pulse-slow" title={lead.description}>
+                                  {latestLog}
+                                </td>
+                                <td className="px-4 py-3 text-right flex justify-end gap-1.5">
+                                  {lead.description && (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedAdminLeadForLogs(lead);
+                                        setShowAdminLogsModal(true);
+                                      }}
+                                      title="View All Call Logs"
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
+                                    >
+                                      <FileText size={13} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteLead(lead.id)}
+                                    title="Delete Lead"
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 transition-all cursor-pointer animate-in fade-in"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        {leads.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-gray-400 italic">No leads found in the system.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="bg-white p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
                 <div className="w-16 h-16 bg-brand-secondary rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-md">
@@ -2846,7 +3035,8 @@ export default function AdminDashboard() {
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             { id: 'orders', label: 'Orders', icon: Zap },
             { id: 'invoices', label: 'Invoices', icon: BarChart3 },
-            { id: 'users', label: 'Users', icon: Users },
+            { id: 'online-leads', label: 'Leads', icon: Users },
+            { id: 'users', label: 'Users', icon: UserPlus },
             { id: 'logs', label: 'Logs', icon: FileText },
           ].map((item) => (
             <button
@@ -2870,6 +3060,56 @@ export default function AdminDashboard() {
             </button>
           ))}
         </nav>
+
+        {/* Admin Call Logs Detail Modal */}
+        {showAdminLogsModal && selectedAdminLeadForLogs && (
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 text-left">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Call Log History</span>
+                  <h3 className="text-lg font-black text-gray-900">{selectedAdminLeadForLogs.name}</h3>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedAdminLeadForLogs.number}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAdminLogsModal(false);
+                    setSelectedAdminLeadForLogs(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border-none cursor-pointer bg-transparent"
+                >
+                  <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+                {selectedAdminLeadForLogs.description ? (
+                  <div className="space-y-4">
+                    {selectedAdminLeadForLogs.description.split('\n\n').map((entry, idx) => (
+                      <div key={idx} className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-semibold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-xs">
+                        {entry}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic text-center py-6">No call logs recorded yet.</p>
+                )}
+              </div>
+
+              <div className="p-6 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowAdminLogsModal(false);
+                    setSelectedAdminLeadForLogs(null);
+                  }}
+                  className="px-6 py-2.5 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-primary/95 transition-all cursor-pointer border-none shadow-md"
+                >
+                  Close Logs
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <SidebarChat />
       </div>

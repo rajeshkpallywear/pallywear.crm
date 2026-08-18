@@ -25,7 +25,7 @@ interface Lead {
 export default function OnlineTeamDashboard({ user }: { user: any }) {
   const { leads, updateLead, addLead } = useLeads();
   const { registeredUsers } = useAuth();
-  const [activeTab, setActiveTab] = useState<'assign_leads' | 'marketing_leads'>('assign_leads');
+  const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs'>('active_leads');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Lead logs state
@@ -130,6 +130,47 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
     return matchesSearch;
   });
 
+  const allCallLogs = React.useMemo(() => {
+    const logsList: { leadId: string; leadName: string; number: string; timestamp: string; note: string }[] = [];
+    assignedLeads.forEach(lead => {
+      if (lead.description) {
+        const entries = lead.description.split('\n\n');
+        entries.forEach(entry => {
+          const match = entry.match(/^\[(.*?)\]\s*(.*?):\s*(.*)$/s);
+          if (match) {
+            logsList.push({
+              leadId: lead.id,
+              leadName: lead.name,
+              number: lead.number,
+              timestamp: match[1],
+              note: `${match[2]}: ${match[3]}`
+            });
+          } else {
+            logsList.push({
+              leadId: lead.id,
+              leadName: lead.name,
+              number: lead.number,
+              timestamp: 'Log Entry',
+              note: entry
+            });
+          }
+        });
+      }
+    });
+    return logsList.reverse();
+  }, [assignedLeads]);
+
+  const unassignedLeads = React.useMemo(() => {
+    return leads.filter(l => !l.assignedTo);
+  }, [leads]);
+
+  const filteredUnassignedLeads = unassignedLeads.filter(l => {
+    const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          l.number.includes(searchTerm);
+    return matchesSearch;
+  });
+
   const handleUpdateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLead) return;
@@ -178,12 +219,22 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-150 pb-4">
         <div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-            {activeTab === 'assign_leads' ? 'Assign Leads Dashboard' : 'Marketing Leads Dashboard'}
+            {activeTab === 'active_leads' 
+              ? 'My Active Leads' 
+              : activeTab === 'assign_leads'
+              ? 'Assign / Claim Leads'
+              : activeTab === 'marketing_leads' 
+              ? 'Marketing Leads Dashboard' 
+              : 'Call Logs Timeline'}
           </h2>
           <p className="text-gray-500 text-xs mt-0.5 font-semibold uppercase tracking-wider">
-            {activeTab === 'assign_leads' 
+            {activeTab === 'active_leads' 
               ? 'Call tracking and status management for your assigned leads' 
-              : 'Monitor and review marketing uploaded pools and prospects'}
+              : activeTab === 'assign_leads'
+              ? 'Claim unassigned leads to work on them in your active workspace'
+              : activeTab === 'marketing_leads' 
+              ? 'Monitor and review marketing uploaded pools and prospects'
+              : 'Chronological timeline of all your recorded interaction notes'}
           </p>
         </div>
 
@@ -196,6 +247,15 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
             <Plus size={14} /> Add Call Log
           </button>
           <div className="flex items-center gap-1.5 p-1 bg-gray-100 border border-gray-250 rounded-2xl">
+            <button
+              onClick={() => { setActiveTab('active_leads'); setSearchTerm(''); }}
+              className={cn(
+                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                activeTab === 'active_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+              )}
+            >
+              Active Leads
+            </button>
             <button
               onClick={() => { setActiveTab('assign_leads'); setSearchTerm(''); }}
               className={cn(
@@ -214,13 +274,22 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
             >
               Marketing Leads
             </button>
+            <button
+              onClick={() => { setActiveTab('call_logs'); setSearchTerm(''); }}
+              className={cn(
+                "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                activeTab === 'call_logs' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
+              )}
+            >
+              Call History Log
+            </button>
           </div>
         </div>
       </div>
 
 
       {/* Tab content rendering */}
-      {activeTab === 'assign_leads' ? (
+      {activeTab === 'active_leads' ? (
         <div className="space-y-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -421,7 +490,101 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'assign_leads' ? (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Unassigned Leads Pool</h3>
+              <p className="text-xs text-gray-500">Select and claim leads to add them to your active workspace</p>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search unassigned leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-4">Client Name</th>
+                  <th className="px-6 py-4">Phone</th>
+                  <th className="px-6 py-4">Company</th>
+                  <th className="px-6 py-4">Created By</th>
+                  <th className="px-6 py-4 text-center">Lead Type</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredUnassignedLeads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
+                    <td className="px-6 py-4 font-bold text-gray-900">{lead.name}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-600">{lead.number}</td>
+                    <td className="px-6 py-4 text-gray-500 font-semibold">{lead.companyName || '—'}</td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs text-gray-600 font-medium">{lead.createdByName || 'System'}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={cn(
+                        "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                        lead.leadType === 'Hot' ? "bg-red-50 text-red-700 border-red-150" :
+                        lead.leadType === 'Warm' ? "bg-amber-50 text-amber-700 border-amber-150" :
+                        "bg-blue-50 text-blue-700 border-blue-150"
+                      )}>
+                        {lead.leadType || 'Warm'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                assignedTo: user?.id || user?.uid,
+                                assignedToName: user?.name,
+                                isTaken: true
+                              })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              await updateLead(lead.id, {
+                                assignedTo: user?.id || user?.uid,
+                                assignedToName: user?.name,
+                                isTaken: true
+                              });
+                              alert('Lead claimed successfully!');
+                            }
+                          } catch (e) {
+                            console.error("Failed to claim lead:", e);
+                          }
+                        }}
+                        className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer"
+                      >
+                        Claim Lead
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredUnassignedLeads.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-gray-400 italic">
+                      No unassigned leads found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === 'marketing_leads' ? (
         /* Marketing Leads tab content */
         <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 text-left">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-50 pb-3">
@@ -449,7 +612,8 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
                   <th className="px-6 py-4">Phone</th>
                   <th className="px-6 py-4">Company</th>
                   <th className="px-6 py-4">Uploaded By</th>
-                  <th className="px-6 py-4 text-right">Lead Type</th>
+                  <th className="px-6 py-4 text-center">Lead Type</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -466,7 +630,7 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
                         <span className="text-xs text-gray-600 font-medium">{lead.createdByName}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-center">
                       <span className={cn(
                         "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                         lead.leadType === 'Hot' ? "bg-red-50 text-red-700 border-red-150" :
@@ -476,17 +640,103 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
                         {lead.leadType || 'Warm'}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={async () => {
+                          if (!lead.assignedTo) {
+                            try {
+                              const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  assignedTo: user?.id || user?.uid,
+                                  assignedToName: user?.name,
+                                  isTaken: true
+                                })
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                await updateLead(lead.id, {
+                                  assignedTo: user?.id || user?.uid,
+                                  assignedToName: user?.name,
+                                  isTaken: true
+                                });
+                              }
+                            } catch (e) {
+                              console.error("Failed to assign lead:", e);
+                            }
+                          }
+                          setActiveTab('assign_leads');
+                          setEditingLead(lead);
+                          setEditStatus(lead.status || 'New');
+                          setNewNote('');
+                        }}
+                        className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer"
+                      >
+                        Update Status
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filteredMarketingLeads.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-400 italic">
+                    <td colSpan={6} className="py-12 text-center text-gray-400 italic">
                       No marketing-uploaded leads match the search query.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Your Call Log History</h3>
+              <p className="text-xs text-gray-500">Every client note, discussion detail, and interaction you have recorded</p>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search call logs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+            {allCallLogs
+              .filter(log => 
+                log.leadName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.note.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.number.includes(searchTerm)
+              )
+              .map((log, idx) => (
+                <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex flex-col md:flex-row md:items-start gap-4 transition-all hover:border-gray-250 animate-in fade-in">
+                  <div className="flex-shrink-0 flex items-center md:flex-col items-start gap-2.5 md:w-40 min-w-0">
+                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest bg-brand-primary/10 px-2 py-0.5 rounded-md">
+                      {log.timestamp}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-black text-xs text-gray-900 truncate">{log.leadName}</p>
+                      <p className="text-[10px] text-gray-400 font-mono mt-0.5 truncate">{log.number}</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 text-xs text-gray-700 font-medium whitespace-pre-wrap leading-relaxed">
+                    {log.note}
+                  </div>
+                </div>
+              ))}
+
+            {allCallLogs.length === 0 && (
+              <div className="text-center py-12 text-gray-400 italic">
+                No call logs recorded yet. Start by selecting an assigned lead or adding a call log.
+              </div>
+            )}
           </div>
         </div>
       )}
