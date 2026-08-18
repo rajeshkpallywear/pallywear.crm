@@ -143,22 +143,16 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
     }
   };
 
-  // Filter leads assigned to the logged-in Online Team member
-  // Daniel and Admin can view all leads in the assignment dashboard
   const assignedLeads = React.useMemo(() => {
-    const filteredLeads = leads.filter(l => {
-      if (l.isOnlineLead) {
-        return l.assignedTo === user?.id || l.assignedTo === user?.uid || l.assignedTo === user?.email;
-      }
-      return true;
-    });
+    const filteredLeads = leads.filter(l => !l.isOnlineLead);
     if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return filteredLeads;
     if (user?.role === 'onlineteam') {
       return filteredLeads.filter(l => 
         l.assignedTo === user?.id || 
         l.assignedTo === user?.uid || 
         l.assignedTo === user?.email ||
-        (!l.isOnlineLead && (l.createdBy === user?.id || l.createdBy === user?.uid))
+        l.createdBy === user?.id ||
+        l.createdBy === user?.uid
       );
     }
     return filteredLeads;
@@ -219,7 +213,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
   }, [assignedLeads]);
 
   const unassignedLeads = React.useMemo(() => {
-    return leads.filter(l => !l.assignedTo);
+    return leads.filter(l => !l.isOnlineLead && !l.assignedTo);
   }, [leads]);
 
   const filteredUnassignedLeads = unassignedLeads.filter(l => {

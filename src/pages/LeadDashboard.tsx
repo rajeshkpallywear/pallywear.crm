@@ -183,7 +183,7 @@ export default function LeadDashboard() {
 
     return filteredStaff.map((u: any) => {
       const userLeads = leads.filter(l =>
-        l.createdBy === u.id || l.createdBy === u.uid || l.createdByName === u.name
+        !l.isOnlineLead && (l.createdBy === u.id || l.createdBy === u.uid || l.createdByName === u.name)
       );
       // Converted revenue strictly from Delivery status orders
       const userOrders = orders.filter(o =>

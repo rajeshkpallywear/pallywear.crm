@@ -1641,14 +1641,14 @@ export default function AdminDashboard() {
                   const otOrdersRevenue = otDeliveredOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
 
                   // Leads Forecasted Value
-                  const mktLeadsForecast = leads.filter(l => isMarketing(l.createdBy))
+                  const mktLeadsForecast = leads.filter(l => !l.isOnlineLead && isMarketing(l.createdBy))
                     .reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
-                  const otLeadsForecast = leads.filter(l => isOnlineTeam(l.createdBy))
+                  const otLeadsForecast = leads.filter(l => !l.isOnlineLead && isOnlineTeam(l.createdBy))
                     .reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
 
                   // Leads Converted Value
-                  const mktConvertedLeads = leads.filter(l => isMarketing(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
-                  const otConvertedLeads = leads.filter(l => isOnlineTeam(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
+                  const mktConvertedLeads = leads.filter(l => !l.isOnlineLead && isMarketing(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
+                  const otConvertedLeads = leads.filter(l => !l.isOnlineLead && isOnlineTeam(l.createdBy) && (Number(l.totalOrderValue) || 0) > 0);
                   const mktLeadsConverted = mktConvertedLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
                   const otLeadsConverted = otConvertedLeads.reduce((sum, l) => sum + (Number(l.totalOrderValue) || 0), 0);
 
@@ -1670,8 +1670,8 @@ export default function AdminDashboard() {
                       otLeadsConverted={otLeadsConverted}
                       mktConvertedLeads={mktConvertedLeads}
                       otConvertedLeads={otConvertedLeads}
-                      mktLeadsCount={leads.filter(l => isMarketing(l.createdBy)).length}
-                      otLeadsCount={leads.filter(l => isOnlineTeam(l.createdBy)).length}
+                      mktLeadsCount={leads.filter(l => !l.isOnlineLead && isMarketing(l.createdBy)).length}
+                      otLeadsCount={leads.filter(l => !l.isOnlineLead && isOnlineTeam(l.createdBy)).length}
                       fmt={fmt}
                       userNameMap={userNameMap}
                       addOrder={addOrder}
@@ -1711,9 +1711,9 @@ export default function AdminDashboard() {
                         <PieChart>
                           <Pie
                             data={[
-                              { name: 'Hot', value: leads.filter(l => l.leadType === 'Hot').length },
-                              { name: 'Warm', value: leads.filter(l => l.leadType === 'Warm').length },
-                              { name: 'Cold', value: leads.filter(l => l.leadType === 'Cold').length },
+                              { name: 'Hot', value: leads.filter(l => !l.isOnlineLead && l.leadType === 'Hot').length },
+                              { name: 'Warm', value: leads.filter(l => !l.isOnlineLead && l.leadType === 'Warm').length },
+                              { name: 'Cold', value: leads.filter(l => !l.isOnlineLead && l.leadType === 'Cold').length },
                             ]}
                             innerRadius={60}
                             outerRadius={80}
