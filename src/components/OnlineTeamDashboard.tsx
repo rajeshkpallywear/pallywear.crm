@@ -790,19 +790,26 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
             const isPriyaOrNirmala = user?.email === 'priyapallywear@gmail.com' || user?.email === 'nirmalapallywear@gmail.com';
 
             const otLeads = leads.filter(l => {
-              const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
-              if (!matchesBase) return false;
-              
               const isOverallManager = user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com';
-              if (isOverallManager) return true;
+              if (isOverallManager) {
+                const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
+                return matchesBase;
+              }
 
-              // Priya & Nirmala see their own leads + leads assigned to Jim
+              // Priya & Nirmala: see their own leads + any lead assigned to Jim
               if (isPriyaOrNirmala) {
-                const isOwnLead = l.createdBy === user?.id || l.createdBy === user?.uid;
-                const isJimAssigned = (jimId && l.assignedTo === jimId) || (l.assignedToName && l.assignedToName === jimName);
+                const isOwnLead = l.createdBy === user?.id || l.createdBy === user?.uid || l.createdByName === user?.name;
+                const assignedNameLower = (l.assignedToName || '').toLowerCase();
+                const isJimAssigned =
+                  (jimId && l.assignedTo === jimId) ||
+                  assignedNameLower.includes('jim') ||
+                  (jimName && assignedNameLower === jimName.toLowerCase());
                 return isOwnLead || isJimAssigned;
               }
-              
+
+              // All other online team users: see only their own online leads
+              const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
+              if (!matchesBase) return false;
               return l.createdBy === user?.id || l.createdBy === user?.uid;
             });
             const isManager = user?.email === 'daniel.smpallywear@gmail.com';
