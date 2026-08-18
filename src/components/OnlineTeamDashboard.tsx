@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, CheckCircle2, Clock, Search, Save, ClipboardList, AlertCircle, Plus, FileText, RefreshCw } from 'lucide-react';
+import { Phone, CheckCircle2, Clock, Search, Save, ClipboardList, AlertCircle, Plus, FileText, RefreshCw, Users, ArrowUpRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';
 import { useLeads } from '../context/LeadContext';
@@ -323,48 +323,53 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
               <button
                 onClick={() => { setActiveTab('active_leads'); setSearchTerm(''); }}
                 className={cn(
-                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1.5",
                   activeTab === 'active_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
                 )}
+                title="Active Leads"
               >
-                Active Leads
+                <ClipboardList size={16} />
               </button>
               <button
                 onClick={() => { setActiveTab('assign_leads'); setSearchTerm(''); }}
                 className={cn(
-                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1.5",
                   activeTab === 'assign_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
                 )}
+                title="Assign Leads"
               >
-                Assign Leads
+                <Users size={16} />
               </button>
               <button
                 onClick={() => { setActiveTab('marketing_leads'); setSearchTerm(''); }}
                 className={cn(
-                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1.5",
                   activeTab === 'marketing_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
                 )}
+                title="Marketing Leads"
               >
-                Marketing Leads
+                <ArrowUpRight size={16} />
               </button>
               <button
                 onClick={() => { setActiveTab('call_logs'); setSearchTerm(''); }}
                 className={cn(
-                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1.5",
                   activeTab === 'call_logs' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
                 )}
+                title="Call History Log"
               >
-                Call History Log
+                <FileText size={16} />
               </button>
               {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
                 <button
                   onClick={() => { setActiveTab('all_online_leads'); setSearchTerm(''); }}
                   className={cn(
-                    "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                    "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1.5",
                     activeTab === 'all_online_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
                   )}
+                  title="Online Leads Dashboard"
                 >
-                  Online Leads Dashboard
+                  <Clock size={16} />
                 </button>
               )}
             </div>
@@ -376,48 +381,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
       {/* Tab content rendering */}
       {activeTab === 'active_leads' ? (
         <div className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                <ClipboardList size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Assigned</p>
-                <p className="text-2xl font-black text-gray-900 mt-1">{totalLeadsCount}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
-                <Phone size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Contacted</p>
-                <p className="text-2xl font-black text-gray-900 mt-1">{contactedCount}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shadow-inner">
-                <CheckCircle2 size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested</p>
-                <p className="text-2xl font-black text-gray-900 mt-1">{interestedCount}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
-                <Clock size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Pending Call</p>
-                <p className="text-2xl font-black text-gray-900 mt-1">{pendingCount}</p>
-              </div>
-            </div>
-          </div>
+          {/* Stats Cards Removed */}
 
           {/* Table workspace */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
