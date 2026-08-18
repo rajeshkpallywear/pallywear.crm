@@ -55,6 +55,49 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
     setAddLogNotes('');
   };
 
+  // Add Lead Inline Form State (Online leads page for operators)
+  const [showAddLeadFormInline, setShowAddLeadFormInline] = useState(false);
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [newLeadLocation, setNewLeadLocation] = useState('');
+  const [newLeadType, setNewLeadType] = useState<'Hot' | 'Warm' | 'Cold'>('Warm');
+  const [isSubmittingNewLead, setIsSubmittingNewLead] = useState(false);
+
+  const handleAddNewLeadInline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLeadName || !newLeadPhone) return;
+    setIsSubmittingNewLead(true);
+    try {
+      await addLead({
+        name: newLeadName,
+        number: newLeadPhone,
+        companyName: newLeadLocation,
+        gst: '',
+        leadType: newLeadType,
+        entryDate: new Date().toISOString(),
+        forecastedValue: 0,
+        convertedValue: 0,
+        totalOrderValue: 0,
+        createdBy: user?.id || user?.uid || 'onlineteam',
+        createdByName: user?.name || 'Online Team',
+        status: 'New',
+        description: ''
+      });
+      // Reset form
+      setNewLeadName('');
+      setNewLeadPhone('');
+      setNewLeadLocation('');
+      setNewLeadType('Warm');
+      setShowAddLeadFormInline(false);
+      alert('Lead successfully registered and saved to database.');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to register lead. Please try again.');
+    } finally {
+      setIsSubmittingNewLead(false);
+    }
+  };
+
   const handleAddCallLog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addLogName.trim() || !addLogPhone.trim()) return;
@@ -306,7 +349,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
             >
               Call History Log
             </button>
-            {user?.email === 'daniel.smpallywear@gmail.com' && (
+            {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
               <button
                 onClick={() => { setActiveTab('all_online_leads'); setSearchTerm(''); }}
                 className={cn(
@@ -777,6 +820,28 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
         <div className="space-y-6 animate-fadeIn text-left">
           {(() => {
             const otLeads = leads.filter(l => isOnlineTeam(l.createdBy));
+            const isManager = user?.email === 'daniel.smpallywear@gmail.com';
+
+            if (!isManager) {
+              return (
+                <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 space-y-6 animate-fadeIn text-center">
+                  <div className="w-16 h-16 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center shadow-inner">
+                    <ClipboardList size={32} />
+                  </div>
+                  <div className="text-center max-w-sm space-y-2">
+                    <h3 className="text-lg font-black text-gray-900">Lead Registration</h3>
+                    <p className="text-xs text-gray-500 font-medium">Add new client leads directly to the database. These leads will be managed by the administrator and manager.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddLeadFormInline(true)}
+                    className="px-6 py-3 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95"
+                  >
+                    <Plus size={16} /> Add Lead
+                  </button>
+                </div>
+              );
+            }
+
             return (
               <>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -919,6 +984,105 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
               </>
             );
           })()}
+        </div>
+      )}
+
+      {/* Add Lead Inline Modal Form */}
+      {showAddLeadFormInline && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 text-left">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Register New Prospect</span>
+                <h3 className="text-lg font-black text-gray-900">Add Lead</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddLeadFormInline(false);
+                  setNewLeadName('');
+                  setNewLeadPhone('');
+                  setNewLeadLocation('');
+                  setNewLeadType('Warm');
+                }}
+                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border-none cursor-pointer bg-transparent"
+              >
+                <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddNewLeadInline} className="p-6 space-y-4 text-left">
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rajesh Kumar"
+                  value={newLeadName}
+                  onChange={(e) => setNewLeadName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Phone Number *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="e.g. +91 9999999999"
+                  value={newLeadPhone}
+                  onChange={(e) => setNewLeadPhone(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Location</label>
+                <input
+                  type="text"
+                  placeholder="e.g. New Delhi, India"
+                  value={newLeadLocation}
+                  onChange={(e) => setNewLeadLocation(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Lead Type</label>
+                <select
+                  value={newLeadType}
+                  onChange={(e) => setNewLeadType(e.target.value as any)}
+                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                >
+                  <option value="Hot">🔥 Hot (High Interest)</option>
+                  <option value="Warm">⚡ Warm (Moderate Interest)</option>
+                  <option value="Cold">❄️ Cold (Prospect)</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddLeadFormInline(false);
+                    setNewLeadName('');
+                    setNewLeadPhone('');
+                    setNewLeadLocation('');
+                    setNewLeadType('Warm');
+                  }}
+                  className="flex-1 py-3 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingNewLead}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                >
+                  {isSubmittingNewLead ? 'Submitting...' : 'Save Lead'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
