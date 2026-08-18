@@ -478,7 +478,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               🎨 Unassigned
                             </span>
                           )}
-                          {order.status === OrderStatus.PENDING && (
+                          {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
                             <div className="flex gap-1.5 mt-1">
                               <button
                                 onClick={(e) => {

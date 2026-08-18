@@ -72,7 +72,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const [isStaffChatOpen, setIsStaffChatOpen] = useState(false);
   const [selectedItemIdForStaffChat, setSelectedItemIdForStaffChat] = useState<string | null>(null);
 
-  const { loadOrderAttachments } = useLeads();
+  const { loadOrderAttachments, invoices } = useLeads();
 
   useEffect(() => {
     if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.designAttachments || selectedOrder.designAttachments.length === 0)) {
@@ -688,7 +688,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       </div>
 
       {/* Primary Communication Channel Navigations */}
-      <div className="flex border-b border-gray-100 bg-white p-2 rounded-2xl shadow-xs gap-2">
+      <div className="flex border-b border-gray-150 bg-white p-2 rounded-2xl shadow-xs gap-2">
         <button
           onClick={() => {
             setActiveChannel('marketing_queue');
@@ -701,7 +701,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          📢 Marketing Sent Orders
+          📢 Marketing Sent Orders ({getChannelStats('marketing_queue').totalCount})
         </button>
         <button
           onClick={() => {
@@ -715,7 +715,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          💳 Accounts Sent Orders
+          💳 Accounts Sent Orders ({getChannelStats('accounts_queue').totalCount})
         </button>
       </div>
 
@@ -789,6 +789,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     statusClass = 'bg-slate-50 text-slate-600 border-slate-200';
                   }
 
+                  const matchingInvoice = invoices.find(inv => 
+                    inv.leadId === item.id || 
+                    (inv.billToPhone && inv.billToPhone === item.phone) ||
+                    (inv.billToName && inv.billToName.toLowerCase() === item.customerName.toLowerCase())
+                  );
+
                   return (
                     <tr
                       key={item.id}
@@ -811,7 +817,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
                             By: {item.createdByName || 'System'}
                           </span>
-                          <span className="font-mono text-[9px] text-brand-primary font-bold">#{item.id.slice(-8)}</span>
+                          <span className="font-mono text-[9px] text-brand-primary font-bold">
+                            Order: #{item.id.slice(-8)}
+                            {matchingInvoice && ` | Invoice: ${matchingInvoice.invoiceNumber}`}
+                          </span>
                           <span className="text-[9px] text-gray-400 font-semibold">{getDisplayCategory(item as any)}</span>
                         </div>
                       </td>
@@ -863,6 +872,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     item.assignedDesigner === 'Designer assigned' ||
                     item.assignedDesigner === '';
 
+                  const matchingInvoice = invoices.find(inv => 
+                    inv.leadId === item.id || 
+                    (inv.billToPhone && inv.billToPhone === item.phone) ||
+                    (inv.billToName && inv.billToName.toLowerCase() === item.customerName.toLowerCase())
+                  );
+
                   return (
                     <tr key={item.id} className={cn(
                       "transition-colors group",
@@ -873,8 +888,13 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <span className="font-mono text-xs font-black text-brand-primary">
-                            #{item.id.slice(-8)}
+                            Order: #{item.id.slice(-8)}
                           </span>
+                          {matchingInvoice && (
+                            <span className="font-mono text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded w-fit">
+                              Invoice: {matchingInvoice.invoiceNumber}
+                            </span>
+                          )}
                           <span className="text-[9px] text-gray-400 font-bold">
                             {new Date(item.createdAt).toLocaleDateString()}
                           </span>
