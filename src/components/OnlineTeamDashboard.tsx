@@ -824,26 +824,9 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
           {(() => {
             const otLeads = leads.filter(l => isOnlineTeam(l.createdBy) || l.isOnlineLead);
             const isManager = user?.email === 'daniel.smpallywear@gmail.com';
+            const canAssign = user?.role === 'admin' || isManager;
 
-            if (!isManager) {
-              return (
-                <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 space-y-6 animate-fadeIn text-center">
-                  <div className="w-16 h-16 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center shadow-inner">
-                    <ClipboardList size={32} />
-                  </div>
-                  <div className="text-center max-w-sm space-y-2">
-                    <h3 className="text-lg font-black text-gray-900">Lead Registration</h3>
-                    <p className="text-xs text-gray-500 font-medium">Add new client leads directly to the database. These leads will be managed by the administrator and manager.</p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddLeadFormInline(true)}
-                    className="px-6 py-3 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95"
-                  >
-                    <Plus size={16} /> Add Lead
-                  </button>
-                </div>
-              );
-            }
+            // Removed manager-only registration card overlay to display the registry dashboard to regular online team members
 
             return (
               <>
@@ -899,15 +882,23 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                 <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
                     <h3 className="text-lg font-bold text-gray-900">Leads Registry & Call Logs</h3>
-                    <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search leads..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-                      />
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <button
+                        onClick={() => setShowAddLeadFormInline(true)}
+                        className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
+                      >
+                        <Plus size={14} /> Add Lead
+                      </button>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search leads..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -960,45 +951,51 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                                   {latestLog}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <select
-                                    value={lead.assignedTo || ''}
-                                    onChange={async (e) => {
-                                      const agentId = e.target.value;
-                                      const agent = onlineTeamAgents.find((u: any) => u.id === agentId || u.uid === agentId);
-                                      const agentName = agent ? agent.name : '';
-                                      try {
-                                        const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
-                                          method: 'PATCH',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            assignedTo: agentId || null,
-                                            assignedToName: agentName || null,
-                                            isTaken: agentId ? true : false
-                                          })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                          await updateLead(lead.id, {
-                                            assignedTo: agentId || undefined,
-                                            assignedToName: agentName || undefined,
-                                            isTaken: agentId ? true : false
+                                  {canAssign ? (
+                                    <select
+                                      value={lead.assignedTo || ''}
+                                      onChange={async (e) => {
+                                        const agentId = e.target.value;
+                                        const agent = onlineTeamAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                        const agentName = agent ? agent.name : '';
+                                        try {
+                                          const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                              assignedTo: agentId || null,
+                                              assignedToName: agentName || null,
+                                              isTaken: agentId ? true : false
+                                            })
                                           });
-                                          alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                          const data = await res.json();
+                                          if (data.success) {
+                                            await updateLead(lead.id, {
+                                              assignedTo: agentId || undefined,
+                                              assignedToName: agentName || undefined,
+                                              isTaken: agentId ? true : false
+                                            });
+                                            alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                          }
+                                        } catch (err) {
+                                          console.error(err);
+                                          alert('Failed to assign lead.');
                                         }
-                                      } catch (err) {
-                                        console.error(err);
-                                        alert('Failed to assign lead.');
-                                      }
-                                    }}
-                                    className="bg-gray-50 border border-gray-150 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                                  >
-                                    <option value="">Unassigned</option>
-                                    {onlineTeamAgents.map((agent: any) => (
-                                      <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
-                                        {agent.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                      }}
+                                      className="bg-gray-50 border border-gray-150 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                                    >
+                                      <option value="">Unassigned</option>
+                                      {onlineTeamAgents.map((agent: any) => (
+                                        <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
+                                          {agent.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className="text-xs text-gray-600 font-medium">
+                                      {lead.assignedToName || 'Unassigned'}
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 text-right flex justify-end gap-1.5">
                                   {lead.description && (
