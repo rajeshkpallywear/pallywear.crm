@@ -6,7 +6,7 @@ import {
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
-  Edit, Plus, Phone, Flame, Search
+  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
@@ -790,9 +790,15 @@ export default function AdminDashboard() {
     const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
     const navigate = useNavigate();
     const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
     const [userLogs, setUserLogs] = useState<any[]>([]);
     const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
+    const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [attendanceDateFilter, setAttendanceDateFilter] = useState('');
+    const [editingAttendance, setEditingAttendance] = useState<any | null>(null);
+    const [attendanceEditForm, setAttendanceEditForm] = useState({ loginTime: '', logoutTime: '', notes: '' });
+    const [savingAttendance, setSavingAttendance] = useState(false);
     
     const userRoleMap = React.useMemo(() => {
       const map: Record<string, string> = {};
@@ -828,10 +834,59 @@ export default function AdminDashboard() {
     };
 
     React.useEffect(() => {
-      if (activeTab === 'user-logs') {
+      if (activeTab === 'user-logs' || activeTab === 'attendance') {
         fetchUserLogs();
       }
     }, [activeTab]);
+
+    const fetchAttendanceLogs = async () => {
+      setAttendanceLoading(true);
+      try {
+        const data = await mockDataService.getActivityLogs();
+        if (data && data.success) {
+          setAttendanceLogs(data.logs || []);
+        }
+      } catch (e) {
+        console.error('Failed to fetch attendance logs:', e);
+      } finally {
+        setAttendanceLoading(false);
+      }
+    };
+
+    React.useEffect(() => {
+      if (activeTab === 'attendance') {
+        fetchAttendanceLogs();
+      }
+    }, [activeTab]);
+
+    const handleSaveAttendanceEdit = async () => {
+      if (!editingAttendance) return;
+      setSavingAttendance(true);
+      try {
+        await fetch(getApiUrl(`/api/auth/activity-logs/${editingAttendance.id}`), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            loginTime: attendanceEditForm.loginTime,
+            logoutTime: attendanceEditForm.logoutTime,
+            notes: attendanceEditForm.notes
+          })
+        });
+        setEditingAttendance(null);
+        fetchAttendanceLogs();
+      } catch (e) {
+        console.error('Failed to save attendance edit:', e);
+        // Update locally if API fails
+        setAttendanceLogs(prev => prev.map(log =>
+          log.id === editingAttendance.id
+            ? { ...log, loginTime: attendanceEditForm.loginTime, logoutTime: attendanceEditForm.logoutTime, notes: attendanceEditForm.notes }
+            : log
+        ));
+        setEditingAttendance(null);
+      } finally {
+        setSavingAttendance(false);
+      }
+    };
 
     const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
     const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = useState(false);
@@ -1425,6 +1480,17 @@ export default function AdminDashboard() {
                 title={isSidebarCollapsed ? "User Logins" : ""}
               >
                 <Clock className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>User Logins</span>}
+              </button>
+              <button
+                onClick={() => selectTab('attendance')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'attendance' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Attendance" : ""}
+              >
+                <CalendarDays className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Attendance</span>}
               </button>
               <button
                 onClick={() => selectTab('security')}
@@ -2551,6 +2617,271 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     </>
+                  );
+                })()}
+              </div>
+            ) : activeTab === 'attendance' ? (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Edit Modal */}
+                {editingAttendance && (
+                  <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md space-y-5 border border-gray-100 animate-fadeIn">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="text-lg font-black text-gray-900">Edit Attendance Record</h3>
+                          <p className="text-xs text-gray-400 mt-0.5 font-semibold uppercase tracking-widest">{editingAttendance.name} · {editingAttendance.date ? new Date(editingAttendance.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+                        </div>
+                        <button onClick={() => setEditingAttendance(null)} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-all border-none cursor-pointer"><X size={14} /></button>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Login Time</label>
+                          <input
+                            type="datetime-local"
+                            value={attendanceEditForm.loginTime}
+                            onChange={e => setAttendanceEditForm(f => ({ ...f, loginTime: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 bg-gray-50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Logout Time</label>
+                          <input
+                            type="datetime-local"
+                            value={attendanceEditForm.logoutTime}
+                            onChange={e => setAttendanceEditForm(f => ({ ...f, logoutTime: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 bg-gray-50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Notes</label>
+                          <textarea
+                            value={attendanceEditForm.notes}
+                            onChange={e => setAttendanceEditForm(f => ({ ...f, notes: e.target.value }))}
+                            rows={2}
+                            placeholder="Optional notes for salary record..."
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 bg-gray-50 resize-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <button onClick={() => setEditingAttendance(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 cursor-pointer transition-all">Cancel</button>
+                        <button
+                          onClick={handleSaveAttendanceEdit}
+                          disabled={savingAttendance}
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:bg-brand-primary/90 cursor-pointer transition-all disabled:opacity-60 border-none shadow-md"
+                        >
+                          {savingAttendance ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Attendance & Work Hours</h2>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mt-0.5">Login · Logout · Duration — For Salary Calculation</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="date"
+                      value={attendanceDateFilter}
+                      onChange={e => setAttendanceDateFilter(e.target.value)}
+                      className="border border-gray-200 rounded-xl px-4 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                    />
+                    {attendanceDateFilter && (
+                      <button onClick={() => setAttendanceDateFilter('')} className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-black text-gray-400 hover:text-gray-700 cursor-pointer bg-white transition-all">Clear</button>
+                    )}
+                    <button onClick={fetchAttendanceLogs} className="px-4 py-2 rounded-xl bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:bg-brand-primary/90 cursor-pointer border-none shadow-md transition-all">Refresh</button>
+                  </div>
+                </div>
+
+                {/* Attendance Table */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                  {attendanceLoading ? (
+                    <div className="py-20 text-center text-gray-400 text-sm italic animate-pulse">Loading attendance records...</div>
+                  ) : (() => {
+                    const filtered = attendanceLogs.filter(log => {
+                      if (!attendanceDateFilter) return true;
+                      const logDate = log.loginTime ? new Date(log.loginTime).toISOString().split('T')[0] : (log.date || '');
+                      return logDate === attendanceDateFilter;
+                    });
+
+                    const calcDuration = (login: string, logout: string) => {
+                      if (!login || !logout) return null;
+                      const diff = new Date(logout).getTime() - new Date(login).getTime();
+                      if (diff <= 0) return null;
+                      const h = Math.floor(diff / 3600000);
+                      const m = Math.floor((diff % 3600000) / 60000);
+                      return { label: `${h}h ${m}m`, ms: diff };
+                    };
+
+                    const fmtTime = (iso: string) => {
+                      if (!iso) return '—';
+                      return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                    };
+
+                    const fmtDate = (iso: string) => {
+                      if (!iso) return '—';
+                      return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                    };
+
+                    return filtered.length === 0 ? (
+                      <div className="py-20 text-center text-gray-400 italic text-sm">No attendance records found{attendanceDateFilter ? ` for ${attendanceDateFilter}` : ''}.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Employee</th>
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                <span className="flex items-center gap-1"><LogIn size={10} /> Login</span>
+                              </th>
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                <span className="flex items-center gap-1"><LogOutIcon size={10} /> Logout</span>
+                              </th>
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Duration</th>
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Notes</th>
+                              <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {filtered.map((log: any, idx: number) => {
+                              const loginIso = log.loginTime || log.login_time || '';
+                              const logoutIso = log.logoutTime || log.logout_time || '';
+                              const dur = calcDuration(loginIso, logoutIso);
+                              return (
+                                <tr key={log.id || idx} className="hover:bg-gray-50/60 transition-colors">
+                                  <td className="px-5 py-3.5">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center text-xs font-black flex-shrink-0">
+                                        {(log.name || log.userName || '?').charAt(0).toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-bold text-gray-900 leading-none">{log.name || log.userName || '—'}</p>
+                                        <p className="text-[10px] text-gray-400 font-medium mt-0.5">{log.email || log.userEmail || ''}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3.5 text-xs font-semibold text-gray-600">{fmtDate(loginIso || log.date || '')}</td>
+                                  <td className="px-5 py-3.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
+                                      <LogIn size={10} /> {fmtTime(loginIso)}
+                                    </span>
+                                  </td>
+                                  <td className="px-5 py-3.5">
+                                    {logoutIso ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold border border-red-100">
+                                        <LogOutIcon size={10} /> {fmtTime(logoutIso)}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-xs font-bold border border-amber-100">
+                                        Active
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-5 py-3.5">
+                                    {dur ? (
+                                      <span className="text-xs font-black text-brand-primary">{dur.label}</span>
+                                    ) : (
+                                      <span className="text-xs text-gray-300 italic">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-5 py-3.5 text-xs text-gray-500 max-w-[120px] truncate italic">
+                                    {log.notes || '—'}
+                                  </td>
+                                  <td className="px-5 py-3.5 text-right">
+                                    <button
+                                      onClick={() => {
+                                        setEditingAttendance(log);
+                                        setAttendanceEditForm({
+                                          loginTime: loginIso ? new Date(loginIso).toISOString().slice(0, 16) : '',
+                                          logoutTime: logoutIso ? new Date(logoutIso).toISOString().slice(0, 16) : '',
+                                          notes: log.notes || ''
+                                        });
+                                      }}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-primary/5 hover:bg-brand-primary/15 text-brand-primary text-xs font-black border border-brand-primary/10 cursor-pointer transition-all"
+                                    >
+                                      <Edit size={11} /> Edit
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Per-Employee Summary */}
+                {!attendanceLoading && attendanceLogs.length > 0 && (() => {
+                  const calcDuration = (login: string, logout: string) => {
+                    if (!login || !logout) return 0;
+                    const diff = new Date(logout).getTime() - new Date(login).getTime();
+                    return diff > 0 ? diff : 0;
+                  };
+
+                  const summaryMap: Record<string, { name: string; email: string; days: number; totalMs: number }> = {};
+                  attendanceLogs.forEach((log: any) => {
+                    const key = log.userId || log.user_id || log.email || log.userEmail || log.name;
+                    if (!key) return;
+                    if (!summaryMap[key]) {
+                      summaryMap[key] = { name: log.name || log.userName || key, email: log.email || log.userEmail || '', days: 0, totalMs: 0 };
+                    }
+                    const loginIso = log.loginTime || log.login_time || '';
+                    const logoutIso = log.logoutTime || log.logout_time || '';
+                    if (loginIso) summaryMap[key].days += 1;
+                    summaryMap[key].totalMs += calcDuration(loginIso, logoutIso);
+                  });
+
+                  const summaryRows = Object.values(summaryMap);
+                  if (summaryRows.length === 0) return null;
+
+                  return (
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
+                      <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Employee Summary (Salary Reference)</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="border-b border-gray-100">
+                              <th className="py-2 pr-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Employee</th>
+                              <th className="py-2 pr-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Email</th>
+                              <th className="py-2 pr-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Days Present</th>
+                              <th className="py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Hours</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {summaryRows.map((row, i) => {
+                              const totalH = Math.floor(row.totalMs / 3600000);
+                              const totalM = Math.floor((row.totalMs % 3600000) / 60000);
+                              return (
+                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                  <td className="py-3 pr-6">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-full bg-brand-primary/10 text-brand-primary text-xs font-black flex items-center justify-center">{row.name.charAt(0).toUpperCase()}</div>
+                                      <span className="text-sm font-bold text-gray-900">{row.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 pr-6 text-xs text-gray-500">{row.email}</td>
+                                  <td className="py-3 pr-6">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-black border border-emerald-100">
+                                      <CheckCircle2 size={10} /> {row.days} {row.days === 1 ? 'day' : 'days'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3">
+                                    <span className="text-sm font-black text-brand-primary">{totalH}h {totalM}m</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   );
                 })()}
               </div>

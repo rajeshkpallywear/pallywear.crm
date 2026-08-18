@@ -364,18 +364,6 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
               >
                 <FileText size={16} />
               </button>
-              {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
-                <button
-                  onClick={() => { setActiveTab('all_online_leads'); setSearchTerm(''); }}
-                  className={cn(
-                    "flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1.5",
-                    activeTab === 'all_online_leads' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800 bg-transparent"
-                  )}
-                  title="Online Leads Dashboard"
-                >
-                  <Clock size={16} />
-                </button>
-              )}
             </div>
           </div>
         </div>
