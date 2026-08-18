@@ -1470,28 +1470,7 @@ export default function AdminDashboard() {
               >
                 <FileText className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Audit Logs</span>}
               </button>
-              <button
-                onClick={() => selectTab('user-logs')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'user-logs' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "User Logins" : ""}
-              >
-                <Clock className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>User Logins</span>}
-              </button>
-              <button
-                onClick={() => selectTab('attendance')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'attendance' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Attendance" : ""}
-              >
-                <CalendarDays className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Attendance</span>}
-              </button>
+
               <button
                 onClick={() => selectTab('security')}
                 className={cn(

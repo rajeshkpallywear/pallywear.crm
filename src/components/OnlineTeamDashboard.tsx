@@ -783,12 +783,25 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
       ) : (
         <div className="space-y-6 animate-fadeIn text-left">
           {(() => {
+            const jimUser = registeredUsers.find((u: any) => u.email === 'jimpallywear@gmail.com');
+            const jimId = jimUser?.id || jimUser?.uid || '';
+            const jimName = jimUser?.name || 'Jim';
+
+            const isPriyaOrNirmala = user?.email === 'priyapallywear@gmail.com' || user?.email === 'nirmalapallywear@gmail.com';
+
             const otLeads = leads.filter(l => {
               const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
               if (!matchesBase) return false;
               
               const isOverallManager = user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com';
               if (isOverallManager) return true;
+
+              // Priya & Nirmala see their own leads + leads assigned to Jim
+              if (isPriyaOrNirmala) {
+                const isOwnLead = l.createdBy === user?.id || l.createdBy === user?.uid;
+                const isJimAssigned = (jimId && l.assignedTo === jimId) || (l.assignedToName && l.assignedToName === jimName);
+                return isOwnLead || isJimAssigned;
+              }
               
               return l.createdBy === user?.id || l.createdBy === user?.uid;
             });
