@@ -436,6 +436,20 @@ export default function Dashboard() {
               >
                 <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
               </button>
+
+              {user?.email === 'daniel.smpallywear@gmail.com' && (
+                <button
+                  onClick={() => selectTab('online_leads')}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
+                    activeTab === 'online_leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                  )}
+                  title={isSidebarCollapsed ? "Online Leads" : ""}
+                >
+                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
+                </button>
+              )}
             </div>
           )}
 
@@ -495,19 +509,17 @@ export default function Dashboard() {
                 <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
               </button>
 
-              {user?.email === 'daniel.smpallywear@gmail.com' && (
-                <button
-                  onClick={() => selectTab('online_leads')}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                    isSidebarCollapsed && "md:justify-center md:px-0",
-                    activeTab === 'online_leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                  )}
-                  title={isSidebarCollapsed ? "Online Leads" : ""}
-                >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
-                </button>
-              )}
+              <button
+                onClick={() => selectTab('online_leads')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'online_leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Online Leads" : ""}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
+              </button>
             </div>
           )}
 
@@ -1190,7 +1202,7 @@ export default function Dashboard() {
                 <BarChart3 className="w-4 h-4" />
                 <span>Invoices</span>
               </button>
-              {user?.email === 'daniel.smpallywear@gmail.com' && (
+              {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
                 <button
                   onClick={() => selectTab('online_leads')}
                   className={cn(

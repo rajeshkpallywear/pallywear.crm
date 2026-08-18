@@ -306,7 +306,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
             >
               Call History Log
             </button>
-            {user?.email === 'daniel.smpallywear@gmail.com' && (
+            {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
               <button
                 onClick={() => { setActiveTab('all_online_leads'); setSearchTerm(''); }}
                 className={cn(
