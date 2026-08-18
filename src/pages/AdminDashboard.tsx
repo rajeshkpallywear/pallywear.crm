@@ -2446,81 +2446,27 @@ export default function AdminDashboard() {
                   const otLeads = leads.filter(l => isOnlineTeam(l.createdBy));
                   return (
                     <>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                          <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Online Leads & Call Logs</h2>
-                          <p className="text-xs text-gray-500 font-medium mt-0.5">Monitor client interactions, requirements, and call log histories</p>
-                        </div>
-                        <button
-                          onClick={() => setShowAddLeadConvert(true)}
-                          className="px-4 py-2.5 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95"
-                        >
-                          <Plus size={14} /> Add Lead / Client
-                        </button>
-                      </div>
-
-                      {/* Stats cards for leads */}
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                            <Users size={20} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Leads</p>
-                            <p className="text-2xl font-black text-gray-900 mt-1">{otLeads.length}</p>
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                            <Phone size={20} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Called / Followed Up</p>
-                            <p className="text-2xl font-black text-gray-900 mt-1">
-                              {otLeads.filter(l => ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status || '')).length}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                          <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                            <Flame size={20} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested (Hot)</p>
-                            <p className="text-2xl font-black text-gray-900 mt-1">
-                              {otLeads.filter(l => l.status === 'Interested' || l.leadType === 'Hot').length}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                            <CheckCircle2 size={20} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Converted Deals</p>
-                            <p className="text-2xl font-black text-gray-900 mt-1">
-                              {otLeads.filter(l => l.status === 'Converted' || l.convertedValue > 0).length}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Table of Leads */}
                       <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
                           <h3 className="text-lg font-bold text-gray-900">Leads Registry & Call Logs</h3>
-                          <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                              type="text"
-                              placeholder="Search leads..."
-                              value={adminLeadSearch}
-                              onChange={(e) => setAdminLeadSearch(e.target.value)}
-                              className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-                            />
+                          <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <button
+                              onClick={() => setShowAddLeadConvert(true)}
+                              className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
+                            >
+                              <Plus size={14} /> Add Lead / Client
+                            </button>
+                            <div className="relative w-full sm:w-64">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <input
+                                type="text"
+                                placeholder="Search leads..."
+                                value={adminLeadSearch}
+                                onChange={(e) => setAdminLeadSearch(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                              />
+                            </div>
                           </div>
                         </div>
 
