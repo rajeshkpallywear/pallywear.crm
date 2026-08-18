@@ -42,7 +42,13 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
   const assignedLeads = React.useMemo(() => {
     if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return leads;
     if (user?.role === 'onlineteam') {
-      return leads.filter(l => l.assignedTo === user?.id || l.assignedTo === user?.uid || l.assignedTo === user?.email);
+      return leads.filter(l => 
+        l.assignedTo === user?.id || 
+        l.assignedTo === user?.uid || 
+        l.assignedTo === user?.email ||
+        l.createdBy === user?.id ||
+        l.createdBy === user?.uid
+      );
     }
     return leads;
   }, [leads, user]);

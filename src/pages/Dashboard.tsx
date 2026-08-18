@@ -460,6 +460,18 @@ export default function Dashboard() {
               </button>
 
               <button
+                onClick={() => selectTab('marketing_orders')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'marketing_orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Orders" : ""}
+              >
+                <Package className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Orders</span>}
+              </button>
+
+              <button
                 onClick={() => selectTab('clients')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
@@ -1124,7 +1136,7 @@ export default function Dashboard() {
       
       {layoutMode === 'mobile' && (
         <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-2 py-1.5 flex justify-around items-center shadow-lg">
-          {['admin', 'marketing', 'staff', 'user', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF].includes(user?.role || '') ? (
+          {['admin', 'marketing', 'staff', 'user', 'onlineteam', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF, UserRole.ONLINETEAM].includes(user?.role || '') ? (
             <>
               <button
                 onClick={() => selectTab('marketing_orders')}
