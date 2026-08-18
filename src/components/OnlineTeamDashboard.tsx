@@ -5,10 +5,7 @@ import { getApiUrl } from '../lib/apiConfig';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
 
-// Import subcomponents for hidden modal triggers
-import LeadManager from './LeadManager';
-import MarketingDashboard from './MarketingDashboard';
-import InvoiceManager from './InvoiceManager';
+
 
 interface Lead {
   id: string;
@@ -26,7 +23,7 @@ interface Lead {
 }
 
 export default function OnlineTeamDashboard({ user }: { user: any }) {
-  const { leads, orders, inventory, addOrder, updateOrder, deleteOrder, addLead, updateLead } = useLeads();
+  const { leads, updateLead } = useLeads();
   const { registeredUsers } = useAuth();
   const [activeTab, setActiveTab] = useState<'assign_leads' | 'marketing_leads'>('assign_leads');
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,7 +31,7 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
   // Lead logs state
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editStatus, setEditStatus] = useState('New');
-  const [editNotes, setEditNotes] = useState('');
+  const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Filter leads assigned to the logged-in Online Team member
@@ -82,18 +79,25 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
     if (!editingLead) return;
     setIsSaving(true);
     try {
+      const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+      const entry = `[${timestamp}] ${user?.name || 'Online Team'}: ${newNote.trim()}`;
+      const updatedDescription = newNote.trim()
+        ? (editingLead.description ? `${editingLead.description}\n\n${entry}` : entry)
+        : editingLead.description || '';
+
       const res = await fetch(getApiUrl(`/api/leads/${editingLead.id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: editStatus,
-          description: editNotes
+          description: updatedDescription
         })
       });
       const data = await res.json();
       if (data.success) {
-        await updateLead(editingLead.id, { status: editStatus, description: editNotes });
+        await updateLead(editingLead.id, { status: editStatus, description: updatedDescription });
         setEditingLead(null);
+        setNewNote('');
       } else {
         alert('Failed to update lead');
       }
@@ -102,21 +106,6 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Excel Lead Parser removed
-
-  // Triggers for hidden modals
-  const triggerCreateLead = () => {
-    window.dispatchEvent(new Event('onlineteam-create-lead'));
-  };
-
-  const triggerCreateOrder = () => {
-    window.dispatchEvent(new Event('onlineteam-create-order'));
-  };
-
-  const triggerCreateInvoice = () => {
-    window.dispatchEvent(new Event('onlineteam-create-invoice'));
   };
 
   const totalLeadsCount = assignedLeads.length;
@@ -165,49 +154,6 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
         </div>
       </div>
 
-      {/* Quick Action Operations (Create Order, Invoice, Lead) */}
-      <div className="bg-brand-primary/5 p-4 rounded-2xl border border-brand-primary/10 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-brand-primary animate-spin-slow" />
-          <span className="text-xs font-bold text-gray-700">Online Team Operations Hub</span>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <button
-            onClick={triggerCreateLead}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer shadow-sm transition-all"
-          >
-            <Plus size={14} /> Create Lead
-          </button>
-          <button
-            onClick={triggerCreateOrder}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer shadow-sm transition-all"
-          >
-            <Plus size={14} /> Create Order
-          </button>
-          <button
-            onClick={triggerCreateInvoice}
-            className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border-none cursor-pointer shadow-sm transition-all"
-          >
-            <Plus size={14} /> Create Invoice
-          </button>
-        </div>
-      </div>
-
-      {/* Hidden Manager components to listen for modal dispatcher events */}
-      <div className="absolute w-0 h-0 overflow-hidden">
-        <LeadManager />
-        <MarketingDashboard
-          orders={orders}
-          inventory={inventory}
-          onCreateOrder={addOrder}
-          onUpdateOrder={updateOrder}
-          onDeleteOrder={deleteOrder}
-          isAdmin={user?.role === 'admin'}
-          user={user}
-          leadManagerComponent={<LeadManager />}
-        />
-        <InvoiceManager />
-      </div>
 
       {/* Tab content rendering */}
       {activeTab === 'assign_leads' ? (
@@ -314,7 +260,7 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
                             onClick={() => {
                               setEditingLead(lead);
                               setEditStatus(lead.status || 'New');
-                              setEditNotes(lead.description || '');
+                              setNewNote('');
                             }}
                             className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer"
                           >
@@ -360,12 +306,21 @@ export default function OnlineTeamDashboard({ user }: { user: any }) {
                     </select>
                   </div>
 
+                  {editingLead.description && (
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Call Log History</label>
+                      <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 max-h-40 overflow-y-auto text-[11px] font-medium text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">
+                        {editingLead.description}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Call Log Details / Notes</label>
+                    <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Add Call Log Details / Notes</label>
                     <textarea
                       rows={4}
-                      value={editNotes}
-                      onChange={(e) => setEditNotes(e.target.value)}
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
                       placeholder="Enter details of conversation..."
                       className="w-full bg-gray-50 border border-gray-155 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
                     />
