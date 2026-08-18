@@ -25,6 +25,9 @@ interface Lead {
 export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' }: { user: any; defaultTab?: 'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads' }) {
   const { leads, updateLead, addLead } = useLeads();
   const { registeredUsers } = useAuth();
+  const onlineTeamAgents = React.useMemo(() => {
+    return registeredUsers?.filter((u: any) => u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM') || [];
+  }, [registeredUsers]);
   const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'>(defaultTab);
 
   useEffect(() => {
@@ -81,7 +84,8 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
         createdBy: user?.id || user?.uid || 'onlineteam',
         createdByName: user?.name || 'Online Team',
         status: 'New',
-        description: ''
+        description: '',
+        isOnlineLead: true
       });
       // Reset form
       setNewLeadName('');
@@ -142,17 +146,22 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
   // Filter leads assigned to the logged-in Online Team member
   // Daniel and Admin can view all leads in the assignment dashboard
   const assignedLeads = React.useMemo(() => {
-    if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return leads;
+    const filteredLeads = leads.filter(l => {
+      if (l.isOnlineLead) {
+        return l.assignedTo === user?.id || l.assignedTo === user?.uid || l.assignedTo === user?.email;
+      }
+      return true;
+    });
+    if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return filteredLeads;
     if (user?.role === 'onlineteam') {
-      return leads.filter(l => 
+      return filteredLeads.filter(l => 
         l.assignedTo === user?.id || 
         l.assignedTo === user?.uid || 
         l.assignedTo === user?.email ||
-        l.createdBy === user?.id ||
-        l.createdBy === user?.uid
+        (!l.isOnlineLead && (l.createdBy === user?.id || l.createdBy === user?.uid))
       );
     }
-    return leads;
+    return filteredLeads;
   }, [leads, user]);
 
   const filteredAssignedLeads = assignedLeads.filter(l => {
@@ -819,7 +828,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
       ) : (
         <div className="space-y-6 animate-fadeIn text-left">
           {(() => {
-            const otLeads = leads.filter(l => isOnlineTeam(l.createdBy));
+            const otLeads = leads.filter(l => isOnlineTeam(l.createdBy) || l.isOnlineLead);
             const isManager = user?.email === 'daniel.smpallywear@gmail.com';
 
             if (!isManager) {
@@ -918,6 +927,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                           <th className="px-4 py-3">Company</th>
                           <th className="px-4 py-3 text-center">Status</th>
                           <th className="px-4 py-3">Latest Call Log</th>
+                          <th className="px-4 py-3 text-center">Assigned To</th>
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
@@ -955,6 +965,47 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                                 <td className="px-4 py-3 max-w-xs truncate text-gray-500 font-medium italic animate-pulse-slow" title={lead.description}>
                                   {latestLog}
                                 </td>
+                                <td className="px-4 py-3 text-center">
+                                  <select
+                                    value={lead.assignedTo || ''}
+                                    onChange={async (e) => {
+                                      const agentId = e.target.value;
+                                      const agent = onlineTeamAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                      const agentName = agent ? agent.name : '';
+                                      try {
+                                        const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            assignedTo: agentId || null,
+                                            assignedToName: agentName || null,
+                                            isTaken: agentId ? true : false
+                                          })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          await updateLead(lead.id, {
+                                            assignedTo: agentId || undefined,
+                                            assignedToName: agentName || undefined,
+                                            isTaken: agentId ? true : false
+                                          });
+                                          alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                        }
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to assign lead.');
+                                      }
+                                    }}
+                                    className="bg-gray-50 border border-gray-150 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {onlineTeamAgents.map((agent: any) => (
+                                      <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
+                                        {agent.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
                                 <td className="px-4 py-3 text-right flex justify-end gap-1.5">
                                   {lead.description && (
                                     <button
@@ -974,7 +1025,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads' 
                           })}
                         {otLeads.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="py-12 text-center text-gray-400 italic">No leads found in the system.</td>
+                            <td colSpan={8} className="py-12 text-center text-gray-400 italic">No leads found in the system.</td>
                           </tr>
                         )}
                       </tbody>

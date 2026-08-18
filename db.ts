@@ -70,6 +70,7 @@ export async function initDB() {
         \`isTaken\` tinyint(1) DEFAULT '0',
         \`email\` varchar(255) DEFAULT NULL,
         \`status\` varchar(50) DEFAULT 'New',
+        \`isOnlineLead\` tinyint(1) DEFAULT '0',
         \`created_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -233,6 +234,9 @@ export async function initDB() {
     } catch (_) {}
     try {
       await pool.execute('ALTER TABLE `invoices` ADD COLUMN `creatorRole` varchar(100) DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `leads` ADD COLUMN `isOnlineLead` tinyint(1) DEFAULT 0');
     } catch (_) {}
 
 

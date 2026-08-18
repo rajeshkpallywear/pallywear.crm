@@ -21,7 +21,7 @@ import ProfileSettings from '../components/ProfileSettings';
 import Logo from '../components/Logo';
 import InvoiceModal from '../components/InvoiceModal';
 import OrderDetailModal from '../components/OrderDetailModal';
-import { Order, OrderStatus, Invoice } from '../types';
+import { Order, OrderStatus, Invoice, Lead } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { mockDataService } from '../service/mockDataService';
@@ -38,7 +38,7 @@ const MOCK_LOGS = [
 ];
 
 // ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
-export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder, addLead, deleteLead }: any) {
+export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder, addLead, deleteLead, setSelectedAdminLeadForLogs, setShowAdminLogsModal }: any) {
   const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
   const [orderSearch, setOrderSearch] = React.useState('');
   const [leadSearch, setLeadSearch] = React.useState('');
@@ -789,6 +789,7 @@ export default function AdminDashboard() {
     const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
     const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
     const navigate = useNavigate();
+    const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads'>('overview');
     const [userLogs, setUserLogs] = useState<any[]>([]);
     const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
@@ -1677,6 +1678,8 @@ export default function AdminDashboard() {
                       deleteOrder={deleteOrder}
                       addLead={addLead}
                       deleteLead={deleteLead}
+                      setSelectedAdminLeadForLogs={setSelectedAdminLeadForLogs}
+                      setShowAdminLogsModal={setShowAdminLogsModal}
                     />
                   );
                 })()}
@@ -2582,7 +2585,7 @@ export default function AdminDashboard() {
                                           </button>
                                         )}
                                         <button
-                                          onClick={() => handleDeleteLead(lead.id)}
+                                          onClick={() => deleteLead(lead.id)}
                                           title="Delete Lead"
                                           className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 transition-all cursor-pointer animate-in fade-in"
                                         >

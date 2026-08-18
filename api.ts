@@ -229,26 +229,27 @@ router.post('/leads', async (req, res) => {
   }
   try {
     const existing = await query('SELECT id FROM leads WHERE id = ?', [lead.id]) as any[];
+    const isOnlineLeadVal = lead.isOnlineLead ? 1 : 0;
     if (existing.length > 0) {
       await query(
         `UPDATE leads SET name=?, number=?, companyName=?, gst=?, leadType=?, entryDate=?, 
         forecastedValue=?, convertedValue=?, totalOrderValue=?, discountCode=?, discountAmount=?, 
-        netTotal=?, createdBy=?, createdByName=?, description=?, assignedTo=?, assignedToName=?, status=? WHERE id=?`,
+        netTotal=?, createdBy=?, createdByName=?, description=?, assignedTo=?, assignedToName=?, status=?, isOnlineLead=? WHERE id=?`,
         [
           lead.name, lead.number, lead.companyName, lead.gst, lead.leadType, lead.entryDate,
           lead.forecastedValue, lead.convertedValue, lead.totalOrderValue, lead.discountCode, lead.discountAmount,
-          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status, lead.id
+          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status, isOnlineLeadVal, lead.id
         ]
       );
     } else {
       await query(
         `INSERT INTO leads (id, name, number, companyName, gst, leadType, entryDate, 
         forecastedValue, convertedValue, totalOrderValue, discountCode, discountAmount, 
-        netTotal, createdBy, createdByName, description, assignedTo, assignedToName, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        netTotal, createdBy, createdByName, description, assignedTo, assignedToName, status, isOnlineLead) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           lead.id, lead.name, lead.number, lead.companyName, lead.gst, lead.leadType, lead.entryDate,
           lead.forecastedValue, lead.convertedValue, lead.totalOrderValue, lead.discountCode, lead.discountAmount,
-          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status
+          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status, isOnlineLeadVal
         ]
       );
     }

@@ -20,6 +20,7 @@ export interface Lead {
   assignedToName?: string;
   status?: string;
   description?: string;
+  isOnlineLead?: boolean | number;
 }
 
 export interface InvoiceItem {
