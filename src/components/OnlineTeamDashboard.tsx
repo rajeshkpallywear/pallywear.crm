@@ -783,10 +783,6 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
       ) : (
         <div className="space-y-6 animate-fadeIn text-left">
           {(() => {
-            const jimUser = registeredUsers.find((u: any) => u.email === 'jimpallywear@gmail.com');
-            const jimId = jimUser?.id || jimUser?.uid || '';
-            const jimName = jimUser?.name || 'Jim';
-
             const isPriyaOrNirmala = user?.email === 'priyapallywear@gmail.com' || user?.email === 'nirmalapallywear@gmail.com';
 
             const otLeads = leads.filter(l => {
@@ -796,15 +792,19 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 return matchesBase;
               }
 
-              // Priya & Nirmala: see their own leads + any lead assigned to Jim
+              // Priya & Nirmala: see their own created leads + leads assigned TO them by Jim
               if (isPriyaOrNirmala) {
-                const isOwnLead = l.createdBy === user?.id || l.createdBy === user?.uid || l.createdByName === user?.name;
+                const isOwnLead =
+                  l.createdBy === user?.id ||
+                  l.createdBy === user?.uid ||
+                  l.createdByName === user?.name;
+                const myNameLower = (user?.name || '').toLowerCase();
                 const assignedNameLower = (l.assignedToName || '').toLowerCase();
-                const isJimAssigned =
-                  (jimId && l.assignedTo === jimId) ||
-                  assignedNameLower.includes('jim') ||
-                  (jimName && assignedNameLower === jimName.toLowerCase());
-                return isOwnLead || isJimAssigned;
+                const isAssignedToMe =
+                  (user?.id && l.assignedTo === user?.id) ||
+                  (user?.uid && l.assignedTo === user?.uid) ||
+                  (myNameLower && assignedNameLower === myNameLower);
+                return isOwnLead || isAssignedToMe;
               }
 
               // All other online team users: see only their own online leads
