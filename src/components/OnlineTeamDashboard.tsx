@@ -870,150 +870,295 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   </div>
                 )}
 
-                {/* Table of Leads */}
-                <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
-                    <h3 className="text-lg font-bold text-gray-900">Leads Registry & Call Logs</h3>
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                {/* ── Leads Registry: Split Unassigned / Assigned ── */}
+                <div className="space-y-4 animate-fadeIn">
+                  {/* Header row */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                      <h3 className="text-lg font-black text-gray-900">Leads Registry &amp; Call Logs</h3>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Showing unassigned &amp; assigned leads in separate columns</p>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => setShowAddLeadFormInline(true)}
-                        className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
+                        className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95"
                       >
                         <Plus size={14} /> Add Lead
                       </button>
-                      <div className="relative w-full sm:w-64">
+                      <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                           type="text"
                           placeholder="Search leads..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                          className="w-52 bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
-                        <tr>
-                          <th className="px-4 py-3">Agent</th>
-                          <th className="px-4 py-3">Client Name</th>
-                          <th className="px-4 py-3">Phone</th>
-                          <th className="px-4 py-3">Company</th>
-                          <th className="px-4 py-3 text-center">Status</th>
-                          <th className="px-4 py-3">Latest Call Log</th>
-                          <th className="px-4 py-3 text-center">Assigned To</th>
-                          <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {otLeads
-                          .filter(l => 
-                            l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            l.number.includes(searchTerm) ||
-                            (l.createdByName || '').toLowerCase().includes(searchTerm.toLowerCase())
-                          )
-                          .map((lead) => {
-                            const logs = lead.description ? lead.description.split('\n\n') : [];
-                            const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
+                  {/* Two-column layout */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 
-                            return (
-                              <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
-                                <td className="px-4 py-3 font-bold text-gray-700">
-                                  {lead.createdByName || 'System'}
-                                </td>
-                                <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
-                                <td className="px-4 py-3 font-mono text-gray-600">{lead.number}</td>
-                                <td className="px-4 py-3 text-gray-500 font-semibold">{lead.companyName || '—'}</td>
-                                <td className="px-4 py-3 text-center">
-                                  <span className={cn(
-                                    "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
-                                    lead.status === 'Converted' ? "bg-emerald-50 text-emerald-700 border-emerald-150" :
-                                    lead.status === 'Interested' ? "bg-red-50 text-red-700 border-red-150" :
-                                    lead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-150" :
-                                    "bg-amber-50 text-amber-700 border-amber-150"
-                                  )}>
-                                    {lead.status || 'New'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 max-w-xs truncate text-gray-500 font-medium italic animate-pulse-slow" title={lead.description}>
-                                  {latestLog}
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  {canAssign ? (
-                                    <select
-                                      value={lead.assignedTo || ''}
-                                      onChange={async (e) => {
-                                        const agentId = e.target.value;
-                                        const targetAgents = isJim ? onlineTeamAgents : marketingAgents;
-                                        const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
-                                        const agentName = agent ? agent.name : '';
-                                        try {
-                                          const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
-                                            method: 'PATCH',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                              assignedTo: agentId || null,
-                                              assignedToName: agentName || null,
-                                              isTaken: agentId ? true : false
-                                            })
-                                          });
-                                          const data = await res.json();
-                                          if (data.success) {
-                                            await updateLead(lead.id, {
-                                              assignedTo: agentId || undefined,
-                                              assignedToName: agentName || undefined,
-                                              isTaken: agentId ? true : false
-                                            });
-                                            alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
-                                          }
-                                        } catch (err) {
-                                          console.error(err);
-                                          alert('Failed to assign lead.');
-                                        }
-                                      }}
-                                      className="bg-gray-50 border border-gray-150 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                                    >
-                                      <option value="">Unassigned</option>
-                                      {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
-                                        <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
-                                          {agent.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <span className="text-xs text-gray-600 font-medium">
-                                      {lead.assignedToName || 'Unassigned'}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 text-right flex justify-end gap-1.5">
-                                  {lead.description && (
-                                    <button
-                                      onClick={() => {
-                                        setSelectedLeadForAdminLogs(lead);
-                                        setShowAdminLogsModal(true);
-                                      }}
-                                      title="View All Call Logs"
-                                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
-                                    >
-                                      <FileText size={13} />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        {otLeads.length === 0 && (
-                          <tr>
-                            <td colSpan={8} className="py-12 text-center text-gray-400 italic">No leads found in the system.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                    {/* ── UNASSIGNED LEADS ── */}
+                    {(() => {
+                      const unassigned = otLeads.filter(l =>
+                        !l.assignedTo &&
+                        (
+                          l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          l.number.includes(searchTerm) ||
+                          (l.createdByName || '').toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                      );
+                      return (
+                        <div className="bg-white rounded-[1.75rem] border-2 border-amber-200 shadow-sm overflow-hidden">
+                          {/* Column header */}
+                          <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-amber-400/20 flex items-center justify-center">
+                                <AlertCircle size={16} className="text-amber-600" />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Pending Assignment</p>
+                                <h4 className="text-sm font-black text-gray-900 leading-none mt-0.5">Unassigned Leads</h4>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 bg-amber-400 text-white text-xs font-black rounded-full shadow-sm">
+                              {unassigned.length}
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+                            <table className="w-full text-xs text-left">
+                              <thead className="bg-amber-50/60 text-amber-700/70 font-black uppercase tracking-widest text-[9px] border-b border-amber-100 sticky top-0">
+                                <tr>
+                                  <th className="px-4 py-3">Agent</th>
+                                  <th className="px-4 py-3">Client Name</th>
+                                  <th className="px-4 py-3">Phone</th>
+                                  <th className="px-4 py-3">Company</th>
+                                  <th className="px-4 py-3 text-center">Status</th>
+                                  <th className="px-4 py-3 text-center">Assign To</th>
+                                  <th className="px-4 py-3 text-right">Logs</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-amber-50">
+                                {unassigned.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={7} className="py-10 text-center">
+                                      <div className="flex flex-col items-center gap-2 text-amber-400">
+                                        <CheckCircle2 size={28} className="opacity-40" />
+                                        <span className="text-xs font-bold text-gray-400 italic">All leads are assigned!</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : unassigned.map((lead) => {
+                                  const logs = lead.description ? lead.description.split('\n\n') : [];
+                                  const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
+                                  return (
+                                    <tr key={lead.id} className="hover:bg-amber-50/40 transition-colors group">
+                                      <td className="px-4 py-3 font-bold text-gray-600 text-[11px]">{lead.createdByName || 'System'}</td>
+                                      <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
+                                      <td className="px-4 py-3 font-mono text-gray-500 text-[11px]">
+                                        <a href={`tel:${lead.number}`} className="hover:text-amber-600 transition-colors">{lead.number}</a>
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-400 font-medium truncate max-w-[100px]">{lead.companyName || '—'}</td>
+                                      <td className="px-4 py-3 text-center">
+                                        <span className={cn(
+                                          "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                                          lead.status === 'Converted' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                          lead.status === 'Interested' ? "bg-red-50 text-red-700 border-red-200" :
+                                          lead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                                          "bg-amber-50 text-amber-700 border-amber-200"
+                                        )}>
+                                          {lead.status || 'New'}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                        {canAssign ? (
+                                          <select
+                                            value={lead.assignedTo || ''}
+                                            onChange={async (e) => {
+                                              const agentId = e.target.value;
+                                              const targetAgents = isJim ? onlineTeamAgents : marketingAgents;
+                                              const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                              const agentName = agent ? agent.name : '';
+                                              try {
+                                                const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                                  method: 'PATCH',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ assignedTo: agentId || null, assignedToName: agentName || null, isTaken: agentId ? true : false })
+                                                });
+                                                const data = await res.json();
+                                                if (data.success) {
+                                                  await updateLead(lead.id, { assignedTo: agentId || undefined, assignedToName: agentName || undefined, isTaken: agentId ? true : false });
+                                                  alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                                }
+                                              } catch (err) { console.error(err); alert('Failed to assign lead.'); }
+                                            }}
+                                            className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
+                                          >
+                                            <option value="">— Assign —</option>
+                                            {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
+                                              <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
+                                            ))}
+                                          </select>
+                                        ) : (
+                                          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-black uppercase border border-amber-200">Unassigned</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        {lead.description && (
+                                          <button
+                                            onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
+                                            title={latestLog}
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer ml-auto"
+                                          >
+                                            <FileText size={13} />
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── ASSIGNED LEADS ── */}
+                    {(() => {
+                      const assigned = otLeads.filter(l =>
+                        !!l.assignedTo &&
+                        (
+                          l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          l.number.includes(searchTerm) ||
+                          (l.createdByName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (l.assignedToName || '').toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                      );
+                      return (
+                        <div className="bg-white rounded-[1.75rem] border-2 border-emerald-200 shadow-sm overflow-hidden">
+                          {/* Column header */}
+                          <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-emerald-400/20 flex items-center justify-center">
+                                <CheckCircle2 size={16} className="text-emerald-600" />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">In Progress</p>
+                                <h4 className="text-sm font-black text-gray-900 leading-none mt-0.5">Assigned Leads</h4>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 bg-emerald-500 text-white text-xs font-black rounded-full shadow-sm">
+                              {assigned.length}
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+                            <table className="w-full text-xs text-left">
+                              <thead className="bg-emerald-50/60 text-emerald-700/70 font-black uppercase tracking-widest text-[9px] border-b border-emerald-100 sticky top-0">
+                                <tr>
+                                  <th className="px-4 py-3">Agent</th>
+                                  <th className="px-4 py-3">Client Name</th>
+                                  <th className="px-4 py-3">Phone</th>
+                                  <th className="px-4 py-3">Company</th>
+                                  <th className="px-4 py-3 text-center">Status</th>
+                                  <th className="px-4 py-3 text-center">Assigned To</th>
+                                  <th className="px-4 py-3 text-right">Logs</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-emerald-50">
+                                {assigned.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={7} className="py-10 text-center">
+                                      <div className="flex flex-col items-center gap-2 text-emerald-400">
+                                        <Users size={28} className="opacity-40" />
+                                        <span className="text-xs font-bold text-gray-400 italic">No leads assigned yet.</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : assigned.map((lead) => {
+                                  const logs = lead.description ? lead.description.split('\n\n') : [];
+                                  const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
+                                  return (
+                                    <tr key={lead.id} className="hover:bg-emerald-50/40 transition-colors group">
+                                      <td className="px-4 py-3 font-bold text-gray-600 text-[11px]">{lead.createdByName || 'System'}</td>
+                                      <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
+                                      <td className="px-4 py-3 font-mono text-gray-500 text-[11px]">
+                                        <a href={`tel:${lead.number}`} className="hover:text-emerald-600 transition-colors">{lead.number}</a>
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-400 font-medium truncate max-w-[100px]">{lead.companyName || '—'}</td>
+                                      <td className="px-4 py-3 text-center">
+                                        <span className={cn(
+                                          "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                                          lead.status === 'Converted' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                                          lead.status === 'Interested' ? "bg-red-50 text-red-700 border-red-200" :
+                                          lead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                                          "bg-amber-50 text-amber-700 border-amber-200"
+                                        )}>
+                                          {lead.status || 'New'}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                        {canAssign ? (
+                                          <select
+                                            value={lead.assignedTo || ''}
+                                            onChange={async (e) => {
+                                              const agentId = e.target.value;
+                                              const targetAgents = isJim ? onlineTeamAgents : marketingAgents;
+                                              const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                              const agentName = agent ? agent.name : '';
+                                              try {
+                                                const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                                  method: 'PATCH',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ assignedTo: agentId || null, assignedToName: agentName || null, isTaken: agentId ? true : false })
+                                                });
+                                                const data = await res.json();
+                                                if (data.success) {
+                                                  await updateLead(lead.id, { assignedTo: agentId || undefined, assignedToName: agentName || undefined, isTaken: agentId ? true : false });
+                                                  alert(`Lead ${agentName ? `reassigned to ${agentName}` : 'unassigned'} successfully!`);
+                                                }
+                                              } catch (err) { console.error(err); alert('Failed to update assignment.'); }
+                                            }}
+                                            className="bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 text-emerald-800 font-bold cursor-pointer"
+                                          >
+                                            <option value="">— Unassign —</option>
+                                            {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
+                                              <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
+                                            ))}
+                                          </select>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[9px] font-black uppercase border border-emerald-200">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                            {lead.assignedToName}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        {lead.description && (
+                                          <button
+                                            onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
+                                            title={latestLog}
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer ml-auto"
+                                          >
+                                            <FileText size={13} />
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                   </div>
                 </div>
               </>

@@ -336,7 +336,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-center font-medium">{item.quantity}</td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">{item.tax}%</td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">
-                                                    {isMarketingStaff ? `₹${item.discount.toLocaleString()}` : `${item.discount}%`}
+                                                    ₹{item.discount.toLocaleString()}
                                                 </td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-black text-gray-900">₹{item.amount.toLocaleString()}</td>
                                             </tr>
@@ -394,7 +394,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                         <span className="font-black text-gray-900">₹{invoice.subtotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="font-bold text-gray-500">Discount {isMarketingStaff ? '' : `(${invoice.items[0]?.discount || 0}%)`}:</span>
+                                        <span className="font-bold text-gray-500">Discount:</span>
                                         <span className="font-black text-gray-900">₹{invoice.discountTotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">

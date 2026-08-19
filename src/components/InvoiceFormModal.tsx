@@ -268,7 +268,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
 
         const invoiceItems = formData.items.map((item, idx) => {
             const itemSubtotal = item.unitPrice * item.quantity;
-            const itemDiscount = item.discountRate;
+            const itemDiscount = item.discountRate * item.quantity;
             const itemTaxable = Math.max(0, itemSubtotal - itemDiscount);
             const itemTax = (itemTaxable * item.taxRate) / 100;
 
@@ -555,7 +555,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                             />
                                                         </div>
                                                         <div className="space-y-1.5">
-                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount (₹)</label>
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount per item (₹)</label>
                                                             <input
                                                                 type="number"
                                                                 value={item.discountRate}
@@ -563,6 +563,11 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                                 className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
                                                                 placeholder="0"
                                                             />
+                                                            {item.discountRate > 0 && item.quantity > 1 && (
+                                                                <p className="text-[10px] text-emerald-600 font-black pl-1">
+                                                                    Total discount: ₹{(item.discountRate * item.quantity).toLocaleString()} ({item.quantity} × ₹{item.discountRate})
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
