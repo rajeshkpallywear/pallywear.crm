@@ -826,8 +826,10 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
             const otLeads = leads.filter(l => {
               const isOverallManager = user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com';
               if (isOverallManager) {
-                const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
-                return matchesBase;
+                // Jim / Daniel: see all online leads AND any lead assigned to online-team or marketing agents
+                const isOnlineLead = isOnlineTeam(l.createdBy) || l.isOnlineLead;
+                const isAssignedToAnyAgent = !!(l.assignedTo?.trim());
+                return isOnlineLead || isAssignedToAnyAgent;
               }
 
               // Priya & Nirmala: see their own created leads + leads assigned TO them by Jim
@@ -942,7 +944,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     {/* ── UNASSIGNED LEADS ── */}
                     {(() => {
                       const unassigned = otLeads.filter(l =>
-                        !l.assignedTo &&
+                        !l.assignedTo?.trim() &&
                         (
                           l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1069,7 +1071,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     {/* ── ASSIGNED LEADS ── */}
                     {(() => {
                       const assigned = otLeads.filter(l =>
-                        !!l.assignedTo &&
+                        !!(l.assignedTo?.trim()) &&
                         (
                           l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
