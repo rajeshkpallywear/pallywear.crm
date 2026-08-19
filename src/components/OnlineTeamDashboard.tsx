@@ -46,6 +46,12 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Quick Update Status modal (Assigned Leads column)
+  const [quickUpdateLead, setQuickUpdateLead] = useState<Lead | null>(null);
+  const [quickUpdateStatus, setQuickUpdateStatus] = useState('New');
+  const [quickUpdateNote, setQuickUpdateNote] = useState('');
+  const [isQuickSaving, setIsQuickSaving] = useState(false);
+
   // Add Call Log Form State
   const [isAddLogOpen, setIsAddLogOpen] = useState(false);
   const [addLogName, setAddLogName] = useState('');
@@ -277,7 +283,39 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     }
   };
 
-  const totalLeadsCount = assignedLeads.length;
+  const handleQuickUpdateStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickUpdateLead) return;
+    setIsQuickSaving(true);
+    try {
+      const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+      const entry = quickUpdateNote.trim()
+        ? `[${timestamp}] ${user?.name || 'Online Team'}: ${quickUpdateNote.trim()}`
+        : '';
+      const updatedDescription = entry
+        ? (quickUpdateLead.description ? `${quickUpdateLead.description}\n\n${entry}` : entry)
+        : quickUpdateLead.description || '';
+
+      const res = await fetch(getApiUrl(`/api/leads/${quickUpdateLead.id}`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: quickUpdateStatus, description: updatedDescription })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await updateLead(quickUpdateLead.id, { status: quickUpdateStatus, description: updatedDescription });
+        setQuickUpdateLead(null);
+        setQuickUpdateNote('');
+      } else {
+        alert('Failed to update lead');
+      }
+    } catch {
+      alert('Error updating lead');
+    } finally {
+      setIsQuickSaving(false);
+    }
+  };
+
   const contactedCount = assignedLeads.filter(l => 
     ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status)
   ).length;
@@ -929,7 +967,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                               {unassigned.length}
                             </span>
                           </div>
-                          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+                          <div className="overflow-x-hidden max-h-[480px] overflow-y-auto">
                             <table className="w-full text-xs text-left">
                               <thead className="bg-amber-50/60 text-amber-700/70 font-black uppercase tracking-widest text-[9px] border-b border-amber-100 sticky top-0">
                                 <tr>
@@ -1057,23 +1095,21 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                               {assigned.length}
                             </span>
                           </div>
-                          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+                          <div className="overflow-x-hidden max-h-[480px] overflow-y-auto">
                             <table className="w-full text-xs text-left">
                               <thead className="bg-emerald-50/60 text-emerald-700/70 font-black uppercase tracking-widest text-[9px] border-b border-emerald-100 sticky top-0">
                                 <tr>
-                                  <th className="px-4 py-3">Agent</th>
-                                  <th className="px-4 py-3">Client Name</th>
-                                  <th className="px-4 py-3">Phone</th>
-                                  <th className="px-4 py-3">Company</th>
-                                  <th className="px-4 py-3 text-center">Status</th>
-                                  <th className="px-4 py-3 text-center">Assigned To</th>
-                                  <th className="px-4 py-3 text-right">Logs</th>
+                                  <th className="px-3 py-3">Client</th>
+                                  <th className="px-3 py-3">Phone</th>
+                                  <th className="px-3 py-3 text-center">Status</th>
+                                  <th className="px-3 py-3 text-center">Assigned To</th>
+                                  <th className="px-3 py-3 text-right">Actions</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-emerald-50">
                                 {assigned.length === 0 ? (
                                   <tr>
-                                    <td colSpan={7} className="py-10 text-center">
+                                    <td colSpan={5} className="py-10 text-center">
                                       <div className="flex flex-col items-center gap-2 text-emerald-400">
                                         <Users size={28} className="opacity-40" />
                                         <span className="text-xs font-bold text-gray-400 italic">No leads assigned yet.</span>
@@ -1085,13 +1121,14 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                   const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
                                   return (
                                     <tr key={lead.id} className="hover:bg-emerald-50/40 transition-colors group">
-                                      <td className="px-4 py-3 font-bold text-gray-600 text-[11px]">{lead.createdByName || 'System'}</td>
-                                      <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
-                                      <td className="px-4 py-3 font-mono text-gray-500 text-[11px]">
+                                      <td className="px-3 py-3">
+                                        <p className="font-black text-gray-900 leading-tight">{lead.name}</p>
+                                        <p className="text-[10px] text-gray-400 font-medium truncate max-w-[110px]">{lead.companyName || '—'}</p>
+                                      </td>
+                                      <td className="px-3 py-3 font-mono text-gray-500 text-[11px]">
                                         <a href={`tel:${lead.number}`} className="hover:text-emerald-600 transition-colors">{lead.number}</a>
                                       </td>
-                                      <td className="px-4 py-3 text-gray-400 font-medium truncate max-w-[100px]">{lead.companyName || '—'}</td>
-                                      <td className="px-4 py-3 text-center">
+                                      <td className="px-3 py-3 text-center">
                                         <span className={cn(
                                           "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                                           lead.status === 'Converted' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
@@ -1102,7 +1139,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                           {lead.status || 'New'}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-3 text-center">
+                                      <td className="px-3 py-3 text-center">
                                         {canAssign ? (
                                           <select
                                             value={lead.assignedTo || ''}
@@ -1124,7 +1161,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                                 }
                                               } catch (err) { console.error(err); alert('Failed to update assignment.'); }
                                             }}
-                                            className="bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 text-emerald-800 font-bold cursor-pointer"
+                                            className="bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-emerald-400 text-emerald-800 font-bold cursor-pointer max-w-[90px]"
                                           >
                                             <option value="">— Unassign —</option>
                                             {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
@@ -1132,22 +1169,37 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                             ))}
                                           </select>
                                         ) : (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[9px] font-black uppercase border border-emerald-200">
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[9px] font-black uppercase border border-emerald-200">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                             {lead.assignedToName}
                                           </span>
                                         )}
                                       </td>
-                                      <td className="px-4 py-3 text-right">
-                                        {lead.description && (
+                                      <td className="px-3 py-3 text-right">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          {/* Update Status button */}
                                           <button
-                                            onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
-                                            title={latestLog}
-                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer ml-auto"
+                                            onClick={() => {
+                                              setQuickUpdateLead(lead);
+                                              setQuickUpdateStatus(lead.status || 'New');
+                                              setQuickUpdateNote('');
+                                            }}
+                                            className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black rounded-lg border-none cursor-pointer transition-all uppercase tracking-wider shadow-sm active:scale-95"
+                                            title="Update Status & Add Note"
                                           >
-                                            <FileText size={13} />
+                                            Update
                                           </button>
-                                        )}
+                                          {/* Call Logs button */}
+                                          {lead.description && (
+                                            <button
+                                              onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
+                                              title={latestLog}
+                                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
+                                            >
+                                              <FileText size={13} />
+                                            </button>
+                                          )}
+                                        </div>
                                       </td>
                                     </tr>
                                   );
@@ -1164,6 +1216,78 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
               </>
             );
           })()}
+        </div>
+      )}
+
+      {/* ── Quick Update Status Modal ── */}
+      {quickUpdateLead && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm border border-gray-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+            {/* Modal header */}
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Assigned Lead</span>
+                <h3 className="text-base font-black text-gray-900 leading-tight">{quickUpdateLead.name}</h3>
+                <p className="text-[10px] text-gray-400 font-medium mt-0.5">{quickUpdateLead.number}{quickUpdateLead.companyName ? ` · ${quickUpdateLead.companyName}` : ''}</p>
+              </div>
+              <button
+                onClick={() => setQuickUpdateLead(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 transition-colors border-none bg-transparent cursor-pointer flex-shrink-0 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleQuickUpdateStatus} className="px-6 py-5 space-y-4">
+              {/* Status selector */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Update Status</label>
+                <select
+                  value={quickUpdateStatus}
+                  onChange={(e) => setQuickUpdateStatus(e.target.value)}
+                  className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-300 cursor-pointer"
+                >
+                  <option value="New">🟡 New</option>
+                  <option value="Called">📞 Called</option>
+                  <option value="Interested">🔥 Interested</option>
+                  <option value="Not Interested">❌ Not Interested</option>
+                  <option value="Follow Up">🔄 Follow Up</option>
+                  <option value="Converted">✅ Converted</option>
+                </select>
+              </div>
+
+              {/* Notes textarea */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Add Note (optional)</label>
+                <textarea
+                  value={quickUpdateNote}
+                  onChange={(e) => setQuickUpdateNote(e.target.value)}
+                  placeholder="e.g. Called — interested in jersey order of 50 pcs..."
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium text-gray-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-200 resize-none transition-all placeholder:text-gray-300"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={isQuickSaving}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-black rounded-xl text-sm transition-all border-none cursor-pointer active:scale-95 shadow-md shadow-emerald-200"
+                >
+                  {isQuickSaving ? 'Saving…' : 'Save Update'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickUpdateLead(null)}
+                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-all border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
