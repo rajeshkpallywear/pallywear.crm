@@ -31,7 +31,37 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
   const marketingAgents = React.useMemo(() => {
     return registeredUsers?.filter((u: any) => u.role === 'marketing' || u.role === 'UserRole.MARKETING') || [];
   }, [registeredUsers]);
+
+  const assignableAgents = React.useMemo(() => {
+    const isJim = user?.email === 'jimpallywear@gmail.com';
+    if (isJim) return onlineTeamAgents;
+
+    const list = [...marketingAgents, ...onlineTeamAgents];
+    const isDaniel = user?.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
+    if (isDaniel && user) {
+      const exists = list.some((u: any) => u.email?.toLowerCase() === 'daniel.smpallywear@gmail.com' || u.id === user.id || u.uid === user.uid);
+      if (!exists) {
+        list.unshift({
+          id: user.id || user.uid || 'admin-daniel',
+          uid: user.uid || user.id || 'admin-daniel',
+          email: 'daniel.smpallywear@gmail.com',
+          name: user.name || 'Daniel Staff',
+          role: user.role || 'marketing'
+        });
+      }
+    }
+    const uniqueMap = new Map();
+    list.forEach(agent => {
+      const key = agent.id || agent.uid || agent.email;
+      if (key && !uniqueMap.has(key)) {
+        uniqueMap.set(key, agent);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [onlineTeamAgents, marketingAgents, user]);
+
   const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'>(defaultTab);
+  const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>('all');
 
   useEffect(() => {
     setActiveTab(defaultTab);
@@ -1020,7 +1050,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                             value={lead.assignedTo || ''}
                                             onChange={async (e) => {
                                               const agentId = e.target.value;
-                                              const targetAgents = isJim ? onlineTeamAgents : marketingAgents;
+                                              const targetAgents = assignableAgents;
                                               const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
                                               const agentName = agent ? agent.name : '';
                                               try {
@@ -1039,7 +1069,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                             className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
                                           >
                                             <option value="">— Assign —</option>
-                                            {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
+                                            {assignableAgents.map((agent: any) => (
                                               <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
                                             ))}
                                           </select>
@@ -1070,16 +1100,32 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
 
                     {/* ── ASSIGNED LEADS ── */}
                     {(() => {
-                      const assigned = otLeads.filter(l =>
-                        !!(l.assignedTo?.trim()) &&
-                        (
-                          l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      const assigned = otLeads.filter(l => {
+                        if (!l.assignedTo?.trim()) return false;
+                        if (assignedAgentFilter === 'me') {
+                          const isMe = (user?.id && l.assignedTo === user.id) ||
+                            (user?.uid && l.assignedTo === user.uid) ||
+                            l.assignedTo === 'admin-daniel' ||
+                            (user?.email && l.assignedTo === user.email) ||
+                            (user?.name && (l.assignedToName || '').toLowerCase() === user.name.toLowerCase()) ||
+                            (user?.email?.toLowerCase() === 'daniel.smpallywear@gmail.com' && (
+                              l.assignedTo === 'admin-daniel' ||
+                              l.assignedTo === user?.id ||
+                              l.assignedTo === user?.uid ||
+                              (l.assignedToName || '').toLowerCase().includes('daniel')
+                            ));
+                          if (!isMe) return false;
+                        } else if (assignedAgentFilter !== 'all') {
+                          const matchesFilter = l.assignedTo === assignedAgentFilter || l.assignedToName === assignedAgentFilter;
+                          if (!matchesFilter) return false;
+                        }
+                        const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           l.number.includes(searchTerm) ||
                           (l.createdByName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (l.assignedToName || '').toLowerCase().includes(searchTerm.toLowerCase())
-                        )
-                      );
+                          (l.assignedToName || '').toLowerCase().includes(searchTerm.toLowerCase());
+                        return matchesSearch;
+                      });
                       return (
                         <div className="bg-white rounded-[1.75rem] border-2 border-emerald-200 shadow-sm overflow-hidden">
                           {/* Column header */}
@@ -1093,9 +1139,24 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                 <h4 className="text-sm font-black text-gray-900 leading-none mt-0.5">Assigned Leads</h4>
                               </div>
                             </div>
-                            <span className="px-3 py-1 bg-emerald-500 text-white text-xs font-black rounded-full shadow-sm">
-                              {assigned.length}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={assignedAgentFilter}
+                                onChange={(e) => setAssignedAgentFilter(e.target.value)}
+                                className="bg-white border border-emerald-200 text-emerald-800 rounded-lg px-2.5 py-1 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer shadow-xs"
+                              >
+                                <option value="all">All Assigned Staff</option>
+                                <option value="me">Assigned to Daniel</option>
+                                {assignableAgents.map((agent: any) => (
+                                  <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
+                                    {agent.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="px-3 py-1 bg-emerald-500 text-white text-xs font-black rounded-full shadow-sm">
+                                {assigned.length}
+                              </span>
+                            </div>
                           </div>
                           <div className="overflow-x-hidden max-h-[480px] overflow-y-auto">
                             <table className="w-full text-xs text-left">
@@ -1147,7 +1208,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                             value={lead.assignedTo || ''}
                                             onChange={async (e) => {
                                               const agentId = e.target.value;
-                                              const targetAgents = isJim ? onlineTeamAgents : marketingAgents;
+                                              const targetAgents = assignableAgents;
                                               const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
                                               const agentName = agent ? agent.name : '';
                                               try {
@@ -1166,7 +1227,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                             className="bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-emerald-400 text-emerald-800 font-bold cursor-pointer max-w-[90px]"
                                           >
                                             <option value="">— Unassign —</option>
-                                            {(isJim ? onlineTeamAgents : marketingAgents).map((agent: any) => (
+                                            {assignableAgents.map((agent: any) => (
                                               <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
                                             ))}
                                           </select>

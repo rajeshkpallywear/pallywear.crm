@@ -76,7 +76,7 @@ export default function Dashboard() {
   const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar' | 'online_leads'>(() => {
     const saved = localStorage.getItem('pallywear_active_tab');
-    if (saved && ['dashboard', 'reports', 'clients', 'invoices', 'inventory', 'history', 'digitizer_comm', 'marketing_orders', 'calendar'].includes(saved)) {
+    if (saved && ['dashboard', 'reports', 'clients', 'invoices', 'inventory', 'history', 'digitizer_comm', 'marketing_orders', 'calendar', 'online_leads'].includes(saved)) {
       return saved as any;
     }
     return 'dashboard';
@@ -1006,6 +1006,8 @@ export default function Dashboard() {
               </div>
               <InvoiceManager />
             </div>
+          ) : activeTab === 'online_leads' ? (
+            <OnlineTeamDashboard user={user} defaultTab="assign_leads" />
           ) : activeTab === 'calendar' ? (
             <CalendarView user={user} />
           ) : activeTab === 'digitizer_comm' ? (
