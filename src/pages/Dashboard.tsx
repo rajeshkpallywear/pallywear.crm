@@ -730,27 +730,28 @@ export default function Dashboard() {
         "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
         isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
-        <header className="h-14 sm:h-16 bg-white border-b border-gray-200 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <header className="h-13 sm:h-16 bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs pt-safe">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="p-1.5 -ml-1 hover:bg-gray-100 rounded-xl text-gray-700 flex md:hidden items-center justify-center border border-gray-200 shadow-xs cursor-pointer active:scale-95 transition-all"
+              className="p-1.5 -ml-1 hover:bg-gray-100 rounded-xl text-gray-700 flex md:hidden items-center justify-center border border-gray-200 shadow-xs cursor-pointer active:scale-95 transition-all flex-shrink-0"
               aria-label="Toggle sidebar menu"
               title="Toggle sidebar menu"
             >
-              <MoreVertical className="w-5 h-5 text-gray-800" />
+              <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5 text-gray-800" />
             </button>
-            <div className="text-xs md:text-sm font-medium text-gray-500 flex items-center gap-2">
-              {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
+            <div className="text-[11px] sm:text-sm font-medium text-gray-500 flex items-center gap-1.5 min-w-0 truncate">
+              <span className="truncate max-w-[85px] sm:max-w-none text-gray-500 font-medium">{userRoleDisplay}</span>
+              <span className="text-gray-900 font-bold flex-shrink-0">Dashboard</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             {user?.role === 'admin' && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/admin')}
-                className="text-[9px] md:text-[10px] h-7 md:h-8 px-2 md:px-3 font-bold uppercase tracking-wider"
+                className="text-[8px] sm:text-[10px] h-6 sm:h-8 px-1.5 sm:px-3 font-bold uppercase tracking-wider flex-shrink-0"
               >
                 Admin Panel
               </Button>
@@ -758,9 +759,9 @@ export default function Dashboard() {
             <div className="relative">
               <button
                 onClick={handleToggleNotifications}
-                className="p-2 hover:bg-gray-50 rounded-lg text-gray-500 relative cursor-pointer flex items-center justify-center"
+                className="p-1.5 sm:p-2 hover:bg-gray-50 rounded-lg text-gray-500 relative cursor-pointer flex items-center justify-center"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {notifications.some(n => n.isRead === 0) && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
                 )}
@@ -786,7 +787,7 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-500" onClick={() => setShowProfileModal(true)}><Settings className="w-5 h-5" /></button>
+            <button className="p-1.5 sm:p-2 hover:bg-gray-50 rounded-lg text-gray-500 cursor-pointer" onClick={() => setShowProfileModal(true)}><Settings className="w-4 h-4 sm:w-5 sm:h-5" /></button>
           </div>
         </header>
 
@@ -996,12 +997,12 @@ export default function Dashboard() {
             </div>
           ) : activeTab === 'invoices' ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="space-y-1">
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Invoice Center</h2>
-                  <p className="text-sm text-gray-500 font-medium">Manage your professional billing and payment records</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Invoice Center</h2>
+                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Manage your professional billing and payment records</p>
                 </div>
-                <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase tracking-wider">Billing & Payments</span>
+                <span className="self-start sm:self-auto px-3 py-1 bg-brand-secondary/10 text-brand-primary rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-brand-secondary/20">Billing & Payments</span>
               </div>
               <InvoiceManager />
             </div>
@@ -1164,57 +1165,57 @@ export default function Dashboard() {
       </main>
       
       {layoutMode === 'mobile' && (
-        <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-2 py-1.5 flex justify-around items-center shadow-lg">
+        <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-1 py-1 flex items-center justify-around shadow-lg pb-safe">
           {['admin', 'marketing', 'staff', 'user', 'onlineteam', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF, UserRole.ONLINETEAM].includes(user?.role || '') ? (
             <>
               <button
                 onClick={() => selectTab('marketing_orders')}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                  "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                   activeTab === 'marketing_orders'
-                    ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                    : "text-gray-400 hover:text-gray-600"
+                    ? "text-brand-primary font-black"
+                    : "text-gray-400 hover:text-gray-600 font-medium"
                 )}
               >
-                <Plus className="w-4 h-4" />
-                <span>Orders</span>
+                <Plus className="w-4 h-4 flex-shrink-0" />
+                <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Orders</span>
               </button>
               <button
                 onClick={() => selectTab('clients')}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                  "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                   activeTab === 'clients'
-                    ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                    : "text-gray-400 hover:text-gray-600"
+                    ? "text-brand-primary font-black"
+                    : "text-gray-400 hover:text-gray-600 font-medium"
                 )}
               >
-                <Users className="w-4 h-4" />
-                <span>Clients</span>
+                <Users className="w-4 h-4 flex-shrink-0" />
+                <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Clients</span>
               </button>
               <button
                 onClick={() => selectTab('invoices')}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                  "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                   activeTab === 'invoices'
-                    ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                    : "text-gray-400 hover:text-gray-600"
+                    ? "text-brand-primary font-black"
+                    : "text-gray-400 hover:text-gray-600 font-medium"
                 )}
               >
-                <BarChart3 className="w-4 h-4" />
-                <span>Invoices</span>
+                <BarChart3 className="w-4 h-4 flex-shrink-0" />
+                <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Invoices</span>
               </button>
               {['admin', 'marketing', 'staff', 'user', 'onlineteam', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF, UserRole.ONLINETEAM].includes(user?.role || '') && (
                 <button
                   onClick={() => selectTab('online_leads')}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                    "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                     activeTab === 'online_leads'
-                      ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                      : "text-gray-400 hover:text-gray-600"
+                      ? "text-brand-primary font-black"
+                      : "text-gray-400 hover:text-gray-600 font-medium"
                   )}
                 >
-                  <Users className="w-4 h-4" />
-                  <span>Leads</span>
+                  <Users className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Leads</span>
                 </button>
               )}
             </>
@@ -1222,14 +1223,14 @@ export default function Dashboard() {
             <button
               onClick={() => selectTab('dashboard')}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                 activeTab === 'dashboard'
-                  ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                  : "text-gray-400 hover:text-gray-600"
+                  ? "text-brand-primary font-black"
+                  : "text-gray-400 hover:text-gray-600 font-medium"
               )}
             >
-              <Layout className="w-4 h-4" />
-              <span>Portal</span>
+              <Layout className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Portal</span>
             </button>
           )}
           {user?.role && [
@@ -1259,22 +1260,22 @@ export default function Dashboard() {
             <button
               onClick={() => selectTab('calendar')}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                 activeTab === 'calendar'
-                  ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                  : "text-gray-400 hover:text-gray-600"
+                  ? "text-brand-primary font-black"
+                  : "text-gray-400 hover:text-gray-600 font-medium"
               )}
             >
-              <CalendarIcon className="w-4 h-4" />
-              <span>Calendar</span>
+              <CalendarIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Calendar</span>
             </button>
           )}
           <button
             onClick={() => setShowProfileModal(true)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-all cursor-pointer"
+            className="flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 text-gray-400 hover:text-gray-600 font-medium transition-colors cursor-pointer border-none bg-transparent select-none"
           >
-            <Settings className="w-4 h-4" />
-            <span>Profile</span>
+            <Settings className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Profile</span>
           </button>
         </nav>
       )}

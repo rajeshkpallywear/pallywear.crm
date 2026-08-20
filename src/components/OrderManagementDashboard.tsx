@@ -572,21 +572,20 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
   return (
     <div className="space-y-6">
-
-      {/* Top Filter Buttons */}
-      <div className="flex flex-wrap sm:flex-nowrap bg-white p-1.5 rounded-2xl border border-gray-150 gap-1.5 w-full sm:w-fit">
+      {/* Section Tabs */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 border border-gray-200 rounded-xl sm:rounded-2xl w-full sm:w-fit">
         {([
-          { key: 'recent', label: '⏳ Live OM Queue', count: recentOrdersCount },
+          { key: 'recent', label: '⏳ Live Queue', count: recentOrdersCount },
           { key: 'process', label: '⚙️ In Production', count: processOrdersCount },
           { key: 'hold', label: '⏸ On Hold', count: holdOrdersCount },
-          { key: 'completed', label: '✓ Completed / Shipped', count: completedOrdersCount },
+          { key: 'completed', label: '✓ Completed', count: completedOrdersCount },
           { key: 'vendors', label: '🤝 Vendor Dispatch', count: vendorExpenses.length }
         ] as any[]).map(({ key, label, count }) => (
           <button
             key={key}
             onClick={() => { setSelectedSection(key); setSelectedOrder(null); }}
             className={cn(
-              "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border-none cursor-pointer text-center",
+              "flex-1 sm:flex-initial px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0",
               selectedSection === key
                 ? "bg-slate-900 text-white shadow-sm"
                 : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"

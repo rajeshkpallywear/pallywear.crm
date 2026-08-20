@@ -187,7 +187,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
 
       {/* Summary Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(

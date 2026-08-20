@@ -338,25 +338,25 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length;
 
   return (
-    <div className="bg-white text-gray-900 p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8 animate-in fade-in duration-300">
+    <div className="bg-white text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 sm:space-y-8 animate-in fade-in duration-300">
       
       {/* Action Buttons Header */}
-      <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-4">
+      <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-3 sm:pb-4">
         <button
           onClick={() => {
             resetForm();
             setIsCreating(true);
           }}
-          className="flex items-center justify-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-black hover:opacity-90 transition-all shadow-lg active:scale-95 text-xs uppercase cursor-pointer border-none"
+          className="flex items-center justify-center gap-1.5 sm:gap-2 bg-brand-primary text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black hover:opacity-90 transition-all shadow-md active:scale-95 text-[10px] sm:text-xs uppercase cursor-pointer border-none"
         >
-          <Plus size={16} />
+          <Plus size={14} className="sm:w-4 sm:h-4" />
           <span>Create Order</span>
         </button>
         <button
           onClick={() => setIsLeadModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-gray-150 border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-black hover:bg-gray-200 transition-all shadow-xs active:scale-95 text-xs uppercase cursor-pointer"
+          className="flex items-center justify-center gap-1.5 sm:gap-2 bg-gray-150 border border-gray-200 text-gray-700 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black hover:bg-gray-200 transition-all shadow-xs active:scale-95 text-[10px] sm:text-xs uppercase cursor-pointer"
         >
-          <User size={16} />
+          <User size={14} className="sm:w-4 sm:h-4" />
           <span>Create Lead</span>
         </button>
       </div>
@@ -371,11 +371,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       />
 
       {/* Tabs Filter Bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-gray-100 border border-gray-250 rounded-2xl w-full sm:w-fit">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 border border-gray-250 rounded-xl sm:rounded-2xl w-full sm:w-fit">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'recent' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -384,7 +384,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'process' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -393,7 +393,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'hold' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -402,7 +402,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'completed' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >

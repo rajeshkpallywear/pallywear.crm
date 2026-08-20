@@ -688,20 +688,20 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       </div>
 
       {/* Primary Communication Channel Navigations */}
-      <div className="flex border-b border-gray-150 bg-white p-2 rounded-2xl shadow-xs gap-2">
+      <div className="flex border-b border-gray-150 bg-white p-1 sm:p-2 rounded-xl sm:rounded-2xl shadow-xs gap-1 sm:gap-2">
         <button
           onClick={() => {
             setActiveChannel('marketing_queue');
             setSelectedSection('process');
           }}
           className={cn(
-            "flex-1 sm:flex-initial px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 border-none",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
             activeChannel === 'marketing_queue'
-              ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]"
+              ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20"
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          📢 Marketing Sent Orders ({getChannelStats('marketing_queue').totalCount})
+          📢 Marketing Sent ({getChannelStats('marketing_queue').totalCount})
         </button>
         <button
           onClick={() => {
@@ -709,18 +709,18 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             setSelectedSection('process');
           }}
           className={cn(
-            "flex-1 sm:flex-initial px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 border-none",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
             activeChannel === 'accounts_queue'
-              ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20 scale-[1.02]"
+              ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20"
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          💳 Accounts Sent Orders ({getChannelStats('accounts_queue').totalCount})
+          💳 Accounts Sent ({getChannelStats('accounts_queue').totalCount})
         </button>
       </div>
 
       {/* Design Project Queue — Live Orders */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
+      <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Design Project Queue</h4>
           <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-xl">

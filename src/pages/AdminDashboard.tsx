@@ -2981,63 +2981,63 @@ export default function AdminDashboard() {
         </main>
 
         {layoutMode === 'mobile' && (
-          <nav className="fixed bottom-0 inset-x-0 h-16 bg-white border-t border-gray-200 px-2 py-1 flex justify-around items-center z-40 shadow-lg shadow-gray-200/50">
+          <nav className="fixed bottom-0 inset-x-0 h-14 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1 py-1 flex items-center justify-around z-40 shadow-lg pb-safe">
             <button
               onClick={() => selectTab('overview')}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'overview' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+                activeTab === 'overview' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <Layout className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Overview</span>
+              <Layout className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Overview</span>
             </button>
             <button
               onClick={() => selectTab('users')}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'users' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+                activeTab === 'users' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <Users className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Users</span>
+              <Users className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Users</span>
             </button>
             <button
               onClick={() => selectTab('invoices')}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'invoices' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+                activeTab === 'invoices' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <BarChart3 className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Invoices</span>
+              <BarChart3 className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Invoices</span>
             </button>
             <button
               onClick={() => selectTab('orders')}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'orders' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+                activeTab === 'orders' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <Shield className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Workflow</span>
+              <Shield className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Workflow</span>
             </button>
             <button
               onClick={() => selectTab('user-logs')}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 cursor-pointer transition-colors",
-                activeTab === 'user-logs' ? "text-indigo-600 scale-105 font-bold" : "text-gray-400 hover:text-gray-600"
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+                activeTab === 'user-logs' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <Clock className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Logins</span>
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Logins</span>
             </button>
             <button
               onClick={() => setShowProfileModal(true)}
-              className="flex flex-col items-center justify-center flex-1 py-1 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
+              className="flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 text-gray-400 hover:text-gray-600 font-medium transition-colors cursor-pointer border-none bg-transparent select-none"
             >
-              <Settings className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase mt-1 tracking-wider">Profile</span>
+              <Settings className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Profile</span>
             </button>
           </nav>
         )}
@@ -3409,7 +3409,7 @@ export default function AdminDashboard() {
           />
         )}
         {/* Fixed Bottom Quick Navigation Bar for Mobile */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-2 py-1.5 flex justify-around items-center shadow-lg">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-1 py-1 flex items-center justify-around shadow-lg pb-safe">
           {[
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             { id: 'orders', label: 'Orders', icon: Zap },
@@ -3428,14 +3428,14 @@ export default function AdminDashboard() {
                 }
               }}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer",
+                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
                 activeTab === item.id && item.id !== 'logs'
-                  ? "text-brand-primary bg-brand-primary/10 font-black scale-105"
-                  : "text-gray-400 hover:text-gray-600"
+                  ? "text-brand-primary font-black"
+                  : "text-gray-400 hover:text-gray-600 font-medium"
               )}
             >
-              <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">{item.label}</span>
             </button>
           ))}
         </nav>

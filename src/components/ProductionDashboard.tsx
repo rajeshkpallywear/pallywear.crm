@@ -110,23 +110,23 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   };
 
   return (
-    <div className="bg-white text-slate-800 p-6 rounded-[2.5rem] border border-gray-200 shadow-xl space-y-8 text-left">
+    <div className="bg-white text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-200 shadow-xl space-y-4 sm:space-y-8 text-left">
 
       {/* Tabs Filter Bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 bg-gray-100 border border-gray-200 rounded-2xl w-full sm:w-fit">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 border border-gray-200 rounded-xl sm:rounded-2xl w-full sm:w-fit">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'recent' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
-          Recent Orders ({recentOrdersCount})
+          Recent ({recentOrdersCount})
         </button>
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'process' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
@@ -135,7 +135,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'hold' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
@@ -144,11 +144,11 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-none cursor-pointer text-center",
+            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'completed' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-900 bg-transparent"
           )}
         >
-          Completed ({completedOrdersCount})
+          Done ({completedOrdersCount})
         </button>
       </div>
 
