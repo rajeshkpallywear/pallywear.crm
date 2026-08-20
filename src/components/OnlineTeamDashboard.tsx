@@ -22,9 +22,32 @@ interface Lead {
   createdByName?: string;
 }
 
+const isLeadAssignedToUser = (l: Lead, u: any) => {
+  if (!l.assignedTo?.trim() && !l.assignedToName?.trim()) return false;
+  const myId = u?.id || u?.uid;
+  const myEmail = (u?.email || '').toLowerCase();
+  const myName = (u?.name || '').toLowerCase();
+  const assignedTo = (l.assignedTo || '').toLowerCase();
+  const assignedToName = (l.assignedToName || '').toLowerCase();
+
+  return (
+    (myId && (l.assignedTo === u?.id || l.assignedTo === u?.uid)) ||
+    (myEmail && assignedTo === myEmail) ||
+    (myName && assignedToName === myName) ||
+    (myEmail === 'daniel.smpallywear@gmail.com' && (assignedTo === 'admin-daniel' || assignedToName.includes('daniel')))
+  );
+};
+
 export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads', hideHeaderAndTabs = false }: { user: any; defaultTab?: 'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'; hideHeaderAndTabs?: boolean }) {
   const { leads, updateLead, addLead } = useLeads();
   const { registeredUsers } = useAuth();
+
+  const isOverallManager = React.useMemo(() => {
+    return user?.role === 'admin' || user?.email?.toLowerCase() === 'daniel.smpallywear@gmail.com' || user?.email?.toLowerCase() === 'jimpallywear@gmail.com';
+  }, [user]);
+
+  const canAssign = isOverallManager;
+
   const onlineTeamAgents = React.useMemo(() => {
     return registeredUsers?.filter((u: any) => u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM') || [];
   }, [registeredUsers]);
@@ -61,7 +84,13 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
   }, [onlineTeamAgents, marketingAgents, user]);
 
   const [activeTab, setActiveTab] = useState<'active_leads' | 'assign_leads' | 'marketing_leads' | 'call_logs' | 'all_online_leads'>(defaultTab);
-  const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>('all');
+  const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>(isOverallManager ? 'all' : 'me');
+
+  useEffect(() => {
+    if (!isOverallManager) {
+      setAssignedAgentFilter('me');
+    }
+  }, [isOverallManager]);
 
   useEffect(() => {
     setActiveTab(defaultTab);
@@ -188,18 +217,13 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
 
   const assignedLeads = React.useMemo(() => {
     const filteredLeads = leads.filter(l => !l.isOnlineLead);
-    if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return filteredLeads;
-    if (user?.role === 'onlineteam') {
-      return filteredLeads.filter(l => 
-        l.assignedTo === user?.id || 
-        l.assignedTo === user?.uid || 
-        l.assignedTo === user?.email ||
-        l.createdBy === user?.id ||
-        l.createdBy === user?.uid
-      );
-    }
-    return filteredLeads;
-  }, [leads, user]);
+    if (isOverallManager) return filteredLeads;
+    return filteredLeads.filter(l => 
+      isLeadAssignedToUser(l, user) || 
+      l.createdBy === user?.id || 
+      l.createdBy === user?.uid
+    );
+  }, [leads, user, isOverallManager]);
 
   const filteredAssignedLeads = assignedLeads.filter(l => {
     const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -851,10 +875,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
       ) : (
         <div className="space-y-6 animate-fadeIn text-left">
           {(() => {
-            const isPriyaOrNirmala = user?.email === 'priyapallywear@gmail.com' || user?.email === 'nirmalapallywear@gmail.com';
-
             const otLeads = leads.filter(l => {
-              const isOverallManager = user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com';
               if (isOverallManager) {
                 // Jim / Daniel: see all online leads AND any lead assigned to online-team or marketing agents
                 const isOnlineLead = isOnlineTeam(l.createdBy) || l.isOnlineLead;
@@ -862,29 +883,15 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 return isOnlineLead || isAssignedToAnyAgent;
               }
 
-              // Priya & Nirmala: see their own created leads + leads assigned TO them by Jim
-              if (isPriyaOrNirmala) {
-                const isOwnLead =
-                  l.createdBy === user?.id ||
-                  l.createdBy === user?.uid ||
-                  l.createdByName === user?.name;
-                const myNameLower = (user?.name || '').toLowerCase();
-                const assignedNameLower = (l.assignedToName || '').toLowerCase();
-                const isAssignedToMe =
-                  (user?.id && l.assignedTo === user?.id) ||
-                  (user?.uid && l.assignedTo === user?.uid) ||
-                  (myNameLower && assignedNameLower === myNameLower);
-                return isOwnLead || isAssignedToMe;
-              }
+              // All non-admin marketing & online team staff: see leads created by them OR assigned to them
+              const isOwnLead =
+                l.createdBy === user?.id ||
+                l.createdBy === user?.uid ||
+                (user?.name && l.createdByName && l.createdByName.toLowerCase() === user.name.toLowerCase());
+              const isAssignedToMe = isLeadAssignedToUser(l, user);
 
-              // All other online team users: see only their own online leads
-              const matchesBase = isOnlineTeam(l.createdBy) || l.isOnlineLead;
-              if (!matchesBase) return false;
-              return l.createdBy === user?.id || l.createdBy === user?.uid;
+              return isOwnLead || isAssignedToMe;
             });
-            const isManager = user?.email === 'daniel.smpallywear@gmail.com';
-            const isJim = user?.email === 'jimpallywear@gmail.com';
-            const canAssign = user?.role === 'admin' || isManager || isJim;
 
             // Removed manager-only registration card overlay to display the registry dashboard to regular online team members
 
@@ -1102,22 +1109,16 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     {(() => {
                       const assigned = otLeads.filter(l => {
                         if (!l.assignedTo?.trim()) return false;
-                        if (assignedAgentFilter === 'me') {
-                          const isMe = (user?.id && l.assignedTo === user.id) ||
-                            (user?.uid && l.assignedTo === user.uid) ||
-                            l.assignedTo === 'admin-daniel' ||
-                            (user?.email && l.assignedTo === user.email) ||
-                            (user?.name && (l.assignedToName || '').toLowerCase() === user.name.toLowerCase()) ||
-                            (user?.email?.toLowerCase() === 'daniel.smpallywear@gmail.com' && (
-                              l.assignedTo === 'admin-daniel' ||
-                              l.assignedTo === user?.id ||
-                              l.assignedTo === user?.uid ||
-                              (l.assignedToName || '').toLowerCase().includes('daniel')
-                            ));
-                          if (!isMe) return false;
-                        } else if (assignedAgentFilter !== 'all') {
-                          const matchesFilter = l.assignedTo === assignedAgentFilter || l.assignedToName === assignedAgentFilter;
-                          if (!matchesFilter) return false;
+                        if (!canAssign) {
+                          // Regular marketing/staff users ONLY see leads assigned to their name
+                          if (!isLeadAssignedToUser(l, user)) return false;
+                        } else {
+                          if (assignedAgentFilter === 'me') {
+                            if (!isLeadAssignedToUser(l, user)) return false;
+                          } else if (assignedAgentFilter !== 'all') {
+                            const matchesFilter = l.assignedTo === assignedAgentFilter || l.assignedToName === assignedAgentFilter;
+                            if (!matchesFilter) return false;
+                          }
                         }
                         const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1145,9 +1146,9 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                 onChange={(e) => setAssignedAgentFilter(e.target.value)}
                                 className="bg-white border border-emerald-200 text-emerald-800 rounded-lg px-2.5 py-1 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer shadow-xs"
                               >
-                                <option value="all">All Assigned Staff</option>
-                                <option value="me">Assigned to Daniel</option>
-                                {assignableAgents.map((agent: any) => (
+                                {canAssign && <option value="all">All Assigned Staff</option>}
+                                <option value="me">Assigned to {user?.name || 'Me'}</option>
+                                {canAssign && assignableAgents.map((agent: any) => (
                                   <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
                                     {agent.name}
                                   </option>
