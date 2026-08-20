@@ -897,48 +897,48 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
             return (
               <>
                 {!hideHeaderAndTabs && (
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                        <ClipboardList size={20} />
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                    <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs flex flex-col gap-2 sm:gap-3 animate-fadeIn">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <ClipboardList size={18} className="sm:w-5 sm:h-5" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Online Leads</p>
-                        <p className="text-2xl font-black text-gray-900 mt-1">{otLeads.length}</p>
+                        <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Online Leads</p>
+                        <p className="text-lg sm:text-2xl font-black text-gray-900 mt-1">{otLeads.length}</p>
                       </div>
                     </div>
 
-                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                        <Phone size={20} />
+                    <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs flex flex-col gap-2 sm:gap-3 animate-fadeIn">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <Phone size={18} className="sm:w-5 sm:h-5" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Called / Followed Up</p>
-                        <p className="text-2xl font-black text-gray-900 mt-1">
+                        <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Called / Followed Up</p>
+                        <p className="text-lg sm:text-2xl font-black text-gray-900 mt-1">
                           {otLeads.filter(l => ['Called', 'Interested', 'Not Interested', 'Converted'].includes(l.status || '')).length}
                         </p>
                       </div>
                     </div>
 
-                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                      <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                        <AlertCircle size={20} />
+                    <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs flex flex-col gap-2 sm:gap-3 animate-fadeIn">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <AlertCircle size={18} className="sm:w-5 sm:h-5" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested (Hot)</p>
-                        <p className="text-2xl font-black text-gray-900 mt-1">
+                        <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Interested (Hot)</p>
+                        <p className="text-lg sm:text-2xl font-black text-gray-900 mt-1">
                           {otLeads.filter(l => l.status === 'Interested' || l.leadType === 'Hot').length}
                         </p>
                       </div>
                     </div>
 
-                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 animate-fadeIn">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
-                        <CheckCircle2 size={20} />
+                    <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs flex flex-col gap-2 sm:gap-3 animate-fadeIn">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-pulse-subtle">
+                        <CheckCircle2 size={18} className="sm:w-5 sm:h-5" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Converted Deals</p>
-                        <p className="text-2xl font-black text-gray-900 mt-1">
+                        <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Converted Deals</p>
+                        <p className="text-lg sm:text-2xl font-black text-gray-900 mt-1">
                           {otLeads.filter(l => l.status === 'Converted' || l.convertedValue > 0).length}
                         </p>
                       </div>

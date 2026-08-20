@@ -121,6 +121,17 @@ router.post('/auth/log-login', async (req, res) => {
       'INSERT INTO user_activity_logs (userId, userName, userEmail, loginTime) VALUES (?, ?, ?, ?)',
       [userId, name || '', email || '', loginTime]
     );
+
+    try {
+      await query(
+        `UPDATE users SET 
+          first_login = IFNULL(first_login, ?),
+          login_count = IFNULL(login_count, 0) + 1
+         WHERE id = ? OR email = ?`,
+        [loginTime, userId, email || userId]
+      );
+    } catch (_) {}
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error logging login:', error);
@@ -140,6 +151,14 @@ router.post('/auth/log-logout', async (req, res) => {
       'UPDATE user_activity_logs SET logoutTime = ? WHERE userId = ? AND logoutTime IS NULL ORDER BY loginTime DESC LIMIT 1',
       [logoutTime, userId]
     );
+
+    try {
+      await query(
+        `UPDATE users SET last_logout = ? WHERE id = ? OR email = ?`,
+        [logoutTime, userId, userId]
+      );
+    } catch (_) {}
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error logging logout:', error);
@@ -151,7 +170,19 @@ router.get('/auth/activity-logs', async (req, res) => {
   try {
     const logs = await query('SELECT * FROM user_activity_logs ORDER BY loginTime DESC') as any[];
     const counts = await query('SELECT userId, COUNT(*) as count FROM user_activity_logs GROUP BY userId') as any[];
-    res.json({ success: true, logs, counts });
+    const userSummaries = await query(`
+      SELECT 
+        l.userId,
+        MAX(l.userName) as userName,
+        MAX(l.userEmail) as userEmail,
+        MIN(l.loginTime) as firstLogin,
+        MAX(l.logoutTime) as lastLogout,
+        COUNT(*) as loginCount
+      FROM user_activity_logs l
+      GROUP BY l.userId
+    `) as any[];
+
+    res.json({ success: true, logs, counts, userSummaries });
   } catch (error: any) {
     console.error('Error fetching activity logs:', error);
     res.status(500).json({ success: false, message: error.message });

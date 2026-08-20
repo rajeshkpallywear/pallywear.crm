@@ -74,9 +74,10 @@ const PageLoader = () => (
 );
 
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (!user) return <Navigate to="/login" />;
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
 
   const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
   const isStaff = user.role === UserRole.STAFF || user.role === 'staff';
@@ -84,10 +85,20 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
 
   // Admin, Staff, and Daniel can access admin panel/lead-dashboard
   if (adminOnly && !isAdmin && !isStaff && !isDaniel) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
+};
+
+const RootRedirect = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (user) {
+    const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin' || user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
+    return <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />;
+  }
+  return <Navigate to="/Pallywear" replace />;
 };
 
 function AppRoutes() {
@@ -99,7 +110,7 @@ function AppRoutes() {
         <Routes>
           {/* Landing Page */}
           <Route path="/Pallywear" element={<Store />} />
-          <Route path="/store" element={<Navigate to="/Pallywear" />} />
+          <Route path="/store" element={<Navigate to="/Pallywear" replace />} />
 
           {/* Auth */}
           <Route path="/login" element={<Login />} />
@@ -145,8 +156,8 @@ function AppRoutes() {
           />
 
           {/* Redirects */}
-          <Route path="/" element={<Navigate to="/Pallywear" />} />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
       </Suspense>
     </Router>

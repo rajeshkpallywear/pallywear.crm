@@ -46,12 +46,18 @@ export default function Login() {
 
 
   useEffect(() => {
+    if (authUser) {
+      const normalizedEmail = (authUser.email || '').toLowerCase().trim();
+      const isAdmin = authUser.role === UserRole.ADMIN || authUser.role === 'admin' || normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo');
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+      return;
+    }
     if (location.state?.message) {
       setSuccessMsg(location.state.message);
       // Clean up state
       window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, [location, authUser, navigate]);
 
   const handleGoogleLogin = async () => {
     setError('');

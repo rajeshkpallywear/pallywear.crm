@@ -306,7 +306,7 @@ export const mockDataService = {
     if (!res.ok) throw new Error('Failed to log logout');
   },
 
-  getActivityLogs: async (): Promise<{ success: boolean; logs: any[]; counts: any[] }> => {
+  getActivityLogs: async (): Promise<{ success: boolean; logs: any[]; counts: any[]; userSummaries?: any[] }> => {
     const res = await fetch(getApiUrl('/api/auth/activity-logs'));
     if (!res.ok) throw new Error('Failed to fetch activity logs');
     return res.json();

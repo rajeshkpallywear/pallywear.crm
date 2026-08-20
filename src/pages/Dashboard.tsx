@@ -730,7 +730,7 @@ export default function Dashboard() {
         "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
         isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
-        <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+        <header className="h-14 sm:h-16 bg-white border-b border-gray-200 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -790,7 +790,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className="p-4 sm:p-6 md:p-8">
+        <div className="p-3 sm:p-6 md:p-8">
           {activeTab === 'online_leads' ? (
             <OnlineTeamDashboard user={user} defaultTab="all_online_leads" hideHeaderAndTabs={true} />
           ) : activeTab === 'inventory' ? (

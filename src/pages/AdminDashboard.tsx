@@ -795,6 +795,7 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
     const [userLogs, setUserLogs] = useState<any[]>([]);
     const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
+    const [userSummaries, setUserSummaries] = useState<any[]>([]);
     const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
     const [attendanceDateFilter, setAttendanceDateFilter] = useState('');
@@ -827,6 +828,7 @@ export default function AdminDashboard() {
         if (data && data.success) {
           setUserLogs(data.logs || []);
           setUserLoginCounts(data.counts || []);
+          setUserSummaries(data.userSummaries || []);
         }
       } catch (e) {
         console.error('Failed to fetch activity logs:', e);
@@ -834,6 +836,32 @@ export default function AdminDashboard() {
         setUserLogsLoading(false);
       }
     };
+
+    const calculatedSummaries = React.useMemo(() => {
+      if (userSummaries && userSummaries.length > 0) return userSummaries;
+      const map: Record<string, { userId: string; userName: string; userEmail: string; firstLogin: number; lastLogout: number | null; loginCount: number }> = {};
+      userLogs.forEach(log => {
+        const key = log.userId || log.userEmail;
+        if (!key) return;
+        if (!map[key]) {
+          map[key] = {
+            userId: log.userId,
+            userName: log.userName,
+            userEmail: log.userEmail,
+            firstLogin: Number(log.loginTime),
+            lastLogout: log.logoutTime ? Number(log.logoutTime) : null,
+            loginCount: 1
+          };
+        } else {
+          map[key].loginCount += 1;
+          if (Number(log.loginTime) < map[key].firstLogin) map[key].firstLogin = Number(log.loginTime);
+          if (log.logoutTime && (!map[key].lastLogout || Number(log.logoutTime) > map[key].lastLogout)) {
+            map[key].lastLogout = Number(log.logoutTime);
+          }
+        }
+      });
+      return Object.values(map);
+    }, [userSummaries, userLogs]);
 
     React.useEffect(() => {
       if (activeTab === 'user-logs' || activeTab === 'attendance') {
@@ -2383,7 +2411,76 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : activeTab === 'user-logs' ? (
-              <div className="space-y-8 animate-fadeIn">
+              <div className="space-y-8 animate-fadeIn text-left">
+                {/* User Activity & Login Summary Table (First Login, Last Logout, Total Logins) */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+                  <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-800 text-sm">User Activity &amp; Login Summary</h3>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                        First login date &amp; time, last logout date &amp; time and total login count saved in DB
+                      </p>
+                    </div>
+                  </div>
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-indigo-50/70 text-indigo-900 font-bold uppercase tracking-wider text-[10px] border-b border-indigo-100">
+                      <tr>
+                        <th className="px-6 py-4">User</th>
+                        <th className="px-6 py-4">Email</th>
+                        <th className="px-6 py-4">First Login Date &amp; Time</th>
+                        <th className="px-6 py-4">Last Logout Date &amp; Time</th>
+                        <th className="px-6 py-4 text-center">Total Logins</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {userLogsLoading ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-xs text-gray-400 italic">Loading user activity summary...</td>
+                        </tr>
+                      ) : calculatedSummaries.length > 0 ? (
+                        calculatedSummaries.map((summary: any, idx: number) => {
+                          const regUser = registeredUsers.find(ru => ru.id === summary.userId || ru.email === summary.userEmail);
+                          const displayName = regUser?.name || summary.userName || summary.userId;
+                          const displayEmail = regUser?.email || summary.userEmail || '—';
+
+                          const firstLoginNum = Number(summary.firstLogin || summary.first_login);
+                          const lastLogoutNum = summary.lastLogout || summary.last_logout ? Number(summary.lastLogout || summary.last_logout) : null;
+                          const countVal = summary.loginCount || summary.login_count || summary.count || 0;
+
+                          const firstLoginStr = firstLoginNum ? new Date(firstLoginNum).toLocaleString() : 'Not logged in yet';
+                          const lastLogoutStr = lastLogoutNum ? new Date(lastLogoutNum).toLocaleString() : (countVal > 0 ? '● Active Now' : '—');
+
+                          return (
+                            <tr key={idx} className="hover:bg-indigo-50/20 transition-colors">
+                              <td className="px-6 py-4 font-bold text-gray-800 text-xs">{displayName}</td>
+                              <td className="px-6 py-4 text-xs text-gray-500 font-medium">{displayEmail}</td>
+                              <td className="px-6 py-4 text-xs text-indigo-700 font-mono font-medium">{firstLoginStr}</td>
+                              <td className="px-6 py-4 text-xs font-medium">
+                                {lastLogoutStr === '● Active Now' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active Now
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-500 font-mono">{lastLogoutStr}</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-black rounded-full border border-indigo-200 shadow-xs">
+                                  {countVal} {countVal === 1 ? 'Login' : 'Logins'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-xs text-gray-400 italic">No user activity recorded in database.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
                 {/* Login frequency stats */}
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                   <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider mb-4">Login Frequencies</h3>
