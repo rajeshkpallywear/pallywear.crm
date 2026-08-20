@@ -947,13 +947,15 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   </div>
                 )}
 
-                {/* ── Leads Registry: Split Unassigned / Assigned ── */}
+                {/* ── Leads Registry ── */}
                 <div className="space-y-4 animate-fadeIn">
                   {/* Header row */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
                       <h3 className="text-lg font-black text-gray-900">Leads Registry &amp; Call Logs</h3>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Showing unassigned &amp; assigned leads in separate columns</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                        {canAssign ? "Showing unassigned & assigned leads in separate columns" : "Showing leads assigned to your account"}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
@@ -975,11 +977,11 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     </div>
                   </div>
 
-                  {/* Two-column layout */}
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                  {/* Grid layout */}
+                  <div className={cn("grid gap-5", canAssign ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1")}>
 
-                    {/* ── UNASSIGNED LEADS ── */}
-                    {(() => {
+                    {/* ── UNASSIGNED LEADS (Only for managers/admins who can assign) ── */}
+                    {canAssign && (() => {
                       const unassigned = otLeads.filter(l =>
                         !l.assignedTo?.trim() &&
                         (
@@ -1052,37 +1054,33 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                         </span>
                                       </td>
                                       <td className="px-4 py-3 text-center">
-                                        {canAssign ? (
-                                          <select
-                                            value={lead.assignedTo || ''}
-                                            onChange={async (e) => {
-                                              const agentId = e.target.value;
-                                              const targetAgents = assignableAgents;
-                                              const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
-                                              const agentName = agent ? agent.name : '';
-                                              try {
-                                                const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
-                                                  method: 'PATCH',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({ assignedTo: agentId || null, assignedToName: agentName || null, isTaken: agentId ? true : false })
-                                                });
-                                                const data = await res.json();
-                                                if (data.success) {
-                                                  await updateLead(lead.id, { assignedTo: agentId || undefined, assignedToName: agentName || undefined, isTaken: agentId ? true : false });
-                                                  alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
-                                                }
-                                              } catch (err) { console.error(err); alert('Failed to assign lead.'); }
-                                            }}
-                                            className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
-                                          >
-                                            <option value="">— Assign —</option>
-                                            {assignableAgents.map((agent: any) => (
-                                              <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
-                                            ))}
-                                          </select>
-                                        ) : (
-                                          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-black uppercase border border-amber-200">Unassigned</span>
-                                        )}
+                                        <select
+                                          value={lead.assignedTo || ''}
+                                          onChange={async (e) => {
+                                            const agentId = e.target.value;
+                                            const targetAgents = assignableAgents;
+                                            const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                            const agentName = agent ? agent.name : '';
+                                            try {
+                                              const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ assignedTo: agentId || null, assignedToName: agentName || null, isTaken: agentId ? true : false })
+                                              });
+                                              const data = await res.json();
+                                              if (data.success) {
+                                                await updateLead(lead.id, { assignedTo: agentId || undefined, assignedToName: agentName || undefined, isTaken: agentId ? true : false });
+                                                alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                              }
+                                            } catch (err) { console.error(err); alert('Failed to assign lead.'); }
+                                          }}
+                                          className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
+                                        >
+                                          <option value="">— Assign —</option>
+                                          {assignableAgents.map((agent: any) => (
+                                            <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
+                                          ))}
+                                        </select>
                                       </td>
                                       <td className="px-4 py-3 text-right">
                                         {lead.description && (
