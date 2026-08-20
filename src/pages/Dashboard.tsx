@@ -5,7 +5,7 @@ import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
-  ChevronLeft, ChevronRight, Menu, Plus, MessageSquare, Calendar as CalendarIcon,
+  ChevronLeft, ChevronRight, Menu, MoreVertical, Plus, MessageSquare, Calendar as CalendarIcon,
   ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown, Monitor, Smartphone, CreditCard
 } from 'lucide-react';
 import {
@@ -287,17 +287,17 @@ export default function Dashboard() {
   return (
     <div className="flex bg-brand-light min-h-screen">
       {/* Mobile Sidebar Backdrop */}
-      {layoutMode === 'system' && isMobileOpen && (
+      {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in backdrop-blur-xs"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      {layoutMode === 'system' && (
+      {(layoutMode === 'system' || isMobileOpen) && (
         <aside className={cn(
-          "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full overflow-hidden shadow-sm z-40 transition-all duration-300",
+          "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full overflow-hidden shadow-xl z-50 transition-all duration-300",
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           isSidebarCollapsed ? "md:w-20" : "md:w-64",
           "w-64"
@@ -731,13 +731,14 @@ export default function Dashboard() {
         isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
       )}>
         <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setIsMobileOpen(true)}
-              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 hidden flex-shrink-0"
-              aria-label="Toggle menu"
+              onClick={() => setIsMobileOpen(!isMobileOpen)}
+              className="p-1.5 -ml-1 hover:bg-gray-100 rounded-xl text-gray-700 flex md:hidden items-center justify-center border border-gray-200 shadow-xs cursor-pointer active:scale-95 transition-all"
+              aria-label="Toggle sidebar menu"
+              title="Toggle sidebar menu"
             >
-              <Menu className="w-5 h-5" />
+              <MoreVertical className="w-5 h-5 text-gray-800" />
             </button>
             <div className="text-xs md:text-sm font-medium text-gray-500 flex items-center gap-2">
               {userRoleDisplay} <span className="text-gray-900 font-bold">Dashboard</span>
@@ -1202,7 +1203,7 @@ export default function Dashboard() {
                 <BarChart3 className="w-4 h-4" />
                 <span>Invoices</span>
               </button>
-              {(user?.role === 'onlineteam' || user?.email === 'daniel.smpallywear@gmail.com') && (
+              {['admin', 'marketing', 'staff', 'user', 'onlineteam', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF, UserRole.ONLINETEAM].includes(user?.role || '') && (
                 <button
                   onClick={() => selectTab('online_leads')}
                   className={cn(

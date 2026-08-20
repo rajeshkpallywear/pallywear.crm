@@ -883,17 +883,16 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 return isOnlineLead || isAssignedToAnyAgent;
               }
 
-              // All non-admin marketing & online team staff: see leads created by them OR assigned to them
+              // All non-admin marketing & online team staff: see leads created by them, assigned to them, OR unassigned online leads
               const isOwnLead =
                 l.createdBy === user?.id ||
                 l.createdBy === user?.uid ||
                 (user?.name && l.createdByName && l.createdByName.toLowerCase() === user.name.toLowerCase());
               const isAssignedToMe = isLeadAssignedToUser(l, user);
+              const isUnassignedOnline = !l.assignedTo?.trim() && (l.isOnlineLead || isOnlineTeam(l.createdBy));
 
-              return isOwnLead || isAssignedToMe;
+              return isOwnLead || isAssignedToMe || isUnassignedOnline;
             });
-
-            // Removed manager-only registration card overlay to display the registry dashboard to regular online team members
 
             return (
               <>
@@ -954,34 +953,34 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     <div>
                       <h3 className="text-lg font-black text-gray-900">Leads Registry &amp; Call Logs</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        {canAssign ? "Showing unassigned & assigned leads in separate columns" : "Showing leads assigned to your account"}
+                        Showing unassigned &amp; assigned leads in separate columns
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                       <button
                         onClick={() => setShowAddLeadFormInline(true)}
-                        className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95"
+                        className="px-3.5 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 flex-shrink-0"
                       >
                         <Plus size={14} /> Add Lead
                       </button>
-                      <div className="relative">
+                      <div className="relative flex-1 sm:w-52 min-w-[150px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                           type="text"
                           placeholder="Search leads..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-52 bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Grid layout */}
-                  <div className={cn("grid gap-5", canAssign ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1")}>
+                  {/* Two-column layout */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 
-                    {/* ── UNASSIGNED LEADS (Only for managers/admins who can assign) ── */}
-                    {canAssign && (() => {
+                    {/* ── UNASSIGNED LEADS ── */}
+                    {(() => {
                       const unassigned = otLeads.filter(l =>
                         !l.assignedTo?.trim() &&
                         (
@@ -1054,33 +1053,65 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                         </span>
                                       </td>
                                       <td className="px-4 py-3 text-center">
-                                        <select
-                                          value={lead.assignedTo || ''}
-                                          onChange={async (e) => {
-                                            const agentId = e.target.value;
-                                            const targetAgents = assignableAgents;
-                                            const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
-                                            const agentName = agent ? agent.name : '';
-                                            try {
-                                              const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ assignedTo: agentId || null, assignedToName: agentName || null, isTaken: agentId ? true : false })
-                                              });
-                                              const data = await res.json();
-                                              if (data.success) {
-                                                await updateLead(lead.id, { assignedTo: agentId || undefined, assignedToName: agentName || undefined, isTaken: agentId ? true : false });
-                                                alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                        {canAssign ? (
+                                          <select
+                                            value={lead.assignedTo || ''}
+                                            onChange={async (e) => {
+                                              const agentId = e.target.value;
+                                              const targetAgents = assignableAgents;
+                                              const agent = targetAgents.find((u: any) => u.id === agentId || u.uid === agentId);
+                                              const agentName = agent ? agent.name : '';
+                                              try {
+                                                const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                                  method: 'PATCH',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ assignedTo: agentId || null, assignedToName: agentName || null, isTaken: agentId ? true : false })
+                                                });
+                                                const data = await res.json();
+                                                if (data.success) {
+                                                  await updateLead(lead.id, { assignedTo: agentId || undefined, assignedToName: agentName || undefined, isTaken: agentId ? true : false });
+                                                  alert(`Lead assigned to ${agentName || 'unassigned'} successfully!`);
+                                                }
+                                              } catch (err) { console.error(err); alert('Failed to assign lead.'); }
+                                            }}
+                                            className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
+                                          >
+                                            <option value="">— Assign —</option>
+                                            {assignableAgents.map((agent: any) => (
+                                              <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
+                                            ))}
+                                          </select>
+                                        ) : (
+                                          <button
+                                            onClick={async () => {
+                                              try {
+                                                const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                                  method: 'PATCH',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({
+                                                    assignedTo: user?.id || user?.uid,
+                                                    assignedToName: user?.name,
+                                                    isTaken: true
+                                                  })
+                                                });
+                                                const data = await res.json();
+                                                if (data.success) {
+                                                  await updateLead(lead.id, {
+                                                    assignedTo: user?.id || user?.uid,
+                                                    assignedToName: user?.name,
+                                                    isTaken: true
+                                                  });
+                                                  alert('Lead claimed successfully!');
+                                                }
+                                              } catch (e) {
+                                                console.error("Failed to claim lead:", e);
                                               }
-                                            } catch (err) { console.error(err); alert('Failed to assign lead.'); }
-                                          }}
-                                          className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
-                                        >
-                                          <option value="">— Assign —</option>
-                                          {assignableAgents.map((agent: any) => (
-                                            <option key={agent.id || agent.uid} value={agent.id || agent.uid}>{agent.name}</option>
-                                          ))}
-                                        </select>
+                                            }}
+                                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider border-none cursor-pointer shadow-xs transition-all active:scale-95"
+                                          >
+                                            Claim Lead
+                                          </button>
+                                        )}
                                       </td>
                                       <td className="px-4 py-3 text-right">
                                         {lead.description && (
