@@ -230,15 +230,16 @@ router.post('/leads', async (req, res) => {
   try {
     const existing = await query('SELECT id FROM leads WHERE id = ?', [lead.id]) as any[];
     const isOnlineLeadVal = lead.isOnlineLead ? 1 : 0;
+    const numberVal = lead.number || lead.phone || 'N/A';
     if (existing.length > 0) {
       await query(
         `UPDATE leads SET name=?, number=?, companyName=?, gst=?, leadType=?, entryDate=?, 
         forecastedValue=?, convertedValue=?, totalOrderValue=?, discountCode=?, discountAmount=?, 
         netTotal=?, createdBy=?, createdByName=?, description=?, assignedTo=?, assignedToName=?, status=?, isOnlineLead=? WHERE id=?`,
         [
-          lead.name, lead.number, lead.companyName, lead.gst, lead.leadType, lead.entryDate,
-          lead.forecastedValue, lead.convertedValue, lead.totalOrderValue, lead.discountCode, lead.discountAmount,
-          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status, isOnlineLeadVal, lead.id
+          lead.name || 'Manual Lead', numberVal, lead.companyName || '', lead.gst || '', lead.leadType || 'Hot', lead.entryDate || '',
+          lead.forecastedValue || 0, lead.convertedValue || 0, lead.totalOrderValue || 0, lead.discountCode || '', lead.discountAmount || 0,
+          lead.netTotal || 0, lead.createdBy || '', lead.createdByName || '', lead.description || lead.notes || '', lead.assignedTo || '', lead.assignedToName || '', lead.status || 'New', isOnlineLeadVal, lead.id
         ]
       );
     } else {
@@ -247,9 +248,9 @@ router.post('/leads', async (req, res) => {
         forecastedValue, convertedValue, totalOrderValue, discountCode, discountAmount, 
         netTotal, createdBy, createdByName, description, assignedTo, assignedToName, status, isOnlineLead) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          lead.id, lead.name, lead.number, lead.companyName, lead.gst, lead.leadType, lead.entryDate,
-          lead.forecastedValue, lead.convertedValue, lead.totalOrderValue, lead.discountCode, lead.discountAmount,
-          lead.netTotal, lead.createdBy, lead.createdByName, lead.description, lead.assignedTo, lead.assignedToName, lead.status, isOnlineLeadVal
+          lead.id, lead.name || 'Manual Lead', numberVal, lead.companyName || '', lead.gst || '', lead.leadType || 'Hot', lead.entryDate || '',
+          lead.forecastedValue || 0, lead.convertedValue || 0, lead.totalOrderValue || 0, lead.discountCode || '', lead.discountAmount || 0,
+          lead.netTotal || 0, lead.createdBy || '', lead.createdByName || '', lead.description || lead.notes || '', lead.assignedTo || '', lead.assignedToName || '', lead.status || 'New', isOnlineLeadVal
         ]
       );
     }

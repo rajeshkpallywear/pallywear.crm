@@ -94,6 +94,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     const nextLead: Lead = sanitizeForStorage({
       ...lead,
       id: createId('lead'),
+      number: lead.number || (lead as any).phone || 'N/A',
       createdBy: lead.createdBy || user.id,
       createdByName: lead.createdByName || user.name,
     });

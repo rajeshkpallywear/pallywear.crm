@@ -111,10 +111,12 @@ export default function LeadDashboard() {
       const newLeadData = {
         createdByName: targetStaffName,
         name: leadForm.leadName || 'Manual Lead',
+        number: 'N/A',
         companyName: leadForm.companyName || '',
         leadType: leadForm.leadType as any,
         totalOrderValue: valAmount,
         forecastedValue: valAmount,
+        convertedValue: valAmount,
         status: 'Converted',
         entryDate: leadForm.date,
         createdAt: dateTimestamp,
@@ -130,7 +132,7 @@ export default function LeadDashboard() {
       setShowAddLeadModal(false);
       setLeadForm({ leadName: '', companyName: '', leadType: 'Hot', convertedValue: '', date: new Date().toISOString().split('T')[0] });
     } catch (err: any) {
-      alert('Error saving: ' + (err.message || 'Failed'));
+      alert('Error saving: ' + (err.message || 'Failed to save lead'));
     } finally {
       setSavingEntry(false);
     }

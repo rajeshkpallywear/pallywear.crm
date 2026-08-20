@@ -78,10 +78,12 @@ export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredO
       const newLeadData = {
         createdByName: leadConvertForm.createdBy,
         name: leadConvertForm.leadName || 'Manual Lead',
+        number: 'N/A',
         companyName: leadConvertForm.companyName || '',
         leadType: leadConvertForm.leadType,
         totalOrderValue: valAmount,
         forecastedValue: valAmount,
+        convertedValue: valAmount,
         status: 'Converted',
         entryDate: leadConvertForm.date,
         createdAt: dateTimestamp,
