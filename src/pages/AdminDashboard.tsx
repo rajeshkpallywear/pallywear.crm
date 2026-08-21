@@ -2563,6 +2563,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-4">🌅 Morning First Login</th>
                         <th className="px-6 py-4">🕒 Last Login Date & Time</th>
                         <th className="px-6 py-4">🚪 Last Logout Date & Time</th>
+                        <th className="px-6 py-4">⏱️ Working Hours (9 AM - 7 PM)</th>
                         <th className="px-6 py-4 text-center">Logins</th>
                         <th className="px-6 py-4 text-center">Action</th>
                       </tr>
@@ -2570,13 +2571,13 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-gray-100">
                       {userLogsLoading ? (
                         <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-xs text-gray-400 italic">
+                          <td colSpan={8} className="px-6 py-12 text-center text-xs text-gray-400 italic">
                             Loading team user activity...
                           </td>
                         </tr>
                       ) : registeredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-xs text-gray-400 italic">
+                          <td colSpan={8} className="px-6 py-12 text-center text-xs text-gray-400 italic">
                             No registered users found.
                           </td>
                         </tr>
@@ -2640,6 +2641,49 @@ export default function AdminDashboard() {
                           const morningInfo = getDaysAgoInfo(morningFirstLogin);
                           const eveningInfo = getDaysAgoInfo(eveningLastLogin);
                           const logoutInfo = getDaysAgoInfo(lastLogout);
+
+                          // Working Hours Calculation against 9:00 AM - 7:00 PM Shift Target (10 Hrs)
+                          const startWorkTimestamp = morningFirstLogin || eveningLastLogin || (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+                          const endWorkTimestamp = isActiveNow ? Date.now() : (lastLogout || eveningLastLogin || (uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null));
+
+                          let workingHoursText = '—';
+                          let shiftBadgeText = 'No Activity';
+                          let shiftBadgeStyle = 'bg-gray-50 text-gray-400 border-gray-200';
+                          let punctualitySubtext = 'Shift: 9:00 AM – 7:00 PM';
+
+                          if (startWorkTimestamp && endWorkTimestamp && endWorkTimestamp >= startWorkTimestamp) {
+                            const totalWorkMinutes = Math.max(1, Math.round((endWorkTimestamp - startWorkTimestamp) / 60000));
+                            const hrs = Math.floor(totalWorkMinutes / 60);
+                            const mins = totalWorkMinutes % 60;
+                            workingHoursText = `${hrs}h ${mins}m`;
+
+                            const workHrsDec = totalWorkMinutes / 60;
+
+                            const startDate = new Date(startWorkTimestamp);
+                            const startHr = startDate.getHours();
+                            const startMin = startDate.getMinutes();
+
+                            if (startHr < 9 || (startHr === 9 && startMin <= 15)) {
+                              punctualitySubtext = 'On Time (9:00 AM Start)';
+                            } else {
+                              const startTime12 = startDate.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+                              punctualitySubtext = `Late Entry (${startTime12})`;
+                            }
+
+                            if (isActiveNow) {
+                              shiftBadgeText = `Active (${workingHoursText})`;
+                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            } else if (workHrsDec >= 9.5) {
+                              shiftBadgeText = `Full Shift (${workingHoursText})`;
+                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                            } else if (workHrsDec >= 4) {
+                              shiftBadgeText = `Partial Shift (${workingHoursText})`;
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300';
+                            } else {
+                              shiftBadgeText = `Short Shift (${workingHoursText})`;
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+                            }
+                          }
 
                           return (
                             <tr
@@ -2710,6 +2754,21 @@ export default function AdminDashboard() {
                                       {logoutInfo.daysTag}
                                     </span>
                                     <p className="font-mono text-xs font-semibold text-gray-600">{logoutInfo.fullDateTime}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300 font-mono text-xs">—</span>
+                                )}
+                              </td>
+
+                              {/* Working Hours Monitoring (9:00 AM - 7:00 PM) */}
+                              <td className="px-6 py-4">
+                                {startWorkTimestamp ? (
+                                  <div>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mb-1 ${shiftBadgeStyle}`}>
+                                      {shiftBadgeText}
+                                    </span>
+                                    <p className="font-mono text-xs font-black text-gray-900">{workingHoursText}</p>
+                                    <p className="text-[9px] text-gray-400 font-bold mt-0.5">{punctualitySubtext}</p>
                                   </div>
                                 ) : (
                                   <span className="text-gray-300 font-mono text-xs">—</span>
@@ -2884,8 +2943,37 @@ export default function AdminDashboard() {
                           const eveningInfo = getDaysAgoInfo(eveningLastLogin);
                           const logoutInfo = getDaysAgoInfo(lastLogout);
 
+                          const startWorkTimestamp = morningFirstLogin || eveningLastLogin || (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+                          const endWorkTimestamp = isActiveNow ? Date.now() : (lastLogout || eveningLastLogin || (uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null));
+
+                          let workingHoursText = '—';
+                          let shiftBadgeText = 'No Activity';
+                          let shiftBadgeStyle = 'bg-gray-50 text-gray-400 border-gray-200';
+
+                          if (startWorkTimestamp && endWorkTimestamp && endWorkTimestamp >= startWorkTimestamp) {
+                            const totalWorkMinutes = Math.max(1, Math.round((endWorkTimestamp - startWorkTimestamp) / 60000));
+                            const hrs = Math.floor(totalWorkMinutes / 60);
+                            const mins = totalWorkMinutes % 60;
+                            workingHoursText = `${hrs}h ${mins}m`;
+
+                            const workHrsDec = totalWorkMinutes / 60;
+                            if (isActiveNow) {
+                              shiftBadgeText = 'Active Working';
+                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            } else if (workHrsDec >= 9.5) {
+                              shiftBadgeText = 'Full Shift (10 hrs)';
+                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                            } else if (workHrsDec >= 4) {
+                              shiftBadgeText = 'Partial Shift';
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300';
+                            } else {
+                              shiftBadgeText = 'Short Shift';
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+                            }
+                          }
+
                           return (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                               {/* Morning First Login Card */}
                               <div className="p-4 bg-amber-50/70 border border-amber-200/70 rounded-2xl shadow-xs">
                                 <div className="flex items-center gap-1.5 text-amber-800 mb-1">
@@ -2939,6 +3027,23 @@ export default function AdminDashboard() {
                                     '—'
                                   )}
                                 </p>
+                              </div>
+
+                              {/* Working Hours Card (9:00 AM - 7:00 PM) */}
+                              <div className="p-4 bg-indigo-50/70 border border-indigo-200/70 rounded-2xl shadow-xs">
+                                <div className="flex items-center justify-between gap-1.5 text-indigo-800 mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4 text-indigo-600" />
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Working Hours</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${shiftBadgeStyle}`}>
+                                    {shiftBadgeText}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-black text-indigo-950 font-mono mt-1">
+                                  {workingHoursText}
+                                </p>
+                                <p className="text-[9px] text-gray-400 font-bold mt-0.5">Target: 9 AM – 7 PM (10 hrs)</p>
                               </div>
                             </div>
                           );
