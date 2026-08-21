@@ -216,14 +216,19 @@ export const mockDataService = {
   },
 
   updateUser: async (user: UserProfile): Promise<void> => {
-    const res = await fetch(getApiUrl(`/api/users/${user.uid}`), {
+    const userId = user.uid || (user as any).id;
+    const res = await fetch(getApiUrl(`/api/users/${userId}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: user.email,
         name: user.name,
         role: user.role,
-        password: user.password
+        password: user.password,
+        status: user.status,
+        isBlocked: user.isBlocked,
+        faceRegistered: user.faceRegistered,
+        faceData: user.faceData
       })
     });
     if (!res.ok) throw new Error('Failed to update user');

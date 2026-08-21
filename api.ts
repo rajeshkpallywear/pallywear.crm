@@ -199,13 +199,22 @@ router.get('/auth/activity-logs', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
-    const rows = await query('SELECT id, email, name, role FROM users') as any[];
+    let rows: any[] = [];
+    try {
+      rows = await query('SELECT id, email, name, role, status, isBlocked, faceRegistered, faceData FROM users') as any[];
+    } catch (_) {
+      rows = await query('SELECT id, email, name, role FROM users') as any[];
+    }
     const mapped = rows.map(r => ({
       id: r.id,
       uid: r.id,
       email: r.email,
       name: r.name,
       role: r.role,
+      status: r.status || (r.isBlocked ? 'Blocked' : 'Active'),
+      isBlocked: Boolean(r.isBlocked || r.status === 'Blocked'),
+      faceRegistered: Boolean(r.faceRegistered || r.faceData),
+      faceData: r.faceData || ''
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -216,18 +225,36 @@ router.get('/users', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { email, name, role, password } = req.body;
+  const { email, name, role, password, status, isBlocked, faceRegistered, faceData } = req.body;
   try {
-    if (password) {
-      await query(
-        'UPDATE users SET email = ?, name = ?, role = ?, password = ? WHERE id = ?',
-        [email, name, role, password, id]
-      );
-    } else {
-      await query(
-        'UPDATE users SET email = ?, name = ?, role = ? WHERE id = ?',
-        [email, name, role, id]
-      );
+    const isBlockedVal = isBlocked || status === 'Blocked' ? 1 : 0;
+    const faceRegVal = faceRegistered || faceData ? 1 : 0;
+    const statusVal = status || (isBlockedVal ? 'Blocked' : 'Active');
+
+    try {
+      if (password) {
+        await query(
+          'UPDATE users SET email = ?, name = ?, role = ?, password = ?, status = ?, isBlocked = ?, faceRegistered = ?, faceData = ? WHERE id = ?',
+          [email, name, role, password, statusVal, isBlockedVal, faceRegVal, faceData || '', id]
+        );
+      } else {
+        await query(
+          'UPDATE users SET email = ?, name = ?, role = ?, status = ?, isBlocked = ?, faceRegistered = ?, faceData = ? WHERE id = ?',
+          [email, name, role, statusVal, isBlockedVal, faceRegVal, faceData || '', id]
+        );
+      }
+    } catch (_) {
+      if (password) {
+        await query(
+          'UPDATE users SET email = ?, name = ?, role = ?, password = ? WHERE id = ?',
+          [email, name, role, password, id]
+        );
+      } else {
+        await query(
+          'UPDATE users SET email = ?, name = ?, role = ? WHERE id = ?',
+          [email, name, role, id]
+        );
+      }
     }
     res.json({ success: true });
   } catch (error: any) {

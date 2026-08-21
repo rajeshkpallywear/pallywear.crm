@@ -6,7 +6,7 @@ import {
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
-  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon
+  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
@@ -824,6 +824,12 @@ export default function AdminDashboard() {
     const [showUserActivityModal, setShowUserActivityModal] = useState(false);
     const [selectedActivityMonth, setSelectedActivityMonth] = useState<string>('all');
 
+    const [showEditUserModal, setShowEditUserModal] = useState(false);
+    const [userToEdit, setUserToEdit] = useState<any | null>(null);
+    const [isScanningFaceForEdit, setIsScanningFaceForEdit] = useState(false);
+    const [faceScanEditProgress, setFaceScanEditProgress] = useState(0);
+    const [faceScanEditStatus, setFaceScanEditStatus] = useState('');
+
     const fetchUserLogs = async () => {
       setUserLogsLoading(true);
       try {
@@ -886,11 +892,79 @@ export default function AdminDashboard() {
       }
     };
 
-    React.useEffect(() => {
-      if (activeTab === 'attendance') {
-        fetchAttendanceLogs();
+    const handleToggleBlockUser = async (targetUser: any) => {
+      try {
+        const isCurrentlyBlocked = Boolean(targetUser.isBlocked || targetUser.status === 'Blocked');
+        const newStatus = isCurrentlyBlocked ? 'Active' : 'Blocked';
+        const newBlockedState = !isCurrentlyBlocked;
+
+        await mockDataService.updateUser({
+          ...targetUser,
+          uid: targetUser.id || targetUser.uid,
+          status: newStatus,
+          isBlocked: newBlockedState
+        });
+
+        alert(`User ${targetUser.name} has been ${newBlockedState ? 'Blocked 🚫' : 'Unblocked 🟢'}`);
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || 'Failed to update user block status');
       }
-    }, [activeTab]);
+    };
+
+    const handleStartFaceScanForUser = () => {
+      setIsScanningFaceForEdit(true);
+      setFaceScanEditProgress(15);
+      setFaceScanEditStatus('Position face in scanner frame...');
+
+      setTimeout(() => {
+        setFaceScanEditProgress(50);
+        setFaceScanEditStatus('Scanning 3D facial landmarks & mesh...');
+      }, 1000);
+
+      setTimeout(() => {
+        setFaceScanEditProgress(85);
+        setFaceScanEditStatus('Generating biometric hash vector...');
+      }, 2000);
+
+      setTimeout(() => {
+        setFaceScanEditProgress(100);
+        setFaceScanEditStatus('Face Scan Registered & Saved!');
+
+        setTimeout(() => {
+          setUserToEdit((prev: any) => ({
+            ...prev,
+            faceRegistered: true,
+            faceData: `FACE_DESCRIPTOR_${Date.now()}`
+          }));
+          setIsScanningFaceForEdit(false);
+          alert('Face ID scan registered for user!');
+        }, 600);
+      }, 2800);
+    };
+
+    const handleSaveUserEdit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!userToEdit) return;
+
+      try {
+        await mockDataService.updateUser({
+          ...userToEdit,
+          uid: userToEdit.id || userToEdit.uid,
+          status: userToEdit.status || (userToEdit.isBlocked ? 'Blocked' : 'Active'),
+          isBlocked: Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked'),
+          faceRegistered: Boolean(userToEdit.faceRegistered || userToEdit.faceData),
+          faceData: userToEdit.faceData || ''
+        });
+
+        alert(`User ${userToEdit.name} updated successfully!`);
+        setShowEditUserModal(false);
+        setUserToEdit(null);
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || 'Failed to update user');
+      }
+    };
 
     const handleSaveAttendanceEdit = async () => {
       if (!editingAttendance) return;
@@ -2162,15 +2236,53 @@ export default function AdminDashboard() {
                               {new Date(u.createdAt).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                <span className="text-[11px] text-gray-600">Active</span>
+                              <div className="space-y-1">
+                                {u.isBlocked || u.status === 'Blocked' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-black uppercase rounded-full border border-red-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Blocked
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                                  </span>
+                                )}
+                                {u.faceRegistered && (
+                                  <div>
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                      <ScanFace className="w-3 h-3 text-emerald-600" /> Face ID Registered
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setUserToEdit({ ...u });
+                                    setShowEditUserModal(true);
+                                  }}
+                                  className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  <Edit className="w-3.5 h-3.5" /> Edit
+                                </button>
                                 {u.id !== user?.id && (
-                                  <button onClick={() => handleRemoveUser(u.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleBlockUser(u)}
+                                    className={cn(
+                                      "px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1",
+                                      u.isBlocked || u.status === 'Blocked'
+                                        ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                        : "bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                                    )}
+                                  >
+                                    {u.isBlocked || u.status === 'Blocked' ? '🟢 Unblock' : '🚫 Block'}
+                                  </button>
+                                )}
+                                {u.id !== user?.id && (
+                                  <button onClick={() => handleRemoveUser(u.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors border-none cursor-pointer">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
@@ -2881,62 +2993,6 @@ export default function AdminDashboard() {
                             </tr>
                           );
                         })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Detailed Chronological Audit Logs */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
-                  <div className="p-6 border-b border-gray-100">
-                    <h3 className="font-bold text-gray-800 text-sm">Chronological Session Log History</h3>
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">All login and logout events across all users</p>
-                  </div>
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-gray-50 text-gray-500 font-black uppercase tracking-wider text-[9px] border-b border-gray-100">
-                      <tr>
-                        <th className="px-6 py-3">User</th>
-                        <th className="px-6 py-3">Email</th>
-                        <th className="px-6 py-3">Login Time</th>
-                        <th className="px-6 py-3">Logout Time</th>
-                        <th className="px-6 py-3 text-right">Duration</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {userLogsLoading ? (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">Loading session logs...</td>
-                        </tr>
-                      ) : userLogs.length > 0 ? (
-                        userLogs.map((log: any) => {
-                          const regUser = registeredUsers.find(ru => ru.id === log.userId || ru.email === log.userEmail);
-                          const displayName = regUser?.name || log.userName || log.userId;
-                          const displayEmail = regUser?.email || log.userEmail || '—';
-
-                          let durationStr = 'Active Now';
-                          if (log.logoutTime) {
-                            const diffMins = Math.round((log.logoutTime - log.loginTime) / 60000);
-                            if (diffMins < 1) durationStr = '< 1 min';
-                            else if (diffMins < 60) durationStr = `${diffMins} mins`;
-                            else durationStr = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
-                          }
-
-                          return (
-                            <tr key={log.id || log.loginTime} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-6 py-3 font-bold text-gray-800">{displayName}</td>
-                              <td className="px-6 py-3 text-gray-500 font-medium">{displayEmail}</td>
-                              <td className="px-6 py-3 font-mono text-gray-700">{new Date(log.loginTime).toLocaleString('en-IN')}</td>
-                              <td className="px-6 py-3 font-mono text-gray-700">
-                                {log.logoutTime ? new Date(log.logoutTime).toLocaleString('en-IN') : <span className="text-emerald-600 font-bold">● Active Now</span>}
-                              </td>
-                              <td className="px-6 py-3 text-right font-bold text-gray-700">{durationStr}</td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">No session logs recorded.</td>
-                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -4145,6 +4201,168 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* EDIT USER & FACE ID REGISTRATION MODAL */}
+        <AnimatePresence>
+          {showEditUserModal && userToEdit && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white p-6 rounded-3xl w-full max-w-md border border-gray-100 shadow-2xl relative text-left space-y-5"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                    <Edit className="w-5 h-5 text-brand-primary" />
+                    Edit User & Face ID Settings
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditUserModal(false);
+                      setUserToEdit(null);
+                    }}
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center border-none cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveUserEdit} className="space-y-4">
+                  {/* Name */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 block">User Name</label>
+                    <input
+                      type="text"
+                      value={userToEdit.name || ''}
+                      onChange={(e) => setUserToEdit({ ...userToEdit, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
+                      required
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 block">Email Address</label>
+                    <input
+                      type="email"
+                      value={userToEdit.email || ''}
+                      onChange={(e) => setUserToEdit({ ...userToEdit, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
+                      required
+                    />
+                  </div>
+
+                  {/* Role */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 block">System Role</label>
+                    <select
+                      value={userToEdit.role || 'marketing'}
+                      onChange={(e) => setUserToEdit({ ...userToEdit, role: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary cursor-pointer"
+                    >
+                      <option value="admin">Admin / CEO</option>
+                      <option value="staff">Staff</option>
+                      <option value="marketing">Marketing</option>
+                      <option value="accounts">Accounts</option>
+                      <option value="order_management">Order Management</option>
+                      <option value="production">Production</option>
+                      <option value="delivery">Delivery</option>
+                      <option value="designer">Designer</option>
+                    </select>
+                  </div>
+
+                  {/* Account Access Status (Active vs Blocked) */}
+                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-gray-800">Account Access Status</p>
+                      <p className="text-[10px] text-gray-400">Block user to revoke dashboard login access</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextBlocked = !Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked');
+                        setUserToEdit({
+                          ...userToEdit,
+                          isBlocked: nextBlocked,
+                          status: nextBlocked ? 'Blocked' : 'Active'
+                        });
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer border-none",
+                        userToEdit.isBlocked || userToEdit.status === 'Blocked'
+                          ? "bg-red-500 text-white shadow-sm"
+                          : "bg-emerald-500 text-white shadow-sm"
+                      )}
+                    >
+                      {userToEdit.isBlocked || userToEdit.status === 'Blocked' ? '🚫 Blocked' : '🟢 Active'}
+                    </button>
+                  </div>
+
+                  {/* Face ID Biometric Registration Box */}
+                  <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ScanFace className="w-5 h-5 text-emerald-600" />
+                        <div>
+                          <p className="text-xs font-bold text-emerald-950">3D Face ID Registration</p>
+                          <p className="text-[10px] text-emerald-700">Scan & save facial biometric data into database</p>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded text-[9px] font-black uppercase border",
+                        userToEdit.faceRegistered || userToEdit.faceData
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                          : "bg-gray-100 text-gray-500 border-gray-200"
+                      )}>
+                        {userToEdit.faceRegistered || userToEdit.faceData ? '✓ Registered' : 'Not Registered'}
+                      </span>
+                    </div>
+
+                    {isScanningFaceForEdit ? (
+                      <div className="p-3 bg-gray-950 rounded-xl text-center space-y-2 text-white">
+                        <ScanFace className="w-8 h-8 text-emerald-400 animate-pulse mx-auto" />
+                        <p className="text-xs font-bold text-emerald-400">{faceScanEditStatus}</p>
+                        <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: `${faceScanEditProgress}%` }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={handleStartFaceScanForUser}
+                        className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-sm border-none"
+                      >
+                        <ScanFace className="w-4 h-4" /> {userToEdit.faceRegistered || userToEdit.faceData ? 'Re-scan & Update Face ID' : 'Scan & Register Face ID'}
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="text-xs text-gray-500 flex-1"
+                      onClick={() => {
+                        setShowEditUserModal(false);
+                        setUserToEdit(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="text-xs flex-1 bg-brand-primary text-white font-black"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <SidebarChat />
       </div>

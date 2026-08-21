@@ -100,6 +100,10 @@ export interface UserProfile {
   role: UserRole;
   name: string;
   password?: string;
+  status?: 'Active' | 'Blocked' | string;
+  isBlocked?: boolean;
+  faceRegistered?: boolean;
+  faceData?: string;
 }
 
 export enum OrderStatus {

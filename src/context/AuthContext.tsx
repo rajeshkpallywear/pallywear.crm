@@ -11,6 +11,10 @@ export interface User {
   name: string;
   avatar?: string;
   createdAt: string;
+  status?: 'Active' | 'Blocked' | string;
+  isBlocked?: boolean;
+  faceRegistered?: boolean;
+  faceData?: string;
 }
 
 interface AuthContextType {
@@ -36,13 +40,17 @@ const ADMIN_ONLY_REGISTRATION_KEY = 'pallywear_admin_only_registration';
 const formatAvatar = (name: string) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3291B6&color=fff`;
 
-const profileToUser = (profile: { uid: string; email: string; role: UserRole | 'admin' | 'user'; name: string }): User => ({
-  id: profile.uid,
+const profileToUser = (profile: any): User => ({
+  id: profile.uid || profile.id,
   email: profile.email,
   role: profile.role,
   name: profile.name,
   avatar: formatAvatar(profile.name),
-  createdAt: new Date().toISOString(),
+  createdAt: profile.createdAt || new Date().toISOString(),
+  status: profile.status || (profile.isBlocked ? 'Blocked' : 'Active'),
+  isBlocked: Boolean(profile.isBlocked || profile.status === 'Blocked'),
+  faceRegistered: Boolean(profile.faceRegistered || profile.faceData),
+  faceData: profile.faceData || ''
 });
 
 const isAdminEmail = (email: string) => {
@@ -133,6 +141,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const nextUser = profileToUser(userProfile);
+    if (nextUser.isBlocked || nextUser.status === 'Blocked') {
+      return { success: false, message: '❌ Account Access Blocked by Administrator. Please contact support.' };
+    }
+
     persistUser(nextUser);
     try {
       await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email);
@@ -143,26 +155,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const biometricLogin = async (loginType: 'FACE_ID' | 'FINGERPRINT', targetEmail?: string) => {
-    const users = await mockDataService.getUsers();
-    let userProfile: UserProfile | undefined;
+    const rawUsers = await mockDataService.getUsers();
+    const users = rawUsers.map(profileToUser);
+
+    let matchedUser: User | undefined;
     if (targetEmail && targetEmail.trim()) {
-      userProfile = users.find((u) => u.email.toLowerCase().trim() === targetEmail.trim().toLowerCase());
+      matchedUser = users.find((u) => u.email.toLowerCase().trim() === targetEmail.trim().toLowerCase());
     }
-    if (!userProfile) {
-      userProfile = users.find((user) => user.role === UserRole.ADMIN) || users[0];
+
+    if (!matchedUser && loginType === 'FACE_ID') {
+      matchedUser = users.find((u) => u.faceRegistered || u.faceData);
     }
-    if (!userProfile) {
+
+    if (!matchedUser) {
+      matchedUser = users.find((user) => user.role === UserRole.ADMIN || user.role === 'admin') || users[0];
+    }
+
+    if (!matchedUser) {
       return { success: false, message: 'No registered user found for biometric authentication.' };
     }
 
-    const nextUser = profileToUser(userProfile);
-    persistUser(nextUser);
+    if (matchedUser.isBlocked || matchedUser.status === 'Blocked') {
+      return { success: false, message: '❌ Account Access Blocked by Administrator. Please contact support.' };
+    }
+
+    persistUser(matchedUser);
     try {
-      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email, loginType);
+      await mockDataService.logLogin(matchedUser.id, matchedUser.name, matchedUser.email, loginType);
     } catch (e) {
       console.error(`Failed to log ${loginType} login:`, e);
     }
-    return { success: true, user: nextUser };
+    return { success: true, user: matchedUser };
   };
 
   const googleLogin = async () => {
