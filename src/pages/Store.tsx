@@ -8,12 +8,15 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../components/Logo';
 import { cn } from '../lib/utils';
+import HelpCenterModal from '../components/HelpCenterModal';
 
 export default function Store() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'system' | 'mobile'>('system');
   const [activeMobileTab, setActiveMobileTab] = useState<'store' | 'orders' | 'leads' | 'invoices' | 'chat'>('store');
   const [showSettings, setShowSettings] = useState(false);
+  const [showHelpCenter, setShowHelpCenter] = useState(false);
+  const [helpTab, setHelpTab] = useState('Shipping & Returns');
   const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'https://pallywear.in');
 
   const saveSettings = () => {
@@ -598,9 +601,27 @@ export default function Store() {
       <footer className="relative z-10 py-20 px-6 max-w-7xl mx-auto border-t border-gray-100">
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           <Logo />
-          <nav className="flex items-center gap-8">
+          <nav className="flex items-center gap-6 flex-wrap justify-center">
+            <button
+              onClick={() => { setHelpTab('Shipping & Returns'); setShowHelpCenter(true); }}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200"
+            >
+              🚚 Shipping & Returns
+            </button>
+            <button
+              onClick={() => { setHelpTab('FAQ'); setShowHelpCenter(true); }}
+              className="text-xs font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors cursor-pointer"
+            >
+              Help Center
+            </button>
             {['Privacy', 'Contact'].map(item => (
-              <button key={item} className="text-xs font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors cursor-pointer">{item}</button>
+              <button
+                key={item}
+                onClick={() => { setHelpTab(item === 'Contact' ? 'Contact Us' : 'Shipping & Returns'); setShowHelpCenter(true); }}
+                className="text-xs font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                {item}
+              </button>
             ))}
           </nav>
           <div className="flex gap-4">
@@ -614,6 +635,13 @@ export default function Store() {
         </div>
         <p className="text-center text-[10px] text-gray-400 font-bold mt-12 uppercase tracking-[0.3em]">© 2024 Pallywear Analytics. All rights reserved.</p>
       </footer>
+
+      {/* Help Center & Policy Modal */}
+      <HelpCenterModal
+        isOpen={showHelpCenter}
+        onClose={() => setShowHelpCenter(false)}
+        defaultTab={helpTab}
+      />
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>

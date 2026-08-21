@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../components/Logo';
 import { UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
+import HelpCenterModal from '../components/HelpCenterModal';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -22,6 +23,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [tempApiUrl, setTempApiUrl] = useState(localStorage.getItem('pallywear_api_url') || 'https://pallywear.in');
 
   const saveSettings = () => {
@@ -236,11 +238,24 @@ export default function Register() {
           </div>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-center gap-4">
+        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-center gap-3">
           <Link to="/admin" className="text-sm font-bold text-brand-primary hover:underline">
             ← Return to Admin Panel
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setShowHelpCenter(true)}
+            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 transition-all hover:scale-105"
+          >
+            🚚 Shipping & Return Policy / Help Center
+          </button>
         </div>
+
+        <HelpCenterModal
+          isOpen={showHelpCenter}
+          onClose={() => setShowHelpCenter(false)}
+        />
 
         {/* Connection Settings Modal */}
         <AnimatePresence>
