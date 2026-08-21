@@ -168,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!matchedUser) {
-      matchedUser = users.find((user) => user.role === UserRole.ADMIN || user.role === 'admin') || users[0];
+      matchedUser = users.find((user) => (user.role as any) === UserRole.ADMIN || (user.role as any) === 'admin') || users[0];
     }
 
     if (!matchedUser) {
