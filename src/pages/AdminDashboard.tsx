@@ -2186,119 +2186,119 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   ) : (
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-500 font-medium">
-                        <tr>
-                          <th className="px-6 py-4">User Details</th>
-                          <th className="px-6 py-4">System Role</th>
-                          <th className="px-6 py-4">Join Date</th>
-                          <th className="px-6 py-4">Status</th>
-                          <th className="px-6 py-4 text-right">Settings</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {registeredUsers.map((u, i) => (
-                          <tr key={u.id} className="hover:bg-gray-50/50 group">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden shadow-md shadow-brand-primary/20">
-                                  {u.avatar ? (
-                                    <img src={u.avatar} alt={u.name} />
+                    <div className="overflow-x-auto w-full">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                          <tr>
+                            <th className="px-3.5 py-2.5">User Details</th>
+                            <th className="px-3 py-2.5">System Role</th>
+                            <th className="px-3 py-2.5">Join Date</th>
+                            <th className="px-3 py-2.5">Status</th>
+                            <th className="px-3.5 py-2.5 text-right">Settings</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {registeredUsers.map((u, i) => (
+                            <tr key={u.id} className="hover:bg-gray-50/70 transition-colors">
+                              <td className="px-3.5 py-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-brand-primary flex items-center justify-center text-white font-bold text-[10px] uppercase overflow-hidden shrink-0 shadow-xs">
+                                    {u.avatar ? (
+                                      <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span>{u.name?.charAt(0) || 'U'}</span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-gray-800 text-xs truncate leading-snug">{u.name}</p>
+                                    <p className="text-[10px] text-gray-400 truncate leading-tight">{u.email}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border shadow-2xs whitespace-nowrap",
+                                    u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
+                                      u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
+                                        u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
+                                          u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                                            u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                                              u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
+                                                u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
+                                                  u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
+                                                    "text-gray-600 border-gray-100 bg-gray-50"
+                                  )}
+                                >
+                                  {u.role?.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-gray-500 text-[11px] whitespace-nowrap font-mono">
+                                {new Date(u.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <div className="flex flex-col gap-0.5">
+                                  {u.isBlocked || u.status === 'Blocked' ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 text-[9px] font-black uppercase rounded-full border border-red-200 w-fit">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Blocked
+                                    </span>
                                   ) : (
-                                    <span>{u.name.charAt(0)}</span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase rounded-full border border-emerald-200 w-fit">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                                    </span>
+                                  )}
+                                  {u.faceRegistered && (
+                                    <span className="inline-flex items-center gap-1 text-[8px] font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-1 py-0.2 rounded w-fit">
+                                      <ScanFace className="w-2.5 h-2.5 text-emerald-600" /> Face ID
+                                    </span>
                                   )}
                                 </div>
-                                <div>
-                                  <p className="font-bold text-gray-800">{u.name}</p>
-                                  <p className="text-[10px] text-gray-400">{u.email}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span
-                                className={cn(
-                                  "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shadow-sm",
-                                  u.role === 'admin' ? "text-purple-700 border-purple-100 bg-purple-50" :
-                                    u.role === 'marketing' ? "text-blue-600 border-blue-100 bg-blue-50" :
-                                      u.role === 'staff' ? "text-green-600 border-green-100 bg-green-50" :
-                                        u.role === 'accounts' ? "text-amber-600 border-amber-100 bg-amber-50" :
-                                          u.role === 'production' ? "text-orange-600 border-orange-100 bg-orange-50" :
-                                            u.role === 'delivery' ? "text-indigo-600 border-indigo-100 bg-indigo-50" :
-                                              u.role === 'order_management' ? "text-cyan-600 border-cyan-100 bg-cyan-50" :
-                                                u.role === 'designer' ? "text-purple-600 border-purple-100 bg-purple-50" :
-                                                  "text-gray-600 border-gray-100 bg-gray-50"
-                                )}
-                              >
-                                {u.role?.replace('_', ' ')}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-gray-500 text-xs text-nowrap">
-                              {new Date(u.createdAt).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="space-y-1">
-                                {u.isBlocked || u.status === 'Blocked' ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-black uppercase rounded-full border border-red-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Blocked
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
-                                  </span>
-                                )}
-                                {u.faceRegistered && (
-                                  <div>
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-1.5 py-0.5 rounded">
-                                      <ScanFace className="w-3 h-3 text-emerald-600" /> Face ID Registered
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setUserToEdit({ ...u });
-                                    setShowEditUserModal(true);
-                                  }}
-                                  className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all cursor-pointer flex items-center gap-1"
-                                >
-                                  <Edit className="w-3.5 h-3.5" /> Edit
-                                </button>
-                                {u.id !== user?.id && (
+                              </td>
+                              <td className="px-3.5 py-2 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={() => handleToggleBlockUser(u)}
-                                    className={cn(
-                                      "px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1",
-                                      u.isBlocked || u.status === 'Blocked'
-                                        ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
-                                        : "bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
-                                    )}
+                                    onClick={() => {
+                                      setUserToEdit({ ...u });
+                                      setShowEditUserModal(true);
+                                    }}
+                                    className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200 transition-all cursor-pointer flex items-center gap-1 shrink-0"
                                   >
-                                    {u.isBlocked || u.status === 'Blocked' ? '🟢 Unblock' : '🚫 Block'}
+                                    <Edit className="w-3 h-3" /> Edit
                                   </button>
-                                )}
-                                {u.id !== user?.id && (
-                                  <button onClick={() => handleRemoveUser(u.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors border-none cursor-pointer">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {registeredUsers.length === 0 && (
-                          <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
-                              No team members registered yet or sync in progress.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                                  {u.id !== user?.id && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleBlockUser(u)}
+                                      className={cn(
+                                        "px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 shrink-0",
+                                        u.isBlocked || u.status === 'Blocked'
+                                          ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                          : "bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                                      )}
+                                    >
+                                      {u.isBlocked || u.status === 'Blocked' ? '🟢 Unblock' : '🚫 Block'}
+                                    </button>
+                                  )}
+                                  {u.id !== user?.id && (
+                                    <button onClick={() => handleRemoveUser(u.id)} className="p-1 hover:bg-red-50 rounded-md text-red-500 transition-colors border-none cursor-pointer shrink-0">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {registeredUsers.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-xs">
+                                No team members registered yet or sync in progress.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
 

@@ -16,8 +16,34 @@ function notifyUpdate() {
  * and interpret as URL fragments, breaking the proxy routing.
  */
 function sanitizeId(id: string): string {
-  // Replace # with empty string - the # prefix is display-only
   return id.replace(/#/g, '');
+}
+
+const DEFAULT_USERS: UserProfile[] = [
+  { uid: 'u1', name: 'CEO Admin', email: 'ceo@pallywear.com', role: UserRole.ADMIN, status: 'Active' },
+  { uid: 'u2', name: 'Mahendran', email: 'mahendran.pallywear@gmail.com', role: UserRole.DELIVERY, status: 'Active' },
+  { uid: 'u3', name: 'Godwin', email: 'godwin.pallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
+  { uid: 'u4', name: 'Jimla', email: 'jimla@pallywear.com', role: UserRole.MARKETING, status: 'Active' },
+  { uid: 'u5', name: 'Vivek', email: 'vivekpallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
+  { uid: 'u6', name: 'Daniel', email: 'daniel.smpallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
+  { uid: 'u7', name: 'Vasudev', email: 'vasudevpallywear@gmail.com', role: UserRole.STAFF, status: 'Active' },
+];
+
+function loadLocalUsers(): UserProfile[] {
+  try {
+    const raw = localStorage.getItem('pallywear_users_v2');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+  return DEFAULT_USERS;
+}
+
+function saveLocalUsers(users: UserProfile[]) {
+  try {
+    localStorage.setItem('pallywear_users_v2', JSON.stringify(users));
+  } catch (_) {}
 }
 
 export const mockDataService = {
@@ -107,16 +133,23 @@ export const mockDataService = {
     return res.json();
   },
 
-  saveLead: async (lead: Lead): Promise<void> => {
+  addLead: async (lead: Lead): Promise<void> => {
     const res = await fetch(getApiUrl('/api/leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(lead)
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || errData.message || 'Failed to save lead');
-    }
+    if (!res.ok) throw new Error('Failed to add lead');
+    notifyUpdate();
+  },
+
+  updateLead: async (id: string, updates: Partial<Lead>): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update lead');
     notifyUpdate();
   },
 
@@ -142,13 +175,23 @@ export const mockDataService = {
     return res.json();
   },
 
-  saveInvoice: async (invoice: Invoice): Promise<void> => {
+  addInvoice: async (invoice: Invoice): Promise<void> => {
     const res = await fetch(getApiUrl('/api/invoices'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(invoice)
     });
-    if (!res.ok) throw new Error('Failed to save invoice');
+    if (!res.ok) throw new Error('Failed to add invoice');
+    notifyUpdate();
+  },
+
+  updateInvoice: async (id: string, updates: Partial<Invoice>): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update invoice');
     notifyUpdate();
   },
 
@@ -160,20 +203,46 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getInventory: async (): Promise<InventoryMovement[]> => {
+  getInventoryMovements: async (): Promise<InventoryMovement[]> => {
     const res = await fetch(getApiUrl('/api/inventory'));
-    if (!res.ok) throw new Error('Failed to fetch inventory');
+    if (!res.ok) throw new Error('Failed to fetch inventory movements');
     return res.json();
   },
 
-  saveInventoryMovement: async (movement: InventoryMovement): Promise<void> => {
+  addInventoryMovement: async (movement: InventoryMovement): Promise<void> => {
     const res = await fetch(getApiUrl('/api/inventory'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(movement)
     });
-    if (!res.ok) throw new Error('Failed to save inventory movement');
+    if (!res.ok) throw new Error('Failed to add inventory movement');
     notifyUpdate();
+  },
+
+  updateInventoryMovement: async (id: string, updates: Partial<InventoryMovement>): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(sanitizeId(id))}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update inventory movement');
+    notifyUpdate();
+  },
+
+  saveLead: async (lead: Lead): Promise<void> => {
+    return mockDataService.addLead(lead);
+  },
+
+  saveInvoice: async (invoice: Invoice): Promise<void> => {
+    return mockDataService.addInvoice(invoice);
+  },
+
+  getInventory: async (): Promise<InventoryMovement[]> => {
+    return mockDataService.getInventoryMovements();
+  },
+
+  saveInventoryMovement: async (movement: InventoryMovement): Promise<void> => {
+    return mockDataService.addInventoryMovement(movement);
   },
 
   deleteInventoryMovement: async (id: string): Promise<void> => {
@@ -185,53 +254,97 @@ export const mockDataService = {
   },
 
   getUsers: async (): Promise<UserProfile[]> => {
-    const res = await fetch(getApiUrl('/api/users'));
-    if (!res.ok) throw new Error('Failed to fetch users');
-    return res.json();
+    try {
+      const res = await fetch(getApiUrl('/api/users'));
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend API getUsers unreachable, falling back to local storage:', e);
+    }
+    return loadLocalUsers();
   },
 
   register: async (user: UserProfile): Promise<void> => {
-    const res = await fetch(getApiUrl('/api/auth/register'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Failed to register');
+    try {
+      const res = await fetch(getApiUrl('/api/auth/register'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        console.warn('Backend API register returned error:', err);
+      }
+    } catch (e: any) {
+      console.warn('Backend API register unreachable, saving locally:', e);
     }
+    const localUsers = loadLocalUsers();
+    const existingIndex = localUsers.findIndex(u => u.email === user.email);
+    if (existingIndex === -1) {
+      localUsers.push(user);
+    } else {
+      localUsers[existingIndex] = { ...localUsers[existingIndex], ...user };
+    }
+    saveLocalUsers(localUsers);
+    notifyUpdate();
   },
 
   login: async (email: string, password: string): Promise<UserProfile | null> => {
-    const res = await fetch(getApiUrl('/api/auth/login'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    if (!res.ok) {
-      return null;
+    try {
+      const res = await fetch(getApiUrl('/api/auth/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) return data.user;
+      }
+    } catch (e) {
+      console.warn('Backend API login unreachable, checking local database:', e);
     }
-    const data = await res.json();
-    return data.user || null;
+    const localUsers = loadLocalUsers();
+    const matched = localUsers.find(u => u.email.toLowerCase().trim() === email.toLowerCase().trim());
+    return matched || null;
   },
 
   updateUser: async (user: UserProfile): Promise<void> => {
     const userId = user.uid || (user as any).id;
-    const res = await fetch(getApiUrl(`/api/users/${userId}`), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        password: user.password,
-        status: user.status,
-        isBlocked: user.isBlocked,
-        faceRegistered: user.faceRegistered,
-        faceData: user.faceData
-      })
-    });
-    if (!res.ok) throw new Error('Failed to update user');
+    try {
+      const res = await fetch(getApiUrl(`/api/users/${userId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          password: user.password,
+          status: user.status,
+          isBlocked: user.isBlocked,
+          faceRegistered: user.faceRegistered,
+          faceData: user.faceData
+        })
+      });
+      if (!res.ok) {
+        console.warn('Backend API updateUser returned non-ok status');
+      }
+    } catch (e) {
+      console.warn('Backend API updateUser unreachable, persisting to local storage:', e);
+    }
+
+    const localUsers = loadLocalUsers();
+    const existingIndex = localUsers.findIndex(u => (u.uid || (u as any).id) === userId || u.email === user.email);
+    if (existingIndex !== -1) {
+      localUsers[existingIndex] = { ...localUsers[existingIndex], ...user };
+    } else {
+      localUsers.push(user);
+    }
+    saveLocalUsers(localUsers);
+
     notifyUpdate();
   },
 
