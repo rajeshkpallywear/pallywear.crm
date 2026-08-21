@@ -2764,7 +2764,7 @@ export default function AdminDashboard() {
                           // Morning First Login (Earliest AM login overall)
                           const morningFirstLogin = amLogs.length > 0
                             ? Math.min(...amLogs.map((l: any) => Number(l.loginTime)))
-                            : null;
+                            : (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
 
                           // Evening Last Login (Latest PM login, or overall latest login)
                           const eveningLastLogin = pmLogs.length > 0
@@ -2779,6 +2779,32 @@ export default function AdminDashboard() {
                           const morningInfo = getDaysAgoInfo(morningFirstLogin);
                           const eveningInfo = getDaysAgoInfo(eveningLastLogin);
                           const logoutInfo = getDaysAgoInfo(lastLogout);
+
+                          // --- Office Working Hours: 9:00 AM to 6:00 PM (9 Hours) ---
+                          // Check Morning Login Punctuality (Target 9:00 AM, grace up to 9:15 AM)
+                          let isMorningLate = false;
+                          let morningLateTimeStr = '';
+                          if (morningFirstLogin) {
+                            const mObj = new Date(morningFirstLogin);
+                            const mHr = mObj.getHours();
+                            const mMin = mObj.getMinutes();
+                            if (mHr > 9 || (mHr === 9 && mMin > 15)) {
+                              isMorningLate = true;
+                              morningLateTimeStr = mObj.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+                            }
+                          }
+
+                          // Check Evening Logout Punctuality (Target 6:00 PM / 18:00)
+                          let isLogoutEarly = false;
+                          let logoutEarlyTimeStr = '';
+                          if (lastLogout && !isActiveNow) {
+                            const lObj = new Date(lastLogout);
+                            const lHr = lObj.getHours();
+                            if (lHr < 18) {
+                              isLogoutEarly = true;
+                              logoutEarlyTimeStr = lObj.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+                            }
+                          }
 
                           // --- Group logs by Calendar Day (YYYY-MM-DD) to calculate Daily & Monthly hours accurately ---
                           const dailyMap: Record<string, { logins: any[]; dayStart: number; dayEnd: number; dayWorkedMs: number }> = {};
@@ -2822,7 +2848,7 @@ export default function AdminDashboard() {
                           let latestDayLabel = '';
                           let shiftBadgeText = 'No Activity';
                           let shiftBadgeStyle = 'bg-gray-50 text-gray-400 border-gray-200';
-                          let punctualitySubtext = 'Shift: 9:00 AM – 7:00 PM';
+                          let punctualitySubtext = 'Shift: 9:00 AM – 6:00 PM';
 
                           if (latestDayData) {
                             const dayMs = Math.min(latestDayData.dayWorkedMs, 12 * 3600 * 1000);
@@ -2836,26 +2862,30 @@ export default function AdminDashboard() {
                             const workHrsDec = dayMs / 3600000;
                             if (isActiveNow) {
                               shiftBadgeText = `Active (${dailyHoursText})`;
-                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                            } else if (workHrsDec >= 9.5) {
+                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold';
+                            } else if (isMorningLate && isLogoutEarly) {
+                              shiftBadgeText = `LOP: Late & Early Exit (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
+                            } else if (isMorningLate) {
+                              shiftBadgeText = `LOP: Late Entry (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
+                            } else if (isLogoutEarly) {
+                              shiftBadgeText = `LOP: Early Exit (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
+                            } else if (workHrsDec >= 8.5) {
                               shiftBadgeText = `Full Shift (${dailyHoursText})`;
-                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
                             } else if (workHrsDec >= 4) {
                               shiftBadgeText = `Partial Shift (${dailyHoursText})`;
-                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300';
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
                             } else {
-                              shiftBadgeText = `Short Shift (${dailyHoursText})`;
-                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+                              shiftBadgeText = `Short Shift LOP (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
                             }
 
-                            const startHr = dObj.getHours();
-                            const startMin = dObj.getMinutes();
-                            if (startHr < 9 || (startHr === 9 && startMin <= 15)) {
-                              punctualitySubtext = 'On Time (9:00 AM Start)';
-                            } else {
-                              const startTime12 = dObj.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
-                              punctualitySubtext = `Late Entry (${startTime12})`;
-                            }
+                            const entryDetail = isMorningLate ? `Late Entry (${morningLateTimeStr})` : 'On Time (9 AM Start)';
+                            const exitDetail = lastLogout ? (isLogoutEarly ? `Early Exit (${logoutEarlyTimeStr})` : 'On Time Exit (6 PM)') : 'No Logout';
+                            punctualitySubtext = `${entryDetail} • ${exitDetail}`;
                           }
 
                           return (
@@ -2891,9 +2921,20 @@ export default function AdminDashboard() {
                               <td className="px-6 py-4">
                                 {morningInfo ? (
                                   <div>
-                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200 inline-block mb-1">
-                                      AM Login
-                                    </span>
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200 inline-block">
+                                        AM Login
+                                      </span>
+                                      {isMorningLate ? (
+                                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300 inline-block">
+                                          🔴 Late (LOP)
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300 inline-block">
+                                          🟢 On Time
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="font-mono text-xs font-bold text-amber-900">{morningInfo.fullDateTime}</p>
                                   </div>
                                 ) : (
@@ -2938,9 +2979,20 @@ export default function AdminDashboard() {
                                   </span>
                                 ) : logoutInfo ? (
                                   <div>
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mb-1 ${logoutInfo.colorClass}`}>
-                                      {logoutInfo.daysTag}
-                                    </span>
+                                    <div className="flex flex-wrap items-center gap-1 mb-1">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block ${logoutInfo.colorClass}`}>
+                                        {logoutInfo.daysTag}
+                                      </span>
+                                      {isLogoutEarly ? (
+                                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300 inline-block">
+                                          🔴 Early Exit (LOP)
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300 inline-block">
+                                          🟢 On Time
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="font-mono text-xs font-semibold text-gray-600">{logoutInfo.fullDateTime}</p>
                                   </div>
                                 ) : (
@@ -3109,6 +3161,21 @@ export default function AdminDashboard() {
 
                           const monthlyHoursText = `${Math.floor(totalMonthlyMs / 3600000)}h ${Math.round((totalMonthlyMs % 3600000) / 60000)}m`;
 
+                          let isMorningLate = false;
+                          if (morningFirstLogin) {
+                            const mObj = new Date(morningFirstLogin);
+                            const mHr = mObj.getHours();
+                            const mMin = mObj.getMinutes();
+                            if (mHr > 9 || (mHr === 9 && mMin > 15)) isMorningLate = true;
+                          }
+
+                          let isLogoutEarly = false;
+                          if (lastLogout && !isActiveNow) {
+                            const lObj = new Date(lastLogout);
+                            const lHr = lObj.getHours();
+                            if (lHr < 18) isLogoutEarly = true;
+                          }
+
                           const sortedDayKeys = Object.keys(dailyMap).sort().reverse();
                           const latestDayKey = sortedDayKeys[0];
                           const latestDayData = latestDayKey ? dailyMap[latestDayKey] : null;
@@ -3126,16 +3193,25 @@ export default function AdminDashboard() {
                             const workHrsDec = dayMs / 3600000;
                             if (isActiveNow) {
                               shiftBadgeText = 'Active Working';
-                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                            } else if (workHrsDec >= 9.5) {
-                              shiftBadgeText = 'Full Shift (10 hrs)';
-                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold';
+                            } else if (isMorningLate && isLogoutEarly) {
+                              shiftBadgeText = 'LOP: Late & Early Exit';
+                              shiftBadgeStyle = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
+                            } else if (isMorningLate) {
+                              shiftBadgeText = 'LOP: Late Entry';
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
+                            } else if (isLogoutEarly) {
+                              shiftBadgeText = 'LOP: Early Exit';
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
+                            } else if (workHrsDec >= 8.5) {
+                              shiftBadgeText = 'Full Shift (9 hrs)';
+                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
                             } else if (workHrsDec >= 4) {
                               shiftBadgeText = 'Partial Shift';
-                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300';
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300 font-bold';
                             } else {
-                              shiftBadgeText = 'Short Shift';
-                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+                              shiftBadgeText = 'Short Shift (LOP)';
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
                             }
                           }
 
@@ -3143,13 +3219,27 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                               {/* Morning First Login Card */}
                               <div className="p-4 bg-amber-50/70 border border-amber-200/70 rounded-2xl shadow-xs">
-                                <div className="flex items-center gap-1.5 text-amber-800 mb-1">
-                                  <Clock className="w-4 h-4 text-amber-600" />
-                                  <span className="text-[10px] font-black uppercase tracking-wider">Morning First Login</span>
+                                <div className="flex items-center justify-between gap-1.5 text-amber-800 mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4 text-amber-600" />
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Morning First Login</span>
+                                  </div>
+                                  {morningInfo && (
+                                    isMorningLate ? (
+                                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300">
+                                        🔴 Late Entry (LOP)
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        🟢 On Time
+                                      </span>
+                                    )
+                                  )}
                                 </div>
                                 <p className="text-xs font-black text-amber-950 font-mono mt-1">
                                   {morningInfo ? morningInfo.fullDateTime : 'No AM Login Recorded'}
                                 </p>
+                                <p className="text-[9px] text-gray-400 font-bold mt-1">Standard Start: 9:00 AM</p>
                               </div>
 
                               {/* Evening Last Login Card (Days Format) */}
@@ -3178,9 +3268,15 @@ export default function AdminDashboard() {
                                     <span className="text-[10px] font-black uppercase tracking-wider">Last Logout</span>
                                   </div>
                                   {logoutInfo && !isActiveNow && (
-                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200">
-                                      {logoutInfo.daysTag}
-                                    </span>
+                                    isLogoutEarly ? (
+                                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300">
+                                        🔴 Early Exit (LOP)
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        🟢 On Time
+                                      </span>
+                                    )
                                   )}
                                 </div>
                                 <p className="text-xs font-black text-purple-950 font-mono mt-1">
@@ -3194,9 +3290,10 @@ export default function AdminDashboard() {
                                     '—'
                                   )}
                                 </p>
+                                <p className="text-[9px] text-gray-400 font-bold mt-1">Standard Logout: 6:00 PM</p>
                               </div>
 
-                              {/* Working Hours Card (9:00 AM - 7:00 PM) */}
+                              {/* Working Hours Card (9:00 AM - 6:00 PM) */}
                               <div className="p-4 bg-indigo-50/70 border border-indigo-200/70 rounded-2xl shadow-xs">
                                 <div className="flex items-center justify-between gap-1.5 text-indigo-800 mb-1">
                                   <div className="flex items-center gap-1.5">
@@ -3210,7 +3307,7 @@ export default function AdminDashboard() {
                                 <p className="text-sm font-black text-indigo-950 font-mono mt-1">
                                   {workingHoursText}
                                 </p>
-                                <p className="text-[9px] text-gray-400 font-bold mt-0.5">Target: 9 AM – 7 PM (10 hrs)</p>
+                                <p className="text-[9px] text-gray-400 font-bold mt-0.5">Target: 9 AM – 6 PM (9 hrs)</p>
                               </div>
                             </div>
                           );
