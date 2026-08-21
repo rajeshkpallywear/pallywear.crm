@@ -9,7 +9,7 @@ import {
   Thermometer, Snowflake, Award, Activity
 } from 'lucide-react';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import Logo from '../components/Logo';
@@ -176,45 +176,157 @@ export default function LeadDashboard() {
   const inputCls = "w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all";
   const labelCls = "block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5";
 
-  // Build per-user lead stats (Only Marketing, Staff, and Online Team roles, plus daniel.smpallywear@gmail.com)
+  const isDeliveredStatus = (status?: string) => {
+    if (!status) return false;
+    const s = String(status).toLowerCase().trim();
+    return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
+  };
+
+  // Build per-user lead & revenue stats (For all registered staff)
   const userLeadStats = useMemo(() => {
-    const allowedRoles = ['marketing', 'staff', 'onlineteam', 'UserRole.STAFF', 'UserRole.MARKETING', 'UserRole.ONLINETEAM'];
-    const filteredStaff = registeredUsers.filter((u: any) => 
-      allowedRoles.includes(u.role) || u.email?.toLowerCase() === 'daniel.smpallywear@gmail.com'
-    );
+    const filteredStaff = registeredUsers.length > 0 ? registeredUsers : (user ? [user] : []);
 
     return filteredStaff.map((u: any) => {
-      const userLeads = leads.filter(l =>
-        l.createdBy === u.id ||
-        l.createdBy === u.uid ||
-        l.createdByName === u.name ||
-        l.assignedTo === u.id ||
-        l.assignedTo === u.uid ||
-        l.assignedTo === u.email ||
-        (u.email?.toLowerCase() === 'daniel.smpallywear@gmail.com' && (l.assignedTo === 'admin-daniel' || (l.assignedToName || '').toLowerCase().includes('daniel')))
-      );
-      // Converted revenue strictly from Delivery status orders
-      const userOrders = orders.filter(o =>
-        (o.createdBy === u.id || o.createdBy === u.uid || o.createdByName === u.name) &&
-        o.status === OrderStatus.DELIVERY
-      );
+      const uName = (u.name || '').toLowerCase().trim();
+      const uEmail = (u.email || '').toLowerCase().trim();
+      const uId = String(u.id || u.uid || '');
+
+      const userLeads = leads.filter(l => {
+        const createdBy = String(l.createdBy || '');
+        const createdByName = (l.createdByName || '').toLowerCase().trim();
+        const assignedTo = String(l.assignedTo || '');
+        const assignedToName = ((l as any).assignedToName || '').toLowerCase().trim();
+
+        return (
+          (uId && (createdBy === uId || assignedTo === uId)) ||
+          (u.id && (createdBy === String(u.id) || assignedTo === String(u.id))) ||
+          (u.uid && (createdBy === String(u.uid) || assignedTo === String(u.uid))) ||
+          (uEmail && (assignedTo.toLowerCase() === uEmail || createdBy.toLowerCase() === uEmail)) ||
+          (uName && (createdByName === uName || assignedToName === uName)) ||
+          (uEmail === 'daniel.smpallywear@gmail.com' && (assignedTo === 'admin-daniel' || assignedToName.includes('daniel')))
+        );
+      });
+
+      // Converted revenue strictly from Delivery / Delivered status orders
+      const userOrders = orders.filter(o => {
+        const createdBy = String(o.createdBy || '');
+        const createdByName = (o.createdByName || '').toLowerCase().trim();
+        const assignedTo = String((o as any).assignedTo || '');
+        const isDelivered = isDeliveredStatus(o.status);
+
+        const matchesUser = (
+          (uId && (createdBy === uId || assignedTo === uId)) ||
+          (u.id && (createdBy === String(u.id) || assignedTo === String(u.id))) ||
+          (u.uid && (createdBy === String(u.uid) || assignedTo === String(u.uid))) ||
+          (uEmail && (assignedTo.toLowerCase() === uEmail || createdBy.toLowerCase() === uEmail)) ||
+          (uName && createdByName === uName)
+        );
+
+        return matchesUser && isDelivered;
+      });
+
       const totalLeads = userLeads.length;
       const hotLeads = userLeads.filter(l => l.leadType === 'Hot').length;
       const warmLeads = userLeads.filter(l => l.leadType === 'Warm').length;
       const coldLeads = userLeads.filter(l => l.leadType === 'Cold').length;
       const forecastedValue = userLeads.reduce((sum, l) => sum + (Number(l.forecastedValue) || 0), 0);
-      const convertedValue = userOrders.reduce((sum, o) => sum + (Number(o.financials?.totalAmount) || 0), 0);
-      const conversionRate = totalLeads > 0 ? Math.round((userLeads.filter(l => (Number(l.totalOrderValue) || 0) > 0).length / totalLeads) * 100) : 0;
-      const deliveryOrdersCount = userOrders.length;
-      return { ...u, totalLeads, hotLeads, warmLeads, coldLeads, forecastedValue, convertedValue, conversionRate, deliveryOrdersCount, leads: userLeads };
-    });
-  }, [registeredUsers, leads, orders]);
 
-  // Totals calculated from filtered roles only
+      // Delivered orders revenue
+      const deliveredOrdersRevenue = userOrders.reduce((sum, o) => {
+        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+
+      // Lead converted revenue
+      const leadConvertedValue = userLeads.reduce((sum, l) => {
+        const val = Number(l.convertedValue ?? l.totalOrderValue ?? 0);
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+
+      const convertedValue = deliveredOrdersRevenue + leadConvertedValue;
+      const deliveryOrdersCount = userOrders.length;
+      const conversionRate = totalLeads > 0
+        ? Math.round((userLeads.filter(l => (Number(l.totalOrderValue || l.convertedValue) || 0) > 0 || l.status === 'Converted').length / totalLeads) * 100)
+        : (deliveryOrdersCount > 0 ? 100 : 0);
+
+      return {
+        ...u,
+        totalLeads,
+        hotLeads,
+        warmLeads,
+        coldLeads,
+        forecastedValue,
+        convertedValue,
+        deliveredOrdersRevenue,
+        leadConvertedValue,
+        conversionRate,
+        deliveryOrdersCount,
+        leads: userLeads,
+        orders: userOrders
+      };
+    });
+  }, [registeredUsers, leads, orders, user]);
+
+  // Total delivered orders revenue across system
+  const systemDeliveredOrdersRevenue = useMemo(() => {
+    return orders
+      .filter(o => isDeliveredStatus(o.status))
+      .reduce((sum, o) => {
+        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+  }, [orders]);
+
+  // Totals calculated from all staff
   const totalLeads = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.totalLeads, 0), [userLeadStats]);
   const totalForecasted = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.forecastedValue, 0), [userLeadStats]);
-  const totalConverted = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.convertedValue, 0), [userLeadStats]);
+  const totalConverted = useMemo(() => {
+    const userSum = userLeadStats.reduce((sum, u) => sum + u.convertedValue, 0);
+    return Math.max(systemDeliveredOrdersRevenue, userSum);
+  }, [userLeadStats, systemDeliveredOrdersRevenue]);
   const totalHot = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.hotLeads, 0), [userLeadStats]);
+
+  // Revenue trend timeline chart data (Converted & Forecasted Revenue)
+  const revenueTimelineData = useMemo(() => {
+    const combined = [
+      ...orders.filter(o => isDeliveredStatus(o.status)).map(o => ({
+        date: Number(o.createdAt || Date.now()),
+        converted: Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0),
+        forecasted: 0,
+        label: o.customerInfo?.name || o.clientName || 'Order'
+      })),
+      ...leads.map(l => ({
+        date: Number(l.createdAt || (l.entryDate ? new Date(l.entryDate).getTime() : Date.now())),
+        converted: Number(l.convertedValue ?? l.totalOrderValue ?? 0),
+        forecasted: Number(l.forecastedValue || 0),
+        label: l.name || 'Lead'
+      }))
+    ].filter(item => !isNaN(item.date) && (item.converted > 0 || item.forecasted > 0))
+     .sort((a, b) => a.date - b.date);
+
+    if (combined.length === 0) {
+      return userLeadStats.map(u => ({
+        name: u.name || 'Staff',
+        converted: u.convertedValue || 0,
+        forecasted: u.forecastedValue || 0,
+      })).filter(d => d.converted > 0 || d.forecasted > 0);
+    }
+
+    let cumConverted = 0;
+    let cumForecasted = 0;
+    return combined.map((item, idx) => {
+      cumConverted += item.converted;
+      cumForecasted += item.forecasted;
+      const dateStr = new Date(item.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      return {
+        name: dateStr,
+        converted: cumConverted,
+        forecasted: cumForecasted,
+        itemAmount: item.converted,
+        label: item.label
+      };
+    });
+  }, [orders, leads, userLeadStats]);
 
   // Chart: leads by role
   const byRoleChartData = useMemo(() => {
@@ -241,9 +353,7 @@ export default function LeadDashboard() {
   }, [userLeadStats, search, roleFilter]);
 
   const uniqueRoles = useMemo(() => {
-    const allowed = ['marketing', 'staff', 'onlineteam', 'admin'];
-    return Array.from(new Set(registeredUsers.map((u: any) => u.role)))
-      .filter((role: string) => allowed.includes(role));
+    return Array.from(new Set(registeredUsers.map((u: any) => u.role))).filter(Boolean);
   }, [registeredUsers]);
 
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -326,27 +436,55 @@ export default function LeadDashboard() {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Leads by Role Bar Chart */}
+          {/* Revenue Growth & Trend AreaChart */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-xs p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="w-4 h-4 text-brand-primary" />
-              <h3 className="text-sm font-black text-gray-800">Leads by Role</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-black text-gray-800">Revenue Growth & Trend</h3>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-bold">
+                <span className="flex items-center gap-1.5 text-emerald-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Converted Revenue
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" /> Forecasted Pipeline
+                </span>
+              </div>
             </div>
-            {byRoleChartData.length === 0 ? (
-              <div className="h-48 flex items-center justify-center text-gray-300 text-sm font-medium">No lead data yet</div>
+            {revenueTimelineData.length === 0 ? (
+              <div className="h-52 flex items-center justify-center text-gray-300 text-sm font-medium">No revenue trend data recorded yet</div>
             ) : (
-              <div className="h-48">
+              <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={byRoleChartData} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                  <AreaChart data={revenueTimelineData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorConverted" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorForecasted" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                     <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700, fill: '#9ca3af' }} />
-                    <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#9ca3af' }} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 11, fontWeight: 700 }}
-                      cursor={{ fill: '#f9fafb' }}
+                    <YAxis
+                      tick={{ fontSize: 9, fontWeight: 700, fill: '#9ca3af' }}
+                      tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
                     />
-                    <Bar dataKey="value" name="Leads" fill="#3291B6" radius={[6, 6, 0, 0]} />
-                  </BarChart>
+                    <Tooltip
+                      formatter={(val: any, name: any) => [
+                        `₹${Number(val || 0).toLocaleString('en-IN')}`,
+                        name === 'converted' ? 'Converted Revenue' : 'Forecasted Revenue'
+                      ]}
+                      contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 11, fontWeight: 700 }}
+                      cursor={{ stroke: '#10b981', strokeWidth: 1.5, strokeDasharray: '3 3' }}
+                    />
+                    <Area type="monotone" dataKey="forecasted" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorForecasted)" name="forecasted" />
+                    <Area type="monotone" dataKey="converted" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorConverted)" name="converted" />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             )}
@@ -530,15 +668,16 @@ export default function LeadDashboard() {
                       </td>
                     </motion.tr>
 
-                    {/* Expanded Lead Details */}
+                    {/* Expanded Lead & Delivered Order Details */}
                     {expandedUser === (u.id || u.uid) && (
                       <tr>
                         <td colSpan={11} className="bg-gray-50/80 px-5 py-4 border-t border-gray-100">
-                          <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-xs">
-                            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                          <div className="space-y-4">
+                            {/* Header & Add Action buttons */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-xs">
                               <div className="flex items-center gap-2">
-                                <Activity className="w-3.5 h-3.5 text-brand-primary" />
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{u.name}'s Leads ({u.leads.length})</span>
+                                <Activity className="w-4 h-4 text-brand-primary" />
+                                <span className="text-xs font-black text-gray-800 uppercase tracking-wider">{u.name}'s Lead & Revenue Details</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <button
@@ -553,7 +692,7 @@ export default function LeadDashboard() {
                                     });
                                     setShowAddLeadModal(true);
                                   }}
-                                  className="px-2.5 py-1 bg-violet-600 hover:bg-violet-700 text-white text-[9px] font-black uppercase tracking-wider rounded-lg border-none cursor-pointer transition-all flex items-center gap-1 shadow-sm"
+                                  className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl border-none cursor-pointer transition-all flex items-center gap-1 shadow-xs"
                                 >
                                   + Add Lead Convert
                                 </button>
@@ -568,51 +707,119 @@ export default function LeadDashboard() {
                                     });
                                     setShowAddRevenueModal(true);
                                   }}
-                                  className="px-2.5 py-1 bg-brand-primary hover:bg-brand-primary/95 text-white text-[9px] font-black uppercase tracking-wider rounded-lg border-none cursor-pointer transition-all flex items-center gap-1 shadow-sm"
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl border-none cursor-pointer transition-all flex items-center gap-1 shadow-xs"
                                 >
                                   + Add Revenue
                                 </button>
                               </div>
                             </div>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-xs text-left">
-                                <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
-                                  <tr>
-                                    <th className="px-4 py-2.5">Lead Name</th>
-                                    <th className="px-4 py-2.5">Company</th>
-                                    <th className="px-4 py-2.5">Type</th>
-                                    <th className="px-4 py-2.5">Entry Date</th>
-                                    <th className="px-4 py-2.5 text-right">Forecasted</th>
-                                    <th className="px-4 py-2.5 text-right">Converted</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                  {u.leads.length === 0 ? (
+
+                            {/* Delivered Orders Table */}
+                            <div className="rounded-xl border border-emerald-100 overflow-hidden bg-white shadow-xs">
+                              <div className="bg-emerald-50/60 px-4 py-2 border-b border-emerald-100 flex items-center justify-between">
+                                <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-1.5">
+                                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                                  Delivered Orders & Revenue ({u.orders?.length || 0})
+                                </span>
+                                <span className="text-[10px] font-black text-emerald-700">
+                                  Total: {fmt(u.deliveredOrdersRevenue || 0)}
+                                </span>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left">
+                                  <thead className="bg-emerald-50/30 text-emerald-800 font-black uppercase tracking-widest text-[9px] border-b border-emerald-100">
                                     <tr>
-                                      <td colSpan={6} className="py-6 text-center text-gray-400 italic">
-                                        No leads found for this staff member. Click "+ Add Lead Convert" above to add one.
-                                      </td>
+                                      <th className="px-4 py-2">Order ID</th>
+                                      <th className="px-4 py-2">Client / Customer</th>
+                                      <th className="px-4 py-2">Category</th>
+                                      <th className="px-4 py-2">Status</th>
+                                      <th className="px-4 py-2">Date</th>
+                                      <th className="px-4 py-2 text-right">Delivered Amount</th>
                                     </tr>
-                                  ) : (
-                                    u.leads.map((l: any) => (
-                                      <tr key={l.id} className="hover:bg-gray-50/60 transition-colors">
-                                        <td className="px-4 py-2.5 font-semibold text-gray-800">{l.name || '—'}</td>
-                                        <td className="px-4 py-2.5 text-gray-500">{l.companyName || '—'}</td>
-                                        <td className="px-4 py-2.5"><LeadTypeBadge type={l.leadType} /></td>
-                                        <td className="px-4 py-2.5 text-gray-500 font-mono">
-                                          {l.entryDate ? new Date(l.entryDate).toLocaleDateString('en-IN') : '—'}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right font-bold text-gray-700">
-                                          {(Number(l.forecastedValue) || 0) > 0 ? fmt(Number(l.forecastedValue)) : <span className="text-gray-300">—</span>}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right font-black text-emerald-700">
-                                          {(Number(l.totalOrderValue) || 0) > 0 ? fmt(Number(l.totalOrderValue)) : <span className="text-gray-300">—</span>}
+                                  </thead>
+                                  <tbody className="divide-y divide-emerald-50">
+                                    {!u.orders || u.orders.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={6} className="py-4 text-center text-gray-400 italic">
+                                          No delivered orders found for {u.name}. Click "+ Add Revenue" to record revenue.
                                         </td>
                                       </tr>
-                                    ))
-                                  )}
-                                </tbody>
-                              </table>
+                                    ) : (
+                                      u.orders.map((o: any) => {
+                                        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? o.totalAmount ?? 0);
+                                        return (
+                                          <tr key={o.id} className="hover:bg-emerald-50/20 transition-colors">
+                                            <td className="px-4 py-2 font-mono font-bold text-gray-800">#{o.id}</td>
+                                            <td className="px-4 py-2 font-semibold text-gray-700">{o.customerInfo?.name || o.clientName || '—'}</td>
+                                            <td className="px-4 py-2 text-gray-500">{o.category || 'General'}</td>
+                                            <td className="px-4 py-2">
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                {o.status}
+                                              </span>
+                                            </td>
+                                            <td className="px-4 py-2 text-gray-500 font-mono">
+                                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—'}
+                                            </td>
+                                            <td className="px-4 py-2 text-right font-black text-emerald-700">
+                                              {fmt(amt)}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Leads Table */}
+                            <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-xs">
+                              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-1.5">
+                                  <Users className="w-3.5 h-3.5 text-brand-primary" />
+                                  Leads ({u.leads?.length || 0})
+                                </span>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left">
+                                  <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
+                                    <tr>
+                                      <th className="px-4 py-2.5">Lead Name</th>
+                                      <th className="px-4 py-2.5">Company</th>
+                                      <th className="px-4 py-2.5">Type</th>
+                                      <th className="px-4 py-2.5">Entry Date</th>
+                                      <th className="px-4 py-2.5 text-right">Forecasted</th>
+                                      <th className="px-4 py-2.5 text-right">Converted</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-50">
+                                    {u.leads.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={6} className="py-6 text-center text-gray-400 italic">
+                                          No leads found for this staff member. Click "+ Add Lead Convert" above to add one.
+                                        </td>
+                                      </tr>
+                                    ) : (
+                                      u.leads.map((l: any) => (
+                                        <tr key={l.id} className="hover:bg-gray-50/60 transition-colors">
+                                          <td className="px-4 py-2.5 font-semibold text-gray-800">{l.name || '—'}</td>
+                                          <td className="px-4 py-2.5 text-gray-500">{l.companyName || '—'}</td>
+                                          <td className="px-4 py-2.5"><LeadTypeBadge type={l.leadType} /></td>
+                                          <td className="px-4 py-2.5 text-gray-500 font-mono">
+                                            {l.entryDate ? new Date(l.entryDate).toLocaleDateString('en-IN') : '—'}
+                                          </td>
+                                          <td className="px-4 py-2.5 text-right font-bold text-gray-700">
+                                            {(Number(l.forecastedValue) || 0) > 0 ? fmt(Number(l.forecastedValue)) : <span className="text-gray-300">—</span>}
+                                          </td>
+                                          <td className="px-4 py-2.5 text-right font-black text-emerald-700">
+                                            {(Number(l.totalOrderValue || l.convertedValue) || 0) > 0 ? fmt(Number(l.totalOrderValue || l.convertedValue)) : <span className="text-gray-300">—</span>}
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           </div>
                         </td>

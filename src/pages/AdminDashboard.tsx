@@ -11,7 +11,7 @@ import {
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, PieChart, Pie, Cell
 } from 'recharts';
 import { Button } from '../components/Button';
@@ -820,6 +820,8 @@ export default function AdminDashboard() {
     const [showAdminLogsModal, setShowAdminLogsModal] = useState(false);
     const [selectedAdminLeadForLogs, setSelectedAdminLeadForLogs] = useState<Lead | null>(null);
     const [userLogsLoading, setUserLogsLoading] = useState(false);
+    const [selectedUserForActivity, setSelectedUserForActivity] = useState<any | null>(null);
+    const [showUserActivityModal, setShowUserActivityModal] = useState(false);
 
     const fetchUserLogs = async () => {
       setUserLogsLoading(true);
@@ -1490,6 +1492,17 @@ export default function AdminDashboard() {
                 <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
               </button>
               <button
+                onClick={() => selectTab('user-logs')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  (activeTab === 'user-logs' || activeTab === 'user-activity') ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "User Activity" : ""}
+              >
+                <Clock className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>User Activity</span>}
+              </button>
+              <button
                 onClick={() => selectTab('logs')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
@@ -1762,19 +1775,66 @@ export default function AdminDashboard() {
 
                 {/* Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-6">Aggregate Revenue</h3>
+                  {/* Global Orders Graph (Replaced Aggregate Revenue) */}
+                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
+                      <div>
+                        <h3 className="font-bold text-gray-800 text-base">Global Orders Workflow &amp; Volume</h3>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                          Cumulative global order growth &amp; financial throughput trend
+                        </p>
+                      </div>
+                      <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3 py-1 rounded-full">
+                        {orders.length} Global Orders
+                      </span>
+                    </div>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                        <AreaChart data={leads.map(l => ({ name: l.name, val: l.totalOrderValue }))}>
+                        <AreaChart data={
+                          orders.length === 0
+                            ? [{ name: 'No Orders', orders: 0, val: 0 }]
+                            : [...orders]
+                                .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0))
+                                .reduce((acc: any[], o, idx) => {
+                                  const prevCount = acc.length > 0 ? acc[acc.length - 1].orders : 0;
+                                  const prevVal = acc.length > 0 ? acc[acc.length - 1].val : 0;
+                                  const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? o.totalAmount ?? 0);
+                                  const dateStr = o.createdAt
+                                    ? new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+                                    : `Ord #${idx + 1}`;
+                                  acc.push({
+                                    name: dateStr,
+                                    orders: prevCount + 1,
+                                    val: prevVal + (isNaN(amt) ? 0 : amt),
+                                    orderId: `#${o.id.slice(-6)}`,
+                                    client: o.customerInfo?.name || 'Client',
+                                    amount: amt,
+                                    status: o.status
+                                  });
+                                  return acc;
+                                }, [])
+                        }>
                           <defs>
-                            <linearGradient id="colorAdmin" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3291B6" stopOpacity={0.1} />
-                              <stop offset="95%" stopColor="#3291B6" stopOpacity={0} />
+                            <linearGradient id="colorGlobalOrders" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3291B6" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#3291B6" stopOpacity={0.02} />
                             </linearGradient>
                           </defs>
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
-                          <Area type="monotone" dataKey="val" stroke="#3291B6" strokeWidth={2} fillOpacity={1} fill="url(#colorAdmin)" />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }} />
+                          <YAxis
+                            tick={{ fontSize: 10, fontWeight: 700, fill: '#3291B6' }}
+                            tickFormatter={(v) => `${v}`}
+                          />
+                          <Tooltip
+                            formatter={(val: any, name: any) => [
+                              name === 'val' ? `₹${Number(val || 0).toLocaleString('en-IN')}` : `${val} Total Orders`,
+                              name === 'val' ? 'Cumulative Revenue' : 'Cumulative Orders'
+                            ]}
+                            contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '11px', fontWeight: '700' }}
+                            cursor={{ stroke: '#3291B6', strokeWidth: 1.5, strokeDasharray: '3 3' }}
+                          />
+                          <Area type="monotone" dataKey="orders" stroke="#3291B6" strokeWidth={3.5} fillOpacity={1} fill="url(#colorGlobalOrders)" name="orders" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -2410,179 +2470,391 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            ) : activeTab === 'user-logs' ? (
+            ) : (activeTab === 'user-logs' || activeTab === 'user-activity') ? (
               <div className="space-y-8 animate-fadeIn text-left">
-                {/* User Activity & Login Summary Table (First Login, Last Logout, Total Logins) */}
+                {/* Header Banner */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-xs">
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-brand-primary" />
+                      User Activity & Login Monitoring
+                    </h2>
+                    <p className="text-gray-500 text-xs mt-1 font-medium">
+                      Real-time morning first login, last login date & time, logout timestamps, and session history per user
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => fetchUserLogs()}
+                    className="px-4 py-2 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer border-none flex items-center gap-2"
+                  >
+                    Refresh Activity Logs
+                  </button>
+                </div>
+
+                {/* Main User Activity Table */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
                   <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-gray-800 text-sm">User Activity &amp; Login Summary</h3>
+                      <h3 className="font-bold text-gray-800 text-sm">Team User Activity Summary</h3>
                       <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
-                        First login date &amp; time, last logout date &amp; time and total login count saved in DB
+                        Click on any user row to view their individual morning first login, last login & session history
                       </p>
                     </div>
+                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+                      {registeredUsers.length} Users Registered
+                    </span>
                   </div>
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-indigo-50/70 text-indigo-900 font-bold uppercase tracking-wider text-[10px] border-b border-indigo-100">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-black uppercase tracking-wider text-[9px] border-b border-gray-100">
                       <tr>
                         <th className="px-6 py-4">User</th>
-                        <th className="px-6 py-4">Email</th>
-                        <th className="px-6 py-4">First Login Date &amp; Time</th>
-                        <th className="px-6 py-4">Last Logout Date &amp; Time</th>
-                        <th className="px-6 py-4 text-center">Total Logins</th>
+                        <th className="px-6 py-4">Role</th>
+                        <th className="px-6 py-4">🌅 Morning First Login</th>
+                        <th className="px-6 py-4">🕒 Last Login Date & Time</th>
+                        <th className="px-6 py-4">🚪 Last Logout Date & Time</th>
+                        <th className="px-6 py-4 text-center">Logins</th>
+                        <th className="px-6 py-4 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {userLogsLoading ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-xs text-gray-400 italic">Loading user activity summary...</td>
+                          <td colSpan={7} className="px-6 py-12 text-center text-xs text-gray-400 italic">
+                            Loading team user activity...
+                          </td>
                         </tr>
-                      ) : calculatedSummaries.length > 0 ? (
-                        calculatedSummaries.map((summary: any, idx: number) => {
-                          const regUser = registeredUsers.find(ru => ru.id === summary.userId || ru.email === summary.userEmail);
-                          const displayName = regUser?.name || summary.userName || summary.userId;
-                          const displayEmail = regUser?.email || summary.userEmail || '—';
+                      ) : registeredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12 text-center text-xs text-gray-400 italic">
+                            No registered users found.
+                          </td>
+                        </tr>
+                      ) : (
+                        registeredUsers.map((uItem: any) => {
+                          const uLogs = userLogs.filter((log: any) =>
+                            log.userId === uItem.id ||
+                            log.userId === uItem.uid ||
+                            (log.userEmail && uItem.email && log.userEmail.toLowerCase().trim() === uItem.email.toLowerCase().trim()) ||
+                            (log.userName && uItem.name && log.userName.toLowerCase().trim() === uItem.name.toLowerCase().trim())
+                          );
 
-                          const firstLoginNum = Number(summary.firstLogin || summary.first_login);
-                          const lastLogoutNum = summary.lastLogout || summary.last_logout ? Number(summary.lastLogout || summary.last_logout) : null;
-                          const countVal = summary.loginCount || summary.login_count || summary.count || 0;
+                          const now = new Date();
+                          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                          const todayLogs = uLogs.filter((log: any) => Number(log.loginTime) >= todayStart);
 
-                          const firstLoginStr = firstLoginNum ? new Date(firstLoginNum).toLocaleString() : 'Not logged in yet';
-                          const lastLogoutStr = lastLogoutNum ? new Date(lastLogoutNum).toLocaleString() : (countVal > 0 ? '● Active Now' : '—');
+                          const morningFirstLogin = todayLogs.length > 0
+                            ? Math.min(...todayLogs.map((l: any) => Number(l.loginTime)))
+                            : (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+
+                          const lastLogin = uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null;
+                          const logoutLogs = uLogs.filter((l: any) => l.logoutTime);
+                          const lastLogout = logoutLogs.length > 0 ? Math.max(...logoutLogs.map((l: any) => Number(l.logoutTime))) : null;
+
+                          const isActiveNow = uLogs.some((l: any) => !l.logoutTime || Number(l.loginTime) > Number(l.logoutTime || 0));
 
                           return (
-                            <tr key={idx} className="hover:bg-indigo-50/20 transition-colors">
-                              <td className="px-6 py-4 font-bold text-gray-800 text-xs">{displayName}</td>
-                              <td className="px-6 py-4 text-xs text-gray-500 font-medium">{displayEmail}</td>
-                              <td className="px-6 py-4 text-xs text-indigo-700 font-mono font-medium">{firstLoginStr}</td>
-                              <td className="px-6 py-4 text-xs font-medium">
-                                {lastLogoutStr === '● Active Now' ? (
+                            <tr
+                              key={uItem.id || uItem.uid}
+                              onClick={() => {
+                                setSelectedUserForActivity(uItem);
+                                setShowUserActivityModal(true);
+                              }}
+                              className="hover:bg-brand-primary/5 transition-colors cursor-pointer group"
+                            >
+                              {/* User Info */}
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-black text-xs uppercase shadow-sm">
+                                    {uItem.name?.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-gray-800 text-xs group-hover:text-brand-primary transition-colors">{uItem.name}</p>
+                                    <p className="text-[10px] text-gray-400">{uItem.email}</p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Role */}
+                              <td className="px-6 py-4">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-gray-100 text-gray-600 border border-gray-200">
+                                  {uItem.role?.replace('_', ' ')}
+                                </span>
+                              </td>
+
+                              {/* Morning First Login */}
+                              <td className="px-6 py-4 font-mono font-bold text-amber-700">
+                                {morningFirstLogin ? new Date(morningFirstLogin).toLocaleString('en-IN') : <span className="text-gray-300">—</span>}
+                              </td>
+
+                              {/* Last Login */}
+                              <td className="px-6 py-4 font-mono font-bold text-blue-700">
+                                {lastLogin ? new Date(lastLogin).toLocaleString('en-IN') : <span className="text-gray-300">—</span>}
+                              </td>
+
+                              {/* Last Logout / Status */}
+                              <td className="px-6 py-4 font-mono font-bold">
+                                {isActiveNow ? (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active Now
                                   </span>
+                                ) : lastLogout ? (
+                                  <span className="text-gray-600">{new Date(lastLogout).toLocaleString('en-IN')}</span>
                                 ) : (
-                                  <span className="text-gray-500 font-mono">{lastLogoutStr}</span>
+                                  <span className="text-gray-300">—</span>
                                 )}
                               </td>
+
+                              {/* Logins Count */}
                               <td className="px-6 py-4 text-center">
-                                <span className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-black rounded-full border border-indigo-200 shadow-xs">
-                                  {countVal} {countVal === 1 ? 'Login' : 'Logins'}
+                                <span className="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-black rounded-full border border-indigo-100">
+                                  {uLogs.length}
                                 </span>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="px-6 py-4 text-center">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedUserForActivity(uItem);
+                                    setShowUserActivityModal(true);
+                                  }}
+                                  className="px-3 py-1 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary text-[10px] font-black uppercase tracking-wider rounded-lg border-none cursor-pointer transition-all"
+                                >
+                                  View Details
+                                </button>
                               </td>
                             </tr>
                           );
                         })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-xs text-gray-400 italic">No user activity recorded in database.</td>
-                        </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
 
-                {/* Login frequency stats */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider mb-4">Login Frequencies</h3>
-                  {userLogsLoading ? (
-                    <p className="text-xs text-gray-500 italic">Loading login metrics...</p>
-                  ) : userLoginCounts.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {userLoginCounts.map((countItem, idx) => {
-                        const regUser = registeredUsers.find(ru => ru.id === countItem.userId);
-                        const displayName = regUser?.name || countItem.userName || countItem.userId;
-                        const displayEmail = regUser?.email || countItem.userEmail || 'No email';
-                        return (
-                          <div key={idx} className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between shadow-xs animate-fadeIn">
-                            <div className="min-w-0">
-                              <p className="font-bold text-xs text-slate-800 truncate">{displayName}</p>
-                              <p className="text-[10px] text-slate-400 truncate mt-0.5">{displayEmail}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                                {countItem.count} Logins
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic">No login records found.</p>
-                  )}
-                </div>
-
-                {/* Detailed session history table */}
+                {/* Detailed Chronological Audit Logs */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
                   <div className="p-6 border-b border-gray-100">
-                    <h3 className="font-bold text-gray-800 text-sm">Detailed Session Logs</h3>
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Chronological record of user logins and logouts</p>
+                    <h3 className="font-bold text-gray-800 text-sm">Chronological Session Log History</h3>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">All login and logout events across all users</p>
                   </div>
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-100">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-black uppercase tracking-wider text-[9px] border-b border-gray-100">
                       <tr>
-                        <th className="px-6 py-4">User</th>
-                        <th className="px-6 py-4">Email</th>
-                        <th className="px-6 py-4">Login Time</th>
-                        <th className="px-6 py-4">Logout Time</th>
-                        <th className="px-6 py-4 text-right">Duration</th>
+                        <th className="px-6 py-3">User</th>
+                        <th className="px-6 py-3">Email</th>
+                        <th className="px-6 py-3">Login Time</th>
+                        <th className="px-6 py-3">Logout Time</th>
+                        <th className="px-6 py-3 text-right">Duration</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {userLogsLoading ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-xs text-gray-400 italic">Loading audit logs...</td>
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">Loading session logs...</td>
                         </tr>
                       ) : userLogs.length > 0 ? (
-                        userLogs.map((log) => {
-                          const regUser = registeredUsers.find(ru => ru.id === log.userId);
+                        userLogs.map((log: any) => {
+                          const regUser = registeredUsers.find(ru => ru.id === log.userId || ru.email === log.userEmail);
                           const displayName = regUser?.name || log.userName || log.userId;
-                          const displayEmail = regUser?.email || log.userEmail || 'No email';
-
-                          const loginDateStr = new Date(log.loginTime).toLocaleString();
-                          const logoutDateStr = log.logoutTime ? new Date(log.logoutTime).toLocaleString() : null;
+                          const displayEmail = regUser?.email || log.userEmail || '—';
 
                           let durationStr = 'Active Now';
                           if (log.logoutTime) {
-                            const diffMs = log.logoutTime - log.loginTime;
-                            const diffMins = Math.round(diffMs / 60000);
-                            if (diffMins < 1) {
-                              durationStr = 'Under a minute';
-                            } else if (diffMins < 60) {
-                              durationStr = `${diffMins} min${diffMins > 1 ? 's' : ''}`;
-                            } else {
-                              const hours = Math.floor(diffMins / 60);
-                              const mins = diffMins % 60;
-                              durationStr = `${hours} hr${hours > 1 ? 's' : ''} ${mins} min${mins > 1 ? 's' : ''}`;
-                            }
+                            const diffMins = Math.round((log.logoutTime - log.loginTime) / 60000);
+                            if (diffMins < 1) durationStr = '< 1 min';
+                            else if (diffMins < 60) durationStr = `${diffMins} mins`;
+                            else durationStr = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
                           }
 
                           return (
-                            <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-6 py-4 font-bold text-gray-800 text-xs">{displayName}</td>
-                              <td className="px-6 py-4 text-xs text-gray-500 font-medium">{displayEmail}</td>
-                              <td className="px-6 py-4 text-xs text-gray-500 font-medium">{loginDateStr}</td>
-                              <td className="px-6 py-4 text-xs text-gray-500 font-medium">
-                                {logoutDateStr ? (
-                                  logoutDateStr
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 text-[9px] font-black uppercase rounded border border-green-100">
-                                    ● Active
-                                  </span>
-                                )}
+                            <tr key={log.id || log.loginTime} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-6 py-3 font-bold text-gray-800">{displayName}</td>
+                              <td className="px-6 py-3 text-gray-500 font-medium">{displayEmail}</td>
+                              <td className="px-6 py-3 font-mono text-gray-700">{new Date(log.loginTime).toLocaleString('en-IN')}</td>
+                              <td className="px-6 py-3 font-mono text-gray-700">
+                                {log.logoutTime ? new Date(log.logoutTime).toLocaleString('en-IN') : <span className="text-emerald-600 font-bold">● Active Now</span>}
                               </td>
-                              <td className="px-6 py-4 text-right font-semibold text-xs text-gray-700">{durationStr}</td>
+                              <td className="px-6 py-3 text-right font-bold text-gray-700">{durationStr}</td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-xs text-gray-400 italic">No session logs recorded yet.</td>
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">No session logs recorded.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Single User Activity Details Modal */}
+                {showUserActivityModal && selectedUserForActivity && (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+                    <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-fadeIn">
+                      {/* Modal Header */}
+                      <div className="bg-brand-primary px-6 py-5 flex items-center justify-between text-white">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-black text-sm uppercase">
+                            {selectedUserForActivity.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base font-black">{selectedUserForActivity.name}</h3>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-white/20 text-white">
+                                {selectedUserForActivity.role?.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-white/80">{selectedUserForActivity.email}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowUserActivityModal(false);
+                            setSelectedUserForActivity(null);
+                          }}
+                          className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Modal Body */}
+                      <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto text-left">
+                        {/* KPI Cards for User */}
+                        {(() => {
+                          const uLogs = userLogs.filter((log: any) =>
+                            log.userId === selectedUserForActivity.id ||
+                            log.userId === selectedUserForActivity.uid ||
+                            (log.userEmail && selectedUserForActivity.email && log.userEmail.toLowerCase().trim() === selectedUserForActivity.email.toLowerCase().trim()) ||
+                            (log.userName && selectedUserForActivity.name && log.userName.toLowerCase().trim() === selectedUserForActivity.name.toLowerCase().trim())
+                          );
+
+                          const now = new Date();
+                          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                          const todayLogs = uLogs.filter((log: any) => Number(log.loginTime) >= todayStart);
+
+                          const morningFirstLogin = todayLogs.length > 0
+                            ? Math.min(...todayLogs.map((l: any) => Number(l.loginTime)))
+                            : (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+
+                          const lastLogin = uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null;
+                          const logoutLogs = uLogs.filter((l: any) => l.logoutTime);
+                          const lastLogout = logoutLogs.length > 0 ? Math.max(...logoutLogs.map((l: any) => Number(l.logoutTime))) : null;
+
+                          const isActiveNow = uLogs.some((l: any) => !l.logoutTime || Number(l.loginTime) > Number(l.logoutTime || 0));
+
+                          return (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              {/* Morning First Login Card */}
+                              <div className="p-4 bg-amber-50/70 border border-amber-200/70 rounded-2xl shadow-xs">
+                                <div className="flex items-center gap-1.5 text-amber-800 mb-1">
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                  <span className="text-[10px] font-black uppercase tracking-wider">Morning First Login</span>
+                                </div>
+                                <p className="text-xs font-black text-amber-950 font-mono mt-1">
+                                  {morningFirstLogin ? new Date(morningFirstLogin).toLocaleString('en-IN') : 'No Login Today'}
+                                </p>
+                              </div>
+
+                              {/* Last Login Card */}
+                              <div className="p-4 bg-blue-50/70 border border-blue-200/70 rounded-2xl shadow-xs">
+                                <div className="flex items-center gap-1.5 text-blue-800 mb-1">
+                                  <LogIn className="w-4 h-4 text-blue-600" />
+                                  <span className="text-[10px] font-black uppercase tracking-wider">Last Login Date & Time</span>
+                                </div>
+                                <p className="text-xs font-black text-blue-950 font-mono mt-1">
+                                  {lastLogin ? new Date(lastLogin).toLocaleString('en-IN') : 'No Login Recorded'}
+                                </p>
+                              </div>
+
+                              {/* Last Logout Card */}
+                              <div className="p-4 bg-purple-50/70 border border-purple-200/70 rounded-2xl shadow-xs">
+                                <div className="flex items-center gap-1.5 text-purple-800 mb-1">
+                                  <LogOutIcon className="w-4 h-4 text-purple-600" />
+                                  <span className="text-[10px] font-black uppercase tracking-wider">Last Logout Date & Time</span>
+                                </div>
+                                <p className="text-xs font-black text-purple-950 font-mono mt-1">
+                                  {isActiveNow ? (
+                                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active Now
+                                    </span>
+                                  ) : lastLogout ? (
+                                    new Date(lastLogout).toLocaleString('en-IN')
+                                  ) : (
+                                    '—'
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Individual Session History Table */}
+                        <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white shadow-xs">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <span className="text-xs font-black text-gray-800 uppercase tracking-wider">
+                              {selectedUserForActivity.name}'s Complete Session Logs
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                              <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
+                                <tr>
+                                  <th className="px-4 py-2.5">Login Date & Time</th>
+                                  <th className="px-4 py-2.5">Logout Date & Time</th>
+                                  <th className="px-4 py-2.5 text-right">Duration</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {(() => {
+                                  const uLogs = userLogs.filter((log: any) =>
+                                    log.userId === selectedUserForActivity.id ||
+                                    log.userId === selectedUserForActivity.uid ||
+                                    (log.userEmail && selectedUserForActivity.email && log.userEmail.toLowerCase().trim() === selectedUserForActivity.email.toLowerCase().trim()) ||
+                                    (log.userName && selectedUserForActivity.name && log.userName.toLowerCase().trim() === selectedUserForActivity.name.toLowerCase().trim())
+                                  );
+
+                                  if (uLogs.length === 0) {
+                                    return (
+                                      <tr>
+                                        <td colSpan={3} className="py-6 text-center text-gray-400 italic">
+                                          No session logs recorded for {selectedUserForActivity.name}.
+                                        </td>
+                                      </tr>
+                                    );
+                                  }
+
+                                  return uLogs.map((log: any) => {
+                                    let dur = 'Active Now';
+                                    if (log.logoutTime) {
+                                      const diffMins = Math.round((log.logoutTime - log.loginTime) / 60000);
+                                      if (diffMins < 1) dur = '< 1 min';
+                                      else if (diffMins < 60) dur = `${diffMins} mins`;
+                                      else dur = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+                                    }
+
+                                    return (
+                                      <tr key={log.id || log.loginTime} className="hover:bg-gray-50/60 transition-colors">
+                                        <td className="px-4 py-2.5 font-mono text-gray-800">
+                                          {new Date(log.loginTime).toLocaleString('en-IN')}
+                                        </td>
+                                        <td className="px-4 py-2.5 font-mono text-gray-600">
+                                          {log.logoutTime ? new Date(log.logoutTime).toLocaleString('en-IN') : <span className="text-emerald-600 font-bold">● Active Now</span>}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-gray-700">{dur}</td>
+                                      </tr>
+                                    );
+                                  });
+                                })()}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : activeTab === 'online-leads' ? (
               <div className="space-y-6 animate-fadeIn">
