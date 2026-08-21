@@ -18,6 +18,7 @@ interface AuthContextType {
   registeredUsers: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; user?: User | null }>;
   googleLogin: () => Promise<{ success: boolean; message?: string; user?: User | null }>;
+  biometricLogin: (loginType: 'FACE_ID' | 'FINGERPRINT', targetEmail?: string) => Promise<{ success: boolean; message?: string; user?: User | null }>;
   register: (name: string, email: string, password: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
@@ -141,6 +142,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true, user: nextUser };
   };
 
+  const biometricLogin = async (loginType: 'FACE_ID' | 'FINGERPRINT', targetEmail?: string) => {
+    const users = await mockDataService.getUsers();
+    let userProfile: UserProfile | undefined;
+    if (targetEmail && targetEmail.trim()) {
+      userProfile = users.find((u) => u.email.toLowerCase().trim() === targetEmail.trim().toLowerCase());
+    }
+    if (!userProfile) {
+      userProfile = users.find((user) => user.role === UserRole.ADMIN) || users[0];
+    }
+    if (!userProfile) {
+      return { success: false, message: 'No registered user found for biometric authentication.' };
+    }
+
+    const nextUser = profileToUser(userProfile);
+    persistUser(nextUser);
+    try {
+      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email, loginType);
+    } catch (e) {
+      console.error(`Failed to log ${loginType} login:`, e);
+    }
+    return { success: true, user: nextUser };
+  };
+
   const googleLogin = async () => {
     const users = await mockDataService.getUsers();
     const userProfile = users.find((user) => user.role === UserRole.ADMIN) || users[0];
@@ -151,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextUser = profileToUser(userProfile);
     persistUser(nextUser);
     try {
-      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email);
+      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email, 'GOOGLE');
     } catch (e) {
       console.error('Failed to log Google login:', e);
     }
@@ -251,6 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registeredUsers,
       login,
       googleLogin,
+      biometricLogin,
       register,
       logout,
       updateProfile,

@@ -822,6 +822,7 @@ export default function AdminDashboard() {
     const [userLogsLoading, setUserLogsLoading] = useState(false);
     const [selectedUserForActivity, setSelectedUserForActivity] = useState<any | null>(null);
     const [showUserActivityModal, setShowUserActivityModal] = useState(false);
+    const [selectedActivityMonth, setSelectedActivityMonth] = useState<string>('all');
 
     const fetchUserLogs = async () => {
       setUserLogsLoading(true);
@@ -2534,12 +2535,25 @@ export default function AdminDashboard() {
                       Real-time morning first login, last login date & time, logout timestamps, and session history per user
                     </p>
                   </div>
-                  <button
-                    onClick={() => fetchUserLogs()}
-                    className="px-4 py-2 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer border-none flex items-center gap-2"
-                  >
-                    Refresh Activity Logs
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <select
+                      value={selectedActivityMonth}
+                      onChange={(e) => setSelectedActivityMonth(e.target.value)}
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none cursor-pointer focus:border-brand-primary"
+                    >
+                      <option value="all">📅 All Time (All Months)</option>
+                      <option value="current">🗓️ Current Month (Aug 2026)</option>
+                      <option value="2026-08">August 2026</option>
+                      <option value="2026-07">July 2026</option>
+                      <option value="2026-06">June 2026</option>
+                    </select>
+                    <button
+                      onClick={() => fetchUserLogs()}
+                      className="px-4 py-2 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer border-none flex items-center gap-2"
+                    >
+                      Refresh Activity Logs
+                    </button>
+                  </div>
                 </div>
 
                 {/* Main User Activity Table */}
@@ -2563,7 +2577,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-4">🌅 Morning First Login</th>
                         <th className="px-6 py-4">🕒 Last Login Date & Time</th>
                         <th className="px-6 py-4">🚪 Last Logout Date & Time</th>
-                        <th className="px-6 py-4">⏱️ Working Hours (9 AM - 7 PM)</th>
+                        <th className="px-6 py-4">⏱️ Working Hours (Daily & Monthly)</th>
                         <th className="px-6 py-4 text-center">Logins</th>
                         <th className="px-6 py-4 text-center">Action</th>
                       </tr>
@@ -2583,12 +2597,24 @@ export default function AdminDashboard() {
                         </tr>
                       ) : (
                         registeredUsers.map((uItem: any) => {
-                          const uLogs = userLogs.filter((log: any) =>
+                          const userRawLogs = userLogs.filter((log: any) =>
                             log.userId === uItem.id ||
                             log.userId === uItem.uid ||
                             (log.userEmail && uItem.email && log.userEmail.toLowerCase().trim() === uItem.email.toLowerCase().trim()) ||
                             (log.userName && uItem.name && log.userName.toLowerCase().trim() === uItem.name.toLowerCase().trim())
                           );
+
+                          // Filter logs by selected month
+                          const uLogs = userRawLogs.filter((l: any) => {
+                            if (!selectedActivityMonth || selectedActivityMonth === 'all') return true;
+                            const d = new Date(Number(l.loginTime));
+                            if (selectedActivityMonth === 'current') {
+                              const now = new Date();
+                              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                            }
+                            const [yearStr, monthStr] = selectedActivityMonth.split('-');
+                            return d.getFullYear() === Number(yearStr) && (d.getMonth() + 1) === Number(monthStr);
+                          });
 
                           // Helper for Days Format
                           const getDaysAgoInfo = (timestamp: number | null | undefined) => {
@@ -2642,46 +2668,81 @@ export default function AdminDashboard() {
                           const eveningInfo = getDaysAgoInfo(eveningLastLogin);
                           const logoutInfo = getDaysAgoInfo(lastLogout);
 
-                          // Working Hours Calculation against 9:00 AM - 7:00 PM Shift Target (10 Hrs)
-                          const startWorkTimestamp = morningFirstLogin || eveningLastLogin || (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
-                          const endWorkTimestamp = isActiveNow ? Date.now() : (lastLogout || eveningLastLogin || (uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null));
+                          // --- Group logs by Calendar Day (YYYY-MM-DD) to calculate Daily & Monthly hours accurately ---
+                          const dailyMap: Record<string, { logins: any[]; dayStart: number; dayEnd: number; dayWorkedMs: number }> = {};
 
-                          let workingHoursText = '—';
+                          uLogs.forEach((l: any) => {
+                            const d = new Date(Number(l.loginTime));
+                            const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                            if (!dailyMap[dayKey]) {
+                              dailyMap[dayKey] = { logins: [], dayStart: Number(l.loginTime), dayEnd: Number(l.logoutTime || l.loginTime), dayWorkedMs: 0 };
+                            }
+
+                            dailyMap[dayKey].logins.push(l);
+
+                            const loginT = Number(l.loginTime);
+                            const logoutT = l.logoutTime ? Number(l.logoutTime) : (loginT + (8 * 3600 * 1000));
+                            const sessionDur = Math.min(Math.max(0, logoutT - loginT), 10 * 3600 * 1000);
+
+                            dailyMap[dayKey].dayWorkedMs += sessionDur;
+                            if (loginT < dailyMap[dayKey].dayStart) dailyMap[dayKey].dayStart = loginT;
+                            if (logoutT > dailyMap[dayKey].dayEnd) dailyMap[dayKey].dayEnd = logoutT;
+                          });
+
+                          // Compute Monthly Totals
+                          const daysWorkedInMonth = Object.keys(dailyMap).length;
+                          let totalMonthlyMs = 0;
+                          Object.values(dailyMap).forEach((dayData) => {
+                            totalMonthlyMs += Math.min(dayData.dayWorkedMs, 12 * 3600 * 1000);
+                          });
+
+                          const monthlyHoursNum = Math.floor(totalMonthlyMs / 3600000);
+                          const monthlyMinsNum = Math.round((totalMonthlyMs % 3600000) / 60000);
+                          const monthlyHoursText = `${monthlyHoursNum}h ${monthlyMinsNum}m`;
+
+                          // Latest Day Details
+                          const sortedDayKeys = Object.keys(dailyMap).sort().reverse();
+                          const latestDayKey = sortedDayKeys[0];
+                          const latestDayData = latestDayKey ? dailyMap[latestDayKey] : null;
+
+                          let dailyHoursText = '—';
+                          let latestDayLabel = '';
                           let shiftBadgeText = 'No Activity';
                           let shiftBadgeStyle = 'bg-gray-50 text-gray-400 border-gray-200';
                           let punctualitySubtext = 'Shift: 9:00 AM – 7:00 PM';
 
-                          if (startWorkTimestamp && endWorkTimestamp && endWorkTimestamp >= startWorkTimestamp) {
-                            const totalWorkMinutes = Math.max(1, Math.round((endWorkTimestamp - startWorkTimestamp) / 60000));
-                            const hrs = Math.floor(totalWorkMinutes / 60);
-                            const mins = totalWorkMinutes % 60;
-                            workingHoursText = `${hrs}h ${mins}m`;
+                          if (latestDayData) {
+                            const dayMs = Math.min(latestDayData.dayWorkedMs, 12 * 3600 * 1000);
+                            const hrs = Math.floor(dayMs / 3600000);
+                            const mins = Math.round((dayMs % 3600000) / 60000);
+                            dailyHoursText = `${hrs}h ${mins}m`;
 
-                            const workHrsDec = totalWorkMinutes / 60;
+                            const dObj = new Date(latestDayData.dayStart);
+                            latestDayLabel = `${dObj.getDate()}/${dObj.getMonth() + 1}`;
 
-                            const startDate = new Date(startWorkTimestamp);
-                            const startHr = startDate.getHours();
-                            const startMin = startDate.getMinutes();
+                            const workHrsDec = dayMs / 3600000;
+                            if (isActiveNow) {
+                              shiftBadgeText = `Active (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            } else if (workHrsDec >= 9.5) {
+                              shiftBadgeText = `Full Shift (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                            } else if (workHrsDec >= 4) {
+                              shiftBadgeText = `Partial Shift (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300';
+                            } else {
+                              shiftBadgeText = `Short Shift (${dailyHoursText})`;
+                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
+                            }
 
+                            const startHr = dObj.getHours();
+                            const startMin = dObj.getMinutes();
                             if (startHr < 9 || (startHr === 9 && startMin <= 15)) {
                               punctualitySubtext = 'On Time (9:00 AM Start)';
                             } else {
-                              const startTime12 = startDate.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+                              const startTime12 = dObj.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
                               punctualitySubtext = `Late Entry (${startTime12})`;
-                            }
-
-                            if (isActiveNow) {
-                              shiftBadgeText = `Active (${workingHoursText})`;
-                              shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                            } else if (workHrsDec >= 9.5) {
-                              shiftBadgeText = `Full Shift (${workingHoursText})`;
-                              shiftBadgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-                            } else if (workHrsDec >= 4) {
-                              shiftBadgeText = `Partial Shift (${workingHoursText})`;
-                              shiftBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-300';
-                            } else {
-                              shiftBadgeText = `Short Shift (${workingHoursText})`;
-                              shiftBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
                             }
                           }
 
@@ -2728,13 +2789,28 @@ export default function AdminDashboard() {
                                 )}
                               </td>
 
-                              {/* Evening / Last Login in Days Format */}
+                              {/* Evening / Last Login in Days Format & Login Method */}
                               <td className="px-6 py-4">
                                 {eveningInfo ? (
                                   <div>
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mb-1 ${eveningInfo.colorClass}`}>
-                                      {eveningInfo.daysTag}
-                                    </span>
+                                    <div className="flex flex-wrap items-center gap-1 mb-1">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block ${eveningInfo.colorClass}`}>
+                                        {eveningInfo.daysTag}
+                                      </span>
+                                      {(() => {
+                                        const lt = (uLogs[0]?.loginType || 'PASSWORD').toUpperCase();
+                                        if (lt === 'FACE_ID') {
+                                          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">👤 Face ID</span>;
+                                        }
+                                        if (lt === 'FINGERPRINT') {
+                                          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">👆 Touch ID</span>;
+                                        }
+                                        if (lt === 'GOOGLE') {
+                                          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-red-50 text-red-700 border border-red-200">🌐 Google</span>;
+                                        }
+                                        return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-gray-100 text-gray-700 border border-gray-200">🔑 Password</span>;
+                                      })()}
+                                    </div>
                                     <p className="font-mono text-xs font-bold text-blue-700">{eveningInfo.fullDateTime}</p>
                                   </div>
                                 ) : (
@@ -2760,14 +2836,21 @@ export default function AdminDashboard() {
                                 )}
                               </td>
 
-                              {/* Working Hours Monitoring (9:00 AM - 7:00 PM) */}
+                              {/* Working Hours Monitoring (Daily & Monthly) */}
                               <td className="px-6 py-4">
-                                {startWorkTimestamp ? (
+                                {latestDayData ? (
                                   <div>
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mb-1 ${shiftBadgeStyle}`}>
                                       {shiftBadgeText}
                                     </span>
-                                    <p className="font-mono text-xs font-black text-gray-900">{workingHoursText}</p>
+                                    <p className="font-mono text-xs font-black text-gray-900">
+                                      Daily: {dailyHoursText} <span className="text-[10px] text-gray-400 font-bold">({latestDayLabel})</span>
+                                    </p>
+                                    <div className="mt-1">
+                                      <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded inline-block">
+                                        Monthly: {monthlyHoursText} ({daysWorkedInMonth} days)
+                                      </span>
+                                    </div>
                                     <p className="text-[9px] text-gray-400 font-bold mt-0.5">{punctualitySubtext}</p>
                                   </div>
                                 ) : (
@@ -2943,20 +3026,48 @@ export default function AdminDashboard() {
                           const eveningInfo = getDaysAgoInfo(eveningLastLogin);
                           const logoutInfo = getDaysAgoInfo(lastLogout);
 
-                          const startWorkTimestamp = morningFirstLogin || eveningLastLogin || (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
-                          const endWorkTimestamp = isActiveNow ? Date.now() : (lastLogout || eveningLastLogin || (uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null));
+                          const dailyMap: Record<string, { logins: any[]; dayStart: number; dayEnd: number; dayWorkedMs: number }> = {};
+
+                          uLogs.forEach((l: any) => {
+                            const d = new Date(Number(l.loginTime));
+                            const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                            if (!dailyMap[dayKey]) {
+                              dailyMap[dayKey] = { logins: [], dayStart: Number(l.loginTime), dayEnd: Number(l.logoutTime || l.loginTime), dayWorkedMs: 0 };
+                            }
+
+                            dailyMap[dayKey].logins.push(l);
+
+                            const loginT = Number(l.loginTime);
+                            const logoutT = l.logoutTime ? Number(l.logoutTime) : (loginT + (8 * 3600 * 1000));
+                            const sessionDur = Math.min(Math.max(0, logoutT - loginT), 10 * 3600 * 1000);
+
+                            dailyMap[dayKey].dayWorkedMs += sessionDur;
+                          });
+
+                          const daysWorkedInMonth = Object.keys(dailyMap).length;
+                          let totalMonthlyMs = 0;
+                          Object.values(dailyMap).forEach((dayData) => {
+                            totalMonthlyMs += Math.min(dayData.dayWorkedMs, 12 * 3600 * 1000);
+                          });
+
+                          const monthlyHoursText = `${Math.floor(totalMonthlyMs / 3600000)}h ${Math.round((totalMonthlyMs % 3600000) / 60000)}m`;
+
+                          const sortedDayKeys = Object.keys(dailyMap).sort().reverse();
+                          const latestDayKey = sortedDayKeys[0];
+                          const latestDayData = latestDayKey ? dailyMap[latestDayKey] : null;
 
                           let workingHoursText = '—';
                           let shiftBadgeText = 'No Activity';
                           let shiftBadgeStyle = 'bg-gray-50 text-gray-400 border-gray-200';
 
-                          if (startWorkTimestamp && endWorkTimestamp && endWorkTimestamp >= startWorkTimestamp) {
-                            const totalWorkMinutes = Math.max(1, Math.round((endWorkTimestamp - startWorkTimestamp) / 60000));
-                            const hrs = Math.floor(totalWorkMinutes / 60);
-                            const mins = totalWorkMinutes % 60;
+                          if (latestDayData) {
+                            const dayMs = Math.min(latestDayData.dayWorkedMs, 12 * 3600 * 1000);
+                            const hrs = Math.floor(dayMs / 3600000);
+                            const mins = Math.round((dayMs % 3600000) / 60000);
                             workingHoursText = `${hrs}h ${mins}m`;
 
-                            const workHrsDec = totalWorkMinutes / 60;
+                            const workHrsDec = dayMs / 3600000;
                             if (isActiveNow) {
                               shiftBadgeText = 'Active Working';
                               shiftBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -3061,6 +3172,7 @@ export default function AdminDashboard() {
                               <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
                                 <tr>
                                   <th className="px-4 py-2.5">Login Date & Time</th>
+                                  <th className="px-4 py-2.5">Auth Method</th>
                                   <th className="px-4 py-2.5">Logout Date & Time</th>
                                   <th className="px-4 py-2.5 text-right">Duration</th>
                                 </tr>
@@ -3077,7 +3189,7 @@ export default function AdminDashboard() {
                                   if (uLogs.length === 0) {
                                     return (
                                       <tr>
-                                        <td colSpan={3} className="py-6 text-center text-gray-400 italic">
+                                        <td colSpan={4} className="py-6 text-center text-gray-400 italic">
                                           No session logs recorded for {selectedUserForActivity.name}.
                                         </td>
                                       </tr>
@@ -3093,10 +3205,23 @@ export default function AdminDashboard() {
                                       else dur = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
                                     }
 
+                                    const lt = (log.loginType || 'PASSWORD').toUpperCase();
+
                                     return (
                                       <tr key={log.id || log.loginTime} className="hover:bg-gray-50/60 transition-colors">
                                         <td className="px-4 py-2.5 font-mono text-gray-800">
                                           {new Date(log.loginTime).toLocaleString('en-IN')}
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                          {lt === 'FACE_ID' ? (
+                                            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">👤 Face ID</span>
+                                          ) : lt === 'FINGERPRINT' ? (
+                                            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">👆 Touch ID</span>
+                                          ) : lt === 'GOOGLE' ? (
+                                            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-red-50 text-red-700 border border-red-200">🌐 Google</span>
+                                          ) : (
+                                            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-gray-100 text-gray-700 border border-gray-200">🔑 Password</span>
+                                          )}
                                         </td>
                                         <td className="px-4 py-2.5 font-mono text-gray-600">
                                           {log.logoutTime ? new Date(log.logoutTime).toLocaleString('en-IN') : <span className="text-emerald-600 font-bold">● Active Now</span>}

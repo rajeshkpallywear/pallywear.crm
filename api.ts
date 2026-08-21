@@ -110,17 +110,25 @@ router.post('/auth/register', async (req, res) => {
 });
 
 router.post('/auth/log-login', async (req, res) => {
-  const { userId, name, email } = req.body;
+  const { userId, name, email, loginType } = req.body;
   if (!userId) {
     return res.status(400).json({ success: false, message: 'Missing userId' });
   }
 
   try {
     const loginTime = Date.now();
-    await query(
-      'INSERT INTO user_activity_logs (userId, userName, userEmail, loginTime) VALUES (?, ?, ?, ?)',
-      [userId, name || '', email || '', loginTime]
-    );
+    const type = loginType || 'PASSWORD';
+    try {
+      await query(
+        'INSERT INTO user_activity_logs (userId, userName, userEmail, loginTime, loginType) VALUES (?, ?, ?, ?, ?)',
+        [userId, name || '', email || '', loginTime, type]
+      );
+    } catch (_) {
+      await query(
+        'INSERT INTO user_activity_logs (userId, userName, userEmail, loginTime) VALUES (?, ?, ?, ?)',
+        [userId, name || '', email || '', loginTime]
+      );
+    }
 
     try {
       await query(

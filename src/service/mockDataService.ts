@@ -288,11 +288,11 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  logLogin: async (userId: string, name: string, email: string): Promise<void> => {
+  logLogin: async (userId: string, name: string, email: string, loginType?: string): Promise<void> => {
     const res = await fetch(getApiUrl('/api/auth/log-login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, name, email })
+      body: JSON.stringify({ userId, name, email, loginType: loginType || 'PASSWORD' })
     });
     if (!res.ok) throw new Error('Failed to log login');
   },
