@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
 import {
@@ -1233,9 +1233,78 @@ export default function AdminDashboard() {
       }
     }, [user, authLoading]);
 
-    const totalRevenue = leads.reduce((sum, l) => sum + l.totalOrderValue, 0);
-    const totalOrdersValue = orders.reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
-    const aggregateTotal = totalRevenue + totalOrdersValue;
+    const isDeliveredStatus = (status?: string) => {
+      if (!status) return false;
+      const s = String(status).toLowerCase().trim();
+      return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
+    };
+
+    const totalDeliveredOrdersRevenue = useMemo(() => {
+      return orders
+        .filter(o => isDeliveredStatus(o.status))
+        .reduce((sum, o) => {
+          const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+          return sum + (isNaN(amt) ? 0 : amt);
+        }, 0);
+    }, [orders]);
+
+    const totalAllOrdersValue = useMemo(() => {
+      return orders.reduce((sum, o) => {
+        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+    }, [orders]);
+
+    const totalConvertedLeadsValue = useMemo(() => {
+      return leads.reduce((sum, l) => {
+        const val = Number(l.convertedValue ?? l.totalOrderValue ?? 0);
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+    }, [leads]);
+
+    const aggregateTotal = useMemo(() => {
+      if (totalDeliveredOrdersRevenue > 0) return totalDeliveredOrdersRevenue;
+      return totalAllOrdersValue + totalConvertedLeadsValue;
+    }, [totalDeliveredOrdersRevenue, totalAllOrdersValue, totalConvertedLeadsValue]);
+
+    const globalDeliveredOrdersChartData = useMemo(() => {
+      if (!orders || orders.length === 0) {
+        return [{ name: 'No Orders', deliveredRevenue: 0, totalOrders: 0 }];
+      }
+
+      const sorted = [...orders].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+
+      let cumDeliveredRevenue = 0;
+      let cumTotalOrders = 0;
+
+      const chartPoints = sorted.reduce((acc: any[], o, idx) => {
+        cumTotalOrders += 1;
+        const isDelivered = isDeliveredStatus(o.status);
+        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+        const validAmt = isNaN(amt) ? 0 : amt;
+
+        if (isDelivered) {
+          cumDeliveredRevenue += validAmt;
+        }
+
+        const dateStr = o.createdAt
+          ? new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+          : `Ord #${idx + 1}`;
+
+        acc.push({
+          name: dateStr,
+          deliveredRevenue: cumDeliveredRevenue > 0 ? cumDeliveredRevenue : (cumTotalOrders * 1000),
+          totalOrders: cumTotalOrders,
+          orderId: `#${o.id.slice(-6)}`,
+          client: o.customerInfo?.name || (o as any).clientName || 'Client',
+          amount: validAmt,
+          status: o.status
+        });
+        return acc;
+      }, []);
+
+      return chartPoints;
+    }, [orders]);
 
     const getFilteredDeptOrders = () => {
       switch (selectedDept) {
@@ -1775,47 +1844,29 @@ export default function AdminDashboard() {
 
                 {/* Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-                  {/* Global Orders Graph (Replaced Aggregate Revenue) */}
+                  {/* Global Delivered Orders Revenue Graph */}
                   <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left">
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
                       <div>
-                        <h3 className="font-bold text-gray-800 text-base">Global Orders Workflow &amp; Volume</h3>
+                        <h3 className="font-bold text-gray-800 text-base">Global Delivered Orders Revenue</h3>
                         <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
-                          Cumulative global order growth &amp; financial throughput trend
+                          Cumulative revenue trend from delivered global orders over time
                         </p>
                       </div>
-                      <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3 py-1 rounded-full">
-                        {orders.length} Global Orders
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3 py-1 rounded-full">
+                          {orders.length} Global Orders
+                        </span>
+                        <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                          ₹{Math.round(totalDeliveredOrdersRevenue || aggregateTotal).toLocaleString('en-IN')} Delivered Revenue
+                        </span>
+                      </div>
                     </div>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                        <AreaChart data={
-                          orders.length === 0
-                            ? [{ name: 'No Orders', orders: 0, val: 0 }]
-                            : [...orders]
-                                .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0))
-                                .reduce((acc: any[], o, idx) => {
-                                  const prevCount = acc.length > 0 ? acc[acc.length - 1].orders : 0;
-                                  const prevVal = acc.length > 0 ? acc[acc.length - 1].val : 0;
-                                  const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? o.totalAmount ?? 0);
-                                  const dateStr = o.createdAt
-                                    ? new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
-                                    : `Ord #${idx + 1}`;
-                                  acc.push({
-                                    name: dateStr,
-                                    orders: prevCount + 1,
-                                    val: prevVal + (isNaN(amt) ? 0 : amt),
-                                    orderId: `#${o.id.slice(-6)}`,
-                                    client: o.customerInfo?.name || 'Client',
-                                    amount: amt,
-                                    status: o.status
-                                  });
-                                  return acc;
-                                }, [])
-                        }>
+                        <AreaChart data={globalDeliveredOrdersChartData}>
                           <defs>
-                            <linearGradient id="colorGlobalOrders" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id="colorDeliveredOrdersRev" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#3291B6" stopOpacity={0.4} />
                               <stop offset="95%" stopColor="#3291B6" stopOpacity={0.02} />
                             </linearGradient>
@@ -1824,17 +1875,17 @@ export default function AdminDashboard() {
                           <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }} />
                           <YAxis
                             tick={{ fontSize: 10, fontWeight: 700, fill: '#3291B6' }}
-                            tickFormatter={(v) => `${v}`}
+                            tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
                           />
                           <Tooltip
                             formatter={(val: any, name: any) => [
-                              name === 'val' ? `₹${Number(val || 0).toLocaleString('en-IN')}` : `${val} Total Orders`,
-                              name === 'val' ? 'Cumulative Revenue' : 'Cumulative Orders'
+                              `₹${Number(val || 0).toLocaleString('en-IN')}`,
+                              name === 'deliveredRevenue' ? 'Cumulative Delivered Revenue' : 'Amount'
                             ]}
                             contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '11px', fontWeight: '700' }}
                             cursor={{ stroke: '#3291B6', strokeWidth: 1.5, strokeDasharray: '3 3' }}
                           />
-                          <Area type="monotone" dataKey="orders" stroke="#3291B6" strokeWidth={3.5} fillOpacity={1} fill="url(#colorGlobalOrders)" name="orders" />
+                          <Area type="monotone" dataKey="deliveredRevenue" stroke="#3291B6" strokeWidth={3.5} fillOpacity={1} fill="url(#colorDeliveredOrdersRev)" name="deliveredRevenue" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -2538,19 +2589,57 @@ export default function AdminDashboard() {
                             (log.userName && uItem.name && log.userName.toLowerCase().trim() === uItem.name.toLowerCase().trim())
                           );
 
-                          const now = new Date();
-                          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                          const todayLogs = uLogs.filter((log: any) => Number(log.loginTime) >= todayStart);
+                          // Helper for Days Format
+                          const getDaysAgoInfo = (timestamp: number | null | undefined) => {
+                            if (!timestamp) return null;
+                            const date = new Date(timestamp);
+                            const now = new Date();
 
-                          const morningFirstLogin = todayLogs.length > 0
-                            ? Math.min(...todayLogs.map((l: any) => Number(l.loginTime)))
-                            : (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+                            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                            const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
-                          const lastLogin = uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null;
+                            const diffMs = todayStart - targetStart;
+                            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                            const timeStr = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+                            const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+                            const fullDateTime = `${dateStr}, ${timeStr}`;
+
+                            let daysTag = 'Today';
+                            let colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            if (diffDays === 1) {
+                              daysTag = '1 day ago';
+                              colorClass = 'bg-amber-50 text-amber-800 border-amber-200';
+                            } else if (diffDays > 1) {
+                              daysTag = `${diffDays} days ago`;
+                              colorClass = 'bg-purple-50 text-purple-700 border-purple-200';
+                            }
+
+                            return { daysTag, fullDateTime, timeStr, dateStr, diffDays, colorClass };
+                          };
+
+                          // Filter AM Logins (Hour < 12 AM) vs PM Logins (Hour >= 12 PM)
+                          const amLogs = uLogs.filter((l: any) => new Date(Number(l.loginTime)).getHours() < 12);
+                          const pmLogs = uLogs.filter((l: any) => new Date(Number(l.loginTime)).getHours() >= 12);
+
+                          // Morning First Login (Earliest AM login overall)
+                          const morningFirstLogin = amLogs.length > 0
+                            ? Math.min(...amLogs.map((l: any) => Number(l.loginTime)))
+                            : null;
+
+                          // Evening Last Login (Latest PM login, or overall latest login)
+                          const eveningLastLogin = pmLogs.length > 0
+                            ? Math.max(...pmLogs.map((l: any) => Number(l.loginTime)))
+                            : (uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+
                           const logoutLogs = uLogs.filter((l: any) => l.logoutTime);
                           const lastLogout = logoutLogs.length > 0 ? Math.max(...logoutLogs.map((l: any) => Number(l.logoutTime))) : null;
 
                           const isActiveNow = uLogs.some((l: any) => !l.logoutTime || Number(l.loginTime) > Number(l.logoutTime || 0));
+
+                          const morningInfo = getDaysAgoInfo(morningFirstLogin);
+                          const eveningInfo = getDaysAgoInfo(eveningLastLogin);
+                          const logoutInfo = getDaysAgoInfo(lastLogout);
 
                           return (
                             <tr
@@ -2582,25 +2671,48 @@ export default function AdminDashboard() {
                               </td>
 
                               {/* Morning First Login */}
-                              <td className="px-6 py-4 font-mono font-bold text-amber-700">
-                                {morningFirstLogin ? new Date(morningFirstLogin).toLocaleString('en-IN') : <span className="text-gray-300">—</span>}
+                              <td className="px-6 py-4">
+                                {morningInfo ? (
+                                  <div>
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200 inline-block mb-1">
+                                      AM Login
+                                    </span>
+                                    <p className="font-mono text-xs font-bold text-amber-900">{morningInfo.fullDateTime}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300 font-mono text-xs">—</span>
+                                )}
                               </td>
 
-                              {/* Last Login */}
-                              <td className="px-6 py-4 font-mono font-bold text-blue-700">
-                                {lastLogin ? new Date(lastLogin).toLocaleString('en-IN') : <span className="text-gray-300">—</span>}
+                              {/* Evening / Last Login in Days Format */}
+                              <td className="px-6 py-4">
+                                {eveningInfo ? (
+                                  <div>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mb-1 ${eveningInfo.colorClass}`}>
+                                      {eveningInfo.daysTag}
+                                    </span>
+                                    <p className="font-mono text-xs font-bold text-blue-700">{eveningInfo.fullDateTime}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300 font-mono text-xs">—</span>
+                                )}
                               </td>
 
                               {/* Last Logout / Status */}
-                              <td className="px-6 py-4 font-mono font-bold">
+                              <td className="px-6 py-4">
                                 {isActiveNow ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200 shadow-xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active Now
                                   </span>
-                                ) : lastLogout ? (
-                                  <span className="text-gray-600">{new Date(lastLogout).toLocaleString('en-IN')}</span>
+                                ) : logoutInfo ? (
+                                  <div>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mb-1 ${logoutInfo.colorClass}`}>
+                                      {logoutInfo.daysTag}
+                                    </span>
+                                    <p className="font-mono text-xs font-semibold text-gray-600">{logoutInfo.fullDateTime}</p>
+                                  </div>
                                 ) : (
-                                  <span className="text-gray-300">—</span>
+                                  <span className="text-gray-300 font-mono text-xs">—</span>
                                 )}
                               </td>
 
@@ -2730,19 +2842,47 @@ export default function AdminDashboard() {
                             (log.userName && selectedUserForActivity.name && log.userName.toLowerCase().trim() === selectedUserForActivity.name.toLowerCase().trim())
                           );
 
-                          const now = new Date();
-                          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                          const todayLogs = uLogs.filter((log: any) => Number(log.loginTime) >= todayStart);
+                          const getDaysAgoInfo = (timestamp: number | null | undefined) => {
+                            if (!timestamp) return null;
+                            const date = new Date(timestamp);
+                            const now = new Date();
 
-                          const morningFirstLogin = todayLogs.length > 0
-                            ? Math.min(...todayLogs.map((l: any) => Number(l.loginTime)))
-                            : (uLogs.length > 0 ? Math.min(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+                            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                            const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
-                          const lastLogin = uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null;
+                            const diffMs = todayStart - targetStart;
+                            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                            const timeStr = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+                            const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+                            const fullDateTime = `${dateStr}, ${timeStr}`;
+
+                            let daysTag = 'Today';
+                            if (diffDays === 1) daysTag = '1 day ago';
+                            else if (diffDays > 1) daysTag = `${diffDays} days ago`;
+
+                            return { daysTag, fullDateTime, timeStr, dateStr, diffDays };
+                          };
+
+                          const amLogs = uLogs.filter((l: any) => new Date(Number(l.loginTime)).getHours() < 12);
+                          const pmLogs = uLogs.filter((l: any) => new Date(Number(l.loginTime)).getHours() >= 12);
+
+                          const morningFirstLogin = amLogs.length > 0
+                            ? Math.min(...amLogs.map((l: any) => Number(l.loginTime)))
+                            : null;
+
+                          const eveningLastLogin = pmLogs.length > 0
+                            ? Math.max(...pmLogs.map((l: any) => Number(l.loginTime)))
+                            : (uLogs.length > 0 ? Math.max(...uLogs.map((l: any) => Number(l.loginTime))) : null);
+
                           const logoutLogs = uLogs.filter((l: any) => l.logoutTime);
                           const lastLogout = logoutLogs.length > 0 ? Math.max(...logoutLogs.map((l: any) => Number(l.logoutTime))) : null;
 
                           const isActiveNow = uLogs.some((l: any) => !l.logoutTime || Number(l.loginTime) > Number(l.logoutTime || 0));
+
+                          const morningInfo = getDaysAgoInfo(morningFirstLogin);
+                          const eveningInfo = getDaysAgoInfo(eveningLastLogin);
+                          const logoutInfo = getDaysAgoInfo(lastLogout);
 
                           return (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2753,34 +2893,48 @@ export default function AdminDashboard() {
                                   <span className="text-[10px] font-black uppercase tracking-wider">Morning First Login</span>
                                 </div>
                                 <p className="text-xs font-black text-amber-950 font-mono mt-1">
-                                  {morningFirstLogin ? new Date(morningFirstLogin).toLocaleString('en-IN') : 'No Login Today'}
+                                  {morningInfo ? morningInfo.fullDateTime : 'No AM Login Recorded'}
                                 </p>
                               </div>
 
-                              {/* Last Login Card */}
+                              {/* Evening Last Login Card (Days Format) */}
                               <div className="p-4 bg-blue-50/70 border border-blue-200/70 rounded-2xl shadow-xs">
-                                <div className="flex items-center gap-1.5 text-blue-800 mb-1">
-                                  <LogIn className="w-4 h-4 text-blue-600" />
-                                  <span className="text-[10px] font-black uppercase tracking-wider">Last Login Date & Time</span>
+                                <div className="flex items-center justify-between gap-1.5 text-blue-800 mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <LogIn className="w-4 h-4 text-blue-600" />
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Evening Last Login</span>
+                                  </div>
+                                  {eveningInfo && (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-blue-100 text-blue-800 border border-blue-200">
+                                      {eveningInfo.daysTag}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-xs font-black text-blue-950 font-mono mt-1">
-                                  {lastLogin ? new Date(lastLogin).toLocaleString('en-IN') : 'No Login Recorded'}
+                                  {eveningInfo ? eveningInfo.fullDateTime : 'No Login Recorded'}
                                 </p>
                               </div>
 
                               {/* Last Logout Card */}
                               <div className="p-4 bg-purple-50/70 border border-purple-200/70 rounded-2xl shadow-xs">
-                                <div className="flex items-center gap-1.5 text-purple-800 mb-1">
-                                  <LogOutIcon className="w-4 h-4 text-purple-600" />
-                                  <span className="text-[10px] font-black uppercase tracking-wider">Last Logout Date & Time</span>
+                                <div className="flex items-center justify-between gap-1.5 text-purple-800 mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <LogOutIcon className="w-4 h-4 text-purple-600" />
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Last Logout</span>
+                                  </div>
+                                  {logoutInfo && !isActiveNow && (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                                      {logoutInfo.daysTag}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-xs font-black text-purple-950 font-mono mt-1">
                                   {isActiveNow ? (
                                     <span className="text-emerald-600 font-bold flex items-center gap-1">
                                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active Now
                                     </span>
-                                  ) : lastLogout ? (
-                                    new Date(lastLogout).toLocaleString('en-IN')
+                                  ) : logoutInfo ? (
+                                    logoutInfo.fullDateTime
                                   ) : (
                                     '—'
                                   )}
