@@ -15,6 +15,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Store = lazy(() => import('./pages/Store'));
 const LeadDashboard = lazy(() => import('./pages/LeadDashboard'));
+const FlagshipUpper = lazy(() => import('./pages/FlagshipUpper'));
 
 import { UserRole } from './types';
 
@@ -111,6 +112,8 @@ function AppRoutes() {
           {/* Landing Page */}
           <Route path="/Pallywear" element={<Store />} />
           <Route path="/store" element={<Navigate to="/Pallywear" replace />} />
+          <Route path="/flagship-upper" element={<FlagshipUpper />} />
+          <Route path="/flagship" element={<FlagshipUpper />} />
 
           {/* Auth */}
           <Route path="/login" element={<Login />} />
