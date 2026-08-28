@@ -384,6 +384,8 @@ export async function initDB() {
       "ALTER TABLE `orders` ADD COLUMN `original_design_file` LONGTEXT DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `original_design_filename` varchar(255) DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `sentByAccounts` tinyint(1) DEFAULT 0",
+      "ALTER TABLE `orders` ADD COLUMN `marketing_image` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `orders` ADD COLUMN `marketing_notes` TEXT DEFAULT NULL",
       "ALTER TABLE `users` ADD COLUMN `first_login` bigint DEFAULT NULL",
       "ALTER TABLE `users` ADD COLUMN `last_logout` bigint DEFAULT NULL",
       "ALTER TABLE `users` ADD COLUMN `login_count` int DEFAULT 0",
