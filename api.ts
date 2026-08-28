@@ -386,9 +386,7 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, sentByAccounts,
-             staffImages, staffPdfs, accountsAttachments, orderManagementAttachments,
-             designAttachments, machineFiles, marketing_image, marketing_notes
+             original_design_filename, sentByAccounts, marketing_image, marketing_notes
       FROM orders
     `) as any[];
 
@@ -415,12 +413,12 @@ router.get('/orders', async (req, res) => {
       status: r.status,
       isUrgent: r.isUrgent === 1,
       notes: r.notes,
-      staffImages: safeJSONParse(r.staffImages, []),
-      staffPdfs: safeJSONParse(r.staffPdfs, []),
-      accountsAttachments: safeJSONParse(r.accountsAttachments, []),
-      orderManagementAttachments: safeJSONParse(r.orderManagementAttachments, []),
-      designAttachments: safeJSONParse(r.designAttachments, []),
-      machineFiles: safeJSONParse(r.machineFiles, []),
+      staffImages: [],
+      staffPdfs: [],
+      accountsAttachments: [],
+      orderManagementAttachments: [],
+      designAttachments: [],
+      machineFiles: [],
       marketing_image: r.marketing_image || '',
       marketing_notes: r.marketing_notes || '',
       createdAt: Number(r.createdAt || 0),
