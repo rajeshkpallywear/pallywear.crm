@@ -386,7 +386,9 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, sentByAccounts
+             original_design_filename, sentByAccounts,
+             staffImages, staffPdfs, accountsAttachments, orderManagementAttachments,
+             designAttachments, machineFiles, marketing_image, marketing_notes
       FROM orders
     `) as any[];
 
@@ -413,12 +415,14 @@ router.get('/orders', async (req, res) => {
       status: r.status,
       isUrgent: r.isUrgent === 1,
       notes: r.notes,
-      staffImages: [],
-      staffPdfs: [],
-      accountsAttachments: [],
-      orderManagementAttachments: [],
-      designAttachments: [],
-      machineFiles: [],
+      staffImages: safeJSONParse(r.staffImages, []),
+      staffPdfs: safeJSONParse(r.staffPdfs, []),
+      accountsAttachments: safeJSONParse(r.accountsAttachments, []),
+      orderManagementAttachments: safeJSONParse(r.orderManagementAttachments, []),
+      designAttachments: safeJSONParse(r.designAttachments, []),
+      machineFiles: safeJSONParse(r.machineFiles, []),
+      marketing_image: r.marketing_image || '',
+      marketing_notes: r.marketing_notes || '',
       createdAt: Number(r.createdAt || 0),
       updatedAt: Number(r.updatedAt || 0),
       designName: r.designName || '',
@@ -501,7 +505,7 @@ router.post('/orders', async (req, res) => {
         designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=?, 
         assignedDesigner=?, holdReason=?, previousStatus=?, createdBy=?, createdByName=?, accountsNotes=?,
         original_design_file=?, original_design_filename=?,
-        sentByAccounts=?,
+        sentByAccounts=?, marketing_image=?, marketing_notes=?,
         updatedAt=? WHERE id=?`,
         [
           customer.name, customer.company, customer.phone, customer.address,
@@ -516,7 +520,7 @@ router.post('/orders', async (req, res) => {
           order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
           order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
           order.original_design_file || null, order.original_design_filename || null,
-          order.sentByAccounts ? 1 : 0,
+          order.sentByAccounts ? 1 : 0, order.marketing_image || null, order.marketing_notes || null,
           Date.now(), order.id
         ]
       );
@@ -587,9 +591,9 @@ router.post('/orders', async (req, res) => {
         designName, designAmount, designGst, designDiscount, designNotes,
         assignedDesigner, holdReason, previousStatus, createdBy, createdByName, accountsNotes,
         original_design_file, original_design_filename,
-        sentByAccounts,
+        sentByAccounts, marketing_image, marketing_notes,
         createdAt, updatedAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.id, customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -603,7 +607,7 @@ router.post('/orders', async (req, res) => {
           order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
           order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
           order.original_design_file || null, order.original_design_filename || null,
-          order.sentByAccounts ? 1 : 0,
+          order.sentByAccounts ? 1 : 0, order.marketing_image || null, order.marketing_notes || null,
           Date.now(), Date.now()
         ]
       );

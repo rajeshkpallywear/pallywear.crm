@@ -46,7 +46,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
-    if (selectedHubOrder && !selectedHubOrder.original_design_file && (!selectedHubOrder.staffImages || selectedHubOrder.staffImages.length === 0)) {
+    if (selectedHubOrder) {
       loadOrderAttachments(selectedHubOrder.id).then(attachments => {
         setSelectedHubOrder(prev => prev && prev.id === selectedHubOrder.id ? { ...prev, ...attachments } : prev);
       });
@@ -159,6 +159,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       staffImages: formData.imageAttachments,
       staffPdfs: formData.pdfAttachments,
       staffAttachments: [...formData.imageAttachments, ...formData.pdfAttachments], // Legacy
+      marketing_image: formData.imageAttachments[0] || '',
+      marketing_notes: formData.notes.trim(),
       updatedAt: Date.now(),
     };
 
@@ -293,12 +295,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       address: order.customerInfo.address,
       category: order.category,
       details: order.details || {},
-      imageAttachments: order.staffImages || [],
+      imageAttachments: order.staffImages?.length ? order.staffImages : (order.marketing_image ? [order.marketing_image] : []),
       pdfAttachments: order.staffPdfs || [],
       sizeBreakdown: order.sizeBreakdown || [],
       totalAmount: order.financials?.totalAmount || 0,
       advancePay: order.financials?.advancePay || 0,
-      notes: order.notes || order.designNotes || '',
+      notes: order.notes || order.designNotes || order.marketing_notes || '',
       isUrgent: order.isUrgent || false
     });
     setIsCreating(true);
@@ -455,8 +457,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         </div>
                       </td>
                       <td className="py-4 px-3">
-                        <div className="font-bold text-gray-950 uppercase italic">{order.customerInfo?.name || ''}</div>
-                        <div className="text-[10px] text-gray-500 font-mono mt-0.5">{order.customerInfo?.phone || ''}</div>
+                        <div className="flex items-center gap-3">
+                          {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
+                            <div className="w-9 h-9 rounded-lg border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
+                              <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-gray-950 uppercase italic">{order.customerInfo?.name || ''}</div>
+                            <div className="text-[10px] text-gray-500 font-mono mt-0.5">{order.customerInfo?.phone || ''}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-4 px-3">
                         <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[8px] font-black uppercase rounded">
@@ -559,11 +570,18 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       )}
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="font-black text-white text-sm uppercase italic">{order.customerInfo?.name || ''}</div>
-                      <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-slate-400 font-semibold hover:text-indigo-400 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <Phone size={10} className="text-indigo-400" /> {order.customerInfo?.phone || ''}
-                      </a>
+                    <div className="flex items-start gap-3">
+                      {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
+                        <div className="w-12 h-12 rounded-xl border border-slate-700 overflow-hidden shrink-0 bg-slate-900">
+                          <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <div className="font-black text-white text-sm uppercase italic">{order.customerInfo?.name || ''}</div>
+                        <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-slate-400 font-semibold hover:text-indigo-400 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <Phone size={10} className="text-indigo-400" /> {order.customerInfo?.phone || ''}
+                        </a>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between bg-slate-900/40 p-2.5 rounded-xl border border-slate-850">

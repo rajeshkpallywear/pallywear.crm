@@ -75,7 +75,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const { loadOrderAttachments, invoices } = useLeads();
 
   useEffect(() => {
-    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.designAttachments || selectedOrder.designAttachments.length === 0)) {
+    if (selectedOrder) {
       loadOrderAttachments(selectedOrder.id).then(attachments => {
         setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
         if (attachments.designAttachments) setDesignFiles(attachments.designAttachments);
@@ -812,16 +812,23 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         <span className="font-black text-gray-500 text-sm">#{idx + 1}</span>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-black text-gray-800 text-xs">{item.customerName}</span>
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                            By: {item.createdByName || 'System'}
-                          </span>
-                          <span className="font-mono text-[9px] text-brand-primary font-bold">
-                            Order: #{item.id.slice(-8)}
-                            {matchingInvoice && ` | Invoice: ${matchingInvoice.invoiceNumber}`}
-                          </span>
-                          <span className="text-[9px] text-gray-400 font-semibold">{getDisplayCategory(item as any)}</span>
+                        <div className="flex items-center gap-3">
+                          {((item.staffImages && item.staffImages[0]) || item.marketing_image) && (
+                            <div className="w-10 h-10 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
+                              <img src={item.staffImages?.[0] || item.marketing_image} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-black text-gray-800 text-xs">{item.customerName}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                              By: {item.createdByName || 'System'}
+                            </span>
+                            <span className="font-mono text-[9px] text-brand-primary font-bold">
+                              Order: #{item.id.slice(-8)}
+                              {matchingInvoice && ` | Invoice: ${matchingInvoice.invoiceNumber}`}
+                            </span>
+                            <span className="text-[9px] text-gray-400 font-semibold">{getDisplayCategory(item as any)}</span>
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-3">
@@ -901,17 +908,24 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div>
-                          <div className="font-black text-gray-800 text-sm flex items-center gap-1.5">
-                            {item.customerName}
-                            {item.isUrgent && (
-                              <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
-                            )}
+                        <div className="flex items-center gap-3">
+                          {((item.staffImages && item.staffImages[0]) || item.marketing_image) && (
+                            <div className="w-10 h-10 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
+                              <img src={item.staffImages?.[0] || item.marketing_image} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-black text-gray-800 text-sm flex items-center gap-1.5">
+                              {item.customerName}
+                              {item.isUrgent && (
+                                <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                              )}
+                            </div>
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                              By: {item.createdByName || 'System'}
+                            </div>
+                            <div className="text-xs text-gray-500 font-semibold">{item.phone}</div>
                           </div>
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                            By: {item.createdByName || 'System'}
-                          </div>
-                          <div className="text-xs text-gray-500 font-semibold">{item.phone}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -1006,14 +1020,21 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     </div>
 
                     {/* Customer Spec Info */}
-                    <div className="space-y-1">
-                      <div className="font-black text-gray-900 text-sm">{item.customerName}</div>
-                      <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                        By: {item.createdByName || 'System'}
+                    <div className="flex items-start gap-3">
+                      {((item.staffImages && item.staffImages[0]) || item.marketing_image) && (
+                        <div className="w-12 h-12 rounded-xl border border-gray-250 overflow-hidden shrink-0 bg-gray-50">
+                          <img src={item.staffImages?.[0] || item.marketing_image} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <div className="font-black text-gray-900 text-sm">{item.customerName}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                          By: {item.createdByName || 'System'}
+                        </div>
+                        <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5">
+                          <Phone size={12} className="text-brand-primary" /> {item.phone}
+                        </a>
                       </div>
-                      <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5">
-                        <Phone size={12} className="text-brand-primary" /> {item.phone}
-                      </a>
                     </div>
 
                     {/* Requirement/Category notes */}

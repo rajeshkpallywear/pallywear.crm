@@ -49,7 +49,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
-    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.machineFiles || selectedOrder.machineFiles.length === 0)) {
+    if (selectedOrder) {
       loadOrderAttachments(selectedOrder.id).then(attachments => {
         setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
       });

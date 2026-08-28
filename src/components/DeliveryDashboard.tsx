@@ -24,7 +24,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
-    if (selectedOrder && !selectedOrder.original_design_file && (!selectedOrder.staffImages || selectedOrder.staffImages.length === 0)) {
+    if (selectedOrder) {
       loadOrderAttachments(selectedOrder.id).then(attachments => {
         setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
       });

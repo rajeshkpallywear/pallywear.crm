@@ -477,16 +477,29 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Pictures</p>
                     <div className="flex flex-wrap gap-2">
-                      {order.staffImages?.map((img, i) => (
+                      {order.marketing_image && (
                         <div
-                          key={i}
-                          onClick={() => setViewingImage(img)}
-                          className="w-16 h-16 rounded-xl border border-white shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-all"
+                          onClick={() => setViewingImage(order.marketing_image)}
+                          className="w-16 h-16 rounded-xl border border-brand-primary/30 shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-all relative group shrink-0"
+                          title="Marketing Reference Image"
                         >
-                          <img src={img} className="w-full h-full object-cover" />
+                          <img src={order.marketing_image} className="w-full h-full object-cover" />
+                          <span className="absolute bottom-0 inset-x-0 bg-brand-primary/80 text-[7px] text-white text-center font-black uppercase py-0.5">Marketing</span>
                         </div>
-                      ))}
-                      {!order.staffImages?.length && <span className="text-[10px] text-gray-300 italic">None</span>}
+                      )}
+                      {order.staffImages?.map((img, i) => {
+                        if (img === order.marketing_image) return null;
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => setViewingImage(img)}
+                            className="w-16 h-16 rounded-xl border border-white shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-all shrink-0"
+                          >
+                            <img src={img} className="w-full h-full object-cover" />
+                          </div>
+                        );
+                      })}
+                      {!order.staffImages?.length && !order.marketing_image && <span className="text-[10px] text-gray-300 italic">None</span>}
                     </div>
                   </div>
                   <div>

@@ -2492,9 +2492,18 @@ export default function AdminDashboard() {
                         <tr key={o.id} className="hover:bg-gray-50/50 group transition-colors">
                           <td className="px-6 py-4 font-mono font-black text-brand-primary text-xs">#{o.id.slice(-8)}</td>
                           <td className="px-6 py-4">
-                            <p className="font-bold text-gray-800">{o.customerInfo.name}</p>
-                            <p className="text-[10px] text-gray-400 font-medium">{o.customerInfo.phone || 'No phone'}</p>
-                            <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider mt-0.5">Created by: {o.createdByName || 'System'}</p>
+                            <div className="flex items-center gap-3">
+                              {((o.staffImages && o.staffImages[0]) || o.marketing_image) && (
+                                <div className="w-10 h-10 rounded-xl border border-gray-200 overflow-hidden shrink-0 bg-gray-50">
+                                  <img src={o.staffImages?.[0] || o.marketing_image} className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-bold text-gray-800">{o.customerInfo.name}</p>
+                                <p className="text-[10px] text-gray-400 font-medium">{o.customerInfo.phone || 'No phone'}</p>
+                                <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider mt-0.5">Created by: {o.createdByName || 'System'}</p>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium text-gray-700 capitalize">
