@@ -18,6 +18,8 @@
   RewriteRule ^api/(.*)$ api/proxy.php?route=$1 [QSA,L]
 
   # Route all other traffic to the compiled dist folder
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_URI} !^/dist/
   RewriteRule ^(.*)$ dist/$1 [L]
 </IfModule>
