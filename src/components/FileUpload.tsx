@@ -66,17 +66,31 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
         continue;
       }
       try {
+        let fileToProcess: File | Blob = file;
+        if (file.type.startsWith('image/')) {
+          const options = {
+            maxSizeMB: 1.0, // target size 1MB (keeps excellent details for blueprints/designs while reducing size by 95%+)
+            maxWidthOrHeight: 2048, // keeps HD details
+            useWebWorker: true,
+          };
+          try {
+            fileToProcess = await imageCompression(file, options);
+          } catch (err) {
+            console.error('Image compression failed', err);
+          }
+        }
+
         const reader = new FileReader();
         const data = await new Promise<string>((resolve, reject) => {
           reader.onload = (event) => resolve(event.target?.result as string);
           reader.onerror = (error) => reject(error);
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(fileToProcess);
         });
 
         processedFiles.push({
           name: file.name,
           type: file.type,
-          size: file.size,
+          size: fileToProcess.size,
           data: data
         });
       } catch (error) {
@@ -111,7 +125,7 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
         {isCompressing && (
           <div className="flex items-center gap-1.5 text-xs text-brand-primary animate-pulse font-bold">
             <Loader2 size={12} className="animate-spin" />
-            Loading HD File...
+            Optimizing and Loading HD File...
           </div>
         )}
       </div>
