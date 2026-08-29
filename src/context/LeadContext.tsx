@@ -161,13 +161,13 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       const existingLead = leads.find(l => l.number === phone);
       const orderAmount = nextOrder.financials?.totalAmount || 0;
       if (existingLead) {
-        await updateLead(existingLead.id, {
+        updateLead(existingLead.id, {
           totalOrderValue: (existingLead.totalOrderValue || 0) + orderAmount,
           convertedValue: (existingLead.convertedValue || 0) + orderAmount,
           status: 'Converted'
-        });
+        }).catch(err => console.error("Failed to sync lead in background:", err));
       } else {
-        await addLead({
+        addLead({
           name: nextOrder.customerInfo?.name || 'Client',
           number: phone,
           companyName: nextOrder.customerInfo?.address || nextOrder.details?.company || '',
@@ -183,7 +183,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
           convertedValue: orderAmount,
           totalOrderValue: orderAmount,
           description: `Automatically created from Order #${nextOrder.id.slice(-8)}`
-        });
+        }).catch(err => console.error("Failed to sync lead in background:", err));
       }
     }
   };

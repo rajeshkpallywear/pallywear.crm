@@ -146,11 +146,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     persistUser(nextUser);
-    try {
-      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email);
-    } catch (e) {
+    // Fire-and-forget to avoid blocking the login completion if database/network is slow
+    mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email).catch((e) => {
       console.error('Failed to log login:', e);
-    }
+    });
     return { success: true, user: nextUser };
   };
 
@@ -180,11 +179,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     persistUser(matchedUser);
-    try {
-      await mockDataService.logLogin(matchedUser.id, matchedUser.name, matchedUser.email, loginType);
-    } catch (e) {
+    // Fire-and-forget to avoid blocking the login completion if database/network is slow
+    mockDataService.logLogin(matchedUser.id, matchedUser.name, matchedUser.email, loginType).catch((e) => {
       console.error(`Failed to log ${loginType} login:`, e);
-    }
+    });
     return { success: true, user: matchedUser };
   };
 
@@ -197,11 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const nextUser = profileToUser(userProfile);
     persistUser(nextUser);
-    try {
-      await mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email, 'GOOGLE');
-    } catch (e) {
+    // Fire-and-forget to avoid blocking the login completion if database/network is slow
+    mockDataService.logLogin(nextUser.id, nextUser.name, nextUser.email, 'GOOGLE').catch((e) => {
       console.error('Failed to log Google login:', e);
-    }
+    });
     return { success: true, user: nextUser };
   };
 
@@ -271,11 +268,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     if (user) {
-      try {
-        await mockDataService.logLogout(user.id);
-      } catch (e) {
+      // Fire-and-forget to avoid blocking the UI logout if database is slow or disconnected
+      mockDataService.logLogout(user.id).catch((e) => {
         console.error('Failed to log logout:', e);
-      }
+      });
     }
     persistUser(null);
     if (Capacitor.isNativePlatform()) {
