@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
 import {
   Menu, X, TrendingUp, User, Zap, BarChart3, Layout, Globe, Shield,
-  Monitor, Smartphone, MessageSquare, Send, CheckCircle2, AlertCircle, PlusCircle, Sparkles, Settings, ShoppingBag, Tag
+  Monitor, Smartphone, MessageSquare, Send, CheckCircle2, AlertCircle, PlusCircle, Sparkles, Settings, ShoppingBag, Tag,
+  Package, DollarSign, Users, Flame, Bell, ChevronRight, Activity, ArrowUpRight, Search, Layers, Clock, Lock, Check
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -210,123 +211,220 @@ export default function Store() {
 
           <AnimatePresence mode="wait">
             {viewMode === 'system' ? (
-              /* SYSTEM / DESKTOP LAYOUT MODEL */
+              /* LAPTOP MOCKUP SHOWING PALLYWEAR CRM WEBSITE */
               <motion.div
                 key="system-preview"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ type: 'spring', damping: 25 }}
-                className="w-full relative h-[500px] flex items-center justify-center perspective-[2000px]"
+                className="w-full max-w-[660px] flex flex-col items-center select-none"
               >
-                {/* Desktop layout elements shown only on wider screens */}
-                <div className="hidden lg:block w-full h-full relative">
-                  {/* Primary Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 40, rotateX: 45, rotateZ: -10 }}
-                    animate={{ opacity: 1, y: 0, rotateX: 25, rotateZ: -15, rotateY: 5 }}
-                    whileHover={{ y: -20, rotateX: 15, rotateY: 10 }}
-                    transition={{ type: 'spring', damping: 20 }}
-                    className="absolute top-0 right-0 w-[500px] h-80 bg-white/90 backdrop-blur-2xl border border-white rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.1)] p-8 z-20"
-                    style={{ transformStyle: 'preserve-3d' }}
-                  >
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Store Catalog</h3>
-                        <p className="text-3xl font-black text-gray-900 tracking-tighter">Premium Apparel Collection</p>
-                      </div>
-                      <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
-                        <ShoppingBag className="w-6 h-6" />
-                      </div>
+                {/* ── Laptop Top Lid & Screen ── */}
+                <div className="w-full bg-slate-900 rounded-t-2xl sm:rounded-t-[20px] p-2 sm:p-2.5 border-t-2 border-x-2 border-slate-700/80 shadow-2xl relative">
+                  {/* Camera Bezel */}
+                  <div className="flex items-center justify-center gap-1.5 mb-1 sm:mb-1.5">
+                    <div className="w-2 h-2 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center">
+                      <span className="w-0.5 h-0.5 rounded-full bg-emerald-500 animate-pulse" />
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/20 border border-indigo-100">
-                        <div className="flex items-center gap-3">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                          <span className="text-xs font-black text-gray-900">Custom Sublimation Jersey</span>
-                        </div>
-                        <span className="text-xs font-black text-indigo-600 bg-white px-2.5 py-1 rounded-xl shadow-xs">₹450 / pc</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/20 border border-indigo-100">
-                        <div className="flex items-center gap-3">
-                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                          <span className="text-xs font-black text-gray-900">Custom Fleece Hoodie Sweatshirt</span>
-                        </div>
-                        <span className="text-xs font-black text-indigo-600 bg-white px-2.5 py-1 rounded-xl shadow-xs">₹850 / pc</span>
-                      </div>
-                    </div>
-                  </motion.div>
+                  </div>
 
-                  {/* User List Card */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -40, rotateX: 45, rotateZ: -10 }}
-                    animate={{ opacity: 1, x: 0, rotateX: 25, rotateZ: -15, rotateY: 5 }}
-                    whileHover={{ x: -20, rotateY: 0 }}
-                    className="absolute -bottom-5 left-0 w-[380px] bg-white/90 backdrop-blur-2xl border border-white rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.1)] p-8 z-30"
-                    style={{ transformStyle: 'preserve-3d' }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Store Specifications</h4>
+                  {/* Screen Content Wrapper */}
+                  <div className="w-full bg-white rounded-lg overflow-hidden border border-slate-200/50 flex flex-col text-left text-[11px] h-[340px] sm:h-[390px] shadow-inner">
+                    {/* Browser & CRM Header */}
+                    <div className="px-3 py-1.5 bg-slate-100/90 border-b border-gray-200 flex items-center justify-between gap-2 shrink-0">
+                      {/* Window Controls & CRM Brand */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+                          <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                        </div>
+                        <div className="h-3 w-px bg-gray-300 mx-0.5" />
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 rounded bg-indigo-600 flex items-center justify-center text-white text-[8px] font-black">P</div>
+                          <span className="text-[10px] font-black text-gray-800 tracking-tight">Pallywear CRM</span>
+                        </div>
+                      </div>
+
+                      {/* Mock URL Bar */}
+                      <div className="flex-1 max-w-[200px] sm:max-w-[240px] bg-white border border-gray-200 rounded-md px-2 py-0.5 flex items-center gap-1.5 text-[9px] text-gray-500 font-mono">
+                        <Lock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                        <span className="truncate text-gray-700 font-medium">crm.pallywear.com/dashboard</span>
+                      </div>
+
+                      {/* User & Live Badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[8px] font-black border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Live
+                        </span>
+                        <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[9px] font-black">
+                          R
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-3">
-                      {[
-                        { label: 'Jersey Dry-Fit', desc: '100% Poly, Sublimation Print' },
-                        { label: 'Sweatshirt Fleece', desc: '80% Cotton, Heavy Embroidery' }
-                      ].map((u, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/20 hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100 group">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-indigo-50 p-2 text-indigo-500">
-                              <Tag className="w-full h-full" />
+
+                    {/* CRM Main Workspace Layout */}
+                    <div className="flex-1 flex min-h-0 bg-slate-50">
+                      {/* Left Mini Sidebar */}
+                      <div className="w-28 sm:w-36 bg-slate-900 text-white p-2 flex flex-col justify-between shrink-0">
+                        <div className="space-y-1">
+                          <div className="px-2 py-1 bg-indigo-600/90 rounded-md flex items-center gap-1.5 text-[9px] font-bold text-white shadow-xs">
+                            <Layout className="w-3 h-3 shrink-0" />
+                            <span className="truncate">Dashboard</span>
+                          </div>
+                          <div className="px-2 py-1 rounded-md flex items-center justify-between text-[9px] font-bold text-slate-400 hover:text-white transition-colors">
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3 h-3 shrink-0" />
+                              <span>Leads</span>
                             </div>
-                            <div>
-                              <p className="text-xs font-black text-gray-900">{u.label}</p>
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{u.desc}</span>
+                            <span className="px-1 py-0.5 bg-slate-800 text-[8px] rounded text-slate-300">142</span>
+                          </div>
+                          <div className="px-2 py-1 rounded-md flex items-center justify-between text-[9px] font-bold text-slate-400 hover:text-white transition-colors">
+                            <div className="flex items-center gap-1.5">
+                              <Package className="w-3 h-3 shrink-0" />
+                              <span>Orders</span>
+                            </div>
+                            <span className="px-1 py-0.5 bg-slate-800 text-[8px] rounded text-slate-300">28</span>
+                          </div>
+                          <div className="px-2 py-1 rounded-md flex items-center gap-1.5 text-[9px] font-bold text-slate-400 hover:text-white transition-colors">
+                            <Activity className="w-3 h-3 shrink-0" />
+                            <span>Invoices</span>
+                          </div>
+                          <div className="px-2 py-1 rounded-md flex items-center gap-1.5 text-[9px] font-bold text-slate-400 hover:text-white transition-colors">
+                            <Sparkles className="w-3 h-3 shrink-0" />
+                            <span>Digitizer</span>
+                          </div>
+                        </div>
+
+                        {/* Sidebar Footer */}
+                        <div className="pt-2 border-t border-slate-800/80">
+                          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">Pallywear v2.4</p>
+                        </div>
+                      </div>
+
+                      {/* Main Dashboard Screen View */}
+                      <div className="flex-1 p-2.5 sm:p-3 overflow-hidden flex flex-col justify-between space-y-2">
+                        {/* Header & Quick Action */}
+                        <div className="flex items-center justify-between gap-2 border-b border-gray-200/80 pb-1.5">
+                          <div>
+                            <p className="text-[11px] font-black text-gray-900">Operations Control Center</p>
+                            <p className="text-[8px] text-gray-400 font-medium">Real-time apparel sales & fulfillment telemetry</p>
+                          </div>
+                          <Link to="/login">
+                            <span className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-xs">
+                              <PlusCircle className="w-2.5 h-2.5" /> + Order
+                            </span>
+                          </Link>
+                        </div>
+
+                        {/* KPI Cards Grid */}
+                        <div className="grid grid-cols-4 gap-1.5">
+                          <div className="bg-white p-2 rounded-lg border border-gray-200/70 shadow-xs">
+                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-wider block">Revenue</span>
+                            <span className="text-[10px] sm:text-xs font-black text-gray-900 block mt-0.5">₹24.85L</span>
+                            <span className="text-[7px] font-bold text-emerald-600 flex items-center gap-0.5 mt-0.5">
+                              <ArrowUpRight className="w-2 h-2" /> +18.4%
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded-lg border border-gray-200/70 shadow-xs">
+                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-wider block">Active Leads</span>
+                            <span className="text-[10px] sm:text-xs font-black text-indigo-600 block mt-0.5">142</span>
+                            <span className="text-[7px] font-bold text-red-500 flex items-center gap-0.5 mt-0.5">
+                              <Flame className="w-2 h-2" /> 38 Hot
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded-lg border border-gray-200/70 shadow-xs">
+                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-wider block">In Production</span>
+                            <span className="text-[10px] sm:text-xs font-black text-amber-600 block mt-0.5">34</span>
+                            <span className="text-[7px] font-bold text-gray-500 block mt-0.5">128 Delivered</span>
+                          </div>
+                          <div className="bg-white p-2 rounded-lg border border-gray-200/70 shadow-xs">
+                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-wider block">Conv. Rate</span>
+                            <span className="text-[10px] sm:text-xs font-black text-emerald-600 block mt-0.5">88.5%</span>
+                            <span className="text-[7px] font-bold text-gray-400 block mt-0.5">High Growth</span>
+                          </div>
+                        </div>
+
+                        {/* Split Row: Mini Chart & Orders Feed */}
+                        <div className="grid grid-cols-5 gap-2 flex-1 min-h-0">
+                          {/* Mini Revenue Growth Chart Area */}
+                          <div className="col-span-2 bg-white p-2 rounded-lg border border-gray-200/70 shadow-xs flex flex-col justify-between">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[8px] font-black text-gray-800 uppercase tracking-wider">Revenue Growth</span>
+                              <span className="text-[7px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">Monthly</span>
+                            </div>
+                            {/* Stylized CSS Bar / Area Visual */}
+                            <div className="h-16 flex items-end gap-1 px-1 pt-1 border-b border-gray-100">
+                              {[
+                                { h: '35%', label: 'Jan' },
+                                { h: '50%', label: 'Feb' },
+                                { h: '45%', label: 'Mar' },
+                                { h: '70%', label: 'Apr' },
+                                { h: '85%', label: 'May' },
+                                { h: '100%', label: 'Jun' }
+                              ].map((bar, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                                  <div
+                                    className={cn(
+                                      "w-full rounded-t transition-all",
+                                      i === 5 ? "bg-gradient-to-t from-indigo-600 to-purple-600" : "bg-indigo-100 hover:bg-indigo-200"
+                                    )}
+                                    style={{ height: bar.h }}
+                                  />
+                                  <span className="text-[6px] text-gray-400 font-bold">{bar.label}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-between text-[7px] font-bold text-gray-500 pt-1">
+                              <span>Delivered: ₹18.5L</span>
+                              <span className="text-indigo-600">Pipeline: ₹6.3L</span>
+                            </div>
+                          </div>
+
+                          {/* Live Recent Orders Table */}
+                          <div className="col-span-3 bg-white p-2 rounded-lg border border-gray-200/70 shadow-xs flex flex-col justify-between overflow-hidden">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[8px] font-black text-gray-800 uppercase tracking-wider">Live Orders Queue</span>
+                              <span className="text-[7px] font-bold text-indigo-600">Auto-sync</span>
+                            </div>
+                            <div className="space-y-1 overflow-hidden">
+                              {[
+                                { id: '#ORD-8942', client: 'Godwin (Marketing)', item: 'Sublimation Jersey (500)', amt: '₹1,25,000', status: 'Delivered', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                                { id: '#ORD-8943', client: 'Vivek (Marketing)', item: 'Custom Fleece Hoodie (200)', amt: '₹84,000', status: 'Production', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                                { id: '#ORD-8944', client: 'Jimla (Online Team)', item: 'Dry-Fit Uniforms (150)', amt: '₹52,500', status: 'Accounts', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+                              ].map((ord, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-1 rounded bg-gray-50/70 border border-gray-100 text-[8px]">
+                                  <div className="min-w-0 pr-1">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono font-bold text-gray-800">{ord.id}</span>
+                                      <span className="text-gray-400 truncate">• {ord.client}</span>
+                                    </div>
+                                    <p className="text-[7px] text-gray-500 truncate">{ord.item}</p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className="font-black text-gray-900 block leading-tight">{ord.amt}</span>
+                                    <span className={cn("text-[6px] font-black uppercase px-1 py-0.5 rounded border inline-block", ord.color)}>
+                                      {ord.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                </div>
-
-                {/* Flat System layout mockup fallback on smaller screens (<1024px) */}
-                <div className="lg:hidden w-full max-w-sm flex flex-col gap-6 px-4">
-                  <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-xl">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Store Catalog</h3>
-                        <p className="text-3xl font-black text-gray-900 tracking-tighter">Premium Collection</p>
                       </div>
-                      <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
-                        <ShoppingBag className="w-5 h-5" />
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-xs font-bold text-gray-950">Sublimation Jersey</span>
-                        <span className="text-xs font-black text-indigo-600">₹450</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-xs font-bold text-gray-950">Hoodie Sweatshirt</span>
-                        <span className="text-xs font-black text-indigo-600">₹850</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-xl">
-                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Fabric Specifications</h4>
-                    <div className="space-y-3">
-                      {[
-                        { name: 'Jersey Dry-Fit', val: '100% Poly' },
-                        { name: 'Sweatshirt Fleece', val: 'Heavy Cotton' }
-                      ].map((u, i) => (
-                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                          <span className="text-xs font-black text-gray-900">{u.name}</span>
-                          <span className="text-xs font-bold text-gray-500">{u.val}</span>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </div>
+
+                {/* ── Laptop Bottom Deck / Base ── */}
+                <div className="w-[106%] sm:w-[104%] bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 h-3.5 sm:h-4.5 rounded-b-xl border-t border-slate-600 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative flex items-start justify-center">
+                  {/* Laptop Center Opening Lip / Trackpad Notch */}
+                  <div className="w-20 sm:w-28 h-1 sm:h-1.5 bg-slate-950 rounded-b-md mx-auto" />
+                </div>
+                {/* Desk Reflection Shadow */}
+                <div className="w-[90%] h-3 bg-indigo-950/20 blur-lg rounded-full mt-1 mx-auto" />
               </motion.div>
             ) : (
               /* MOBILE PREVIEW LAYOUT & SMARTPHONE MODEL */
