@@ -119,11 +119,6 @@ export default function Store() {
         </div>
 
         <div className="flex items-center gap-6">
-          <Link to="/flagship-upper">
-            <span className="text-xs font-black text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all hover:scale-105 shadow-xs">
-              🔥 Flagship Upper (Video)
-            </span>
-          </Link>
           <Link to="/login">
             <Button className="bg-gray-900 text-white hover:bg-black rounded-xl px-8 py-2.5 font-bold shadow-xl shadow-gray-200 transition-all hover:scale-105">
               Login

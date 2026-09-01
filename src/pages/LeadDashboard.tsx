@@ -182,9 +182,27 @@ export default function LeadDashboard() {
     return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
   };
 
-  // Build per-user lead & revenue stats (For all registered staff)
+  // Helper to check if a user belongs to Online Team or Marketing
+  const isMarketingOrOnlineRole = (role?: string) => {
+    if (!role) return false;
+    const r = String(role).toLowerCase().trim();
+    return (
+      r === 'marketing' ||
+      r === UserRole.MARKETING ||
+      r === 'onlineteam' ||
+      r === UserRole.ONLINETEAM ||
+      r === 'online_team' ||
+      r === 'online team' ||
+      r.includes('marketing') ||
+      r.includes('onlineteam') ||
+      r.includes('online')
+    );
+  };
+
+  // Build per-user lead & revenue stats (For Online Team and Marketing users only)
   const userLeadStats = useMemo(() => {
-    const filteredStaff = registeredUsers.length > 0 ? registeredUsers : (user ? [user] : []);
+    const allStaff = registeredUsers.length > 0 ? registeredUsers : (user ? [user] : []);
+    const filteredStaff = allStaff.filter((u: any) => isMarketingOrOnlineRole(u.role));
 
     return filteredStaff.map((u: any) => {
       const uName = (u.name || '').toLowerCase().trim();
@@ -267,35 +285,40 @@ export default function LeadDashboard() {
     });
   }, [registeredUsers, leads, orders, user]);
 
-  // Total delivered orders revenue across system
-  const systemDeliveredOrdersRevenue = useMemo(() => {
-    return orders
-      .filter(o => isDeliveredStatus(o.status))
-      .reduce((sum, o) => {
-        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
-        return sum + (isNaN(amt) ? 0 : amt);
-      }, 0);
-  }, [orders]);
-
-  // Totals calculated from all staff
+  // Totals calculated from online team and marketing staff
   const totalLeads = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.totalLeads, 0), [userLeadStats]);
   const totalForecasted = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.forecastedValue, 0), [userLeadStats]);
-  const totalConverted = useMemo(() => {
-    const userSum = userLeadStats.reduce((sum, u) => sum + u.convertedValue, 0);
-    return Math.max(systemDeliveredOrdersRevenue, userSum);
-  }, [userLeadStats, systemDeliveredOrdersRevenue]);
+  const totalConverted = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.convertedValue, 0), [userLeadStats]);
   const totalHot = useMemo(() => userLeadStats.reduce((sum, u) => sum + u.hotLeads, 0), [userLeadStats]);
 
-  // Revenue trend timeline chart data (Converted & Forecasted Revenue)
+  // Revenue trend timeline chart data (Converted & Forecasted Revenue for Online Team & Marketing)
   const revenueTimelineData = useMemo(() => {
+    const allUserOrders = userLeadStats.flatMap((u: any) => u.orders || []);
+    const uniqueOrdersMap = new Map<string, any>();
+    allUserOrders.forEach((o: any) => {
+      const id = String(o.id || Math.random());
+      if (!uniqueOrdersMap.has(id)) {
+        uniqueOrdersMap.set(id, o);
+      }
+    });
+
+    const allUserLeads = userLeadStats.flatMap((u: any) => u.leads || []);
+    const uniqueLeadsMap = new Map<string, any>();
+    allUserLeads.forEach((l: any) => {
+      const id = String(l.id || Math.random());
+      if (!uniqueLeadsMap.has(id)) {
+        uniqueLeadsMap.set(id, l);
+      }
+    });
+
     const combined = [
-      ...orders.filter(o => isDeliveredStatus(o.status)).map(o => ({
+      ...Array.from(uniqueOrdersMap.values()).map(o => ({
         date: Number(o.createdAt || Date.now()),
         converted: Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0),
         forecasted: 0,
         label: o.customerInfo?.name || o.clientName || 'Order'
       })),
-      ...leads.map(l => ({
+      ...Array.from(uniqueLeadsMap.values()).map(l => ({
         date: Number(l.createdAt || (l.entryDate ? new Date(l.entryDate).getTime() : Date.now())),
         converted: Number(l.convertedValue ?? l.totalOrderValue ?? 0),
         forecasted: Number(l.forecastedValue || 0),
@@ -314,7 +337,7 @@ export default function LeadDashboard() {
 
     let cumConverted = 0;
     let cumForecasted = 0;
-    return combined.map((item, idx) => {
+    return combined.map((item) => {
       cumConverted += item.converted;
       cumForecasted += item.forecasted;
       const dateStr = new Date(item.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
@@ -326,7 +349,7 @@ export default function LeadDashboard() {
         label: item.label
       };
     });
-  }, [orders, leads, userLeadStats]);
+  }, [userLeadStats]);
 
   // Chart: leads by role
   const byRoleChartData = useMemo(() => {
@@ -353,8 +376,8 @@ export default function LeadDashboard() {
   }, [userLeadStats, search, roleFilter]);
 
   const uniqueRoles = useMemo(() => {
-    return Array.from(new Set(registeredUsers.map((u: any) => u.role))).filter(Boolean);
-  }, [registeredUsers]);
+    return Array.from(new Set(userLeadStats.map((u: any) => u.role))).filter(Boolean);
+  }, [userLeadStats]);
 
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
@@ -533,7 +556,7 @@ export default function LeadDashboard() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-5 bg-brand-primary rounded-full" />
-                <h2 className="text-sm font-black text-gray-800 uppercase tracking-widest">Registered Staff — Lead Overview</h2>
+                <h2 className="text-sm font-black text-gray-800 uppercase tracking-widest">Marketing & Online Team Staff — Lead Overview</h2>
                 <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{filteredUsers.length} members</span>
               </div>
               <div className="flex flex-wrap items-center gap-2.5">

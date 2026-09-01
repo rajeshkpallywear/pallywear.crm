@@ -74,7 +74,15 @@ const PageLoader = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
+const ProtectedRoute = ({
+  children,
+  adminOnly = false,
+  leadDashboardOnly = false
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+  leadDashboardOnly?: boolean;
+}) => {
   const { user, loading } = useAuth();
 
   if (loading) return <PageLoader />;
@@ -83,9 +91,16 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
   const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
   const isStaff = user.role === UserRole.STAFF || user.role === 'staff';
   const isDaniel = user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
+  const isMarketing = user.role === UserRole.MARKETING || user.role === 'marketing';
+  const isOnlineTeam = user.role === UserRole.ONLINETEAM || user.role === 'onlineteam';
 
-  // Admin, Staff, and Daniel can access admin panel/lead-dashboard
+  // Admin, Staff, and Daniel can access admin panel
   if (adminOnly && !isAdmin && !isStaff && !isDaniel) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Admin, Marketing, Online Team, Staff, and Daniel can access Lead Dashboard
+  if (leadDashboardOnly && !isAdmin && !isStaff && !isDaniel && !isMarketing && !isOnlineTeam) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -152,7 +167,7 @@ function AppRoutes() {
           <Route
             path="/lead-dashboard"
             element={
-              <ProtectedRoute adminOnly={true}>
+              <ProtectedRoute leadDashboardOnly={true}>
                 <LeadDashboard />
               </ProtectedRoute>
             }
