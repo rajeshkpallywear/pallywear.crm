@@ -221,6 +221,21 @@ export const mockDataService = {
     notifyUpdate();
   },
 
+  claimOrder: async (id: string, userId: string, userName: string, action: 'claim' | 'release' = 'claim'): Promise<void> => {
+    invalidateCache('orders');
+    invalidateCache(`att_${sanitizeId(id)}`);
+    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}/claim`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, userName, action })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Failed to claim order' }));
+      throw new Error(err.message || 'Failed to claim order');
+    }
+    notifyUpdate();
+  },
+
   getLeads: async (forceFresh = false): Promise<Lead[]> => {
     if (!forceFresh) {
       const cached = getCached<Lead[]>('leads', 12000);

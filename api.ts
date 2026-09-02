@@ -444,6 +444,9 @@ router.get('/orders', async (req, res) => {
       original_design_zip: '',
       original_design_zip_filename: r.original_design_zip_filename || '',
       sentByAccounts: r.sentByAccounts === 1,
+      claimedBy: r.claimedBy || '',
+      claimedByName: r.claimedByName || '',
+      claimedAt: Number(r.claimedAt || 0),
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -783,6 +786,9 @@ const handleUpdateOrderFields = async (req, res) => {
       digitizer_file: 'digitizer_file',
       digitizer_filename: 'digitizer_filename',
       balance_received_notes: 'balance_received_notes',
+      claimedBy: 'claimedBy',
+      claimedByName: 'claimedByName',
+      claimedAt: 'claimedAt',
     };
     
     if (updates.customerInfo) {
@@ -968,6 +974,46 @@ const handleUpdateOrderFields = async (req, res) => {
 
 router.patch('/orders/:id', handleUpdateOrderFields);
 router.put('/orders/:id', handleUpdateOrderFields);
+
+router.post('/orders/:id/claim', async (req, res) => {
+  const rawId = sanitizeId(req.params.id);
+  const { userId, userName, action } = req.body;
+  try {
+    const id = await resolveOrderId(rawId);
+    if (!id) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+    const existing = await query('SELECT id, claimedBy, claimedByName, createdBy, createdByName FROM orders WHERE id = ?', [id]) as any[];
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+    const currentOrder = existing[0];
+    if (action === 'claim') {
+      if (currentOrder.claimedBy && currentOrder.claimedBy !== userId) {
+        return res.status(400).json({
+          success: false,
+          message: `This order is already claimed by ${currentOrder.claimedByName || 'another team member'}.`
+        });
+      }
+      await query(
+        'UPDATE orders SET claimedBy = ?, claimedByName = ?, claimedAt = ?, updatedAt = ? WHERE id = ?',
+        [userId, userName, Date.now(), Date.now(), id]
+      );
+      return res.json({ success: true, message: 'Order claimed successfully.' });
+    } else if (action === 'release') {
+      await query(
+        'UPDATE orders SET claimedBy = NULL, claimedByName = NULL, claimedAt = NULL, updatedAt = ? WHERE id = ?',
+        [Date.now(), id]
+      );
+      return res.json({ success: true, message: 'Order released to queue.' });
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid claim action.' });
+    }
+  } catch (error: any) {
+    console.error('Error in /orders/:id/claim:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // ----------------------------------------------------
 // INVOICES ENDPOINTS

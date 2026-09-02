@@ -246,6 +246,15 @@ export async function initDB() {
     try {
       await pool.execute('ALTER TABLE `orders` ADD COLUMN `original_design_zip_filename` varchar(255) DEFAULT NULL');
     } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `claimedBy` varchar(50) DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `claimedByName` varchar(100) DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `claimedAt` bigint DEFAULT NULL');
+    } catch (_) {}
 
 
     // 6. Create leaves table if not exists
