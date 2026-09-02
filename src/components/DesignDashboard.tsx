@@ -55,10 +55,10 @@ interface ChatMessage {
 
 export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignDashboardProps) {
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
-  const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('accounts_queue');
+  const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('marketing_queue');
 
-  // Subsection filters: 'process', 'recent', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'process' | 'recent' | 'hold' | 'completed'>('process');
+  // Subsection filters: 'all', 'unclaimed', 'my_tasks', 'hold', 'completed'
+  const [selectedSection, setSelectedSection] = useState<'all' | 'unclaimed' | 'my_tasks' | 'hold' | 'completed'>('all');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -156,35 +156,30 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   }, [selectedOrder, activeChannel, refreshChatCounter]);
 
   // Assist sorting / parsing designer name rules
-  const isAssignedToOther = (assigned: string) => {
-    if (!assigned) return false;
+  const isClaimedByMe = (item: any) => {
+    if (!item?.assignedDesigner) return false;
+    const clean = item.assignedDesigner.trim().toLowerCase();
+    return clean.includes(designerName.toLowerCase()) || designerName.toLowerCase().includes(clean);
+  };
+
+  const isUnclaimedItem = (assigned: string) => {
+    if (!assigned) return true;
     const clean = assigned.trim().toLowerCase();
-    if (
-      clean === 'unassigned' ||
-      clean === 'designer assigned' ||
-      clean === '' ||
-      clean.includes('staff') ||
-      clean.includes('admin') ||
-      clean.includes('accounts') ||
-      clean.includes('order') ||
-      clean.includes('production') ||
-      clean.includes('delivery')
-    ) {
-      return false;
-    }
-    return !clean.includes(designerName.toLowerCase()) && !designerName.toLowerCase().includes(clean);
+    return clean === 'unassigned' || clean === 'designer assigned' || clean === '' || clean.includes('staff');
+  };
+
+  const isClaimedByOther = (item: any) => {
+    return !isUnclaimedItem(item.assignedDesigner) && !isClaimedByMe(item);
   };
 
   // 1. Process Order and Conversation Items for MARKETING QUEUE (Marketing Sent)
   const marketingOrderItems = orders
     .filter(o => {
-      // Show orders currently in design or hold stage, where they originated from Marketing (no accounts attachments)
-      // and aren't locked to other designers.
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN;
       const isCompletedDesign = o.status === OrderStatus.DELIVERED;
       const isMarketing = !o.sentByAccounts && (!o.accountsAttachments || o.accountsAttachments.length === 0);
-      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing && !isAssignedToOther(o.assignedDesigner || '');
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing;
     })
     .map(o => {
       const isCompleted = o.status === OrderStatus.DELIVERED;
@@ -196,19 +191,21 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       return {
         id: o.id,
         isOrder: true,
-        customerName: o.customerInfo.name,
-        phone: o.customerInfo.phone,
-        category: o.category,
-        quantity: o.quantity,
+        customerName: o.customerInfo?.name || '',
+        phone: o.customerInfo?.phone || '',
+        category: o.category || 'T-Shirt',
+        quantity: o.quantity || 1,
         notes: orderNotes,
         isUrgent: o.isUrgent || false,
         assignedDesigner: o.assignedDesigner || 'Unassigned',
+        createdByName: o.createdByName || '',
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
-        createdAt: o.createdAt,
+        createdAt: o.createdAt || Date.now(),
         staffImages: o.staffImages || [],
         staffPdfs: o.staffPdfs || [],
+        marketing_image: o.marketing_image || '',
         accountsAttachments: [],
         sizeBreakdown: o.sizeBreakdown || []
       };
@@ -229,36 +226,35 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         notes: c.message,
         isUrgent: false,
         assignedDesigner: c.staffName || 'Unassigned',
+        createdByName: c.staffName || 'Staff',
         status: isCompleted ? OrderStatus.ORDER_MANAGEMENT : OrderStatus.DESIGN, // simulate pipeline
         isHold: false,
         isCompleted: isCompleted,
         createdAt: c.createdAt,
         staffImages: c.imageAttachments || [],
-        staffPdfs: c.pdfAttachments || []
+        staffPdfs: c.pdfAttachments || [],
+        marketing_image: '',
+        accountsAttachments: [],
+        sizeBreakdown: []
       };
     });
 
   const marketingCombinedList = [...marketingOrderItems, ...staffConsultationItems];
 
   // 2. Process Items for ACCOUNTS QUEUE (Accounts Sent)
-  // Orders in Backoffice QC / OM Pipeline — only show DESIGN and HOLD status orders sent by Accounts
   const accountsOrderItems = orders
     .filter(o => {
-      // Only show orders that are actively in DESIGN phase or on HOLD from DESIGN
-      // This ensures accounts-sent orders (status=DESIGN) show up here
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
       const isCompletedDesign = o.status === OrderStatus.DELIVERED;
       const isAccounts = o.sentByAccounts || (o.accountsAttachments && o.accountsAttachments.length > 0);
-      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts && !isAssignedToOther(o.assignedDesigner || '');
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts;
     })
     .map(o => {
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
       const hasOmChat = !!localStorage.getItem(chatKey);
 
       const isCompleted = o.status === OrderStatus.DELIVERED;
-      const isHold = o.status === OrderStatus.HOLD;
-
       const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
         ? o.sizeBreakdown.map(s => [s.category, s.material, s.colour, s.printType, s.model].filter(Boolean).join(' ')).filter(Boolean).join(' | ') 
         : '') || 'No notes';
@@ -266,28 +262,26 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       return {
         id: o.id,
         isOrder: true,
-        customerName: o.customerInfo.name,
-        phone: o.customerInfo.phone,
-        category: o.category,
-        quantity: o.quantity,
+        customerName: o.customerInfo?.name || '',
+        phone: o.customerInfo?.phone || '',
+        category: o.category || 'T-Shirt',
+        quantity: o.quantity || 1,
         notes: orderNotes,
         isUrgent: o.isUrgent || false,
         assignedDesigner: o.assignedDesigner || 'Unassigned',
+        createdByName: o.createdByName || '',
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
-        createdAt: o.createdAt,
+        createdAt: o.createdAt || Date.now(),
         hasOmChat: hasOmChat,
         staffImages: o.staffImages || [],
         staffPdfs: o.staffPdfs || [],
+        marketing_image: o.marketing_image || '',
         accountsAttachments: o.accountsAttachments || [],
         sizeBreakdown: o.sizeBreakdown || []
       };
     });
-
-  const isUnclaimedItem = (assigned: string) => {
-    return !assigned || assigned === 'Unassigned' || assigned === 'Designer assigned' || assigned === '';
-  };
 
   // Filter lists based on primary tab and subsection
   const getFilteredItems = () => {
@@ -298,47 +292,61 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => item.isHold);
     } else if (selectedSection === 'completed') {
       baseList = baseList.filter(item => item.isCompleted);
-    } else if (selectedSection === 'process') {
-      baseList = baseList.filter(item => !isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold);
-    } else if (selectedSection === 'recent') {
+    } else if (selectedSection === 'unclaimed') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold);
+    } else if (selectedSection === 'my_tasks') {
+      baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     }
-    // 'all' shows everything in the base list (no extra filter)
 
     // Search term matching
-    return baseList.filter(item =>
-      item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      baseList = baseList.filter(item =>
+        item.customerName.toLowerCase().includes(term) ||
+        item.id.toLowerCase().includes(term) ||
+        item.category.toLowerCase().includes(term) ||
+        (item.notes || '').toLowerCase().includes(term)
+      );
+    }
+
+    // Queue Sorting: Claimed by me FIRST, then open unclaimed in queue, then others; then by urgent, then createdAt desc
+    return baseList.sort((a, b) => {
+      const aMine = isClaimedByMe(a) ? 2 : (isUnclaimedItem(a.assignedDesigner) ? 1 : 0);
+      const bMine = isClaimedByMe(b) ? 2 : (isUnclaimedItem(b.assignedDesigner) ? 1 : 0);
+      if (aMine !== bMine) return bMine - aMine;
+      if ((a.isUrgent ? 1 : 0) !== (b.isUrgent ? 1 : 0)) return (b.isUrgent ? 1 : 0) - (a.isUrgent ? 1 : 0);
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
   };
 
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
-    const recentCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
-    const processCount = baseList.filter(item => !isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
+    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
+    const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
     const totalCount = baseList.length;
 
-    return { recentCount, processCount, holdCount, completedCount, totalCount };
+    return { unclaimedCount, myTasksCount, holdCount, completedCount, totalCount };
   };
 
-  const handleClaimItem = async (item: any) => {
+  const handleClaimItem = async (item: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setIsProcessing(true);
     try {
       if (item.isOrder) {
         await onUpdateOrder(item.id, {
           assignedDesigner: designerName,
+          claimedBy: user?.id || user?.uid,
+          claimedByName: designerName,
+          claimedAt: Date.now(),
           updatedAt: Date.now()
         });
-        // Switch to 'process' tab so the claimed order stays visible
-        setSelectedSection('process');
-        alert(`Success: Order #${item.id.slice(-8)} successfully assigned to you!`);
+        alert(`Success: Order #${item.id.slice(-8)} is now claimed by you! Opening Workspace...`);
         const fullOrder = orders.find(o => o.id === item.id);
         if (fullOrder) {
-          setSelectedOrder({ ...fullOrder, assignedDesigner: designerName });
+          setSelectedOrder({ ...fullOrder, assignedDesigner: designerName, claimedBy: user?.id || user?.uid, claimedByName: designerName });
           // Initialize file arrays
           setDesignFiles(fullOrder.designAttachments || []);
           setMachineFiles(fullOrder.machineFiles || []);
@@ -366,14 +374,37 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         localStorage.setItem('pallywear_conversations', JSON.stringify(updated));
         loadStaffConversations();
         setSelectedItemIdForStaffChat(item.id);
-        // Switch to process tab for consultations too
-        setSelectedSection('process');
         alert(`Success: Consultation claimed by you! Opening Staff dialogue panel...`);
         setIsStaffChatOpen(true);
       }
     } catch (e) {
       console.error(e);
       alert("Failed to claim design item.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReleaseItem = async (item: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!confirm(`Are you sure you want to release Order #${item.id.slice(-8)} back to the open queue?`)) return;
+    setIsProcessing(true);
+    try {
+      if (item.isOrder) {
+        await onUpdateOrder(item.id, {
+          assignedDesigner: 'Unassigned',
+          claimedBy: undefined,
+          claimedByName: undefined,
+          claimedAt: undefined,
+          updatedAt: Date.now()
+        });
+        if (selectedOrder?.id === item.id) {
+          setSelectedOrder(null);
+        }
+        alert(`Order #${item.id.slice(-8)} released back to open Design Queue.`);
+      }
+    } catch (e) {
+      alert("Failed to release item.");
     } finally {
       setIsProcessing(false);
     }
@@ -728,7 +759,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('marketing_queue');
-            setSelectedSection('process');
+            setSelectedSection('all');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
@@ -742,7 +773,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('accounts_queue');
-            setSelectedSection('process');
+            setSelectedSection('all');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
@@ -756,22 +787,37 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       </div>
 
       {/* Design Project Queue — Live Orders */}
-      <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Design Project Queue</h4>
-          <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-xl">
-            {
-              (activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems)
-                .filter(item => !isUnclaimedItem(item.assignedDesigner)).length
-            } Project{(activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems).filter(item => !isUnclaimedItem(item.assignedDesigner)).length !== 1 ? 's' : ''}
-          </span>
+      <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-150 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <Palette className="text-brand-primary" size={18} />
+            <h4 className="text-xs font-black uppercase text-gray-900 tracking-wider">
+              {activeChannel === 'marketing_queue' ? '📢 Marketing Forwarded Queue' : '💳 Accounts Forwarded Queue'}
+            </h4>
+            <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-xl">
+              {getFilteredItems().length} Order{getFilteredItems().length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* Search bar inside queue */}
+          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 sm:w-72">
+            <Search size={14} className="text-gray-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search queue orders, client, ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-transparent border-none text-xs text-gray-800 placeholder:text-gray-400 outline-none w-full"
+            />
+          </div>
         </div>
 
         {/* Section Filter Pills */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {([
-            { key: 'process', label: '🔒 In Progress', count: activeStats.processCount },
-            { key: 'recent', label: '⚡ New / Unclaimed', count: activeStats.recentCount },
+            { key: 'all', label: 'All In Queue', count: activeStats.totalCount },
+            { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount },
+            { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount },
             { key: 'completed', label: '✓ Done', count: activeStats.completedCount },
           ] as const).map(({ key, label, count }) => (
@@ -779,51 +825,35 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               key={key}
               onClick={() => setSelectedSection(key)}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border",
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer",
                 selectedSection === key
                   ? "bg-brand-primary text-white border-brand-primary shadow-sm"
-                  : "bg-gray-50 text-gray-500 border-gray-200 hover:border-brand-primary/40"
+                  : "bg-gray-50 text-gray-600 border-gray-200 hover:border-brand-primary/40 hover:bg-gray-100"
               )}
             >
               {label} ({count})
             </button>
           ))}
         </div>
+
+        {/* Desktop Table View */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs whitespace-nowrap">
+          <table className="hidden md:table w-full text-left text-xs whitespace-nowrap border-collapse">
             <thead>
-              <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
-                <th className="px-5 py-3">Rank</th>
-                <th className="px-5 py-3">Project Name</th>
-                <th className="px-5 py-3">Lead Designer</th>
-                <th className="px-5 py-3">Status</th>
+              <tr className="bg-gray-50/80 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                <th className="px-4 py-3">Queue Pos / ID</th>
+                <th className="px-4 py-3">Customer & Requirements</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3 text-center">Queue Status & Designer</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {getFilteredItems().filter(item => !isUnclaimedItem(item.assignedDesigner)).length > 0 ? (
-                getFilteredItems().filter(item => !isUnclaimedItem(item.assignedDesigner)).map((item, idx) => {
+              {getFilteredItems().length > 0 ? (
+                getFilteredItems().map((item, idx) => {
                   const isSelected = selectedOrder?.id === item.id;
-                  const isClaimedByMe = item.assignedDesigner.toLowerCase().includes(designerName.toLowerCase());
-                  const isUnclaimed = !item.assignedDesigner || item.assignedDesigner === 'Unassigned' || item.assignedDesigner === 'Designer assigned' || item.assignedDesigner === '';
-
-                  let statusLabel = '';
-                  let statusClass = '';
-                  if (item.isCompleted) {
-                    statusLabel = '✓ Completed';
-                    statusClass = 'bg-green-50 text-green-700 border-green-200';
-                  } else if (item.isHold) {
-                    statusLabel = '⏸ On Hold';
-                    statusClass = 'bg-orange-50 text-orange-700 border-orange-200';
-                  } else if (isUnclaimed) {
-                    statusLabel = '⚠ Open';
-                    statusClass = 'bg-amber-50 text-amber-700 border-amber-200';
-                  } else if (isClaimedByMe) {
-                    statusLabel = '🔒 In Progress';
-                    statusClass = 'bg-blue-50 text-blue-700 border-blue-200';
-                  } else {
-                    statusLabel = '🔒 Claimed';
-                    statusClass = 'bg-slate-50 text-slate-600 border-slate-200';
-                  }
+                  const claimedByMe = isClaimedByMe(item);
+                  const isUnclaimed = isUnclaimedItem(item.assignedDesigner);
 
                   const matchingInvoice = invoices.find(inv => 
                     inv.leadId === item.id || 
@@ -840,183 +870,129 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         item.status === OrderStatus.DELIVERED
                           ? "cursor-default opacity-85 hover:bg-transparent"
                           : isSelected
-                            ? "bg-purple-50/60 border-l-4 border-l-purple-500 cursor-pointer"
-                            : "hover:bg-gray-50/60 cursor-pointer"
+                            ? "bg-purple-50/70 border-l-4 border-l-purple-600 cursor-pointer"
+                            : claimedByMe
+                              ? "bg-emerald-50/20 hover:bg-emerald-50/40 cursor-pointer"
+                              : "hover:bg-gray-50/60 cursor-pointer"
                       )}
                     >
-                      <td className="px-5 py-3">
-                        <span className="font-black text-gray-500 text-sm">#{idx + 1}</span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          {((item.staffImages && item.staffImages[0]) || item.marketing_image) && (
-                            <div className="w-10 h-10 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
-                              <img src={item.staffImages?.[0] || item.marketing_image} className="w-full h-full object-cover" />
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-black text-gray-800 text-xs">{item.customerName}</span>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                              By: {item.createdByName || 'System'}
-                            </span>
-                            <span className="font-mono text-[9px] text-brand-primary font-bold">
-                              Order: #{item.id.slice(-8)}
-                              {matchingInvoice && ` | Invoice: ${matchingInvoice.invoiceNumber}`}
-                            </span>
-                            <span className="text-[9px] text-gray-400 font-semibold">{getDisplayCategory(item as any)}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`text-xs font-bold ${isClaimedByMe ? 'text-green-700' : isUnclaimed ? 'text-amber-600 italic' : 'text-gray-600'}`}>
-                          {isUnclaimed ? 'Unassigned' : item.assignedDesigner}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${statusClass}`}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-gray-400 text-xs">No design projects in queue yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Main List Workspace Container */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-
-        {/* Data list grid */}
-        <div className="overflow-x-auto">
-          {/* Desktop Table View */}
-          <table className="hidden md:table w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50/70 border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">
-              <tr>
-                <th className="px-6 py-4">Descriptor Code</th>
-                <th className="px-6 py-4">Client Detail</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4 text-center">Assigned Handler</th>
-                <th className="px-6 py-4 text-right">Action override</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {getFilteredItems().length > 0 ? (
-                getFilteredItems().map(item => {
-                  const isClaimedByMe = item.assignedDesigner.toLowerCase().includes(designerName.toLowerCase());
-                  const isUnclaimed = !item.assignedDesigner ||
-                    item.assignedDesigner === 'Unassigned' ||
-                    item.assignedDesigner === 'Designer assigned' ||
-                    item.assignedDesigner === '';
-
-                  const matchingInvoice = invoices.find(inv => 
-                    inv.leadId === item.id || 
-                    (inv.billToPhone && inv.billToPhone === item.phone) ||
-                    (inv.billToName && inv.billToName.toLowerCase() === item.customerName.toLowerCase())
-                  );
-
-                  return (
-                    <tr key={item.id} className={cn(
-                      "transition-colors group",
-                      item.status === OrderStatus.DELIVERED
-                        ? "hover:bg-transparent cursor-default opacity-85"
-                        : "hover:bg-gray-50/30 cursor-pointer"
-                    )}>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="flex flex-col gap-1">
-                          <span className="font-mono text-xs font-black text-brand-primary">
-                            Order: #{item.id.slice(-8)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-gray-500 text-xs">#{idx + 1}</span>
+                            <span className="font-mono text-xs font-black text-brand-primary">
+                              #{item.id.slice(-8)}
+                            </span>
+                            {item.isUrgent && (
+                              <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                            )}
+                          </div>
                           {matchingInvoice && (
-                            <span className="font-mono text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded w-fit">
+                            <span className="font-mono text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.2 rounded w-fit">
                               Invoice: {matchingInvoice.invoiceNumber}
                             </span>
                           )}
-                          <span className="text-[9px] text-gray-400 font-bold">
+                          <span className="text-[9px] text-gray-400 font-mono">
                             {new Date(item.createdAt).toLocaleDateString()}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           {((item.staffImages && item.staffImages[0]) || item.marketing_image) && (
                             <div className="w-10 h-10 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
                               <img src={item.staffImages?.[0] || item.marketing_image} className="w-full h-full object-cover" />
                             </div>
                           )}
-                          <div>
-                            <div className="font-black text-gray-800 text-sm flex items-center gap-1.5">
-                              {item.customerName}
-                              {item.isUrgent && (
-                                <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
-                              )}
-                            </div>
-                            <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                              By: {item.createdByName || 'System'}
-                            </div>
-                            <div className="text-xs text-gray-500 font-semibold">{item.phone}</div>
+                          <div className="flex flex-col gap-0.5 max-w-[240px]">
+                            <span className="font-black text-gray-900 text-xs uppercase italic truncate">{item.customerName}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                              By: {item.createdByName || 'Marketing'}
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-mono">{item.phone}</span>
+                            {item.notes && item.notes !== 'No notes' && (
+                              <span className="text-[9px] text-gray-400 italic truncate" title={item.notes}>
+                                Note: {item.notes}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-black uppercase tracking-tight w-fit border border-purple-150">
+
+                      <td className="px-4 py-3.5">
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-150 rounded text-[9px] font-black uppercase tracking-tight w-fit inline-block">
                           {getDisplayCategory(item as any)}
                         </span>
                       </td>
 
-                      <td className="px-6 py-4 text-center">
-                        <div>
-                          {isUnclaimed ? (
-                            <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-[9.5px] font-black uppercase tracking-widest border border-amber-200">
-                              âš ï¸ Unclaimed / Open
-                            </span>
-                          ) : (
-                            <span className={cn(
-                              "px-2 py-1 rounded text-[9.5px] font-black uppercase tracking-widest border",
-                              isClaimedByMe ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"
-                            )}>
-                              {isClaimedByMe ? "ðŸ”’ Assigned to You" : `ðŸ”’ ${item.assignedDesigner}`}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                         {item.isCompleted ? (
-                          <div className="flex items-center justify-end gap-2 text-xs">
-                            <span className="text-[10px] text-green-700 bg-green-50 font-black uppercase px-2 py-1 rounded-lg border border-green-200">
-                              Completed âœ”
-                            </span>
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-700 border border-green-200">
+                            ✓ Completed
+                          </span>
+                        ) : item.isHold ? (
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200">
+                            ⏸ On Hold
+                          </span>
+                        ) : isUnclaimed ? (
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 flex items-center justify-center gap-1 w-fit mx-auto">
+                            ⚡ Open in Queue
+                          </span>
+                        ) : claimedByMe ? (
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1 w-fit mx-auto">
+                            ⭐ Assigned to You
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-250 flex items-center justify-center gap-1 w-fit mx-auto" title={`Claimed by ${item.assignedDesigner}`}>
+                            🔒 {item.assignedDesigner}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        {item.isCompleted ? (
+                          <div className="flex items-center justify-end gap-2">
                             <button
-                              disabled={true}
-                              className="px-2.5 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-[10px] font-black uppercase cursor-default border-none"
+                              onClick={() => handleOpenWorkspace(item)}
+                              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[10px] font-black uppercase cursor-pointer border-none"
                             >
-                              Locked (Delivered)
+                              Review Assets
                             </button>
                           </div>
                         ) : isUnclaimed ? (
                           <button
                             disabled={isProcessing}
-                            onClick={() => handleClaimItem(item)}
-                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all scale-100 hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 shadow cursor-pointer border-none"
+                            onClick={(e) => handleClaimItem(item, e)}
+                            className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer border-none flex items-center gap-1 ml-auto"
                           >
-                            Claim / Take Design
+                            ⚡ Claim / Take Task
                           </button>
-                        ) : isClaimedByMe ? (
-                          <button
-                            onClick={() => handleOpenWorkspace(item)}
-                            className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer border-none shadow-sm"
-                          >
-                            Open Workspace
-                            <ChevronRight size={14} />
-                          </button>
+                        ) : claimedByMe ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={(e) => handleReleaseItem(item, e)}
+                              className="px-2 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              title="Release back to open queue"
+                            >
+                              Release
+                            </button>
+                            <button
+                              onClick={() => handleOpenWorkspace(item)}
+                              className="px-3.5 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border-none shadow-xs flex items-center gap-1"
+                            >
+                              <span>Workspace</span>
+                              <ChevronRight size={12} />
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-[10px] text-gray-400 font-bold uppercase italic pr-4">Claimed by partner</span>
+                          <button
+                            disabled
+                            className="px-2.5 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-[9px] font-bold uppercase cursor-not-allowed ml-auto"
+                            title={`Claimed by ${item.assignedDesigner}. Action locked.`}
+                          >
+                            🔒 Claimed
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -1024,38 +1000,42 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-gray-400 italic font-medium">
-                    All clear! No pending design assets found in this pipeline state.
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic font-medium">
+                    No orders found in this design queue section.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
 
-          {/* Mobile Card List View (Flipkart/Amazon style) */}
+          {/* Mobile Card List View */}
           <div className="block md:hidden divide-y divide-gray-150">
             {getFilteredItems().length > 0 ? (
-              getFilteredItems().map(item => {
-                const isClaimedByMe = item.assignedDesigner.toLowerCase().includes(designerName.toLowerCase());
-                const isUnclaimed = !item.assignedDesigner ||
-                  item.assignedDesigner === 'Unassigned' ||
-                  item.assignedDesigner === 'Designer assigned' ||
-                  item.assignedDesigner === '';
+              getFilteredItems().map((item, idx) => {
+                const isSelected = selectedOrder?.id === item.id;
+                const claimedByMe = isClaimedByMe(item);
+                const isUnclaimed = isUnclaimedItem(item.assignedDesigner);
 
                 return (
-                  <div key={item.id} className="p-4 bg-white space-y-3">
-                    {/* Header: Descriptor code, Date, Urgent Badge */}
+                  <div
+                    key={item.id}
+                    onClick={() => item.status !== OrderStatus.DELIVERED && handleOpenWorkspace(item)}
+                    className={cn(
+                      "p-4 space-y-3",
+                      claimedByMe ? "bg-emerald-50/20" : ""
+                    )}
+                  >
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-gray-500 text-xs">#{idx + 1}</span>
                         <span className="font-mono font-black text-brand-primary">#{item.id.slice(-8)}</span>
-                        <span className="text-[9px] text-gray-400 font-bold">{new Date(item.createdAt).toLocaleDateString()}</span>
+                        {item.isUrgent && (
+                          <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                        )}
                       </div>
-                      {item.isUrgent && (
-                        <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
-                      )}
+                      <span className="text-[9px] text-gray-400 font-mono">{new Date(item.createdAt).toLocaleDateString()}</span>
                     </div>
 
-                    {/* Customer Spec Info */}
                     <div className="flex items-start gap-3">
                       {((item.staffImages && item.staffImages[0]) || item.marketing_image) && (
                         <div className="w-12 h-12 rounded-xl border border-gray-250 overflow-hidden shrink-0 bg-gray-50">
@@ -1063,76 +1043,75 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         </div>
                       )}
                       <div className="space-y-1">
-                        <div className="font-black text-gray-900 text-sm">{item.customerName}</div>
+                        <div className="font-black text-gray-900 text-sm uppercase italic">{item.customerName}</div>
                         <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                          By: {item.createdByName || 'System'}
+                          By: {item.createdByName || 'Marketing'}
                         </div>
-                        <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5">
+                        <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <Phone size={12} className="text-brand-primary" /> {item.phone}
                         </a>
                       </div>
                     </div>
 
-                    {/* Requirement/Category notes */}
-                    <div className="space-y-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100/50">
-                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[9px] font-black uppercase tracking-tight w-fit border border-purple-150 inline-block">
+                    <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-150">
+                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-150 rounded text-[9px] font-black uppercase">
                         {getDisplayCategory(item as any)}
                       </span>
+                      {isUnclaimed ? (
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[9px] font-black uppercase">
+                          ⚡ Open in Queue
+                        </span>
+                      ) : claimedByMe ? (
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[9px] font-black uppercase">
+                          ⭐ Assigned to You
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-250 rounded text-[9px] font-bold uppercase">
+                          🔒 {item.assignedDesigner}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Status & Assigned Handler */}
-                    <div className="flex items-center justify-between text-xs py-1 border-t border-b border-gray-50">
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Handler:</span>
-                      <div>
-                        {isUnclaimed ? (
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[9.5px] font-black uppercase tracking-widest border border-amber-200">
-                            âš ï¸ Unclaimed / Open
-                          </span>
-                        ) : (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-widest border",
-                            isClaimedByMe ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-600 border-slate-200"
-                          )}>
-                            {isClaimedByMe ? "ðŸ”’ Assigned to You" : `ðŸ”’ ${item.assignedDesigner}`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Mobile Action Buttons (Permanently visible) */}
-                    <div className="pt-1">
+                    {/* Mobile Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                       {item.isCompleted ? (
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-[10px] text-green-700 bg-green-50 font-black uppercase px-2 py-1.5 rounded-xl border border-green-200 flex-1 text-center">
-                            Completed âœ”
-                          </span>
-                          <button
-                            onClick={() => handleOpenWorkspace(item)}
-                            className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none"
-                          >
-                            Review Assets
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleOpenWorkspace(item)}
+                          className="col-span-2 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none"
+                        >
+                          Review Assets
+                        </button>
                       ) : isUnclaimed ? (
                         <button
                           disabled={isProcessing}
-                          onClick={() => handleClaimItem(item)}
-                          className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md shadow-purple-200"
+                          onClick={(e) => handleClaimItem(item, e)}
+                          className="col-span-2 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-md"
                         >
-                          Claim / Take Design
+                          ⚡ Claim / Take Task
                         </button>
-                      ) : isClaimedByMe ? (
-                        <button
-                          onClick={() => handleOpenWorkspace(item)}
-                          className="w-full py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
-                        >
-                          <span>Open Workspace</span>
-                          <ChevronRight size={14} />
-                        </button>
+                      ) : claimedByMe ? (
+                        <>
+                          <button
+                            onClick={(e) => handleReleaseItem(item, e)}
+                            className="py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer"
+                          >
+                            Release
+                          </button>
+                          <button
+                            onClick={() => handleOpenWorkspace(item)}
+                            className="py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-md flex items-center justify-center gap-1"
+                          >
+                            <span>Workspace</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </>
                       ) : (
-                        <div className="text-center py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-gray-400 italic">
-                          Claimed by partner
-                        </div>
+                        <button
+                          disabled
+                          className="col-span-2 py-2.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-xl text-xs font-bold uppercase cursor-not-allowed"
+                        >
+                          🔒 Claimed by {item.assignedDesigner}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1140,7 +1119,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               })
             ) : (
               <div className="p-8 text-center text-gray-400 italic font-medium text-xs">
-                All clear! No pending design assets found in this pipeline state.
+                No orders found in this design queue section.
               </div>
             )}
           </div>

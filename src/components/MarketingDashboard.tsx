@@ -1114,11 +1114,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       if (noteModal.target === 'design') {
                         updates.notes = noteModal.noteText.trim();
                         updates.designNotes = noteModal.noteText.trim();
+                        updates.assignedDesigner = 'Unassigned';
+                        updates.claimedBy = undefined;
+                        updates.claimedByName = undefined;
                       } else {
                         updates.accountsNotes = noteModal.noteText.trim();
                       }
                       await onUpdateOrder(noteModal.orderId, updates);
-                      alert("Order successfully forwarded!");
+                      alert(`Order #${noteModal.orderId.slice(-6)} forwarded to ${noteModal.target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);
                       setNoteModal(null);
                     } catch (err) {
                       alert("Action failed.");
