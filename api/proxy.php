@@ -27,8 +27,8 @@ foreach (explode('&', $rawQuery) as $param) {
     }
 }
 
-// The target URL of the Node.js server running on your VPS
-$targetUrl = 'http://118.139.167.81:3000/api/' . $route;
+// The target URLs to try (127.0.0.1 local loopback first, then public IP)
+$targetHosts = ['http://127.0.0.1:3000', 'http://localhost:3000', 'http://118.139.167.81:3000'];
 
 // Only forward the Content-Type request header to protect against header clash or double gzip issues
 $headers = [];
@@ -44,38 +44,49 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Get the request body
 $input = file_get_contents('php://input');
 
-// Initialize cURL session
-$ch = curl_init();
+$response = false;
+$info = [];
+$lastError = '';
 
-// Set cURL options
-curl_setopt($ch, CURLOPT_URL, $targetUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HEADER, true);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+foreach ($targetHosts as $host) {
+    $targetUrl = $host . '/api/' . $route;
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $targetUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
-if (!empty($input)) {
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
+    if (!empty($input)) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
+    }
+
+    if (!empty($headers)) {
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    }
+
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+
+    $response = curl_exec($ch);
+    $info = curl_getinfo($ch);
+
+    if (!curl_errno($ch) && isset($info['http_code']) && $info['http_code'] > 0) {
+        curl_close($ch);
+        break;
+    } else {
+        $lastError = curl_error($ch);
+        curl_close($ch);
+    }
 }
 
-if (!empty($headers)) {
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-}
-
-curl_setopt($ch, CURLOPT_TIMEOUT, 300);
-
-// Execute request
-$response = curl_exec($ch);
-$info = curl_getinfo($ch);
-
-if (curl_errno($ch)) {
-    $error = curl_error($ch);
-    curl_close($ch);
-    http_response_code(500);
-    echo json_encode(['error' => 'Proxy Error: ' . $error]);
+if ($response === false || empty($info) || (isset($info['http_code']) && $info['http_code'] === 0)) {
+    http_response_code(503);
+    echo json_encode([
+        'error' => 'Backend Node.js server on port 3000 is not running. Please start the Node.js server (e.g. pm2 start start.cjs or via cPanel Setup Node.js App).',
+        'details' => $lastError
+    ]);
     exit;
 }
-
-curl_close($ch);
 
 // Split response into headers and body
 $headerSize = $info['header_size'];
