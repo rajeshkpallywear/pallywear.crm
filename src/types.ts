@@ -254,6 +254,8 @@ export interface EmployeeSalaryProfile {
   accountNumber?: string;
   ifscCode?: string;
   panNumber?: string;
+  pfNumber?: string;
+  designation?: string;
   updatedAt?: number;
 }
 
@@ -264,6 +266,7 @@ export interface SalarySlip {
   userName: string;
   userEmail?: string;
   userRole?: string;
+  designation?: string;
   month: string; // e.g., 'September'
   year: number; // e.g., 2026
   workingDays: number;
@@ -293,6 +296,7 @@ export interface SalarySlip {
   accountNumber?: string;
   ifscCode?: string;
   panNumber?: string;
+  pfNumber?: string;
   notes?: string;
   createdAt: number;
   updatedAt: number;

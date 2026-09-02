@@ -60,15 +60,15 @@ const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 // Convert number to Indian currency words
 function numberToWords(num: number): string {
-  if (!num || isNaN(num) || num === 0) return 'Zero Rupees Only';
+  if (!num || isNaN(num) || num === 0) return 'Zero Only';
   const a = [
-    '', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ',
-    'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
   ];
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
   const n = Math.floor(Math.abs(num));
-  let str = '';
+  let parts: string[] = [];
 
   const crore = Math.floor(n / 10000000);
   const lakh = Math.floor((n % 10000000) / 100000);
@@ -76,16 +76,32 @@ function numberToWords(num: number): string {
   const hundred = Math.floor((n % 1000) / 100);
   const remainder = Math.floor(n % 100);
 
-  if (crore > 0) str += (crore < 20 ? a[crore] : b[Math.floor(crore / 10)] + ' ' + a[crore % 10]) + 'Crore ';
-  if (lakh > 0) str += (lakh < 20 ? a[lakh] : b[Math.floor(lakh / 10)] + ' ' + a[lakh % 10]) + 'Lakh ';
-  if (thousand > 0) str += (thousand < 20 ? a[thousand] : b[Math.floor(thousand / 10)] + ' ' + a[thousand % 10]) + 'Thousand ';
-  if (hundred > 0) str += a[hundred] + 'Hundred ';
+  const getTensAndOnes = (val: number) => {
+    if (val < 20) return a[val];
+    const tens = b[Math.floor(val / 10)];
+    const ones = a[val % 10];
+    return ones ? `${tens}-${ones}` : tens;
+  };
+
+  if (crore > 0) parts.push(`${getTensAndOnes(crore)} Crore`);
+  if (lakh > 0) parts.push(`${getTensAndOnes(lakh)} Lakh`);
+  if (thousand > 0) parts.push(`${getTensAndOnes(thousand)} Thousand`);
+  if (hundred > 0) parts.push(`and ${a[hundred]} Hundred`);
   if (remainder > 0) {
-    if (str !== '') str += 'and ';
-    str += (remainder < 20 ? a[remainder] : b[Math.floor(remainder / 10)] + ' ' + a[remainder % 10]);
+    if (parts.length === 0 || !parts[parts.length - 1].includes('Hundred')) {
+      parts.push(`and ${getTensAndOnes(remainder)}`);
+    } else {
+      parts.push(`and ${getTensAndOnes(remainder)}`);
+    }
   }
 
-  return `${str.trim()} Rupees Only`;
+  // Remove leading 'and ' if it's the only part
+  let result = parts.join(' ').trim();
+  if (result.startsWith('and ')) {
+    result = result.substring(4);
+  }
+
+  return `${result} Only`;
 }
 
 export default function HRDashboard() {
@@ -296,6 +312,7 @@ export default function HRDashboard() {
           userName: emp.name || emp.email.split('@')[0],
           userEmail: emp.email,
           userRole: emp.role,
+          designation: profile?.designation || (emp.role === 'Accounts' ? 'Accounts Executive' : emp.role === 'Designer' ? 'Lead Designer' : emp.role === 'Marketing' ? 'Marketing Executive' : emp.role || 'Staff'),
           month: selectedMonth,
           year: selectedYear,
           workingDays: actualWorkingDays,
@@ -323,6 +340,8 @@ export default function HRDashboard() {
           accountNumber: profile?.accountNumber || 'XXXXXXXX4892',
           ifscCode: profile?.ifscCode || 'HDFC0001234',
           panNumber: profile?.panNumber || 'ABCDE1234F',
+          pfNumber: profile?.pfNumber || 'PW24Y11',
+          paymentDate: `01/${String(monthIdx + 1).padStart(2, '0')}/${selectedYear}`,
           createdAt: Date.now(),
           updatedAt: Date.now()
         };
@@ -1009,199 +1028,230 @@ export default function HRDashboard() {
               {/* PDF Container Card */}
               <div
                 ref={payslipPdfRef}
-                className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200 shadow-sm max-w-3xl mx-auto text-slate-900 font-sans"
-                style={{ minHeight: '800px' }}
+                className="bg-white p-6 sm:p-10 rounded-2xl border border-gray-200 shadow-sm max-w-3xl mx-auto text-gray-900 font-sans space-y-6"
+                style={{ minHeight: '800px', backgroundColor: '#ffffff' }}
               >
-                {/* Official Company Header */}
-                <div className="border-b-2 border-slate-900 pb-4 mb-6">
-                  <div className="flex justify-between items-start">
+                {/* 1. Header: Logo, Company Name & Location, Payslip Month */}
+                <div className="flex justify-between items-start pb-4 border-b border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                      <img src="/logo.png?v=2" alt="PW" className="w-full h-full object-cover" />
+                    </div>
                     <div>
-                      <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-brand-primary">PALLYWEAR</h2>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">APPAREL & CUSTOM MERCHANDISE</p>
-                      <p className="text-[11px] text-slate-500 mt-1 max-w-sm">
-                        Registered Office: Railway Station Road, BV Nagar 3rd Main Road, Meenambakkam, Chennai, Tamil Nadu 600027
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        Email: support@pallywear.in | Web: www.pallywear.in
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="bg-slate-900 text-white font-black text-xs uppercase px-3 py-1 rounded tracking-widest inline-block">
-                        SALARY SLIP
-                      </span>
-                      <p className="text-xs font-mono font-bold text-slate-700 mt-2">
-                        {selectedSlipForView.slipNumber}
-                      </p>
-                      <p className="text-xs font-bold text-slate-500 mt-0.5">
-                        Month: <span className="text-slate-900">{selectedSlipForView.month} {selectedSlipForView.year}</span>
-                      </p>
+                      <h2 className="text-sm sm:text-base font-black tracking-tight text-gray-900 uppercase">
+                        PALLYWEAR GIFTING SOLUTION PVT LTD
+                      </h2>
+                      <p className="text-xs text-gray-500 font-medium">Tamilnadu India</p>
                     </div>
                   </div>
-                </div>
 
-                {/* Employee Information Table */}
-                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-xs">
-                  <div className="space-y-1.5">
-                    <p><span className="text-slate-500 font-medium">Employee Name:</span> <strong className="text-slate-900">{selectedSlipForView.userName}</strong></p>
-                    <p><span className="text-slate-500 font-medium">User ID:</span> <strong className="font-mono text-slate-900">{selectedSlipForView.userId}</strong></p>
-                    <p><span className="text-slate-500 font-medium">Department / Role:</span> <strong className="uppercase text-slate-900">{selectedSlipForView.userRole || 'Staff'}</strong></p>
-                    <p><span className="text-slate-500 font-medium">Email:</span> <strong className="text-slate-900">{selectedSlipForView.userEmail || 'N/A'}</strong></p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p><span className="text-slate-500 font-medium">Bank Name:</span> <strong className="text-slate-900">{selectedSlipForView.bankName || 'HDFC Bank'}</strong></p>
-                    <p><span className="text-slate-500 font-medium">Account No:</span> <strong className="font-mono text-slate-900">{selectedSlipForView.accountNumber || 'XXXXXXXX4892'}</strong></p>
-                    <p><span className="text-slate-500 font-medium">IFSC Code:</span> <strong className="font-mono text-slate-900">{selectedSlipForView.ifscCode || 'HDFC0001234'}</strong></p>
-                    <p><span className="text-slate-500 font-medium">PAN Number:</span> <strong className="font-mono text-slate-900">{selectedSlipForView.panNumber || 'ABCDE1234F'}</strong></p>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400 font-medium">Payslip for the Month</p>
+                    <p className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
+                      {selectedSlipForView.month} {selectedSlipForView.year}
+                    </p>
                   </div>
                 </div>
 
-                {/* Attendance Summary */}
-                <div className="grid grid-cols-4 gap-2 text-center bg-slate-100 p-3 rounded-xl mb-6 text-xs border border-slate-200">
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Days</span>
-                    <strong className="text-slate-900 text-sm">{selectedSlipForView.workingDays}</strong>
+                {/* 2. Employee Summary & Net Pay Card */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                  {/* Left: Employee Summary (7 cols) */}
+                  <div className="md:col-span-7 space-y-2.5 text-left">
+                    <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      EMPLOYEE SUMMARY
+                    </h4>
+                    <div className="space-y-1.5 text-xs text-gray-600">
+                      <div className="grid grid-cols-12">
+                        <span className="col-span-4 text-gray-500 font-medium">Employee Name</span>
+                        <span className="col-span-1 text-gray-400 font-bold">:</span>
+                        <span className="col-span-7 font-black text-gray-900">{selectedSlipForView.userName}</span>
+                      </div>
+                      <div className="grid grid-cols-12">
+                        <span className="col-span-4 text-gray-500 font-medium">Employee ID</span>
+                        <span className="col-span-1 text-gray-400 font-bold">:</span>
+                        <span className="col-span-7 font-black text-gray-900 font-mono">
+                          {selectedSlipForView.userId || selectedSlipForView.slipNumber}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-12">
+                        <span className="col-span-4 text-gray-500 font-medium">Pay Period</span>
+                        <span className="col-span-1 text-gray-400 font-bold">:</span>
+                        <span className="col-span-7 font-medium text-gray-900">
+                          {selectedSlipForView.month} {selectedSlipForView.year}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-12">
+                        <span className="col-span-4 text-gray-500 font-medium">Pay Date</span>
+                        <span className="col-span-1 text-gray-400 font-bold">:</span>
+                        <span className="col-span-7 font-medium text-gray-900 font-mono">
+                          {selectedSlipForView.paymentDate || `01/${String(MONTHS.indexOf(selectedSlipForView.month) + 1).padStart(2, '0')}/${selectedSlipForView.year}`}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Present Days</span>
-                    <strong className="text-green-700 text-sm">{selectedSlipForView.presentDays}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Paid Leaves</span>
-                    <strong className="text-blue-700 text-sm">{selectedSlipForView.paidLeaves || 0}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">LOP / Unpaid</span>
-                    <strong className="text-red-600 text-sm">{selectedSlipForView.unpaidLeaves || 0}</strong>
+
+                  {/* Right: Net Pay Box (5 cols) */}
+                  <div className="md:col-span-5">
+                    <div className="bg-[#eefdf3] border border-emerald-200/80 rounded-2xl overflow-hidden shadow-xs text-left">
+                      {/* Top Banner with Green Vertical Bar */}
+                      <div className="p-4 border-b border-emerald-100 flex items-center gap-3">
+                        <div className="w-1.5 h-10 bg-emerald-500 rounded-full shrink-0" />
+                        <div>
+                          <div className="text-2xl font-black text-gray-900 tracking-tight">
+                            ₹{Number(selectedSlipForView.netSalary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </div>
+                          <div className="text-xs text-gray-500 font-medium mt-0.5">
+                            Employee Net Pay
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom attendance inside card */}
+                      <div className="p-4 bg-white/70 space-y-1.5 text-xs">
+                        <div className="grid grid-cols-12">
+                          <span className="col-span-6 text-gray-500 font-medium">Paid Days</span>
+                          <span className="col-span-1 text-gray-400 font-bold">:</span>
+                          <span className="col-span-5 font-black text-gray-900 text-left pl-1">
+                            {selectedSlipForView.presentDays + (selectedSlipForView.paidLeaves || 0)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12">
+                          <span className="col-span-6 text-gray-500 font-medium">LOP Days</span>
+                          <span className="col-span-1 text-gray-400 font-bold">:</span>
+                          <span className="col-span-5 font-black text-gray-900 text-left pl-1">
+                            {selectedSlipForView.unpaidLeaves || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Earnings & Deductions Table */}
-                <div className="border border-slate-300 rounded-xl overflow-hidden mb-6 text-xs">
-                  <div className="grid grid-cols-2 bg-slate-900 text-white font-black uppercase text-[11px] py-2.5 px-4 tracking-wider">
-                    <div>Earnings</div>
-                    <div className="text-right">Deductions</div>
+                {/* 3. Designation & PF No Row */}
+                <div className="border-t border-b border-gray-200 py-3 grid grid-cols-1 md:grid-cols-12 text-xs gap-4 text-left">
+                  <div className="md:col-span-6 grid grid-cols-12">
+                    <span className="col-span-4 text-gray-500 font-medium">Designation</span>
+                    <span className="col-span-1 text-gray-400 font-bold">:</span>
+                    <span className="col-span-7 font-black text-gray-900">
+                      {selectedSlipForView.designation || selectedSlipForView.userRole || 'Accounts Executive'}
+                    </span>
+                  </div>
+                  <div className="md:col-span-6 grid grid-cols-12">
+                    <span className="col-span-4 text-gray-500 font-medium">PF No</span>
+                    <span className="col-span-1 text-gray-400 font-bold">:</span>
+                    <span className="col-span-7 font-black text-gray-900 font-mono">
+                      {selectedSlipForView.pfNumber || '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Earnings & Deductions Table */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden text-xs text-left">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-2 bg-gray-50 text-gray-600 font-black uppercase text-[10px] py-2.5 px-4 tracking-wider border-b border-gray-200">
+                    <div className="flex justify-between pr-4">
+                      <span>EARNINGS</span>
+                      <span>AMOUNT</span>
+                    </div>
+                    <div className="flex justify-between pl-4 border-l border-gray-200">
+                      <span>DEDUCTIONS</span>
+                      <span>AMOUNT</span>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 divide-x divide-slate-200 p-4 space-y-2">
+                  {/* Table Body */}
+                  <div className="grid grid-cols-2 divide-x divide-gray-200 p-4">
                     {/* Left Column: Earnings */}
-                    <div className="space-y-2 pr-4">
+                    <div className="space-y-3 pr-4">
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Basic Salary</span>
-                        <span className="font-bold">₹{Number(selectedSlipForView.basicSalary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-700 font-medium">Basic</span>
+                        <span className="font-black text-gray-900">
+                          ₹{Number(selectedSlipForView.basicSalary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-600">House Rent Allowance (HRA)</span>
-                        <span className="font-bold">₹{Number(selectedSlipForView.hra || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-700 font-medium">Over Time</span>
+                        <span className="font-black text-gray-900">
+                          ₹{Number(selectedSlipForView.overtimePay || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Conveyance Allowance</span>
-                        <span className="font-bold">₹{Number(selectedSlipForView.conveyance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-700 font-medium">Other Allowance</span>
+                        <span className="font-black text-gray-900">
+                          ₹{Number((selectedSlipForView.hra || 0) + (selectedSlipForView.conveyance || 0) + (selectedSlipForView.specialAllowance || 0) + (selectedSlipForView.bonus || 0) + (selectedSlipForView.incentive || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Special Allowance</span>
-                        <span className="font-bold">₹{Number(selectedSlipForView.specialAllowance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      {Number(selectedSlipForView.bonus || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Bonus</span>
-                          <span className="font-bold">₹{Number(selectedSlipForView.bonus).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      {Number(selectedSlipForView.incentive || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Incentive</span>
-                          <span className="font-bold">₹{Number(selectedSlipForView.incentive).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      {Number(selectedSlipForView.overtimePay || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Overtime Pay</span>
-                          <span className="font-bold">₹{Number(selectedSlipForView.overtimePay).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Right Column: Deductions */}
-                    <div className="space-y-2 pl-4">
+                    <div className="space-y-3 pl-4">
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Employee PF (EPF)</span>
-                        <span className="font-bold text-red-600">₹{Number(selectedSlipForView.epfDeduction || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-700 font-medium">Income Tax</span>
+                        <span className="font-black text-gray-900">
+                          ₹{Number(selectedSlipForView.tdsDeduction || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-600">ESI Deduction</span>
-                        <span className="font-bold text-red-600">₹{Number(selectedSlipForView.esiDeduction || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-700 font-medium">Provident Fund</span>
+                        <span className="font-black text-gray-900">
+                          ₹{Number(selectedSlipForView.epfDeduction || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Professional Tax (PT)</span>
-                        <span className="font-bold text-red-600">₹{Number(selectedSlipForView.professionalTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      {Number(selectedSlipForView.lopDeduction || 0) > 0 && (
+                      {Number((selectedSlipForView.esiDeduction || 0) + (selectedSlipForView.professionalTax || 0) + (selectedSlipForView.lopDeduction || 0) + (selectedSlipForView.advanceDeduction || 0)) > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-slate-600">Loss of Pay (LOP)</span>
-                          <span className="font-bold text-red-600">₹{Number(selectedSlipForView.lopDeduction).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      {Number(selectedSlipForView.tdsDeduction || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">TDS / Income Tax</span>
-                          <span className="font-bold text-red-600">₹{Number(selectedSlipForView.tdsDeduction).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      {Number(selectedSlipForView.advanceDeduction || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Salary Advance</span>
-                          <span className="font-bold text-red-600">₹{Number(selectedSlipForView.advanceDeduction).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-700 font-medium">Other Deductions</span>
+                          <span className="font-black text-gray-900">
+                            ₹{Number((selectedSlipForView.esiDeduction || 0) + (selectedSlipForView.professionalTax || 0) + (selectedSlipForView.lopDeduction || 0) + (selectedSlipForView.advanceDeduction || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Totals Row */}
-                  <div className="grid grid-cols-2 bg-slate-100 border-t border-slate-300 font-bold py-2.5 px-4 text-xs">
+                  <div className="grid grid-cols-2 bg-gray-50 border-t border-gray-200 font-bold py-2.5 px-4 text-xs">
                     <div className="flex justify-between pr-4">
-                      <span>Total Gross Earnings:</span>
-                      <span className="text-slate-900 font-black">₹{Number(selectedSlipForView.grossEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-gray-700 font-bold">Gross Earnings</span>
+                      <span className="text-gray-950 font-black">
+                        ₹{Number(selectedSlipForView.grossEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
-                    <div className="flex justify-between pl-4">
-                      <span>Total Deductions:</span>
-                      <span className="text-red-700 font-black">₹{Number(selectedSlipForView.totalDeductions || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Net Pay Banner */}
-                <div className="bg-brand-primary/10 border-2 border-brand-primary/30 p-4 rounded-xl mb-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-black uppercase text-brand-primary tracking-wider">NET SALARY PAYABLE:</span>
-                      <p className="text-xs text-slate-600 italic mt-0.5 font-semibold">
-                        In Words: <strong>{numberToWords(selectedSlipForView.netSalary)}</strong>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-2xl sm:text-3xl font-black text-brand-primary">
-                        ₹{Number(selectedSlipForView.netSalary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <div className="flex justify-between pl-4 border-l border-gray-200">
+                      <span className="text-gray-700 font-bold">Total Deductions</span>
+                      <span className="text-gray-950 font-black">
+                        ₹{Number(selectedSlipForView.totalDeductions || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer Signatures & Disclaimer */}
-                <div className="pt-8 border-t border-slate-200 mt-8">
-                  <div className="flex justify-between items-end text-xs">
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Generated on: {new Date().toLocaleDateString('en-IN')}</p>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">Mode: {selectedSlipForView.paymentMethod || 'Bank Transfer'}</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="w-32 border-b border-slate-400 mb-1"></div>
-                      <p className="font-bold text-slate-800 text-[11px]">Authorized Signatory</p>
-                      <p className="text-[9px] text-slate-400 uppercase">Pallywear Management</p>
-                    </div>
+                {/* 5. Total Net Payable Box */}
+                <div className="border border-gray-200 rounded-2xl overflow-hidden flex items-stretch justify-between text-left">
+                  <div className="p-4 sm:p-5 flex flex-col justify-center">
+                    <h4 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-wider">
+                      TOTAL NET PAYABLE
+                    </h4>
+                    <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium mt-0.5">
+                      Gross Earnings - Total Deductions
+                    </p>
                   </div>
-                  <p className="text-[9px] text-slate-400 text-center mt-6 italic">
-                    * This is a computer-generated salary slip and requires no physical signature.
+                  <div className="bg-[#eefdf3] px-6 sm:px-10 py-4 flex items-center justify-center border-l border-emerald-100">
+                    <span className="text-lg sm:text-xl font-black text-gray-900">
+                      ₹{Number(selectedSlipForView.netSalary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 6. Amount in Words */}
+                <div className="text-center pt-2 space-y-4">
+                  <p className="text-xs text-gray-500 font-medium">
+                    Amount In Words: <strong className="text-gray-900 font-black">Indian Rupee {numberToWords(selectedSlipForView.netSalary)}</strong>
+                  </p>
+
+                  <hr className="border-gray-200" />
+
+                  <p className="text-[10.5px] text-gray-400 text-center italic">
+                    - This is a system generated payslip, hence the signature is not required. -
                   </p>
                 </div>
               </div>
@@ -1314,6 +1364,26 @@ export default function HRDashboard() {
                       value={editingProfile.panNumber || ''}
                       onChange={e => setEditingProfile({ ...editingProfile, panNumber: e.target.value })}
                       placeholder="e.g. ABCDE1234F"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold text-[10px] mb-1">Designation</label>
+                    <input
+                      type="text"
+                      value={editingProfile.designation || ''}
+                      onChange={e => setEditingProfile({ ...editingProfile, designation: e.target.value })}
+                      placeholder="e.g. Accounts Executive"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold text-[10px] mb-1">PF Number</label>
+                    <input
+                      type="text"
+                      value={editingProfile.pfNumber || ''}
+                      onChange={e => setEditingProfile({ ...editingProfile, pfNumber: e.target.value })}
+                      placeholder="e.g. PW24Y11"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                     />
                   </div>
