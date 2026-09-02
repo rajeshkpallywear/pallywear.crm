@@ -113,7 +113,10 @@ const RootRedirect = () => {
   if (loading) return <PageLoader />;
   if (user) {
     const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin' || user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
-    return <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />;
+    const isHR = user.role === UserRole.HR || user.role === 'hr';
+    if (isAdmin) return <Navigate to="/admin" replace />;
+    if (isHR) return <Navigate to="/hr-dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return <Navigate to="/Pallywear" replace />;
 };

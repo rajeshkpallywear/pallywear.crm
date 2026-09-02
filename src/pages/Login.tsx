@@ -51,11 +51,18 @@ export default function Login() {
     window.location.reload();
   };
 
+  const getDestinationRoute = (u?: any, fallbackEmail = '') => {
+    const normalizedEmail = (u?.email || fallbackEmail || '').toLowerCase().trim();
+    const isAdmin = u?.role === UserRole.ADMIN || u?.role === 'admin' || normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo') || normalizedEmail === 'admin';
+    const isHR = u?.role === UserRole.HR || u?.role === 'hr';
+    if (isAdmin) return '/admin';
+    if (isHR) return '/hr-dashboard';
+    return '/dashboard';
+  };
+
   useEffect(() => {
     if (authUser) {
-      const normalizedEmail = (authUser.email || '').toLowerCase().trim();
-      const isAdmin = authUser.role === UserRole.ADMIN || authUser.role === 'admin' || normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo');
-      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+      navigate(getDestinationRoute(authUser), { replace: true });
       return;
     }
     if (location.state?.message) {
@@ -114,9 +121,7 @@ export default function Login() {
         setShowFaceModal(false);
         const res = await biometricLogin('FACE_ID', email);
         if (res.success) {
-          const normalizedEmail = (res.user?.email || email).toLowerCase().trim();
-          const isAdmin = normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo');
-          navigate(isAdmin ? '/admin' : '/dashboard');
+          navigate(getDestinationRoute(res.user, email));
         } else {
           setError(res.message || 'Face ID authentication failed.');
         }
@@ -156,9 +161,7 @@ export default function Login() {
         setShowFingerprintModal(false);
         const res = await biometricLogin('FINGERPRINT', email);
         if (res.success) {
-          const normalizedEmail = (res.user?.email || email).toLowerCase().trim();
-          const isAdmin = normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo');
-          navigate(isAdmin ? '/admin' : '/dashboard');
+          navigate(getDestinationRoute(res.user, email));
         } else {
           setError(res.message || 'Fingerprint authentication failed.');
         }
@@ -170,8 +173,7 @@ export default function Login() {
     setError('');
     const result = await googleLogin();
     if (result.success) {
-      const isAdmin = result.user?.role === UserRole.ADMIN || result.user?.email === 'admin' || result.user?.email?.startsWith('admin') || result.user?.email?.startsWith('ceo');
-      navigate(isAdmin ? '/admin' : '/dashboard');
+      navigate(getDestinationRoute(result.user));
     } else {
       let message = result.message || 'Google login failed';
       if (message.includes('auth/operation-not-allowed')) {
@@ -188,9 +190,7 @@ export default function Login() {
     try {
       const result = await login(email.trim(), password);
       if (result.success) {
-        const normalizedEmail = email.toLowerCase().trim();
-        const isAdmin = normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail === 'daniel.smpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo') || email === 'admin';
-        navigate(isAdmin ? '/admin' : '/dashboard');
+        navigate(getDestinationRoute(result.user, email));
       } else {
         let message = result.message || 'Login failed';
         if (message.toLowerCase().includes('failed to fetch')) {
