@@ -184,6 +184,9 @@ export interface Order {
   claimedBy?: string;
   claimedByName?: string;
   claimedAt?: number;
+  designCompleted?: boolean;
+  designSentToMarketing?: boolean;
+  designCompletedAt?: number;
 }
 
 export interface InventoryMovement {

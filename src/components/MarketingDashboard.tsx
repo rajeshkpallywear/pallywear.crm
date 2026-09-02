@@ -69,7 +69,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     isUrgent: false
   });
 
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'design_received' | 'hold' | 'completed'>('recent');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -312,12 +312,22 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
+  const isReturnedFromDesign = (o: Order) => {
+    return !!(
+      (o.designCompleted || o.designSentToMarketing || (o.original_design_file && o.original_design_file.length > 0)) &&
+      (o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT)
+    );
+  };
+
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
     return orders.filter(o => {
       const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term);
       if (!matchesSearch) return false;
 
+      if (selectedSection === 'design_received') {
+        return isReturnedFromDesign(o);
+      }
       if (selectedSection === 'hold') {
         return o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT);
       }
@@ -332,11 +342,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                effStatus !== OrderStatus.DRAFT &&
                !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
       }
-      return o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT;
+      // 'recent': newly created orders that have NOT yet returned from designs
+      return (o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT) && !isReturnedFromDesign(o);
     });
   }, [orders, debouncedSearchTerm, selectedSection]);
 
-  const recentOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length, [orders]);
+  const recentOrdersCount = useMemo(() => orders.filter(o => (o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT) && !isReturnedFromDesign(o)).length, [orders]);
+  const designReceivedOrdersCount = useMemo(() => orders.filter(o => isReturnedFromDesign(o)).length, [orders]);
   const processOrdersCount = useMemo(() => orders.filter(o => {
     const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
     return effStatus !== OrderStatus.DELIVERY &&
@@ -386,7 +398,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
-            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'recent' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -395,16 +407,33 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('process')}
           className={cn(
-            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'process' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
           Processing ({processOrdersCount})
         </button>
         <button
+          onClick={() => setSelectedSection('design_received')}
+          className={cn(
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0 flex items-center justify-center gap-1.5",
+            selectedSection === 'design_received'
+              ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+              : "text-purple-700 bg-purple-50/80 hover:bg-purple-100 hover:text-purple-900"
+          )}
+        >
+          <span>🎨 Designs Received</span>
+          <span className={cn(
+            "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+            selectedSection === 'design_received' ? "bg-white/20 text-white" : "bg-purple-200/80 text-purple-900"
+          )}>
+            {designReceivedOrdersCount}
+          </span>
+        </button>
+        <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
-            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'hold' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -413,7 +442,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         <button
           onClick={() => setSelectedSection('completed')}
           className={cn(
-            "flex-1 sm:flex-initial px-2.5 sm:px-6 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all border-none cursor-pointer text-center truncate min-w-0",
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0",
             selectedSection === 'completed' ? "bg-brand-primary text-white shadow-md" : "text-gray-500 hover:text-gray-800"
           )}
         >
@@ -467,9 +496,22 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       </td>
                       <td className="py-4 px-3">
                         <div className="flex items-center gap-3">
-                          {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
-                            <div className="w-9 h-9 rounded-lg border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
-                              <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                          {((order.staffImages && order.staffImages[0]) || order.marketing_image || order.original_design_file) && (
+                            <div 
+                              onClick={(e) => {
+                                const imgToView = order.original_design_file || order.staffImages?.[0] || order.marketing_image;
+                                if (imgToView) {
+                                  e.stopPropagation();
+                                  setViewingImage(imgToView);
+                                }
+                              }}
+                              className="w-9 h-9 rounded-lg border border-gray-150 overflow-hidden shrink-0 bg-gray-50 relative group cursor-pointer"
+                              title="Click to zoom image"
+                            >
+                              <img src={order.original_design_file || order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                              {order.original_design_file && (
+                                <span className="absolute bottom-0 inset-x-0 bg-purple-600 text-[6px] font-black text-white text-center uppercase">Art</span>
+                              )}
                             </div>
                           )}
                           <div>
@@ -486,49 +528,99 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       <td className="py-4 px-3 font-bold text-gray-900 text-xs">{order.quantity || 1}</td>
                       <td className="py-4 px-3">
                         <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                            {order.status.replace('_', ' ')}
-                          </span>
-                          {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
-                            <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
-                              🎨 {order.assignedDesigner}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-                              🎨 Unassigned
-                            </span>
-                          )}
-                          {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
-                            <div className="flex gap-1.5 mt-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setNoteModal({
-                                    isOpen: true,
-                                    orderId: order.id,
-                                    target: 'design',
-                                    noteText: ''
-                                  });
-                                }}
-                                className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-650 hover:text-white border border-purple-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
-                              >
-                                Designs
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setNoteModal({
-                                    isOpen: true,
-                                    orderId: order.id,
-                                    target: 'accounts',
-                                    noteText: ''
-                                  });
-                                }}
-                                className="text-[9px] font-black text-amber-700 bg-amber-50 hover:bg-amber-650 hover:text-white border border-amber-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
-                              >
-                                Accounts
-                              </button>
+                          {isReturnedFromDesign(order) ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1">
+                                ✓ Design Received
+                              </span>
+                              {order.assignedDesigner && (
+                                <span className="text-[9.5px] text-purple-700 font-bold">
+                                  🎨 Lead: {order.assignedDesigner}
+                                </span>
+                              )}
+                              {order.designNotes && (
+                                <span className="text-[8.5px] text-gray-500 italic max-w-[200px] truncate" title={order.designNotes}>
+                                  Studio: "{order.designNotes}"
+                                </span>
+                              )}
+                              <div className="flex gap-1.5 mt-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNoteModal({
+                                      isOpen: true,
+                                      orderId: order.id,
+                                      target: 'accounts',
+                                      noteText: ''
+                                    });
+                                  }}
+                                  className="text-[9px] font-black text-white bg-brand-primary hover:opacity-90 rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider shadow-xs"
+                                >
+                                  💳 Forward to Accounts
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNoteModal({
+                                      isOpen: true,
+                                      orderId: order.id,
+                                      target: 'design',
+                                      noteText: ''
+                                    });
+                                  }}
+                                  className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded px-2 py-1 transition-all cursor-pointer uppercase tracking-wider"
+                                >
+                                  ✏️ Revise
+                                </button>
+                              </div>
                             </div>
+                          ) : (
+                            <>
+                              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                                {order.status.replace('_', ' ')}
+                              </span>
+                              {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                                <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
+                                  🎨 {order.assignedDesigner}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                  🎨 Unassigned
+                                </span>
+                              )}
+                              {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
+                                <div className="flex gap-1.5 mt-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNoteModal({
+                                        isOpen: true,
+                                        orderId: order.id,
+                                        target: 'design',
+                                        noteText: ''
+                                      });
+                                    }}
+                                    className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-650 hover:text-white border border-purple-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
+                                  >
+                                    Designs
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNoteModal({
+                                        isOpen: true,
+                                        orderId: order.id,
+                                        target: 'accounts',
+                                        noteText: ''
+                                      });
+                                    }}
+                                    className="text-[9px] font-black text-amber-700 bg-amber-50 hover:bg-amber-650 hover:text-white border border-amber-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
+                                  >
+                                    Accounts
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                         {order.status === OrderStatus.HOLD && order.holdReason && (
@@ -580,9 +672,21 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     </div>
 
                     <div className="flex items-start gap-3">
-                      {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
-                        <div className="w-12 h-12 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
-                          <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                      {((order.staffImages && order.staffImages[0]) || order.marketing_image || order.original_design_file) && (
+                        <div 
+                          onClick={(e) => {
+                            const imgToView = order.original_design_file || order.staffImages?.[0] || order.marketing_image;
+                            if (imgToView) {
+                              e.stopPropagation();
+                              setViewingImage(imgToView);
+                            }
+                          }}
+                          className="w-12 h-12 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50 relative cursor-pointer"
+                        >
+                          <img src={order.original_design_file || order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                          {order.original_design_file && (
+                            <span className="absolute bottom-0 inset-x-0 bg-purple-600 text-[7px] font-black text-white text-center uppercase">Art</span>
+                          )}
                         </div>
                       )}
                       <div className="space-y-1">
@@ -601,47 +705,26 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     </div>
 
                     <div className="flex flex-col gap-2 pt-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                          {order.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs mt-1">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Designer:</span>
-                        {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
-                          <span className="text-[10px] text-gray-700 font-bold flex items-center gap-1">
-                            🎨 {order.assignedDesigner}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
-                            🎨 Unassigned
-                          </span>
-                        )}
-                      </div>
-
-                      {order.status === OrderStatus.HOLD && order.holdReason && (
-                        <div className="text-[9px] text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200 italic">
-                          Blocked Reason: {order.holdReason}
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                        {order.status === OrderStatus.PENDING ? (
-                          <>
-                            <button
-                              onClick={() => {
-                                setNoteModal({
-                                  isOpen: true,
-                                  orderId: order.id,
-                                  target: 'design',
-                                  noteText: ''
-                                });
-                              }}
-                              className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer"
-                            >
-                              Designs
-                            </button>
+                      {isReturnedFromDesign(order) ? (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
+                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-purple-100 text-purple-900 border border-purple-200">
+                              ✓ Design Received
+                            </span>
+                          </div>
+                          {order.assignedDesigner && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Designer:</span>
+                              <span className="text-[10px] text-purple-700 font-bold">🎨 {order.assignedDesigner}</span>
+                            </div>
+                          )}
+                          {order.designNotes && (
+                            <div className="text-[9px] text-gray-600 bg-purple-50/70 p-2 rounded-xl border border-purple-150 italic">
+                              Studio Note: "{order.designNotes}"
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => {
                                 setNoteModal({
@@ -651,20 +734,93 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   noteText: ''
                                 });
                               }}
-                              className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-black text-[9px] border border-amber-200 transition-colors uppercase cursor-pointer"
+                              className="py-2 bg-brand-primary text-white hover:opacity-90 rounded-xl font-black text-[9px] transition-all uppercase cursor-pointer border-none shadow-xs text-center"
                             >
-                              Accounts
+                              💳 To Accounts
                             </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => setSelectedHubOrder(order)}
-                            className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none"
-                          >
-                            View & Edit
-                          </button>
-                        )}
-                      </div>
+                            <button
+                              onClick={() => {
+                                setNoteModal({
+                                  isOpen: true,
+                                  orderId: order.id,
+                                  target: 'design',
+                                  noteText: ''
+                                });
+                              }}
+                              className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer text-center"
+                            >
+                              ✏️ Revise Art
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
+                            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                              {order.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs mt-1">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Designer:</span>
+                            {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                              <span className="text-[10px] text-gray-700 font-bold flex items-center gap-1">
+                                🎨 {order.assignedDesigner}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+                                🎨 Unassigned
+                              </span>
+                            )}
+                          </div>
+
+                          {order.status === OrderStatus.HOLD && order.holdReason && (
+                            <div className="text-[9px] text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200 italic">
+                              Blocked Reason: {order.holdReason}
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                            {order.status === OrderStatus.PENDING ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setNoteModal({
+                                      isOpen: true,
+                                      orderId: order.id,
+                                      target: 'design',
+                                      noteText: ''
+                                    });
+                                  }}
+                                  className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer"
+                                >
+                                  Designs
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setNoteModal({
+                                      isOpen: true,
+                                      orderId: order.id,
+                                      target: 'accounts',
+                                      noteText: ''
+                                    });
+                                  }}
+                                  className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-black text-[9px] border border-amber-200 transition-colors uppercase cursor-pointer"
+                                >
+                                  Accounts
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setSelectedHubOrder(order)}
+                                className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none"
+                              >
+                                View & Edit
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))

@@ -57,8 +57,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
   const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('marketing_queue');
 
-  // Subsection filters: 'all', 'unclaimed', 'my_tasks', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'all' | 'unclaimed' | 'my_tasks' | 'hold' | 'completed'>('all');
+  // Subsection filters: 'unclaimed', 'my_tasks', 'hold', 'completed'
+  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'hold' | 'completed'>('unclaimed');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,22 +158,23 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Assist sorting / parsing designer name rules
   const isClaimedByMe = (item: any) => {
     if (!item?.assignedDesigner) return false;
-    const clean = item.assignedDesigner.trim().toLowerCase();
-    return clean.includes(designerName.toLowerCase()) || designerName.toLowerCase().includes(clean);
+    const clean = String(item.assignedDesigner).trim().toLowerCase();
+    const myName = String(designerName || '').toLowerCase();
+    return clean.includes(myName) || myName.includes(clean);
   };
 
   const isUnclaimedItem = (assigned: string) => {
     if (!assigned) return true;
-    const clean = assigned.trim().toLowerCase();
+    const clean = String(assigned).trim().toLowerCase();
     return clean === 'unassigned' || clean === 'designer assigned' || clean === '' || clean.includes('staff');
   };
 
   const isClaimedByOther = (item: any) => {
-    return !isUnclaimedItem(item.assignedDesigner) && !isClaimedByMe(item);
+    return !isUnclaimedItem(item?.assignedDesigner) && !isClaimedByMe(item);
   };
 
   // 1. Process Order and Conversation Items for MARKETING QUEUE (Marketing Sent)
-  const marketingOrderItems = orders
+  const marketingOrderItems = (orders || [])
     .filter(o => {
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN;
@@ -212,25 +213,25 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     });
 
   // Pure consultation chats from staff interactions
-  const staffConsultationItems = conversations
-    .filter(c => !orders.some(o => o.id === c.id))
+  const staffConsultationItems = (conversations || [])
+    .filter(c => !(orders || []).some(o => o.id === c.id))
     .map(c => {
       const isCompleted = !!c.replies && c.replies.length > 0;
       return {
         id: c.id,
         isOrder: false,
-        customerName: c.customerName,
+        customerName: c.customerName || 'Staff Consultation',
         phone: 'Staff Consultation',
         category: 'Art Consult',
         quantity: 0,
-        notes: c.message,
+        notes: c.message || '',
         isUrgent: false,
         assignedDesigner: c.staffName || 'Unassigned',
         createdByName: c.staffName || 'Staff',
         status: isCompleted ? OrderStatus.ORDER_MANAGEMENT : OrderStatus.DESIGN, // simulate pipeline
         isHold: false,
         isCompleted: isCompleted,
-        createdAt: c.createdAt,
+        createdAt: c.createdAt || Date.now(),
         staffImages: c.imageAttachments || [],
         staffPdfs: c.pdfAttachments || [],
         marketing_image: '',
@@ -242,7 +243,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const marketingCombinedList = [...marketingOrderItems, ...staffConsultationItems];
 
   // 2. Process Items for ACCOUNTS QUEUE (Accounts Sent)
-  const accountsOrderItems = orders
+  const accountsOrderItems = (orders || [])
     .filter(o => {
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
@@ -299,18 +300,18 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
 
     // Search term matching
-    if (searchTerm.trim()) {
+    if (searchTerm && searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       baseList = baseList.filter(item =>
-        item.customerName.toLowerCase().includes(term) ||
-        item.id.toLowerCase().includes(term) ||
-        item.category.toLowerCase().includes(term) ||
+        (item.customerName || '').toLowerCase().includes(term) ||
+        (item.id || '').toLowerCase().includes(term) ||
+        (item.category || '').toLowerCase().includes(term) ||
         (item.notes || '').toLowerCase().includes(term)
       );
     }
 
-    // Queue Sorting: Claimed by me FIRST, then open unclaimed in queue, then others; then by urgent, then createdAt desc
-    return baseList.sort((a, b) => {
+    // Queue Sorting: return a new sorted array copy
+    return [...baseList].sort((a, b) => {
       const aMine = isClaimedByMe(a) ? 2 : (isUnclaimedItem(a.assignedDesigner) ? 1 : 0);
       const bMine = isClaimedByMe(b) ? 2 : (isUnclaimedItem(b.assignedDesigner) ? 1 : 0);
       if (aMine !== bMine) return bMine - aMine;
@@ -465,6 +466,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     try {
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.PENDING,
+        designCompleted: true,
+        designSentToMarketing: true,
+        designCompletedAt: Date.now(),
         original_design_file: originalFile,
         original_design_filename: originalFilename,
         original_design_zip: designZipFile,
@@ -482,7 +486,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setOriginalFilename('');
       setDesignZipFile('');
       setDesignZipFilename('');
-      alert("Success: Original quality design outputs submitted and order sent to Marketing for review.");
+      alert("Success: Artwork completed and sent back to Marketing Dashboard (Designs Received section).");
     } catch (e) {
       console.error(e);
       alert("An error occurred while moving the order.");
@@ -759,7 +763,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('marketing_queue');
-            setSelectedSection('all');
+            setSelectedSection('unclaimed');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
@@ -773,7 +777,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('accounts_queue');
-            setSelectedSection('all');
+            setSelectedSection('unclaimed');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
@@ -815,7 +819,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         {/* Section Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {([
-            { key: 'all', label: 'All In Queue', count: activeStats.totalCount },
             { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount },
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount },
@@ -855,10 +858,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   const claimedByMe = isClaimedByMe(item);
                   const isUnclaimed = isUnclaimedItem(item.assignedDesigner);
 
-                  const matchingInvoice = invoices.find(inv => 
-                    inv.leadId === item.id || 
-                    (inv.billToPhone && inv.billToPhone === item.phone) ||
-                    (inv.billToName && inv.billToName.toLowerCase() === item.customerName.toLowerCase())
+                  const matchingInvoice = (invoices || []).find(inv => 
+                    inv?.leadId === item.id || 
+                    (inv?.billToPhone && inv.billToPhone === item.phone) ||
+                    (inv?.billToName && item.customerName && String(inv.billToName).toLowerCase() === String(item.customerName).toLowerCase())
                   );
 
                   return (
@@ -1202,10 +1205,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     </h4>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-black text-sm shadow-sm">
-                        {selectedOrder.customerInfo.name.charAt(0).toUpperCase()}
+                        {selectedOrder.customerInfo?.name?.charAt(0)?.toUpperCase() || 'C'}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo.name}</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo?.name || 'Customer'}</p>
                         <p className="text-[9.5px] font-bold uppercase tracking-wider text-brand-primary">Created by: {selectedOrder.createdByName || 'System'}</p>
                       </div>
                     </div>
