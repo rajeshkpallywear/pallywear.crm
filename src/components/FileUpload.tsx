@@ -4,20 +4,39 @@
  */
 
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
-import { Upload, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, X, FileText, Image as ImageIcon, Loader2, Sparkles, Archive } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+
+export interface FileMetadata {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+}
 
 interface FileUploadProps {
   key?: string;
   label: string;
   onFilesSelected: (files: string[]) => void;
+  onFilesWithMetadataSelected?: (files: FileMetadata[]) => void;
   maxFiles?: number;
   accept?: string;
   initialFiles?: string[];
+  preserveOriginalQuality?: boolean;
+  helperText?: string;
 }
 
-export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accept = "image/*,.pdf", initialFiles }: FileUploadProps) {
-  const [selectedFiles, setSelectedFiles] = useState<{ name: string, type: string, size: number, data: string }[]>([]);
+export default function FileUpload({
+  label,
+  onFilesSelected,
+  onFilesWithMetadataSelected,
+  maxFiles = 5,
+  accept = "image/*,.pdf",
+  initialFiles,
+  preserveOriginalQuality = false,
+  helperText
+}: FileUploadProps) {
+  const [selectedFiles, setSelectedFiles] = useState<FileMetadata[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastInitialFilesRef = useRef<string[] | null>(null);
@@ -33,16 +52,20 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
         let type = 'image/jpeg';
         let size = 0;
         
-        if (data.startsWith('data:')) {
+        if (data && data.startsWith('data:')) {
           const parts = data.split(';');
           type = parts[0].substring(5);
           const base64Str = parts[1]?.split(',')[1] || '';
           size = Math.round((base64Str.length * 3) / 4);
           
-          if (type.includes('image')) {
-            name = `Image ${idx + 1}`;
+          if (type.includes('png')) {
+            name = `Design_Output_${idx + 1}.png`;
+          } else if (type.includes('image')) {
+            name = `Image_${idx + 1}`;
           } else if (type.includes('pdf')) {
-            name = `Document ${idx + 1}`;
+            name = `Document_${idx + 1}.pdf`;
+          } else if (type.includes('zip') || type.includes('compressed')) {
+            name = `Design_Package_${idx + 1}.zip`;
           }
         }
         return { name, type, size, data };
@@ -53,30 +76,35 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
     setIsCompressing(true);
     const fileList: File[] = Array.from(files);
     const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-    const processedFiles: { name: string, type: string, size: number, data: string }[] = [];
+    const processedFiles: FileMetadata[] = [];
 
     for (const file of fileList) {
       if (file.size > MAX_SIZE) {
-        alert(`File ${file.name} is too large. Max size is 100MB.`);
+        alert(`File "${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max allowed size is 100MB.`);
         continue;
       }
       try {
         let fileToProcess: File | Blob = file;
-        if (file.type.startsWith('image/')) {
+        const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+        const isZip = file.type.includes('zip') || file.name.toLowerCase().endsWith('.zip') || file.name.toLowerCase().endsWith('.rar') || file.name.toLowerCase().endsWith('.7z');
+        const shouldCompress = !preserveOriginalQuality && !isPng && !isZip && file.type.startsWith('image/');
+
+        if (shouldCompress) {
           const options = {
-            maxSizeMB: 1.0, // target size 1MB (keeps excellent details for blueprints/designs while reducing size by 95%+)
-            maxWidthOrHeight: 2048, // keeps HD details
+            maxSizeMB: 1.0,
+            maxWidthOrHeight: 2048,
             useWebWorker: true,
           };
           try {
             fileToProcess = await imageCompression(file, options);
           } catch (err) {
-            console.error('Image compression failed', err);
+            console.warn('Image compression fallback to original:', err);
+            fileToProcess = file;
           }
         }
 
@@ -89,8 +117,8 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
 
         processedFiles.push({
           name: file.name,
-          type: file.type,
-          size: fileToProcess.size,
+          type: file.type || (isZip ? 'application/zip' : isPng ? 'image/png' : 'application/octet-stream'),
+          size: file.size,
           data: data
         });
       } catch (error) {
@@ -104,6 +132,9 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
     const updatedData = updated.map(f => f.data);
     lastInitialFilesRef.current = updatedData;
     onFilesSelected(updatedData);
+    if (onFilesWithMetadataSelected) {
+      onFilesWithMetadataSelected(updated);
+    }
     setIsCompressing(false);
 
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -116,66 +147,89 @@ export default function FileUpload({ label, onFilesSelected, maxFiles = 5, accep
     const updatedData = updated.map(f => f.data);
     lastInitialFilesRef.current = updatedData;
     onFilesSelected(updatedData);
+    if (onFilesWithMetadataSelected) {
+      onFilesWithMetadataSelected(updated);
+    }
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="block text-sm font-semibold text-gray-700">{label}</label>
+        {label && <label className="block text-sm font-bold text-gray-700">{label}</label>}
         {isCompressing && (
           <div className="flex items-center gap-1.5 text-xs text-brand-primary animate-pulse font-bold">
-            <Loader2 size={12} className="animate-spin" />
-            Optimizing and Loading HD File...
+            <Loader2 size={13} className="animate-spin" />
+            Reading Original Quality File...
           </div>
         )}
       </div>
       <div
         onClick={() => !isCompressing && fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-8 transition-all cursor-pointer text-center group ${isCompressing ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-gray-300 hover:border-black hover:bg-gray-50'
-          }`}
+        className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 transition-all cursor-pointer text-center group ${
+          isCompressing ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-gray-300 hover:border-brand-primary hover:bg-purple-50/20'
+        }`}
       >
-        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-          <Upload size={24} className="text-gray-500" />
+        <div className="w-12 h-12 bg-gray-100 group-hover:bg-purple-100 text-gray-500 group-hover:text-brand-primary rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-all shadow-xs">
+          <Upload size={22} />
         </div>
-        <p className="text-sm font-medium text-gray-700">Click or drag to upload files</p>
-        <p className="text-xs text-brand-primary mt-1 font-bold">100% Full HD Quality (Files 0 KB to 100MB saved to database)</p>
-        <p className="text-[10px] text-gray-400">PDF, ZIP or Full HD image files (Max {maxFiles} total)</p>
+        <p className="text-xs sm:text-sm font-bold text-gray-800">
+          Click or drag files here to upload
+        </p>
+        <p className="text-[11px] text-purple-700 font-extrabold mt-1 flex items-center justify-center gap-1">
+          <Sparkles size={12} className="text-amber-500" />
+          {preserveOriginalQuality ? '100% Original Lossless Quality (No Compression)' : 'Lossless Original Quality Supported (Up to 100MB)'}
+        </p>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          {helperText || `Supports PNG, ZIP, PDF, EMB, DST, CDR (Max ${maxFiles} file${maxFiles > 1 ? 's' : ''})`}
+        </p>
         <input
           type="file"
           hidden
           ref={fileInputRef}
           onChange={handleFileChange}
           accept={accept}
-          multiple
+          multiple={maxFiles > 1}
           disabled={isCompressing}
         />
       </div>
 
       {selectedFiles.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-          {selectedFiles.map((file, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-              <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
-                {file.type.includes('image') ? <ImageIcon size={16} /> :
-                  file.type.includes('zip') ? <Upload size={16} className="text-blue-500" /> :
-                    <FileText size={16} className="text-gray-500" />}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
+          {selectedFiles.map((file, idx) => {
+            const isImg = file.type.includes('image') || file.data.startsWith('data:image');
+            const isZip = file.type.includes('zip') || file.name.toLowerCase().endsWith('.zip');
+            return (
+              <div key={idx} className="flex items-center gap-3 p-2.5 bg-white border border-gray-200 rounded-xl shadow-xs hover:border-purple-200 transition-colors">
+                <div className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-150 flex items-center justify-center shrink-0 overflow-hidden">
+                  {isImg ? (
+                    <img src={file.data} alt={file.name} className="w-full h-full object-cover" />
+                  ) : isZip ? (
+                    <Archive size={18} className="text-indigo-600" />
+                  ) : (
+                    <FileText size={18} className="text-gray-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-xs font-bold text-gray-900 truncate" title={file.name}>{file.name}</p>
+                  <p className="text-[10px] text-gray-500 font-semibold">
+                    {(file.size / 1024).toFixed(1)} KB • <span className="text-purple-600 font-bold">Original Quality</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFile(idx);
+                  }}
+                  className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                  disabled={isCompressing}
+                  title="Remove file"
+                >
+                  <X size={15} />
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB (Optimized)</p>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeFile(idx);
-                }}
-                className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-colors"
-                disabled={isCompressing}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

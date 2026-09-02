@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
@@ -322,33 +322,46 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                   ))}
                 </div>
 
-                {/* Desk 4: Original Design Image (Required view for production) */}
+                {/* Desk 4: Original Design Assets (Required view for production) */}
                 <div className="space-y-2">
-                  <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Original Design</h6>
-                  {selectedOrder.original_design_file ? (
-                    <div className="flex flex-col gap-1.5 p-2 bg-indigo-50/50 border border-indigo-100 rounded-xl">
-                      {selectedOrder.original_design_file.startsWith('data:image/') ? (
-                        <div className="aspect-video w-full rounded overflow-hidden relative group">
-                          <img src={selectedOrder.original_design_file} className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => setViewingImage(selectedOrder.original_design_file!)}
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white border-none cursor-pointer"
+                  <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Original Design Assets</h6>
+                  {(selectedOrder.original_design_file || selectedOrder.original_design_zip) ? (
+                    <div className="space-y-2">
+                      {selectedOrder.original_design_file && (
+                        <div className="flex flex-col gap-1.5 p-2 bg-purple-50/50 border border-purple-150 rounded-xl">
+                          <div className="aspect-video w-full rounded overflow-hidden relative group bg-white">
+                            <img src={selectedOrder.original_design_file} className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => setViewingImage(selectedOrder.original_design_file!)}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white border-none cursor-pointer"
+                            >
+                              <ZoomIn size={12} />
+                            </button>
+                          </div>
+                          <a
+                            href={selectedOrder.original_design_file}
+                            download={selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
+                            className="w-full py-1 text-center bg-purple-600 hover:bg-purple-700 text-white rounded text-[8px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1 no-underline"
                           >
-                            <ZoomIn size={12} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-full h-10 bg-slate-100 flex items-center justify-center rounded text-indigo-600">
-                          <FileText size={16} />
+                            <Download size={8} /> Download PNG (HD)
+                          </a>
                         </div>
                       )}
-                      <a
-                        href={selectedOrder.original_design_file}
-                        download={selectedOrder.original_design_filename || "original_design"}
-                        className="w-full py-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[8px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1"
-                      >
-                        <Download size={8} /> HD Download
-                      </a>
+
+                      {selectedOrder.original_design_zip && (
+                        <a
+                          href={selectedOrder.original_design_zip}
+                          download={selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
+                          className="p-2 bg-indigo-50/50 border border-indigo-150 rounded-xl flex items-center justify-between text-indigo-700 font-bold no-underline hover:bg-indigo-100 transition-colors"
+                          title="Download Design ZIP Package"
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <FolderOpen size={13} className="shrink-0 text-indigo-600" />
+                            <span className="truncate text-[9px]">{selectedOrder.original_design_zip_filename || 'Design_Package.zip'}</span>
+                          </div>
+                          <Download size={9} className="shrink-0 ml-1" />
+                        </a>
+                      )}
                     </div>
                   ) : (
                     <span className="text-[9px] text-slate-400 italic block">None uploaded</span>

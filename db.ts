@@ -139,6 +139,8 @@ export async function initDB() {
         \`invoice_file_name\` varchar(255) DEFAULT NULL,
         \`original_design_file\` longtext,
         \`original_design_filename\` varchar(255) DEFAULT NULL,
+        \`original_design_zip\` longtext,
+        \`original_design_zip_filename\` varchar(255) DEFAULT NULL,
         \`digitizer_file\` longtext,
         \`digitizer_filename\` varchar(255) DEFAULT NULL,
         \`is_hold\` tinyint DEFAULT '0',
@@ -237,6 +239,12 @@ export async function initDB() {
     } catch (_) {}
     try {
       await pool.execute('ALTER TABLE `leads` ADD COLUMN `isOnlineLead` tinyint(1) DEFAULT 0');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `original_design_zip` longtext DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `original_design_zip_filename` varchar(255) DEFAULT NULL');
     } catch (_) {}
 
 

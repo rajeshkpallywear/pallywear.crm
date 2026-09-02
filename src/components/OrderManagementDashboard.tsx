@@ -32,7 +32,9 @@ import {
   AlertCircle,
   X,
   Truck,
-  Edit
+  Edit,
+  Sparkles,
+  FolderOpen
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
@@ -791,38 +793,37 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                   </div>
                 )}
 
-                {/* Original design image uploaded by designer */}
-                <div className="bg-slate-50 p-5 rounded-2xl border border-gray-250/20 text-left">
-                  <h5 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider mb-3">Original Design Image (Designs Output)</h5>
-                  {selectedOrder.original_design_file ? (
-                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-xl border border-gray-150">
-                      {selectedOrder.original_design_file.startsWith('data:image/') ? (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0 relative group">
-                          <img src={selectedOrder.original_design_file} className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => setViewingImage(selectedOrder.original_design_file!)}
-                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-                          >
-                            <ZoomIn size={12} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-indigo-500 flex-shrink-0">
-                          <FileText size={20} />
+                {/* Original design images and zips */}
+                <div className="bg-slate-50 p-5 rounded-2xl border border-gray-250/20 text-left space-y-4">
+                  <h5 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider">Designer Output Assets</h5>
+                  {(selectedOrder.original_design_file || selectedOrder.original_design_zip) ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {selectedOrder.original_design_file && (
+                        <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-purple-200">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div onClick={() => setViewingImage(selectedOrder.original_design_file!)} className="w-10 h-10 rounded-lg overflow-hidden border border-purple-100 cursor-pointer">
+                              <img src={selectedOrder.original_design_file} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-slate-800 truncate">{selectedOrder.original_design_filename || 'Original_Design.png'}</p>
+                              <p className="text-[8px] text-purple-700 font-bold uppercase">PNG File</p>
+                            </div>
+                          </div>
+                          <a href={selectedOrder.original_design_file} download={selectedOrder.original_design_filename || 'design.png'} className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"><Download size={12} /></a>
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-800 truncate">{selectedOrder.original_design_filename || 'Original Design Image'}</p>
-                        <p className="text-[8px] text-gray-400 font-bold uppercase">Designer Output</p>
-                      </div>
-                      <a
-                        href={selectedOrder.original_design_file}
-                        download={selectedOrder.original_design_filename || `original_design_${selectedOrder.id}`}
-                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                      >
-                        <Download size={10} />
-                        Download Original File
-                      </a>
+                      {selectedOrder.original_design_zip && (
+                        <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-indigo-200">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600"><FolderOpen size={18} /></div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-bold text-slate-800 truncate">{selectedOrder.original_design_zip_filename || 'Design_Package.zip'}</p>
+                              <p className="text-[8px] text-indigo-700 font-bold uppercase">ZIP Package</p>
+                            </div>
+                          </div>
+                          <a href={selectedOrder.original_design_zip} download={selectedOrder.original_design_zip_filename || 'design.zip'} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Download size={12} /></a>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-gray-400 italic">No designer outputs found.</p>

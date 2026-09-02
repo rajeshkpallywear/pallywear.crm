@@ -176,6 +176,8 @@ export interface Order {
   accountsNotes?: string;
   original_design_file?: string;
   original_design_filename?: string;
+  original_design_zip?: string;
+  original_design_zip_filename?: string;
   marketing_image?: string;
   marketing_notes?: string;
 }

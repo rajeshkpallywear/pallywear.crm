@@ -81,6 +81,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         if (attachments.designAttachments) setDesignFiles(attachments.designAttachments);
         if (attachments.machineFiles) setMachineFiles(attachments.machineFiles);
         if (attachments.original_design_file) setOriginalFile(attachments.original_design_file);
+        if (attachments.original_design_filename) setOriginalFilename(attachments.original_design_filename);
+        if (attachments.original_design_zip) setDesignZipFile(attachments.original_design_zip);
+        if (attachments.original_design_zip_filename) setDesignZipFilename(attachments.original_design_zip_filename);
       });
     }
   }, [selectedOrder?.id]);
@@ -91,6 +94,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const [designNotesText, setDesignNotesText] = useState('');
   const [originalFile, setOriginalFile] = useState<string>('');
   const [originalFilename, setOriginalFilename] = useState<string>('');
+  const [designZipFile, setDesignZipFile] = useState<string>('');
+  const [designZipFilename, setDesignZipFilename] = useState<string>('');
 
   // Local Conversations List (Staff Conversations)
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -340,6 +345,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
           setOriginalFile(fullOrder.original_design_file || '');
           setOriginalFilename(fullOrder.original_design_filename || '');
+          setDesignZipFile(fullOrder.original_design_zip || '');
+          setDesignZipFilename(fullOrder.original_design_zip_filename || '');
         }
       } else {
         // Pure Consultation
@@ -385,6 +392,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
         setOriginalFile(fullOrder.original_design_file || '');
         setOriginalFilename(fullOrder.original_design_filename || '');
+        setDesignZipFile(fullOrder.original_design_zip || '');
+        setDesignZipFilename(fullOrder.original_design_zip_filename || '');
       }
     } else {
       setSelectedItemIdForStaffChat(item.id);
@@ -395,25 +404,29 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const handleSendToMarketing = async () => {
     if (!selectedOrder || isProcessing) return;
 
-    if (designFiles.length === 0) {
-      alert("Validation Error: Please upload at least one Vector Tracing Output file (PDF/Image) before sending to Marketing.");
+    if (!originalFile && !designZipFile && designFiles.length === 0) {
+      alert("Validation Error: Please upload at least the Design PNG (Original Quality), Design ZIP Package, or Vector Output before sending to Marketing.");
       return;
     }
 
     if (!designNotesText.trim()) {
-      alert("Validation Error: Please fill in the Design Notes before sending to Marketing.");
+      alert("Validation Error: Please fill in the Design Studio Output Notes before sending to Marketing.");
       return;
     }
 
     const nextOrderState = {
       ...selectedOrder,
+      original_design_file: originalFile,
+      original_design_filename: originalFilename,
+      original_design_zip: designZipFile,
+      original_design_zip_filename: designZipFilename,
       designAttachments: designFiles,
       machineFiles: machineFiles,
       designNotes: designNotesText
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 100MB). Please use fewer design files or smaller images.");
+      alert("Error: Total order data limit exceeded (Max 100MB). Please use a smaller file size.");
       return;
     }
 
@@ -421,6 +434,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     try {
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.PENDING,
+        original_design_file: originalFile,
+        original_design_filename: originalFilename,
+        original_design_zip: designZipFile,
+        original_design_zip_filename: designZipFilename,
         designAttachments: designFiles,
         machineFiles: machineFiles,
         designNotes: designNotesText,
@@ -432,7 +449,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setDesignNotesText('');
       setOriginalFile('');
       setOriginalFilename('');
-      alert("Success: Artwork output submitted and order sent to Marketing for review.");
+      setDesignZipFile('');
+      setDesignZipFilename('');
+      alert("Success: Original quality design outputs submitted and order sent to Marketing for review.");
     } catch (e) {
       console.error(e);
       alert("An error occurred while moving the order.");
@@ -444,8 +463,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const handleSendToDigitizer = async () => {
     if (!selectedOrder || isProcessing) return;
 
-    if (!originalFile) {
-      alert("Validation Error: Please upload the Original Design File before sending to Digitizer.");
+    if (!originalFile && !designZipFile) {
+      alert("Validation Error: Please upload the Original Design PNG or Design ZIP Package before sending to Digitizer.");
       return;
     }
 
@@ -453,6 +472,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       ...selectedOrder,
       original_design_file: originalFile,
       original_design_filename: originalFilename,
+      original_design_zip: designZipFile,
+      original_design_zip_filename: designZipFilename,
       designAttachments: designFiles,
       machineFiles: machineFiles,
       designNotes: designNotesText
@@ -468,6 +489,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       await onUpdateOrder(selectedOrder.id, {
         original_design_file: originalFile,
         original_design_filename: originalFilename,
+        original_design_zip: designZipFile,
+        original_design_zip_filename: designZipFilename,
         designAttachments: designFiles,
         machineFiles: machineFiles,
         designNotes: designNotesText,
@@ -479,6 +502,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setDesignNotesText('');
       setOriginalFile('');
       setOriginalFilename('');
+      setDesignZipFile('');
+      setDesignZipFilename('');
       alert("Success: Original design file uploaded and order made available to Digitizer.");
     } catch (e) {
       console.error(e);
@@ -491,10 +516,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const handleSendToOrderManagement = async () => {
     if (!selectedOrder || isProcessing) return;
 
+    if (!originalFile && !designZipFile && designFiles.length === 0) {
+      alert("Validation Error: Please upload the Design PNG, Design ZIP Package, or Output Files before sending to Order Management.");
+      return;
+    }
+
     const nextOrderState = {
       ...selectedOrder,
       original_design_file: originalFile,
       original_design_filename: originalFilename,
+      original_design_zip: designZipFile,
+      original_design_zip_filename: designZipFilename,
       designAttachments: designFiles,
       machineFiles: machineFiles,
       designNotes: designNotesText
@@ -511,6 +543,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         status: OrderStatus.ORDER_MANAGEMENT,
         original_design_file: originalFile,
         original_design_filename: originalFilename,
+        original_design_zip: designZipFile,
+        original_design_zip_filename: designZipFilename,
         designAttachments: designFiles,
         machineFiles: machineFiles,
         designNotes: designNotesText,
@@ -522,7 +556,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setDesignNotesText('');
       setOriginalFile('');
       setOriginalFilename('');
-      alert("Success: Original design file uploaded and order sent to Order Management.");
+      setDesignZipFile('');
+      setDesignZipFilename('');
+      alert("Success: Original design files uploaded and order sent to Order Management.");
     } catch (e) {
       console.error(e);
       alert("An error occurred while sending to Order Management.");
@@ -1153,6 +1189,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   setMachineFiles([]);
                   setOriginalFile('');
                   setOriginalFilename('');
+                  setDesignZipFile('');
+                  setDesignZipFilename('');
                 }}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors border-none bg-transparent cursor-pointer"
               >
@@ -1196,7 +1234,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     {/* Marketing / Order Intake Notes Display Box */}
                     <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-1 text-left">
                       <span className="text-[9.5px] font-black text-amber-800 uppercase tracking-widest block flex items-center gap-1.5">
-                        ðŸ“‹ Marketing / Client Intake Notes:
+                        📋 Marketing / Client Intake Notes:
                       </span>
                       <p className="text-xs text-gray-800 font-semibold whitespace-pre-line leading-relaxed">
                         {selectedOrder.notes || selectedOrder.designNotes || 'No notes provided by marketing.'}
@@ -1207,14 +1245,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <div className="flex justify-between items-center">
                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Studio Output Notes</label>
                         {!designNotesText.trim() && (
-                          <span className="text-[10px] text-red-500 font-bold">âš ï¸ Required to send to marketing</span>
+                          <span className="text-[10px] text-red-500 font-bold">⚠️ Required before sending</span>
                         )}
                       </div>
                       <textarea
                         value={designNotesText}
                         onChange={(e) => setDesignNotesText(e.target.value)}
                         rows={4}
-                        placeholder="Write down any notes or details for the design here..."
+                        placeholder="Write down any notes, pantone color codes, or print dimensions for the design here..."
                         className={cn(
                           "w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none",
                           !designNotesText.trim() ? "border-red-300 focus:border-red-500 bg-red-50/10" : "border-gray-200"
@@ -1279,92 +1317,233 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   </section>
                 </div>
 
-                {/* Right Column: Interaction Hub (Staff vs Order Management Conversational Chat) */}
+                {/* Right Column: Outputs Upload Bench (PNG, ZIP, PDFs) & Chat Hub */}
                 <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
                   {/* Vector/Machine Language File Assembly Desk */}
                   <div className="bg-purple-50/40 p-5 rounded-2xl border border-purple-100 space-y-5">
-                    <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
-                      <Upload size={14} />
-                      Outputs Upload Bench (PDF / machine code)
-                    </h4>
+                    <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                      <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
+                        <Upload size={14} />
+                        Outputs Upload Bench (Original PNG & ZIP)
+                      </h4>
+                      <span className="text-[9px] font-black bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                        Lossless Quality
+                      </span>
+                    </div>
 
                     <div className="space-y-4">
-                      {/* Upload 1: Artwork Graphics */}
+                      {/* Upload 1: Design PNG Image (100% Original Lossless Quality) */}
                       <div className={cn(
-                        "space-y-2 bg-white p-3.5 rounded-lg border",
-                        designFiles.length === 0 ? "border-red-200" : "border-purple-100"
+                        "space-y-2 bg-white p-3.5 rounded-xl border transition-all",
+                        !originalFile ? "border-purple-200" : "border-purple-300 shadow-xs"
                       )}>
                         <div className="flex justify-between items-center">
-                          <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">1. Vector Tracing Output (PDF)</p>
-                          {designFiles.length === 0 && (
-                            <span className="text-[9px] text-red-500 font-bold">⚠️ Required to send to marketing</span>
+                          <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-purple-500" />
+                            1. Design PNG Image (Original Full Quality)
+                          </p>
+                          {originalFile ? (
+                            <span className="text-[9px] text-green-600 font-extrabold flex items-center gap-1">
+                              ✓ Original Quality Ready
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-purple-600 font-bold">✨ Recommended (PNG)</span>
                           )}
                         </div>
-                        <FileUpload
-                          key={selectedOrder.id}
-                          label=""
-                          accept=".pdf,image/*,.zip"
-                          onFilesSelected={(files) => setDesignFiles(prev => [...prev, ...files])}
-                        />
-                        <div className="max-h-[80px] overflow-y-auto space-y-1 mt-2">
-                          {designFiles.map((file, i) => (
-                            <div key={i} className="flex justify-between items-center text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200">
-                              <span className="truncate max-w-[120px] font-mono">Art_{i + 1}.pdf</span>
-                              <button
-                                onClick={() => handleRemoveFile(i, 'design')}
-                                className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* Upload 2: Original Design File (Required for Accounts Sent Orders going to Digitizer) */}
-                      {(activeChannel === 'accounts_queue' || (selectedOrder.accountsAttachments || []).length > 0) && (
-                        <div className={cn(
-                          "space-y-2 bg-white p-3.5 rounded-lg border",
-                          !originalFile ? "border-amber-200 bg-amber-50/5" : "border-purple-100"
-                        )}>
-                          <div className="flex justify-between items-center">
-                            <p className="text-[9.5px] font-black text-gray-500 uppercase tracking-tight">2. Original Design File (EMB/DST/CDR)</p>
-                            {!originalFile && (
-                              <span className="text-[9px] text-amber-600 font-bold">⚠️ Required to send to Digitizer</span>
-                            )}
-                          </div>
-                          <FileUpload
-                            key={selectedOrder.id}
-                            label=""
-                            accept="image/*,.pdf,.zip,.emb,.dst,.cdr"
-                            onFilesSelected={(files) => {
-                              if (files && files[0]) {
-                                setOriginalFile(files[0]);
-                                setOriginalFilename("original_design_file");
-                              }
-                            }}
-                          />
-                          {originalFile && (
-                            <div className="flex justify-between items-center text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200 mt-2">
-                              <span className="truncate max-w-[150px] font-mono">{originalFilename || 'Original file'}</span>
+                        {originalFile ? (
+                          <div className="flex items-center justify-between gap-3 bg-purple-50/60 p-3 rounded-xl border border-purple-150">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                onClick={() => setViewingImage(originalFile)}
+                                className="w-12 h-12 rounded-lg overflow-hidden border border-purple-200 bg-white cursor-pointer relative group shrink-0"
+                                title="Click to zoom full image"
+                              >
+                                <img src={originalFile} alt="Original PNG" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                  <ZoomIn size={14} />
+                                </div>
+                              </div>
+                              <div className="text-left min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate" title={originalFilename || 'Original Design Image'}>
+                                  {originalFilename || 'Original_Design.png'}
+                                </p>
+                                <p className="text-[10px] text-purple-700 font-extrabold">100% Original Lossless Quality</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <a
+                                href={originalFile}
+                                download={originalFilename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
+                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline"
+                                title="Download Original Quality PNG"
+                              >
+                                <Download size={11} />
+                                Download PNG
+                              </a>
                               <button
                                 onClick={() => {
                                   setOriginalFile('');
                                   setOriginalFilename('');
                                 }}
-                                className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                                title="Remove and replace"
                               >
-                                Delete
+                                <Trash2 size={14} />
                               </button>
                             </div>
+                          </div>
+                        ) : (
+                          <FileUpload
+                            key={`png_${selectedOrder.id}`}
+                            label=""
+                            accept="image/png,image/*"
+                            preserveOriginalQuality={true}
+                            maxFiles={1}
+                            helperText="Upload lossless PNG image in full original resolution (No compression)"
+                            onFilesWithMetadataSelected={(files) => {
+                              if (files && files[0]) {
+                                setOriginalFile(files[0].data);
+                                setOriginalFilename(files[0].name);
+                              }
+                            }}
+                            onFilesSelected={(files) => {
+                              if (files && files[0] && !originalFile) {
+                                setOriginalFile(files[0]);
+                                setOriginalFilename('Original_Design.png');
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Upload 2: Design ZIP Package (Vector / Production Archive) */}
+                      <div className={cn(
+                        "space-y-2 bg-white p-3.5 rounded-xl border transition-all",
+                        !designZipFile ? "border-indigo-200" : "border-indigo-300 shadow-xs"
+                      )}>
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                            2. Design ZIP Package (Vector / Source Package)
+                          </p>
+                          {designZipFile ? (
+                            <span className="text-[9px] text-green-600 font-extrabold flex items-center gap-1">
+                              ✓ ZIP Ready
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-indigo-600 font-bold">📦 ZIP / Vector Archive</span>
                           )}
                         </div>
-                      )}
+
+                        {designZipFile ? (
+                          <div className="flex items-center justify-between gap-3 bg-indigo-50/60 p-3 rounded-xl border border-indigo-150">
+                            <div className="flex items-center gap-3 min-w-0 text-left">
+                              <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                                <FolderOpen size={20} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate" title={designZipFilename || 'Design_Package.zip'}>
+                                  {designZipFilename || 'Design_Package.zip'}
+                                </p>
+                                <p className="text-[10px] text-indigo-700 font-bold">Production ZIP Archive (Original Quality)</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <a
+                                href={designZipFile}
+                                download={designZipFilename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
+                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline"
+                                title="Download Original ZIP Archive"
+                              >
+                                <Download size={11} />
+                                Download ZIP
+                              </a>
+                              <button
+                                onClick={() => {
+                                  setDesignZipFile('');
+                                  setDesignZipFilename('');
+                                }}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                                title="Remove and replace"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <FileUpload
+                            key={`zip_${selectedOrder.id}`}
+                            label=""
+                            accept=".zip,.rar,.7z,.emb,.dst,.cdr,.ai,.psd,application/zip"
+                            preserveOriginalQuality={true}
+                            maxFiles={1}
+                            helperText="Upload ZIP package containing raw vectors (.ai, .cdr, .psd, .dst, .emb)"
+                            onFilesWithMetadataSelected={(files) => {
+                              if (files && files[0]) {
+                                setDesignZipFile(files[0].data);
+                                setDesignZipFilename(files[0].name);
+                              }
+                            }}
+                            onFilesSelected={(files) => {
+                              if (files && files[0] && !designZipFile) {
+                                setDesignZipFile(files[0]);
+                                setDesignZipFilename('Design_Package.zip');
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Upload 3: Additional Vector Outputs / Deliverables */}
+                      <div className="space-y-2 bg-white p-3.5 rounded-xl border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-gray-400" />
+                            3. Additional Vector Outputs / PDFs ({designFiles.length})
+                          </p>
+                        </div>
+                        <FileUpload
+                          key={`files_${selectedOrder.id}`}
+                          label=""
+                          accept=".pdf,image/*,.zip"
+                          preserveOriginalQuality={true}
+                          helperText="Upload additional mockup PDFs or tracing sheets"
+                          onFilesSelected={(files) => setDesignFiles(prev => [...prev, ...files])}
+                        />
+                        {designFiles.length > 0 && (
+                          <div className="max-h-[100px] overflow-y-auto space-y-1 mt-2">
+                            {designFiles.map((file, i) => (
+                              <div key={i} className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                <div className="flex items-center gap-2 truncate">
+                                  <FileText size={13} className="text-purple-600 shrink-0" />
+                                  <span className="truncate max-w-[150px] font-mono font-bold">Deliverable_{i + 1}.pdf</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={file}
+                                    download={`Deliverable_${i + 1}_Order_${selectedOrder.id.slice(-6)}`}
+                                    className="text-purple-600 hover:text-purple-800 font-bold"
+                                  >
+                                    Download
+                                  </a>
+                                  <button
+                                    onClick={() => handleRemoveFile(i, 'design')}
+                                    className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Chat Panel Interface (Only Backoffice Chat) */}
-                  <div className="bg-gray-50 rounded-2xl border border-gray-150 p-4 shrink-0 flex flex-col gap-3 min-h-[290px] justify-between">
+                  <div className="bg-gray-50 rounded-2xl border border-gray-150 p-4 shrink-0 flex flex-col gap-3 min-h-[260px] justify-between">
                     <div>
                       <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
@@ -1376,9 +1555,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
                       {/* Live Channel */}
                       <div className="space-y-3">
-                        <div className="max-h-[180px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
+                        <div className="max-h-[160px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
                           {omMessages.length === 0 ? (
-                            <p className="italic text-gray-400 text-center py-4">No back-and-forth messages with Backoffice coordinates yet.</p>
+                            <p className="italic text-gray-400 text-center py-4 text-xs">No messages with Backoffice coordinates yet.</p>
                           ) : (
                             omMessages.map((msg, idx) => {
                               const isDesigner = msg.senderRole === 'designer';

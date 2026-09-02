@@ -386,7 +386,7 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, sentByAccounts, marketing_image, marketing_notes
+             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes
       FROM orders
     `) as any[];
 
@@ -436,6 +436,8 @@ router.get('/orders', async (req, res) => {
       accountsNotes: r.accountsNotes || '',
       original_design_file: '',
       original_design_filename: r.original_design_filename || '',
+      original_design_zip: '',
+      original_design_zip_filename: r.original_design_zip_filename || '',
       sentByAccounts: r.sentByAccounts === 1,
     }));
     res.json(mapped);
@@ -451,7 +453,8 @@ router.get('/orders/:id/attachments', async (req, res) => {
     const rows = await query(
       `SELECT staffImages, staffPdfs, staffAttachments, accountsAttachments, 
               orderManagementAttachments, designAttachments, machineFiles, 
-              original_design_file, marketing_image, digitizer_file, invoice_file 
+              original_design_file, original_design_filename, original_design_zip, original_design_zip_filename, 
+              marketing_image, digitizer_file, invoice_file 
        FROM orders WHERE id = ?`,
       [id]
     ) as any[];
@@ -470,6 +473,9 @@ router.get('/orders/:id/attachments', async (req, res) => {
       designAttachments: safeJSONParse(r.designAttachments, []),
       machineFiles: safeJSONParse(r.machineFiles, []),
       original_design_file: r.original_design_file || '',
+      original_design_filename: r.original_design_filename || '',
+      original_design_zip: r.original_design_zip || '',
+      original_design_zip_filename: r.original_design_zip_filename || '',
       marketing_image: r.marketing_image || '',
       digitizer_file: r.digitizer_file || '',
       invoice_file: r.invoice_file || '',
@@ -502,7 +508,7 @@ router.post('/orders', async (req, res) => {
         staffPdfs=?, accountsAttachments=?, orderManagementAttachments=?, designAttachments=?, machineFiles=?,
         designName=?, designAmount=?, designGst=?, designDiscount=?, designNotes=?, 
         assignedDesigner=?, holdReason=?, previousStatus=?, createdBy=?, createdByName=?, accountsNotes=?,
-        original_design_file=?, original_design_filename=?,
+        original_design_file=?, original_design_filename=?, original_design_zip=?, original_design_zip_filename=?,
         sentByAccounts=?, marketing_image=?, marketing_notes=?,
         updatedAt=? WHERE id=?`,
         [
@@ -518,6 +524,7 @@ router.post('/orders', async (req, res) => {
           order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
           order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
           order.original_design_file || null, order.original_design_filename || null,
+          order.original_design_zip || null, order.original_design_zip_filename || null,
           order.sentByAccounts ? 1 : 0, order.marketing_image || null, order.marketing_notes || null,
           Date.now(), order.id
         ]
@@ -588,10 +595,10 @@ router.post('/orders', async (req, res) => {
         staffPdfs, accountsAttachments, orderManagementAttachments, designAttachments, machineFiles,
         designName, designAmount, designGst, designDiscount, designNotes,
         assignedDesigner, holdReason, previousStatus, createdBy, createdByName, accountsNotes,
-        original_design_file, original_design_filename,
+        original_design_file, original_design_filename, original_design_zip, original_design_zip_filename,
         sentByAccounts, marketing_image, marketing_notes,
         createdAt, updatedAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.id, customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -605,6 +612,7 @@ router.post('/orders', async (req, res) => {
           order.assignedDesigner || 'Unassigned', order.holdReason || null, order.previousStatus || null,
           order.createdBy || null, order.createdByName || null, order.accountsNotes || null,
           order.original_design_file || null, order.original_design_filename || null,
+          order.original_design_zip || null, order.original_design_zip_filename || null,
           order.sentByAccounts ? 1 : 0, order.marketing_image || null, order.marketing_notes || null,
           Date.now(), Date.now()
         ]
@@ -742,6 +750,8 @@ const handleUpdateOrderFields = async (req, res) => {
       accountsNotes: 'accountsNotes',
       original_design_file: 'original_design_file',
       original_design_filename: 'original_design_filename',
+      original_design_zip: 'original_design_zip',
+      original_design_zip_filename: 'original_design_zip_filename',
       sentByAccounts: 'sentByAccounts',
       vendorName: 'vendorName',
       vendorNumber: 'vendorNumber',

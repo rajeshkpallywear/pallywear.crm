@@ -1,6 +1,6 @@
 
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -534,45 +534,117 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                       </div>
                     </div>
                   )}
-                  {order.designAttachments && order.designAttachments.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-2">Design Output / Deliverables</p>
-                      <div className="flex flex-wrap gap-3">
-                        {order.designAttachments.map((file, i) => {
-                          const isImage = file.startsWith('data:image/') || file.includes('image/');
-                          return (
-                            <div key={i} className="flex flex-col gap-2 p-2 bg-purple-50/50 rounded-2xl border border-purple-100 group relative">
-                              <div className="w-16 h-16 rounded-xl overflow-hidden relative bg-white flex items-center justify-center border border-purple-200">
-                                {isImage ? (
-                                  <img src={file} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="flex flex-col items-center gap-1 text-purple-600">
-                                    <FileText size={20} />
-                                    <span className="text-[7px] font-black uppercase">ZIP / FILE</span>
-                                  </div>
-                                )}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                                  {isImage && (
-                                    <button
-                                      onClick={() => setViewingImage(file)}
-                                      className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all border-none cursor-pointer"
-                                    >
-                                      <ZoomIn size={12} />
-                                    </button>
-                                  )}
-                                  <a
-                                    href={file}
-                                    download={`Design_Output_${i + 1}_Order_${order.id.slice(-6)}`}
-                                    className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer"
-                                  >
-                                    <Download size={12} />
-                                  </a>
+                  {/* Original Design Assets (PNG & ZIP) */}
+                  {(order.original_design_file || order.original_design_zip || (order.designAttachments && order.designAttachments.length > 0)) && (
+                    <div className="space-y-3 bg-purple-50/50 p-4 rounded-2xl border border-purple-150">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10.5px] font-black text-purple-900 uppercase tracking-widest flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-purple-600" />
+                          Design Deliverables & Original Files
+                        </p>
+                        <span className="text-[9px] font-black bg-purple-200/60 text-purple-800 px-2 py-0.5 rounded-full">
+                          Original Quality
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* 1. Original Quality Design PNG */}
+                        {order.original_design_file && (
+                          <div className="bg-white p-3 rounded-xl border border-purple-200 flex items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                onClick={() => setViewingImage(order.original_design_file!)}
+                                className="w-12 h-12 rounded-lg overflow-hidden border border-purple-100 bg-gray-50 cursor-pointer relative group shrink-0"
+                                title="Click to view full original image"
+                              >
+                                <img src={order.original_design_file} alt="Original PNG" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                  <ZoomIn size={14} />
                                 </div>
                               </div>
+                              <div className="text-left min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate" title={order.original_design_filename || 'Original Design Image'}>
+                                  {order.original_design_filename || 'Original_Design.png'}
+                                </p>
+                                <span className="text-[9.5px] text-purple-700 font-extrabold flex items-center gap-1">
+                                  ✨ 100% Original PNG
+                                </span>
+                              </div>
                             </div>
-                          );
-                        })}
+                            <a
+                              href={order.original_design_file}
+                              download={order.original_design_filename || `Design_Original_${order.id.slice(-6)}.png`}
+                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline shrink-0"
+                              title="Download Original Quality PNG"
+                            >
+                              <Download size={11} />
+                              Download
+                            </a>
+                          </div>
+                        )}
+
+                        {/* 2. Original Design ZIP Package */}
+                        {order.original_design_zip && (
+                          <div className="bg-white p-3 rounded-xl border border-indigo-200 flex items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-2.5 min-w-0 text-left">
+                              <div className="w-12 h-12 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                <FolderOpen size={22} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate" title={order.original_design_zip_filename || 'Design_Package.zip'}>
+                                  {order.original_design_zip_filename || 'Design_Package.zip'}
+                                </p>
+                                <span className="text-[9.5px] text-indigo-700 font-extrabold flex items-center gap-1">
+                                  📦 Design ZIP Archive
+                                </span>
+                              </div>
+                            </div>
+                            <a
+                              href={order.original_design_zip}
+                              download={order.original_design_zip_filename || `Design_Package_${order.id.slice(-6)}.zip`}
+                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline shrink-0"
+                              title="Download Design ZIP Package"
+                            >
+                              <Download size={11} />
+                              Download
+                            </a>
+                          </div>
+                        )}
                       </div>
+
+                      {/* 3. Additional Vector Deliverables / PDFs */}
+                      {order.designAttachments && order.designAttachments.length > 0 && (
+                        <div className="pt-2 border-t border-purple-100">
+                          <p className="text-[9.5px] font-bold text-purple-700 uppercase tracking-wide mb-2">Additional Tracing / PDF Files ({order.designAttachments.length})</p>
+                          <div className="flex flex-wrap gap-2">
+                            {order.designAttachments.map((file, i) => {
+                              const isImage = file.startsWith('data:image/') || file.includes('image/');
+                              return (
+                                <div key={i} className="flex items-center gap-2 p-1.5 bg-white rounded-xl border border-purple-150">
+                                  <div
+                                    onClick={() => setViewingImage(file)}
+                                    className="w-8 h-8 rounded-lg overflow-hidden relative bg-gray-50 flex items-center justify-center cursor-pointer border border-purple-100"
+                                  >
+                                    {isImage ? (
+                                      <img src={file} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <FileText size={16} className="text-purple-600" />
+                                    )}
+                                  </div>
+                                  <a
+                                    href={file}
+                                    download={`Deliverable_${i + 1}_Order_${order.id.slice(-6)}`}
+                                    className="px-2 py-1 bg-gray-100 hover:bg-purple-100 text-purple-700 rounded text-[9.5px] font-bold uppercase transition-all flex items-center gap-1 no-underline"
+                                  >
+                                    <Download size={10} />
+                                    File #{i + 1}
+                                  </a>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
