@@ -236,26 +236,48 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                     {isEditing ? (
                       <div className="space-y-2">
                         <div>
-                          <label className="text-[8px] font-black text-gray-400 uppercase">Grand Total</label>
+                          <label className="text-[8px] font-black text-gray-400 uppercase">Grand Total (₹)</label>
                           <input
                             type="number"
-                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-black text-lg"
-                            value={editedOrder.financials.totalAmount}
+                            min="0"
+                            step="any"
+                            placeholder="0.00"
+                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-black text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            value={editedOrder.financials?.totalAmount ? editedOrder.financials.totalAmount : ''}
                             onChange={e => {
-                              const total = parseFloat(e.target.value) || 0;
-                              setEditedOrder({ ...editedOrder, financials: { ...editedOrder.financials, totalAmount: total, balanceAmount: total - editedOrder.financials.advancePay } });
+                              const total = e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0);
+                              const adv = editedOrder.financials?.advancePay || 0;
+                              setEditedOrder({
+                                ...editedOrder,
+                                financials: {
+                                  ...editedOrder.financials,
+                                  totalAmount: total,
+                                  balanceAmount: Math.max(0, total - adv)
+                                }
+                              });
                             }}
                           />
                         </div>
                         <div>
-                          <label className="text-[8px] font-black text-gray-400 uppercase">Advance Paid</label>
+                          <label className="text-[8px] font-black text-gray-400 uppercase">Advance Paid (₹)</label>
                           <input
                             type="number"
-                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-green-600"
-                            value={editedOrder.financials.advancePay}
+                            min="0"
+                            step="any"
+                            placeholder="0.00"
+                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-green-600 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                            value={editedOrder.financials?.advancePay ? editedOrder.financials.advancePay : ''}
                             onChange={e => {
-                              const adv = parseFloat(e.target.value) || 0;
-                              setEditedOrder({ ...editedOrder, financials: { ...editedOrder.financials, advancePay: adv, balanceAmount: editedOrder.financials.totalAmount - adv } });
+                              const adv = e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0);
+                              const total = editedOrder.financials?.totalAmount || 0;
+                              setEditedOrder({
+                                ...editedOrder,
+                                financials: {
+                                  ...editedOrder.financials,
+                                  advancePay: adv,
+                                  balanceAmount: Math.max(0, total - adv)
+                                }
+                              });
                             }}
                           />
                         </div>
@@ -263,17 +285,30 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                     ) : (
                       <>
                         <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-gray-500 uppercase">Grand Total</span>
-                          <span className="text-2xl font-black text-gray-900">₹{(order.financials?.totalAmount || 0).toLocaleString()}</span>
+                          <div>
+                            <span className="text-[10px] font-bold text-gray-500 uppercase block">Grand Total</span>
+                            {(order.financials?.totalAmount || 0) === 0 && (
+                              <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded mt-0.5 inline-block">
+                                Amount Not Inserted
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-2xl font-black text-gray-900">
+                            {(order.financials?.totalAmount || 0) > 0 ? `₹${(order.financials?.totalAmount || 0).toLocaleString()}` : '₹0'}
+                          </span>
                         </div>
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
                             <span className="font-bold text-green-600">Paid Amount</span>
-                            <span className="font-black text-gray-900">₹{(order.financials?.advancePay || 0).toLocaleString()}</span>
+                            <span className="font-black text-gray-900">
+                              {(order.financials?.advancePay || 0) > 0 ? `₹${(order.financials?.advancePay || 0).toLocaleString()}` : '₹0'}
+                            </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="font-bold text-red-600">Pending Pay</span>
-                            <span className="font-black text-gray-900">₹{(order.financials?.balanceAmount || 0).toLocaleString()}</span>
+                            <span className="font-black text-gray-900">
+                              {(order.financials?.balanceAmount || 0) > 0 ? `₹${(order.financials?.balanceAmount || 0).toLocaleString()}` : '₹0'}
+                            </span>
                           </div>
                         </div>
                       </>
@@ -317,22 +352,24 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                               <label className="text-[8px] font-black text-gray-400 uppercase">Quantity</label>
                               <input
                                 type="number"
+                                min="0"
+                                placeholder="0"
                                 className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl font-bold"
-                                value={item.quantity}
+                                value={item.quantity || ''}
                                 onChange={e => {
-                                  const qty = parseInt(e.target.value, 10) || 0;
+                                  const qty = e.target.value === '' ? 0 : (parseInt(e.target.value, 10) || 0);
                                   const updated = [...editedOrder.sizeBreakdown];
                                   updated[idx] = { ...updated[idx], quantity: qty };
                                   const newQty = updated.reduce((sum, i) => sum + i.quantity, 0);
-                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0);
                                   setEditedOrder({
                                     ...editedOrder,
                                     sizeBreakdown: updated,
                                     quantity: newQty,
                                     financials: {
                                       ...editedOrder.financials,
-                                      totalAmount: newTotal,
-                                      balanceAmount: newTotal - editedOrder.financials.advancePay
+                                      totalAmount: newTotal > 0 ? newTotal : editedOrder.financials?.totalAmount || 0,
+                                      balanceAmount: Math.max(0, (newTotal > 0 ? newTotal : editedOrder.financials?.totalAmount || 0) - (editedOrder.financials?.advancePay || 0))
                                     }
                                   });
                                 }}
@@ -342,20 +379,23 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                               <label className="text-[8px] font-black text-gray-400 uppercase">Rate (₹)</label>
                               <input
                                 type="number"
+                                min="0"
+                                step="any"
+                                placeholder="0.00"
                                 className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-brand-primary"
-                                value={item.price}
+                                value={item.price || ''}
                                 onChange={e => {
-                                  const rate = parseFloat(e.target.value) || 0;
+                                  const rate = e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0);
                                   const updated = [...editedOrder.sizeBreakdown];
                                   updated[idx] = { ...updated[idx], price: rate };
-                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0);
                                   setEditedOrder({
                                     ...editedOrder,
                                     sizeBreakdown: updated,
                                     financials: {
                                       ...editedOrder.financials,
-                                      totalAmount: newTotal,
-                                      balanceAmount: newTotal - editedOrder.financials.advancePay
+                                      totalAmount: newTotal > 0 ? newTotal : editedOrder.financials?.totalAmount || 0,
+                                      balanceAmount: Math.max(0, (newTotal > 0 ? newTotal : editedOrder.financials?.totalAmount || 0) - (editedOrder.financials?.advancePay || 0))
                                     }
                                   });
                                 }}

@@ -91,7 +91,8 @@ export enum UserRole {
   DIGITIZER = 'digitizer',
   ONLINETEAM = 'onlineteam',
   VENDOR = 'vendor',
-  INVENTORY_MANAGEMENT = 'inventory_management'
+  INVENTORY_MANAGEMENT = 'inventory_management',
+  HR = 'hr'
 }
 
 export interface UserProfile {
@@ -212,3 +213,82 @@ export interface SidebarMessage {
   recipientId?: string;
   createdAt: number;
 }
+
+export type AttendanceStatus = 'Present' | 'Absent' | 'Half-Day' | 'Paid Leave' | 'Unpaid Leave';
+
+export interface StaffAttendanceRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  date: string; // YYYY-MM-DD
+  status: AttendanceStatus;
+  checkInTime?: string; // HH:MM AM/PM
+  checkOutTime?: string; // HH:MM AM/PM
+  workHours: number;
+  overtimeHours?: number;
+  notes?: string;
+  verificationMode?: 'Biometric' | 'System' | 'Manual' | 'Face ID';
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface EmployeeSalaryProfile {
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+  basicSalary: number;
+  hra: number;
+  conveyance: number;
+  specialAllowance: number;
+  epfDeduction: number;
+  esiDeduction: number;
+  professionalTax: number;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  panNumber?: string;
+  updatedAt?: number;
+}
+
+export interface SalarySlip {
+  id: string;
+  slipNumber: string;
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  userRole?: string;
+  month: string; // e.g., 'September'
+  year: number; // e.g., 2026
+  workingDays: number;
+  presentDays: number;
+  paidLeaves: number;
+  unpaidLeaves: number;
+  basicSalary: number;
+  hra: number;
+  conveyance: number;
+  specialAllowance: number;
+  bonus: number;
+  incentive: number;
+  overtimePay: number;
+  grossEarnings: number;
+  epfDeduction: number;
+  esiDeduction: number;
+  professionalTax: number;
+  tdsDeduction: number;
+  lopDeduction: number;
+  advanceDeduction: number;
+  totalDeductions: number;
+  netSalary: number;
+  status: 'Paid' | 'Pending' | 'Processing';
+  paymentDate?: string;
+  paymentMethod?: 'Bank Transfer' | 'UPI' | 'Cash' | 'Cheque';
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  panNumber?: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+

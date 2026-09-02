@@ -6,7 +6,7 @@ import {
   Layout, Bell, Settings, BarChart3, Package, Warehouse,
   Users, LogOut, TrendingUp, DollarSign, Activity, Download, Shield,
   ChevronLeft, ChevronRight, Menu, MoreVertical, Plus, MessageSquare, Calendar as CalendarIcon,
-  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown, Monitor, Smartphone, CreditCard
+  ClipboardCheck, Store, Building2, Truck, IndianRupee, ChevronDown, Monitor, Smartphone, CreditCard, Briefcase
 } from 'lucide-react';
 import {
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -392,16 +392,28 @@ export default function Dashboard() {
                 isSidebarCollapsed && "md:hidden"
               )}>Lead Management</p>
               {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.email === 'daniel.smpallywear@gmail.com') && (
-                <button
-                  onClick={() => navigate('/lead-dashboard')}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
-                    isSidebarCollapsed && "md:justify-center md:px-0"
-                  )}
-                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
-                >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
-                </button>
+                <>
+                  <button
+                    onClick={() => navigate('/lead-dashboard')}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
+                      isSidebarCollapsed && "md:justify-center md:px-0"
+                    )}
+                    title={isSidebarCollapsed ? "Lead Dashboard" : ""}
+                  >
+                    <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
+                  </button>
+                  <button
+                    onClick={() => navigate('/hr-dashboard')}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 mb-2 cursor-pointer",
+                      isSidebarCollapsed && "md:justify-center md:px-0"
+                    )}
+                    title={isSidebarCollapsed ? "HR & Payroll Dashboard" : ""}
+                  >
+                    <Briefcase className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>HR & Payroll</span>}
+                  </button>
+                </>
               )}
               <button
                 onClick={() => selectTab('clients')}

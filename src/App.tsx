@@ -16,6 +16,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Store = lazy(() => import('./pages/Store'));
 const LeadDashboard = lazy(() => import('./pages/LeadDashboard'));
 const FlagshipUpper = lazy(() => import('./pages/FlagshipUpper'));
+const HRDashboard = lazy(() => import('./pages/HRDashboard'));
 
 import { UserRole } from './types';
 
@@ -172,6 +173,16 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/hr-dashboard"
+            element={
+              <ProtectedRoute>
+                <HRDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/hr" element={<Navigate to="/hr-dashboard" replace />} />
 
           {/* Redirects */}
           <Route path="/" element={<RootRedirect />} />

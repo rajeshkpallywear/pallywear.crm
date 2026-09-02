@@ -6,7 +6,7 @@ import {
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
-  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace
+  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace, Briefcase
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
@@ -1083,6 +1083,10 @@ export default function AdminDashboard() {
     };
     const [selectedDept, setSelectedDept] = useState<'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers'>('staff');
     const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
+    const [orderStaffSearch, setOrderStaffSearch] = useState('');
+    const [orderStaffFilter, setOrderStaffFilter] = useState('all');
+    const [orderDateRangeFilter, setOrderDateRangeFilter] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('all');
+    const [orderCustomDate, setOrderCustomDate] = useState('');
     const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [invitations, setInvitations] = useState<any[]>([]);
@@ -1381,95 +1385,211 @@ export default function AdminDashboard() {
       return chartPoints;
     }, [orders]);
 
+    // Today & Staff Upload Analytics
+    const staffUploadStats = useMemo(() => {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const todayEnd = todayStart + 86400000;
+      const yesterdayStart = todayStart - 86400000;
+
+      const userMap: Record<string, string> = {};
+      registeredUsers.forEach((u: any) => {
+        if (u.id) userMap[u.id] = u.name || u.email;
+        if (u.email) userMap[u.email] = u.name || u.email;
+      });
+
+      const staffMap: Record<string, {
+        name: string;
+        todayOrdersCount: number;
+        todayTotalValue: number;
+        yesterdayOrdersCount: number;
+        allOrdersCount: number;
+        allTotalValue: number;
+      }> = {};
+
+      orders.forEach(o => {
+        const creatorName = (o.createdByName || userMap[o.createdBy] || o.createdBy || 'Unknown Staff').trim();
+        if (!staffMap[creatorName]) {
+          staffMap[creatorName] = {
+            name: creatorName,
+            todayOrdersCount: 0,
+            todayTotalValue: 0,
+            yesterdayOrdersCount: 0,
+            allOrdersCount: 0,
+            allTotalValue: 0,
+          };
+        }
+
+        const orderTime = Number(o.createdAt || 0);
+        const amount = Number(o.financials?.totalAmount || 0);
+
+        staffMap[creatorName].allOrdersCount += 1;
+        staffMap[creatorName].allTotalValue += amount;
+
+        if (orderTime >= todayStart && orderTime < todayEnd) {
+          staffMap[creatorName].todayOrdersCount += 1;
+          staffMap[creatorName].todayTotalValue += amount;
+        } else if (orderTime >= yesterdayStart && orderTime < todayStart) {
+          staffMap[creatorName].yesterdayOrdersCount += 1;
+        }
+      });
+
+      return Object.values(staffMap).sort((a, b) => b.todayOrdersCount - a.todayOrdersCount || b.allOrdersCount - a.allOrdersCount);
+    }, [orders, registeredUsers]);
+
+    const totalTodayUploadedOrders = useMemo(() => {
+      return staffUploadStats.reduce((sum, s) => sum + s.todayOrdersCount, 0);
+    }, [staffUploadStats]);
+
+    const totalTodayUploadedValue = useMemo(() => {
+      return staffUploadStats.reduce((sum, s) => sum + s.todayTotalValue, 0);
+    }, [staffUploadStats]);
+
     const getFilteredDeptOrders = () => {
+      let baseList = orders;
+
       switch (selectedDept) {
         case 'staff':
           if (selectedSection === 'hold') {
-            return orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+            baseList = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
           } else if (selectedSection === 'completed') {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return effStatus !== OrderStatus.PENDING && effStatus !== OrderStatus.DRAFT && !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
             });
-          } else {
-            return orders;
           }
+          break;
 
         case 'accounts':
           if (selectedSection === 'hold') {
-            return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+            baseList = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
           } else if (selectedSection === 'completed') {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return effStatus && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(effStatus) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
             });
           } else {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return effStatus && ![OrderStatus.DRAFT, OrderStatus.PENDING].includes(effStatus);
             });
           }
+          break;
 
         case 'order_management':
           if (selectedSection === 'hold') {
-            return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
+            baseList = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
           } else if (selectedSection === 'completed') {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
             });
           } else {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff);
             });
           }
+          break;
 
         case 'production':
           if (selectedSection === 'hold') {
-            return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
+            baseList = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
           } else if (selectedSection === 'completed') {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
             });
           } else {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT].includes(eff);
             });
           }
+          break;
 
         case 'delivery':
           if (selectedSection === 'hold') {
-            return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
+            baseList = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
           } else if (selectedSection === 'completed') {
-            return orders.filter(o => o.status === OrderStatus.DELIVERED);
+            baseList = orders.filter(o => o.status === OrderStatus.DELIVERED);
           } else {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
             });
           }
+          break;
 
         case 'designers':
           if (selectedSection === 'hold') {
-            return orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
+            baseList = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
           } else if (selectedSection === 'completed') {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
             });
           } else {
-            return orders.filter(o => {
+            baseList = orders.filter(o => {
               const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(eff);
             });
           }
+          break;
 
         default:
-          return orders;
+          baseList = orders;
       }
+
+      // Filter by Staff Name / Search Query
+      if (orderStaffSearch.trim()) {
+        const q = orderStaffSearch.toLowerCase().trim();
+        baseList = baseList.filter(o => {
+          const creator = (o.createdByName || '').toLowerCase();
+          const cust = (o.customerInfo?.name || '').toLowerCase();
+          const phone = (o.customerInfo?.phone || '').toLowerCase();
+          const id = (o.id || '').toLowerCase();
+          const designer = (o.assignedDesigner || '').toLowerCase();
+          const cat = (o.category || '').toLowerCase();
+          return creator.includes(q) || cust.includes(q) || phone.includes(q) || id.includes(q) || designer.includes(q) || cat.includes(q);
+        });
+      }
+
+      // Filter by Specific Staff Filter
+      if (orderStaffFilter && orderStaffFilter !== 'all') {
+        baseList = baseList.filter(o => {
+          const creator = (o.createdByName || '').trim().toLowerCase();
+          return creator === orderStaffFilter.trim().toLowerCase();
+        });
+      }
+
+      // Filter by Date Range (Today, Yesterday, This Week, This Month, Custom)
+      if (orderDateRangeFilter !== 'all') {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const todayEnd = todayStart + 86400000;
+        const yesterdayStart = todayStart - 86400000;
+        const weekStart = todayStart - (now.getDay() * 86400000);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+        baseList = baseList.filter(o => {
+          const t = Number(o.createdAt || 0);
+          if (!t) return false;
+          if (orderDateRangeFilter === 'today') return t >= todayStart && t < todayEnd;
+          if (orderDateRangeFilter === 'yesterday') return t >= yesterdayStart && t < todayStart;
+          if (orderDateRangeFilter === 'this_week') return t >= weekStart && t < todayEnd;
+          if (orderDateRangeFilter === 'this_month') return t >= monthStart && t < todayEnd;
+          if (orderDateRangeFilter === 'custom' && orderCustomDate) {
+            const cDate = new Date(orderCustomDate);
+            const cStart = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate()).getTime();
+            const cEnd = cStart + 86400000;
+            return t >= cStart && t < cEnd;
+          }
+          return true;
+        });
+      }
+
+      return baseList;
     };
 
     const getDeptStats = (dept: 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers') => {
@@ -1744,6 +1864,14 @@ export default function AdminDashboard() {
               >
                 <Users className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Lead Dashboard</span>
+              </button>
+              <button
+                onClick={() => navigate('/hr-dashboard')}
+                className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="HR & Payroll Dashboard"
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">HR & Payroll</span>
               </button>
               <div className="relative">
                 <button
@@ -2440,37 +2568,182 @@ export default function AdminDashboard() {
                   })}
                 </div>
 
-                {/* Subsection Filters (Total, Hold, Completed) */}
-                <div className="flex bg-gray-100 p-1.5 rounded-2xl w-fit gap-1">
-                  {(
-                    [
-                      { id: 'total', label: '1. Total Orders/Designs', count: getDeptStats(selectedDept).totalCount, color: 'bg-black text-white' },
-                      { id: 'hold', label: '2. Hold Orders/Designs', count: getDeptStats(selectedDept).holdCount, color: 'bg-red-600 text-white shadow-red-600/10' },
-                      { id: 'completed', label: '3. Completed Orders/Designs', count: getDeptStats(selectedDept).completedCount, color: 'bg-green-600 text-white shadow-green-600/10' }
-                    ] as const
-                  ).map(sec => {
-                    const isActive = selectedSection === sec.id;
-                    return (
+                {/* Today's Staff Uploads Analytics Bar */}
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-left">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black text-sm">
+                        ⚡
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-gray-900 tracking-tight flex items-center gap-2">
+                          Today's Staff Uploads
+                          <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-0.5 rounded-full">
+                            {totalTodayUploadedOrders} Orders Today (₹{totalTodayUploadedValue.toLocaleString('en-IN')})
+                          </span>
+                        </h4>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                          Live tracking of orders uploaded by each staff member today
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Date Range Selector */}
+                    <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-150">
+                      {(
+                        [
+                          { id: 'all', label: 'All Time' },
+                          { id: 'today', label: `Today (${totalTodayUploadedOrders})` },
+                          { id: 'yesterday', label: 'Yesterday' },
+                          { id: 'this_week', label: 'This Week' },
+                          { id: 'this_month', label: 'This Month' },
+                          { id: 'custom', label: 'Custom' },
+                        ] as const
+                      ).map(dr => (
+                        <button
+                          key={dr.id}
+                          onClick={() => setOrderDateRangeFilter(dr.id)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer border-none",
+                            orderDateRangeFilter === dr.id
+                              ? "bg-black text-white shadow-xs"
+                              : "text-gray-500 hover:text-gray-900 bg-transparent hover:bg-gray-200/50"
+                          )}
+                        >
+                          {dr.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {orderDateRangeFilter === 'custom' && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase">Select Date:</span>
+                      <input
+                        type="date"
+                        value={orderCustomDate}
+                        onChange={e => setOrderCustomDate(e.target.value)}
+                        className="text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1 text-gray-700 font-bold focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Staff Badges Chips */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-dashed border-gray-100">
+                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider mr-1">Staff Breakdown:</span>
+                    <button
+                      onClick={() => setOrderStaffFilter('all')}
+                      className={cn(
+                        "px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border",
+                        orderStaffFilter === 'all'
+                          ? "bg-brand-primary text-white border-brand-primary shadow-xs"
+                          : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                      )}
+                    >
+                      <span>All Staff</span>
+                      <span className="px-1.5 py-0.2 rounded-md bg-black/15 text-[9px] font-black">{orders.length}</span>
+                    </button>
+
+                    {staffUploadStats.map(s => {
+                      const isSelected = orderStaffFilter.toLowerCase() === s.name.toLowerCase();
+                      return (
+                        <button
+                          key={s.name}
+                          onClick={() => setOrderStaffFilter(isSelected ? 'all' : s.name)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border",
+                            isSelected
+                              ? "bg-black text-white border-black shadow-xs"
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                          )}
+                        >
+                          <span>{s.name}</span>
+                          {s.todayOrdersCount > 0 ? (
+                            <span className="px-1.5 py-0.2 rounded-md bg-amber-500 text-white text-[9px] font-black shadow-xs">
+                              +{s.todayOrdersCount} today
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded-md bg-gray-200 text-gray-600 text-[9px] font-black">
+                              0 today
+                            </span>
+                          )}
+                          <span className="text-[9px] text-gray-400 font-medium">({s.allOrdersCount} total)</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Search Bar and Subsection Toolbar */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  {/* Subsection Filters (Total, Hold, Completed) */}
+                  <div className="flex bg-gray-100 p-1.5 rounded-2xl w-fit gap-1">
+                    {(
+                      [
+                        { id: 'total', label: '1. Total Orders/Designs', count: getDeptStats(selectedDept).totalCount, color: 'bg-black text-white' },
+                        { id: 'hold', label: '2. Hold Orders/Designs', count: getDeptStats(selectedDept).holdCount, color: 'bg-red-600 text-white shadow-red-600/10' },
+                        { id: 'completed', label: '3. Completed Orders/Designs', count: getDeptStats(selectedDept).completedCount, color: 'bg-green-600 text-white shadow-green-600/10' }
+                      ] as const
+                    ).map(sec => {
+                      const isActive = selectedSection === sec.id;
+                      return (
+                        <button
+                          key={sec.id}
+                          onClick={() => setSelectedSection(sec.id)}
+                          className={cn(
+                            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer",
+                            isActive
+                              ? `${sec.color} shadow-lg scale-100`
+                              : "text-gray-500 hover:text-gray-900 bg-transparent hover:bg-white/40"
+                          )}
+                        >
+                          <span>{sec.label}</span>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-lg text-[10px] font-black",
+                            isActive ? "bg-white/20 text-white" : "bg-gray-200 text-gray-700"
+                          )}>
+                            {sec.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Search input with live debouncing and staff selector */}
+                  <div className="flex items-center gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-80">
+                      <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={orderStaffSearch}
+                        onChange={e => setOrderStaffSearch(e.target.value)}
+                        placeholder="Search staff (e.g. Godwin), customer, order #..."
+                        className="w-full text-xs pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white shadow-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                      />
+                      {orderStaffSearch && (
+                        <button
+                          onClick={() => setOrderStaffSearch('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 border-none bg-transparent cursor-pointer"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {(orderStaffSearch || orderStaffFilter !== 'all' || orderDateRangeFilter !== 'all') && (
                       <button
-                        key={sec.id}
-                        onClick={() => setSelectedSection(sec.id)}
-                        className={cn(
-                          "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer",
-                          isActive
-                            ? `${sec.color} shadow-lg scale-100`
-                            : "text-gray-500 hover:text-gray-900 bg-transparent hover:bg-white/40"
-                        )}
+                        onClick={() => {
+                          setOrderStaffSearch('');
+                          setOrderStaffFilter('all');
+                          setOrderDateRangeFilter('all');
+                          setOrderCustomDate('');
+                        }}
+                        className="px-3 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-xl hover:bg-red-100 transition-colors whitespace-nowrap cursor-pointer"
                       >
-                        <span>{sec.label}</span>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-lg text-[10px] font-black",
-                          isActive ? "bg-white/20 text-white" : "bg-gray-200 text-gray-700"
-                        )}>
-                          {sec.count}
-                        </span>
+                        Reset Filters
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
 
                 {/* Data Table */}
@@ -2479,7 +2752,7 @@ export default function AdminDashboard() {
                     <thead className="bg-gray-50 text-gray-500 font-semibold uppercase tracking-wider text-[11px] border-b border-gray-100">
                       <tr>
                         <th className="px-6 py-4">Order ID</th>
-                        <th className="px-6 py-4">Customer</th>
+                        <th className="px-6 py-4">Customer & Creator</th>
                         <th className="px-6 py-4">Category</th>
                         <th className="px-6 py-4">Quantity</th>
                         <th className="px-6 py-4">Status & Step</th>
@@ -2488,9 +2761,24 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {getFilteredDeptOrders().map((o) => (
+                      {getFilteredDeptOrders().map((o) => {
+                        const isOrderCreatedToday = (() => {
+                          if (!o.createdAt) return false;
+                          const d = new Date(o.createdAt);
+                          const now = new Date();
+                          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                        })();
+
+                        return (
                         <tr key={o.id} className="hover:bg-gray-50/50 group transition-colors">
-                          <td className="px-6 py-4 font-mono font-black text-brand-primary text-xs">#{o.id.slice(-8)}</td>
+                          <td className="px-6 py-4 font-mono font-black text-brand-primary text-xs">
+                            #{o.id.slice(-8)}
+                            {isOrderCreatedToday && (
+                              <span className="block mt-1 text-[8px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
+                                ⚡ Today
+                              </span>
+                            )}
+                          </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               {((o.staffImages && o.staffImages[0]) || o.marketing_image) && (
@@ -2501,7 +2789,21 @@ export default function AdminDashboard() {
                               <div>
                                 <p className="font-bold text-gray-800">{o.customerInfo.name}</p>
                                 <p className="text-[10px] text-gray-400 font-medium">{o.customerInfo.phone || 'No phone'}</p>
-                                <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider mt-0.5">Created by: {o.createdByName || 'System'}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider">
+                                    Created by: {o.createdByName || 'System'}
+                                  </p>
+                                  {isOrderCreatedToday && (
+                                    <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-500 text-white">
+                                      Today
+                                    </span>
+                                  )}
+                                </div>
+                                {o.createdAt && (
+                                  <p className="text-[8px] text-gray-400 font-mono mt-0.5">
+                                    {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -2556,7 +2858,8 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );
+                    })}
                       {getFilteredDeptOrders().length === 0 && (
                         <tr>
                           <td colSpan={7} className="px-6 py-24 text-center">

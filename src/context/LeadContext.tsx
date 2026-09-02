@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { mockDataService } from '../service/mockDataService';
+import { mockDataService, getInitialCached } from '../service/mockDataService';
 import { Lead, Invoice, Order, InventoryMovement } from '../types';
 import { useAuth } from './AuthContext';
 
@@ -58,28 +58,38 @@ function hasArrayChanged<T extends { id?: string; updatedAt?: number; createdAt?
 }
 
 export function LeadProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [inventory, setInventory] = useState<InventoryMovement[]>([]);
+  const [leads, setLeads] = useState<Lead[]>(() => getInitialCached<Lead>('leads'));
+  const [invoices, setInvoices] = useState<Invoice[]>(() => getInitialCached<Invoice>('invoices'));
+  const [orders, setOrders] = useState<Order[]>(() => getInitialCached<Order>('orders'));
+  const [inventory, setInventory] = useState<InventoryMovement[]>(() => getInitialCached<InventoryMovement>('inventory'));
   const { user } = useAuth();
 
   useEffect(() => {
     const loadData = async (force = false) => {
-      try {
-        const [leadsData, invoicesData, ordersData, inventoryData] = await Promise.all([
-          mockDataService.getLeads(force),
-          mockDataService.getInvoices(force),
-          mockDataService.getOrders(force),
-          mockDataService.getInventory(force)
-        ]);
-        setLeads(prev => hasArrayChanged(prev, leadsData) ? leadsData : prev);
-        setInvoices(prev => hasArrayChanged(prev, invoicesData) ? invoicesData : prev);
-        setOrders(prev => hasArrayChanged(prev, ordersData) ? ordersData : prev);
-        setInventory(prev => hasArrayChanged(prev, inventoryData) ? inventoryData : prev);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
+      // Fetch each resource independently without blocking each other
+      mockDataService.getLeads(force)
+        .then(leadsData => {
+          setLeads(prev => hasArrayChanged(prev, leadsData) ? leadsData : prev);
+        })
+        .catch(err => console.error('Error loading leads:', err));
+
+      mockDataService.getInvoices(force)
+        .then(invoicesData => {
+          setInvoices(prev => hasArrayChanged(prev, invoicesData) ? invoicesData : prev);
+        })
+        .catch(err => console.error('Error loading invoices:', err));
+
+      mockDataService.getOrders(force)
+        .then(ordersData => {
+          setOrders(prev => hasArrayChanged(prev, ordersData) ? ordersData : prev);
+        })
+        .catch(err => console.error('Error loading orders:', err));
+
+      mockDataService.getInventory(force)
+        .then(inventoryData => {
+          setInventory(prev => hasArrayChanged(prev, inventoryData) ? inventoryData : prev);
+        })
+        .catch(err => console.error('Error loading inventory:', err));
     };
 
     if (!user) {
@@ -90,7 +100,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Instant load from SWR memory/local cache
+    // Instant non-blocking refresh from server
     loadData(false);
 
     // ⚡ Smart background refresh every 20 seconds (pauses when tab is hidden)

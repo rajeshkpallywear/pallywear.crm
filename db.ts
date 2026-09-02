@@ -359,6 +359,95 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // Create staff_attendance table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`staff_attendance\` (
+        \`id\` varchar(50) NOT NULL,
+        \`userId\` varchar(50) NOT NULL,
+        \`userName\` varchar(100) NOT NULL,
+        \`date\` varchar(20) NOT NULL,
+        \`status\` varchar(20) NOT NULL DEFAULT 'Present',
+        \`checkInTime\` varchar(30) DEFAULT NULL,
+        \`checkOutTime\` varchar(30) DEFAULT NULL,
+        \`workHours\` decimal(5,2) DEFAULT 8.00,
+        \`overtimeHours\` decimal(5,2) DEFAULT 0.00,
+        \`notes\` text DEFAULT NULL,
+        \`verificationMode\` varchar(30) DEFAULT 'System',
+        \`createdAt\` bigint NOT NULL,
+        \`updatedAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`user_date_unique\` (\`userId\`, \`date\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
+    // Create employee_salary_profiles table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`employee_salary_profiles\` (
+        \`userId\` varchar(50) NOT NULL,
+        \`userName\` varchar(100) DEFAULT NULL,
+        \`userEmail\` varchar(100) DEFAULT NULL,
+        \`userRole\` varchar(50) DEFAULT NULL,
+        \`basicSalary\` decimal(12,2) NOT NULL DEFAULT 0.00,
+        \`hra\` decimal(12,2) DEFAULT 0.00,
+        \`conveyance\` decimal(12,2) DEFAULT 0.00,
+        \`specialAllowance\` decimal(12,2) DEFAULT 0.00,
+        \`epfDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`esiDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`professionalTax\` decimal(12,2) DEFAULT 0.00,
+        \`bankName\` varchar(100) DEFAULT NULL,
+        \`accountNumber\` varchar(50) DEFAULT NULL,
+        \`ifscCode\` varchar(30) DEFAULT NULL,
+        \`panNumber\` varchar(30) DEFAULT NULL,
+        \`updatedAt\` bigint NOT NULL,
+        PRIMARY KEY (\`userId\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
+    // Create salary_slips table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`salary_slips\` (
+        \`id\` varchar(50) NOT NULL,
+        \`slipNumber\` varchar(50) NOT NULL,
+        \`userId\` varchar(50) NOT NULL,
+        \`userName\` varchar(100) NOT NULL,
+        \`userEmail\` varchar(100) DEFAULT NULL,
+        \`userRole\` varchar(50) DEFAULT NULL,
+        \`month\` varchar(20) NOT NULL,
+        \`year\` int NOT NULL,
+        \`workingDays\` int DEFAULT 30,
+        \`presentDays\` int DEFAULT 30,
+        \`paidLeaves\` int DEFAULT 0,
+        \`unpaidLeaves\` int DEFAULT 0,
+        \`basicSalary\` decimal(12,2) NOT NULL DEFAULT 0.00,
+        \`hra\` decimal(12,2) DEFAULT 0.00,
+        \`conveyance\` decimal(12,2) DEFAULT 0.00,
+        \`specialAllowance\` decimal(12,2) DEFAULT 0.00,
+        \`bonus\` decimal(12,2) DEFAULT 0.00,
+        \`incentive\` decimal(12,2) DEFAULT 0.00,
+        \`overtimePay\` decimal(12,2) DEFAULT 0.00,
+        \`grossEarnings\` decimal(12,2) NOT NULL DEFAULT 0.00,
+        \`epfDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`esiDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`professionalTax\` decimal(12,2) DEFAULT 0.00,
+        \`tdsDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`lopDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`advanceDeduction\` decimal(12,2) DEFAULT 0.00,
+        \`totalDeductions\` decimal(12,2) NOT NULL DEFAULT 0.00,
+        \`netSalary\` decimal(12,2) NOT NULL DEFAULT 0.00,
+        \`status\` varchar(30) DEFAULT 'Pending',
+        \`paymentDate\` varchar(30) DEFAULT NULL,
+        \`paymentMethod\` varchar(50) DEFAULT 'Bank Transfer',
+        \`bankName\` varchar(100) DEFAULT NULL,
+        \`accountNumber\` varchar(50) DEFAULT NULL,
+        \`ifscCode\` varchar(30) DEFAULT NULL,
+        \`panNumber\` varchar(30) DEFAULT NULL,
+        \`notes\` text DEFAULT NULL,
+        \`createdAt\` bigint NOT NULL,
+        \`updatedAt\` bigint NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // 8. Run migrations to modify column types to LONGTEXT to support large attachments/files
     console.log('Running schema migrations...');
     const alterQueries = [
@@ -430,6 +519,11 @@ export async function initDB() {
       "CREATE INDEX idx_user_activity_time ON `user_activity_logs` (`loginTime`)",
       "CREATE INDEX idx_inventory_product ON `inventory_movements` (`productId`)",
       "CREATE INDEX idx_inventory_created ON `inventory_movements` (`createdAt`)",
+      "CREATE INDEX idx_salary_slips_user ON `salary_slips` (`userId`)",
+      "CREATE INDEX idx_salary_slips_month_year ON `salary_slips` (`month`, `year`)",
+      "CREATE INDEX idx_salary_slips_status ON `salary_slips` (`status`)",
+      "CREATE INDEX idx_staff_att_user ON `staff_attendance` (`userId`)",
+      "CREATE INDEX idx_staff_att_date ON `staff_attendance` (`date`)",
     ];
 
     for (const q of indexQueries) {

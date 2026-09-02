@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Order, OrderStatus, UserRole, UserProfile, Lead, Invoice, InventoryMovement, SidebarMessage } from '../types';
+import { Order, OrderStatus, UserRole, UserProfile, Lead, Invoice, InventoryMovement, SidebarMessage, SalarySlip, EmployeeSalaryProfile, StaffAttendanceRecord } from '../types';
 import { getApiUrl } from '../lib/apiConfig';
 
 function notifyUpdate() {
@@ -82,6 +82,22 @@ function setCache<T>(key: string, data: T) {
       localStorage.setItem(`pw_cache_${key}`, JSON.stringify(entry));
     }
   } catch (_) {}
+}
+
+export function getInitialCached<T>(key: string): T[] {
+  try {
+    const mem = memoryCache.get(key);
+    if (mem && Array.isArray(mem.data)) return mem.data;
+    const raw = localStorage.getItem(`pw_cache_${key}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.data)) {
+        memoryCache.set(key, parsed);
+        return parsed.data;
+      }
+    }
+  } catch (_) {}
+  return [];
 }
 
 export function invalidateCache(key?: string) {
@@ -583,5 +599,100 @@ export const mockDataService = {
     const res = await fetch(getApiUrl('/api/auth/activity-logs'));
     if (!res.ok) throw new Error('Failed to fetch activity logs');
     return res.json();
+  },
+
+  // HR & PAYROLL / ATTENDANCE METHODS
+  getSalarySlips: async (filters?: { month?: string; year?: number; userId?: string; status?: string }): Promise<SalarySlip[]> => {
+    const params = new URLSearchParams();
+    if (filters?.month) params.append('month', filters.month);
+    if (filters?.year) params.append('year', String(filters.year));
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.status) params.append('status', filters.status);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(getApiUrl(`/api/hr/salary-slips${qs}`));
+    if (!res.ok) throw new Error('Failed to fetch salary slips');
+    const data = await res.json();
+    return data.salarySlips || [];
+  },
+
+  saveSalarySlip: async (slip: Partial<SalarySlip>): Promise<{ success: boolean; id: string }> => {
+    const res = await fetch(getApiUrl('/api/hr/salary-slips'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(slip)
+    });
+    if (!res.ok) throw new Error('Failed to save salary slip');
+    notifyUpdate();
+    return res.json();
+  },
+
+  updateSalarySlip: async (id: string, updates: Partial<SalarySlip>): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/hr/salary-slips/${id}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update salary slip');
+    notifyUpdate();
+  },
+
+  deleteSalarySlip: async (id: string): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/hr/salary-slips/${id}`), {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete salary slip');
+    notifyUpdate();
+  },
+
+  getSalaryProfiles: async (): Promise<EmployeeSalaryProfile[]> => {
+    const res = await fetch(getApiUrl('/api/hr/salary-profiles'));
+    if (!res.ok) throw new Error('Failed to fetch salary profiles');
+    const data = await res.json();
+    return data.profiles || [];
+  },
+
+  saveSalaryProfile: async (userId: string, profile: Partial<EmployeeSalaryProfile>): Promise<void> => {
+    const res = await fetch(getApiUrl(`/api/hr/salary-profiles/${userId}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile)
+    });
+    if (!res.ok) throw new Error('Failed to save salary profile');
+    notifyUpdate();
+  },
+
+  getStaffAttendance: async (filters?: { date?: string; month?: number; year?: number; userId?: string }): Promise<StaffAttendanceRecord[]> => {
+    const params = new URLSearchParams();
+    if (filters?.date) params.append('date', filters.date);
+    if (filters?.month) params.append('month', String(filters.month));
+    if (filters?.year) params.append('year', String(filters.year));
+    if (filters?.userId) params.append('userId', filters.userId);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(getApiUrl(`/api/hr/attendance${qs}`));
+    if (!res.ok) throw new Error('Failed to fetch attendance records');
+    const data = await res.json();
+    return data.attendance || [];
+  },
+
+  saveStaffAttendance: async (record: Partial<StaffAttendanceRecord>): Promise<void> => {
+    const res = await fetch(getApiUrl('/api/hr/attendance'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    });
+    if (!res.ok) throw new Error('Failed to save attendance record');
+    notifyUpdate();
+  },
+
+  saveStaffAttendanceBulk: async (records: Partial<StaffAttendanceRecord>[]): Promise<void> => {
+    const res = await fetch(getApiUrl('/api/hr/attendance/bulk'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records })
+    });
+    if (!res.ok) throw new Error('Failed to save bulk attendance');
+    notifyUpdate();
   }
 };

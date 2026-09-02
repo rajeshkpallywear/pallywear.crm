@@ -391,7 +391,7 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes
+             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes
       FROM orders
     `) as any[];
 
@@ -424,7 +424,7 @@ router.get('/orders', async (req, res) => {
       orderManagementAttachments: [],
       designAttachments: [],
       machineFiles: [],
-      marketing_image: r.marketing_image || '',
+      marketing_image: '',
       marketing_notes: r.marketing_notes || '',
       createdAt: Number(r.createdAt || 0),
       updatedAt: Number(r.updatedAt || 0),
@@ -1453,6 +1453,387 @@ router.post('/notifications/read', async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error marking notifications as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// HR & PAYROLL / ATTENDANCE ENDPOINTS
+// ==========================================
+
+// 1. GET /api/hr/salary-slips
+router.get('/hr/salary-slips', async (req, res) => {
+  try {
+    const { month, year, userId, status } = req.query;
+    let sql = 'SELECT * FROM salary_slips WHERE 1=1';
+    const params: any[] = [];
+
+    if (month) {
+      sql += ' AND month = ?';
+      params.push(month);
+    }
+    if (year) {
+      sql += ' AND year = ?';
+      params.push(Number(year));
+    }
+    if (userId) {
+      sql += ' AND userId = ?';
+      params.push(userId);
+    }
+    if (status) {
+      sql += ' AND status = ?';
+      params.push(status);
+    }
+
+    sql += ' ORDER BY createdAt DESC';
+    const rows = await query(sql, params);
+    res.json({ success: true, salarySlips: rows });
+  } catch (error: any) {
+    console.error('Error fetching salary slips:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. POST /api/hr/salary-slips
+router.post('/hr/salary-slips', async (req, res) => {
+  try {
+    const slip = req.body;
+    const id = slip.id || `slip-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const now = Date.now();
+
+    await query(
+      `INSERT INTO salary_slips (
+        id, slipNumber, userId, userName, userEmail, userRole, month, year,
+        workingDays, presentDays, paidLeaves, unpaidLeaves, basicSalary, hra,
+        conveyance, specialAllowance, bonus, incentive, overtimePay, grossEarnings,
+        epfDeduction, esiDeduction, professionalTax, tdsDeduction, lopDeduction,
+        advanceDeduction, totalDeductions, netSalary, status, paymentDate,
+        paymentMethod, bankName, accountNumber, ifscCode, panNumber, notes,
+        createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        slipNumber = VALUES(slipNumber),
+        userName = VALUES(userName),
+        userEmail = VALUES(userEmail),
+        userRole = VALUES(userRole),
+        workingDays = VALUES(workingDays),
+        presentDays = VALUES(presentDays),
+        paidLeaves = VALUES(paidLeaves),
+        unpaidLeaves = VALUES(unpaidLeaves),
+        basicSalary = VALUES(basicSalary),
+        hra = VALUES(hra),
+        conveyance = VALUES(conveyance),
+        specialAllowance = VALUES(specialAllowance),
+        bonus = VALUES(bonus),
+        incentive = VALUES(incentive),
+        overtimePay = VALUES(overtimePay),
+        grossEarnings = VALUES(grossEarnings),
+        epfDeduction = VALUES(epfDeduction),
+        esiDeduction = VALUES(esiDeduction),
+        professionalTax = VALUES(professionalTax),
+        tdsDeduction = VALUES(tdsDeduction),
+        lopDeduction = VALUES(lopDeduction),
+        advanceDeduction = VALUES(advanceDeduction),
+        totalDeductions = VALUES(totalDeductions),
+        netSalary = VALUES(netSalary),
+        status = VALUES(status),
+        paymentDate = VALUES(paymentDate),
+        paymentMethod = VALUES(paymentMethod),
+        bankName = VALUES(bankName),
+        accountNumber = VALUES(accountNumber),
+        ifscCode = VALUES(ifscCode),
+        panNumber = VALUES(panNumber),
+        notes = VALUES(notes),
+        updatedAt = VALUES(updatedAt)`,
+      [
+        id,
+        slip.slipNumber || `PW-${slip.year || new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
+        slip.userId,
+        slip.userName || 'Employee',
+        slip.userEmail || null,
+        slip.userRole || null,
+        slip.month || 'Current',
+        Number(slip.year) || new Date().getFullYear(),
+        Number(slip.workingDays) || 30,
+        Number(slip.presentDays) || 30,
+        Number(slip.paidLeaves) || 0,
+        Number(slip.unpaidLeaves) || 0,
+        Number(slip.basicSalary) || 0,
+        Number(slip.hra) || 0,
+        Number(slip.conveyance) || 0,
+        Number(slip.specialAllowance) || 0,
+        Number(slip.bonus) || 0,
+        Number(slip.incentive) || 0,
+        Number(slip.overtimePay) || 0,
+        Number(slip.grossEarnings) || 0,
+        Number(slip.epfDeduction) || 0,
+        Number(slip.esiDeduction) || 0,
+        Number(slip.professionalTax) || 0,
+        Number(slip.tdsDeduction) || 0,
+        Number(slip.lopDeduction) || 0,
+        Number(slip.advanceDeduction) || 0,
+        Number(slip.totalDeductions) || 0,
+        Number(slip.netSalary) || 0,
+        slip.status || 'Pending',
+        slip.paymentDate || null,
+        slip.paymentMethod || 'Bank Transfer',
+        slip.bankName || null,
+        slip.accountNumber || null,
+        slip.ifscCode || null,
+        slip.panNumber || null,
+        slip.notes || null,
+        slip.createdAt || now,
+        now
+      ]
+    );
+
+    res.json({ success: true, id });
+  } catch (error: any) {
+    console.error('Error saving salary slip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. PUT /api/hr/salary-slips/:id
+router.put('/hr/salary-slips/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const now = Date.now();
+
+    await query(
+      `UPDATE salary_slips SET
+        status = COALESCE(?, status),
+        paymentDate = COALESCE(?, paymentDate),
+        paymentMethod = COALESCE(?, paymentMethod),
+        netSalary = COALESCE(?, netSalary),
+        grossEarnings = COALESCE(?, grossEarnings),
+        totalDeductions = COALESCE(?, totalDeductions),
+        notes = COALESCE(?, notes),
+        updatedAt = ?
+      WHERE id = ?`,
+      [
+        updates.status,
+        updates.paymentDate,
+        updates.paymentMethod,
+        updates.netSalary !== undefined ? Number(updates.netSalary) : null,
+        updates.grossEarnings !== undefined ? Number(updates.grossEarnings) : null,
+        updates.totalDeductions !== undefined ? Number(updates.totalDeductions) : null,
+        updates.notes,
+        now,
+        id
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating salary slip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. DELETE /api/hr/salary-slips/:id
+router.delete('/hr/salary-slips/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM salary_slips WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting salary slip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. GET /api/hr/salary-profiles
+router.get('/hr/salary-profiles', async (_req, res) => {
+  try {
+    const rows = await query('SELECT * FROM employee_salary_profiles ORDER BY updatedAt DESC');
+    res.json({ success: true, profiles: rows });
+  } catch (error: any) {
+    console.error('Error fetching salary profiles:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 6. PUT /api/hr/salary-profiles/:userId
+router.put('/hr/salary-profiles/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const profile = req.body;
+    const now = Date.now();
+
+    await query(
+      `INSERT INTO employee_salary_profiles (
+        userId, userName, userEmail, userRole, basicSalary, hra, conveyance,
+        specialAllowance, epfDeduction, esiDeduction, professionalTax,
+        bankName, accountNumber, ifscCode, panNumber, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        userName = VALUES(userName),
+        userEmail = VALUES(userEmail),
+        userRole = VALUES(userRole),
+        basicSalary = VALUES(basicSalary),
+        hra = VALUES(hra),
+        conveyance = VALUES(conveyance),
+        specialAllowance = VALUES(specialAllowance),
+        epfDeduction = VALUES(epfDeduction),
+        esiDeduction = VALUES(esiDeduction),
+        professionalTax = VALUES(professionalTax),
+        bankName = VALUES(bankName),
+        accountNumber = VALUES(accountNumber),
+        ifscCode = VALUES(ifscCode),
+        panNumber = VALUES(panNumber),
+        updatedAt = VALUES(updatedAt)`,
+      [
+        userId,
+        profile.userName || null,
+        profile.userEmail || null,
+        profile.userRole || null,
+        Number(profile.basicSalary) || 0,
+        Number(profile.hra) || 0,
+        Number(profile.conveyance) || 0,
+        Number(profile.specialAllowance) || 0,
+        Number(profile.epfDeduction) || 0,
+        Number(profile.esiDeduction) || 0,
+        Number(profile.professionalTax) || 0,
+        profile.bankName || null,
+        profile.accountNumber || null,
+        profile.ifscCode || null,
+        profile.panNumber || null,
+        now
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error saving salary profile:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 7. GET /api/hr/attendance
+router.get('/hr/attendance', async (req, res) => {
+  try {
+    const { date, month, year, userId } = req.query;
+    let sql = 'SELECT * FROM staff_attendance WHERE 1=1';
+    const params: any[] = [];
+
+    if (date) {
+      sql += ' AND date = ?';
+      params.push(date);
+    }
+    if (month && year) {
+      sql += ' AND date LIKE ?';
+      const mStr = String(month).padStart(2, '0');
+      params.push(`${year}-${mStr}%`);
+    }
+    if (userId) {
+      sql += ' AND userId = ?';
+      params.push(userId);
+    }
+
+    sql += ' ORDER BY date DESC, userName ASC';
+    const rows = await query(sql, params);
+    res.json({ success: true, attendance: rows });
+  } catch (error: any) {
+    console.error('Error fetching attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. POST /api/hr/attendance
+router.post('/hr/attendance', async (req, res) => {
+  try {
+    const rec = req.body;
+    const id = rec.id || `att-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const now = Date.now();
+
+    await query(
+      `INSERT INTO staff_attendance (
+        id, userId, userName, date, status, checkInTime, checkOutTime,
+        workHours, overtimeHours, notes, verificationMode, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        userName = VALUES(userName),
+        status = VALUES(status),
+        checkInTime = VALUES(checkInTime),
+        checkOutTime = VALUES(checkOutTime),
+        workHours = VALUES(workHours),
+        overtimeHours = VALUES(overtimeHours),
+        notes = VALUES(notes),
+        verificationMode = VALUES(verificationMode),
+        updatedAt = VALUES(updatedAt)`,
+      [
+        id,
+        rec.userId,
+        rec.userName,
+        rec.date,
+        rec.status || 'Present',
+        rec.checkInTime || null,
+        rec.checkOutTime || null,
+        Number(rec.workHours) || 8.0,
+        Number(rec.overtimeHours) || 0.0,
+        rec.notes || null,
+        rec.verificationMode || 'System',
+        rec.createdAt || now,
+        now
+      ]
+    );
+
+    res.json({ success: true, id });
+  } catch (error: any) {
+    console.error('Error saving attendance record:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. POST /api/hr/attendance/bulk
+router.post('/hr/attendance/bulk', async (req, res) => {
+  try {
+    const { records } = req.body;
+    if (!Array.isArray(records) || records.length === 0) {
+      return res.json({ success: true, count: 0 });
+    }
+
+    const now = Date.now();
+    for (const rec of records) {
+      const id = rec.id || `att-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+      await query(
+        `INSERT INTO staff_attendance (
+          id, userId, userName, date, status, checkInTime, checkOutTime,
+          workHours, overtimeHours, notes, verificationMode, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          userName = VALUES(userName),
+          status = VALUES(status),
+          checkInTime = VALUES(checkInTime),
+          checkOutTime = VALUES(checkOutTime),
+          workHours = VALUES(workHours),
+          overtimeHours = VALUES(overtimeHours),
+          notes = VALUES(notes),
+          verificationMode = VALUES(verificationMode),
+          updatedAt = VALUES(updatedAt)`,
+        [
+          id,
+          rec.userId,
+          rec.userName,
+          rec.date,
+          rec.status || 'Present',
+          rec.checkInTime || null,
+          rec.checkOutTime || null,
+          Number(rec.workHours) || 8.0,
+          Number(rec.overtimeHours) || 0.0,
+          rec.notes || null,
+          rec.verificationMode || 'System',
+          rec.createdAt || now,
+          now
+        ]
+      );
+    }
+
+    res.json({ success: true, count: records.length });
+  } catch (error: any) {
+    console.error('Error in bulk attendance:', error);
     res.status(500).json({ error: error.message });
   }
 });
