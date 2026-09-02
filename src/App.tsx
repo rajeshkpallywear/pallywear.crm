@@ -78,11 +78,13 @@ const PageLoader = () => (
 const ProtectedRoute = ({
   children,
   adminOnly = false,
-  leadDashboardOnly = false
+  leadDashboardOnly = false,
+  hrOrAdminOnly = false,
 }: {
   children: React.ReactNode;
   adminOnly?: boolean;
   leadDashboardOnly?: boolean;
+  hrOrAdminOnly?: boolean;
 }) => {
   const { user, loading } = useAuth();
 
@@ -91,12 +93,18 @@ const ProtectedRoute = ({
 
   const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
   const isStaff = user.role === UserRole.STAFF || user.role === 'staff';
+  const isHR = user.role === UserRole.HR || user.role === 'hr';
   const isDaniel = user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
   const isMarketing = user.role === UserRole.MARKETING || user.role === 'marketing';
   const isOnlineTeam = user.role === UserRole.ONLINETEAM || user.role === 'onlineteam';
 
   // Admin, Staff, and Daniel can access admin panel
   if (adminOnly && !isAdmin && !isStaff && !isDaniel) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Only Admin, Daniel, and HR role can access HR Dashboard
+  if (hrOrAdminOnly && !isAdmin && !isHR && !isDaniel) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -149,7 +157,7 @@ function AppRoutes() {
             }
           />
 
-          {/* Protected Routes */}
+          {/* Dashboards */}
           <Route
             path="/dashboard"
             element={
@@ -180,7 +188,7 @@ function AppRoutes() {
           <Route
             path="/hr-dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute hrOrAdminOnly={true}>
                 <HRDashboard />
               </ProtectedRoute>
             }

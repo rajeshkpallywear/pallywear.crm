@@ -1697,6 +1697,17 @@ export default function AdminDashboard() {
                 <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
               </button>
 
+              <button
+                onClick={() => navigate('/hr-dashboard')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 mt-1 cursor-pointer",
+                  isSidebarCollapsed && "md:justify-center md:px-0"
+                )}
+                title={isSidebarCollapsed ? "HR & Payroll Dashboard" : ""}
+              >
+                <Briefcase className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>HR & Payroll</span>}
+              </button>
+
               <div className="pt-4 mt-2 border-t border-gray-100 space-y-2">
                 <button
                   onClick={() => setIsAdminOrderModalOpen(true)}
