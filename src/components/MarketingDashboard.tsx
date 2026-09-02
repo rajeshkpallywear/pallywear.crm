@@ -70,7 +70,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   });
 
   const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'hold' | 'completed'>('recent');
-  const [queueScope, setQueueScope] = useState<'all' | 'my_orders' | 'unclaimed'>('all');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -120,62 +119,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       window.removeEventListener('onlineteam-create-order', handleCreateOrderEvent);
     };
   }, [orders]);
-
-  const isMyOrder = (o: Order) => {
-    if (!user) return false;
-    const uid = String(user.id || user.uid || '');
-    const uname = (user.name || '').toLowerCase().trim();
-    return (o.createdBy && String(o.createdBy) === uid) ||
-           (o.createdByName && uname && o.createdByName.toLowerCase().trim() === uname);
-  };
-
-  const isClaimedByMe = (o: Order) => {
-    if (!user) return false;
-    const uid = String(user.id || user.uid || '');
-    const uname = (user.name || '').toLowerCase().trim();
-    return (o.claimedBy && String(o.claimedBy) === uid) ||
-           (o.claimedByName && uname && o.claimedByName.toLowerCase().trim() === uname);
-  };
-
-  const isClaimedByOther = (o: Order) => {
-    if (!o.claimedBy && !o.claimedByName) return false;
-    return !isClaimedByMe(o);
-  };
-
-  const handleClaimOrder = async (order: Order, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!user) {
-      alert("Please log in to claim this order.");
-      return;
-    }
-    try {
-      await mockDataService.claimOrder(order.id, user.id || user.uid, user.name || 'Staff Member', 'claim');
-      await onUpdateOrder(order.id, {
-        claimedBy: user.id || user.uid,
-        claimedByName: user.name || 'Staff Member',
-        claimedAt: Date.now()
-      });
-      alert(`Success: Order #${order.id.slice(-6)} is now claimed by you!`);
-    } catch (err: any) {
-      alert(err.message || 'Failed to claim order.');
-    }
-  };
-
-  const handleReleaseOrder = async (order: Order, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!confirm(`Are you sure you want to release Order #${order.id.slice(-6)} back to the open queue?`)) return;
-    try {
-      await mockDataService.claimOrder(order.id, user?.id || user?.uid, user?.name || 'Staff Member', 'release');
-      await onUpdateOrder(order.id, {
-        claimedBy: undefined,
-        claimedByName: undefined,
-        claimedAt: undefined
-      });
-      alert(`Order #${order.id.slice(-6)} released back to open queue.`);
-    } catch (err: any) {
-      alert(err.message || 'Failed to release order.');
-    }
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -371,7 +314,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
-    let list = orders.filter(o => {
+    return orders.filter(o => {
       const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term);
       if (!matchesSearch) return false;
 
@@ -391,21 +334,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       }
       return o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT;
     });
-
-    if (queueScope === 'my_orders') {
-      list = list.filter(o => isMyOrder(o) || isClaimedByMe(o));
-    } else if (queueScope === 'unclaimed') {
-      list = list.filter(o => !o.claimedBy && !o.claimedByName);
-    }
-
-    // Queue Sorting: Orders created by or claimed by current logged-in user appear FIRST
-    return list.sort((a, b) => {
-      const aMine = (isMyOrder(a) || isClaimedByMe(a)) ? 1 : 0;
-      const bMine = (isMyOrder(b) || isClaimedByMe(b)) ? 1 : 0;
-      if (aMine !== bMine) return bMine - aMine; // Current user orders at the top!
-      return (b.createdAt || 0) - (a.createdAt || 0);
-    });
-  }, [orders, debouncedSearchTerm, selectedSection, queueScope, user]);
+  }, [orders, debouncedSearchTerm, selectedSection]);
 
   const recentOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length, [orders]);
   const processOrdersCount = useMemo(() => orders.filter(o => {
@@ -420,7 +349,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const completedOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length, [orders]);
 
   return (
-    <div className="bg-white text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 sm:space-y-6 animate-in fade-in duration-300">
+    <div className="bg-white text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 sm:space-y-8 animate-in fade-in duration-300">
       
       {/* Action Buttons Header */}
       <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-3 sm:pb-4">
@@ -492,44 +421,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         </button>
       </div>
 
-      {/* Queue Model Filter Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-gray-150">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider pl-1">Queue Scope:</span>
-          <button
-            onClick={() => setQueueScope('all')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all border cursor-pointer",
-              queueScope === 'all' ? "bg-brand-primary text-white border-brand-primary shadow-sm" : "bg-white text-gray-600 border-gray-250 hover:bg-gray-100"
-            )}
-          >
-            All Queue Orders ({orders.length})
-          </button>
-          <button
-            onClick={() => setQueueScope('my_orders')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all border cursor-pointer flex items-center gap-1.5",
-              queueScope === 'my_orders' ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white text-emerald-700 border-emerald-250 hover:bg-emerald-50"
-            )}
-          >
-            ⭐ My Orders ({orders.filter(o => isMyOrder(o) || isClaimedByMe(o)).length})
-          </button>
-          <button
-            onClick={() => setQueueScope('unclaimed')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all border cursor-pointer flex items-center gap-1.5",
-              queueScope === 'unclaimed' ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-blue-700 border-blue-250 hover:bg-blue-50"
-            )}
-          >
-            ⚡ Open to Claim ({orders.filter(o => !o.claimedBy && !o.claimedByName).length})
-          </button>
-        </div>
-        <div className="text-[11px] font-bold text-gray-500 hidden md:flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Your created orders appear <strong>First</strong> in queue. Claim locks order for other staff.</span>
-        </div>
-      </div>
-
       {/* Primary Data Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side: Order intake lists */}
@@ -538,7 +429,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             <Search className="text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Search customer, order ID, or staff name..."
+              placeholder="Search customer or order ID..."
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-900 placeholder:text-gray-400 outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -550,172 +441,115 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             <table className="hidden md:table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="text-gray-400 uppercase font-black text-[9px] tracking-wider border-b border-gray-100">
-                  <th className="pb-3 px-3">Order / Origin</th>
+                  <th className="pb-3 px-3">Order ID</th>
                   <th className="pb-3 px-3">Customer</th>
                   <th className="pb-3 px-3">Category</th>
                   <th className="pb-3 px-3">Qty</th>
-                  <th className="pb-3 px-3">Queue Status</th>
-                  <th className="pb-3 px-3 text-right">Actions</th>
+                  <th className="pb-3 px-3">Pipeline Status</th>
+                  <th className="pb-3 px-3 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredOrders.length > 0 ? (
-                  filteredOrders.map(order => {
-                    const mine = isMyOrder(order);
-                    const claimedMe = isClaimedByMe(order);
-                    const claimedOther = isClaimedByOther(order);
-                    const isUnclaimed = !order.claimedBy && !order.claimedByName;
-
-                    return (
-                      <tr
-                        key={order.id}
-                        onClick={() => setSelectedHubOrder(order)}
-                        className={cn(
-                          "transition-all cursor-pointer",
-                          (mine || claimedMe) ? "bg-emerald-50/20 hover:bg-emerald-50/40" : "hover:bg-gray-50/50"
-                        )}
-                      >
-                        <td className="py-4 px-3 font-mono text-[10px] text-gray-400">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-gray-900">#{order.id.slice(-6)}</span>
-                              {order.isUrgent && (
-                                <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">URGENT</span>
-                              )}
-                            </div>
-                            {mine ? (
-                              <span className="w-fit bg-emerald-100 text-emerald-800 border border-emerald-300 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                ⭐ Created by You
-                              </span>
-                            ) : order.createdByName ? (
-                              <span className="text-[9px] text-gray-500 font-medium">
-                                By: <strong className="text-gray-700">{order.createdByName}</strong>
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="py-4 px-3">
-                          <div className="flex items-center gap-3">
-                            {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
-                              <div className="w-9 h-9 rounded-lg border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
-                                <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
-                              </div>
-                            )}
-                            <div>
-                              <div className="font-bold text-gray-950 uppercase italic">{order.customerInfo?.name || ''}</div>
-                              <div className="text-[10px] text-gray-500 font-mono mt-0.5">{order.customerInfo?.phone || ''}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-3">
-                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[8px] font-black uppercase rounded">
-                            {getDisplayCategory(order)}
-                          </span>
-                        </td>
-                        <td className="py-4 px-3 font-bold text-gray-900 text-xs">{order.quantity || 1}</td>
-                        <td className="py-4 px-3">
-                          <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                              {order.status.replace('_', ' ')}
-                            </span>
-                            
-                            {/* Queue Claim Status Badge */}
-                            {claimedMe ? (
-                              <span className="w-fit px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-                                🔒 Claimed by You
-                              </span>
-                            ) : claimedOther ? (
-                              <span className="w-fit px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-250 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1" title={`Claimed by ${order.claimedByName || order.createdByName}`}>
-                                🔒 {order.claimedByName || order.createdByName}
-                              </span>
-                            ) : (
-                              <span className="w-fit px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                ⚡ Open in Queue
-                              </span>
-                            )}
-
-                            {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
-                              <div className="flex gap-1.5 mt-0.5">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNoteModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      target: 'design',
-                                      noteText: ''
-                                    });
-                                  }}
-                                  className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-650 hover:text-white border border-purple-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
-                                >
-                                  Designs
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNoteModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      target: 'accounts',
-                                      noteText: ''
-                                    });
-                                  }}
-                                  className="text-[9px] font-black text-amber-700 bg-amber-50 hover:bg-amber-650 hover:text-white border border-amber-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
-                                >
-                                  Accounts
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {order.status === OrderStatus.HOLD && order.holdReason && (
-                            <div className="text-[8px] text-red-500 mt-1 font-bold italic truncate max-w-[80px]" title={order.holdReason}>
-                              {order.holdReason}
+                  filteredOrders.map(order => (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedHubOrder(order)}
+                      className="hover:bg-gray-50/50 transition-all cursor-pointer"
+                    >
+                      <td className="py-4 px-3 font-mono text-[10px] text-gray-400">
+                        <div className="flex items-center gap-2">
+                          #{order.id.slice(-6)}
+                          {order.isUrgent && (
+                            <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">URGENT</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-3">
+                        <div className="flex items-center gap-3">
+                          {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
+                            <div className="w-9 h-9 rounded-lg border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
+                              <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
                             </div>
                           )}
-                        </td>
-                        <td className="py-4 px-3 text-right">
-                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                            {/* Queue Claim / Take Action Button */}
-                            {claimedOther && !isAdmin ? (
-                              <button
-                                disabled
-                                className="px-2.5 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-[9px] font-bold uppercase cursor-not-allowed"
-                                title={`Claimed by ${order.claimedByName || 'another staff member'}. Actions disabled.`}
-                              >
-                                🔒 Claimed
-                              </button>
-                            ) : isUnclaimed ? (
-                              <button
-                                onClick={(e) => handleClaimOrder(order, e)}
-                                className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer border-none flex items-center gap-1"
-                              >
-                                ⚡ Claim / Take
-                              </button>
-                            ) : claimedMe ? (
-                              <button
-                                onClick={(e) => handleReleaseOrder(order, e)}
-                                className="px-2 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                                title="Release back to open queue"
-                              >
-                                Release
-                              </button>
-                            ) : null}
-
-                            <button
-                              onClick={() => setSelectedHubOrder(order)}
-                              disabled={claimedOther && !isAdmin}
-                              className={cn(
-                                "px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none",
-                                (claimedOther && !isAdmin) ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
-                              )}
-                            >
-                              Edit
-                            </button>
+                          <div>
+                            <div className="font-bold text-gray-950 uppercase italic">{order.customerInfo?.name || ''}</div>
+                            <div className="text-[10px] text-gray-500 font-mono mt-0.5">{order.customerInfo?.phone || ''}</div>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                        </div>
+                      </td>
+                      <td className="py-4 px-3">
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[8px] font-black uppercase rounded">
+                          {getDisplayCategory(order)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-3 font-bold text-gray-900 text-xs">{order.quantity || 1}</td>
+                      <td className="py-4 px-3">
+                        <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                            {order.status.replace('_', ' ')}
+                          </span>
+                          {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                            <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
+                              🎨 {order.assignedDesigner}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                              🎨 Unassigned
+                            </span>
+                          )}
+                          {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
+                            <div className="flex gap-1.5 mt-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNoteModal({
+                                    isOpen: true,
+                                    orderId: order.id,
+                                    target: 'design',
+                                    noteText: ''
+                                  });
+                                }}
+                                className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-650 hover:text-white border border-purple-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
+                              >
+                                Designs
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNoteModal({
+                                    isOpen: true,
+                                    orderId: order.id,
+                                    target: 'accounts',
+                                    noteText: ''
+                                  });
+                                }}
+                                className="text-[9px] font-black text-amber-700 bg-amber-50 hover:bg-amber-650 hover:text-white border border-amber-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
+                              >
+                                Accounts
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {order.status === OrderStatus.HOLD && order.holdReason && (
+                          <div className="text-[8px] text-red-500 mt-1 font-bold italic truncate max-w-[80px]" title={order.holdReason}>
+                            {order.holdReason}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-3 text-right">
+                        <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-[9px] font-mono text-gray-400 mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
+                          <button
+                            onClick={() => setSelectedHubOrder(order)}
+                            className="px-2.5 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-gray-400 italic">
@@ -729,134 +563,111 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             {/* Mobile View */}
             <div className="block md:hidden divide-y divide-gray-100">
               {filteredOrders.length > 0 ? (
-                filteredOrders.map(order => {
-                  const mine = isMyOrder(order);
-                  const claimedMe = isClaimedByMe(order);
-                  const claimedOther = isClaimedByOther(order);
-                  const isUnclaimed = !order.claimedBy && !order.claimedByName;
-
-                  return (
-                    <div
-                      key={order.id}
-                      onClick={() => setSelectedHubOrder(order)}
-                      className={cn(
-                        "py-4 space-y-3",
-                        (mine || claimedMe) ? "bg-emerald-50/20 -mx-2 px-2 rounded-xl" : ""
+                filteredOrders.map(order => (
+                  <div
+                    key={order.id}
+                    onClick={() => setSelectedHubOrder(order)}
+                    className="py-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex flex-col">
+                        <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
+                        <span className="text-[9px] text-gray-400 font-mono mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      {order.isUrgent && (
+                        <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse">URGENT</span>
                       )}
-                    >
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
+                        <div className="w-12 h-12 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
+                          <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <div className="font-black text-gray-900 text-sm uppercase italic">{order.customerInfo?.name || ''}</div>
+                        <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <Phone size={10} className="text-brand-primary" /> {order.customerInfo?.phone || ''}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-150">
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[8px] font-black uppercase rounded">
+                        {getDisplayCategory(order)}
+                      </span>
+                      <span className="text-xs font-bold text-gray-900">Qty: {order.quantity || 1}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-1">
                       <div className="flex items-center justify-between text-xs">
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
-                            {order.isUrgent && (
-                              <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse">URGENT</span>
-                            )}
-                          </div>
-                          {mine ? (
-                            <span className="w-fit bg-emerald-100 text-emerald-800 border border-emerald-300 text-[8px] font-black px-1.5 py-0.2 rounded uppercase">
-                              ⭐ Created by You
-                            </span>
-                          ) : order.createdByName ? (
-                            <span className="text-[9px] text-gray-500">By: <strong>{order.createdByName}</strong></span>
-                          ) : null}
-                        </div>
-                        <span className="text-[9px] text-gray-400 font-mono">{new Date(order.createdAt).toLocaleDateString()}</span>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        {((order.staffImages && order.staffImages[0]) || order.marketing_image) && (
-                          <div className="w-12 h-12 rounded-xl border border-gray-150 overflow-hidden shrink-0 bg-gray-50">
-                            <img src={order.staffImages?.[0] || order.marketing_image} className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          <div className="font-black text-gray-900 text-sm uppercase italic">{order.customerInfo?.name || ''}</div>
-                          <a href={`tel:${order.customerInfo?.phone || ''}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <Phone size={10} className="text-brand-primary" /> {order.customerInfo?.phone || ''}
-                          </a>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-150">
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[8px] font-black uppercase rounded">
-                          {getDisplayCategory(order)}
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
+                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                          {order.status.replace('_', ' ')}
                         </span>
-                        <span className="text-xs font-bold text-gray-900">Qty: {order.quantity || 1}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs mt-1">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Designer:</span>
+                        {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
+                          <span className="text-[10px] text-gray-700 font-bold flex items-center gap-1">
+                            🎨 {order.assignedDesigner}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+                            🎨 Unassigned
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2 pt-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                            {order.status.replace('_', ' ')}
-                          </span>
+                      {order.status === OrderStatus.HOLD && order.holdReason && (
+                        <div className="text-[9px] text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200 italic">
+                          Blocked Reason: {order.holdReason}
                         </div>
+                      )}
 
-                        {/* Queue Claim Mobile Badge */}
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Queue:</span>
-                          {claimedMe ? (
-                            <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200 text-[9px] font-black uppercase">
-                              🔒 Claimed by You
-                            </span>
-                          ) : claimedOther ? (
-                            <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 border border-gray-250 text-[9px] font-bold uppercase">
-                              🔒 {order.claimedByName || order.createdByName}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold uppercase">
-                              ⚡ Open in Queue
-                            </span>
-                          )}
-                        </div>
-
-                        {order.status === OrderStatus.HOLD && order.holdReason && (
-                          <div className="text-[9px] text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200 italic">
-                            Blocked Reason: {order.holdReason}
-                          </div>
-                        )}
-
-                        {/* Mobile Action Buttons */}
-                        <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                          {claimedOther && !isAdmin ? (
+                      <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                        {order.status === OrderStatus.PENDING ? (
+                          <>
                             <button
-                              disabled
-                              className="col-span-2 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded-xl font-black text-[9px] uppercase cursor-not-allowed"
+                              onClick={() => {
+                                setNoteModal({
+                                  isOpen: true,
+                                  orderId: order.id,
+                                  target: 'design',
+                                  noteText: ''
+                                });
+                              }}
+                              className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer"
                             >
-                              🔒 Claimed by {order.claimedByName || 'Partner'}
+                              Designs
                             </button>
-                          ) : isUnclaimed ? (
                             <button
-                              onClick={(e) => handleClaimOrder(order, e)}
-                              className="py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[9px] uppercase tracking-wider transition-colors shadow-xs cursor-pointer border-none"
+                              onClick={() => {
+                                setNoteModal({
+                                  isOpen: true,
+                                  orderId: order.id,
+                                  target: 'accounts',
+                                  noteText: ''
+                                });
+                              }}
+                              className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-black text-[9px] border border-amber-200 transition-colors uppercase cursor-pointer"
                             >
-                              ⚡ Claim / Take Order
+                              Accounts
                             </button>
-                          ) : claimedMe ? (
-                            <button
-                              onClick={(e) => handleReleaseOrder(order, e)}
-                              className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl font-black text-[9px] uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Release to Queue
-                            </button>
-                          ) : null}
-
+                          </>
+                        ) : (
                           <button
                             onClick={() => setSelectedHubOrder(order)}
-                            disabled={claimedOther && !isAdmin}
-                            className={cn(
-                              "py-2 rounded-xl font-black text-[9px] uppercase tracking-wider transition-colors border-none",
-                              (isUnclaimed || claimedMe) ? "" : "col-span-2",
-                              (claimedOther && !isAdmin) ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
-                            )}
+                            className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none"
                           >
                             View & Edit
                           </button>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               ) : (
                 <div className="p-8 text-center text-gray-400 italic">
                   No orders found.

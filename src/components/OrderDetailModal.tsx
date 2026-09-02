@@ -6,8 +6,6 @@ import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
 import { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
-import { useAuth } from '../context/AuthContext';
-import { mockDataService } from '../service/mockDataService';
 import { cn } from '../lib/utils';
 
 interface OrderDetailModalProps {
@@ -21,19 +19,7 @@ interface OrderDetailModalProps {
 
 export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
   const { loadOrderAttachments, orders } = useLeads();
-  const { user } = useAuth();
   const order = orders.find(o => o.id === initialOrder.id) || initialOrder;
-
-  const isMyOrder = Boolean(user && (
-    (order.createdBy && String(order.createdBy) === String(user.id || user.uid)) ||
-    (order.createdByName && user.name && order.createdByName.toLowerCase().trim() === user.name.toLowerCase().trim())
-  ));
-  const isClaimedByMe = Boolean(user && (
-    (order.claimedBy && String(order.claimedBy) === String(user.id || user.uid)) ||
-    (order.claimedByName && user.name && order.claimedByName.toLowerCase().trim() === user.name.toLowerCase().trim())
-  ));
-  const isClaimedByOther = Boolean((order.claimedBy || order.claimedByName) && !isClaimedByMe);
-  const isLockedForCurrentUser = isClaimedByOther && !isAdmin;
 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,43 +41,6 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
       loadOrderAttachments(initialOrder.id);
     }
   }, [initialOrder?.id]);
-
-  const handleClaimOrder = async () => {
-    if (!user) {
-      alert("Please log in to claim this order.");
-      return;
-    }
-    try {
-      await mockDataService.claimOrder(order.id, user.id || user.uid, user.name || 'Staff Member', 'claim');
-      if (onUpdateOrder) {
-        await onUpdateOrder(order.id, {
-          claimedBy: user.id || user.uid,
-          claimedByName: user.name || 'Staff Member',
-          claimedAt: Date.now()
-        });
-      }
-      alert(`Success: Order #${order.id.slice(-6)} is now claimed by you!`);
-    } catch (err: any) {
-      alert(err.message || 'Failed to claim order.');
-    }
-  };
-
-  const handleReleaseOrder = async () => {
-    if (!confirm(`Release Order #${order.id.slice(-6)} back to the open queue?`)) return;
-    try {
-      await mockDataService.claimOrder(order.id, user?.id || user?.uid, user?.name || 'Staff Member', 'release');
-      if (onUpdateOrder) {
-        await onUpdateOrder(order.id, {
-          claimedBy: undefined,
-          claimedByName: undefined,
-          claimedAt: undefined
-        });
-      }
-      alert(`Order #${order.id.slice(-6)} released back to open queue.`);
-    } catch (err: any) {
-      alert(err.message || 'Failed to release order.');
-    }
-  };
 
   const handleSave = async () => {
     if (!onUpdateOrder) return;
@@ -153,7 +102,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase">URGENT</span>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1">
                 {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
                   <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
                     🎨 Designer: {order.assignedDesigner}
@@ -161,24 +110,6 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 ) : (
                   <span className="bg-gray-50 text-gray-400 border border-gray-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
                     🎨 Designer: Unassigned
-                  </span>
-                )}
-                {isMyOrder && (
-                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
-                    ⭐ Created by You
-                  </span>
-                )}
-                {isClaimedByMe ? (
-                  <span className="bg-purple-100 text-purple-800 border border-purple-300 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
-                    🔒 Claimed by You
-                  </span>
-                ) : isClaimedByOther ? (
-                  <span className="bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
-                    🔒 Claimed by: {order.claimedByName || order.createdByName}
-                  </span>
-                ) : (
-                  <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
-                    ⚡ Open in Queue
                   </span>
                 )}
               </div>
@@ -197,34 +128,11 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               <span className="text-xs font-mono text-gray-400 mt-1 uppercase tracking-widest">Access Protocol - ID: #{order.id}</span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Queue Claim / Release Button */}
-            {!order.claimedBy && !order.claimedByName && (
-              <button
-                onClick={handleClaimOrder}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none"
-              >
-                ⚡ Claim Order
-              </button>
-            )}
-            {isClaimedByMe && (
-              <button
-                onClick={handleReleaseOrder}
-                className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all cursor-pointer"
-              >
-                Release to Queue
-              </button>
-            )}
-
+          <div className="flex items-center gap-3">
             {onUpdateOrder && !isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                disabled={isLockedForCurrentUser}
-                className={cn(
-                  "px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md border-none",
-                  isLockedForCurrentUser ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-brand-primary text-white hover:bg-brand-primary/90 cursor-pointer"
-                )}
-                title={isLockedForCurrentUser ? `Locked: Claimed by ${order.claimedByName}` : ""}
+                className="px-6 py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md cursor-pointer border-none"
               >
                 Edit Details
               </button>
@@ -235,12 +143,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   onClose();
                   onEdit(order);
                 }}
-                disabled={isLockedForCurrentUser}
-                className={cn(
-                  "px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md border-none",
-                  isLockedForCurrentUser ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-black text-white hover:bg-gray-800 cursor-pointer"
-                )}
-                title={isLockedForCurrentUser ? `Locked: Claimed by ${order.claimedByName}` : ""}
+                className="px-6 py-3 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-800 transition-all shadow-md cursor-pointer border-none"
               >
                 Edit Order Form
               </button>
@@ -257,30 +160,21 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             {isEditing && (
               <button
                 onClick={() => { setIsEditing(false); setEditedOrder(order); }}
-                className="px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-300 transition-all"
+                className="px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-300 transition-all border-none cursor-pointer"
               >
                 Cancel
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-3 hover:bg-white rounded-2xl shadow-sm border border-transparent hover:border-gray-100 transition-all text-gray-400 hover:text-gray-900"
+              className="p-3 hover:bg-white rounded-2xl shadow-sm border border-transparent hover:border-gray-100 transition-all text-gray-400 hover:text-gray-900 cursor-pointer"
             >
               <X size={24} />
             </button>
           </div>
         </div>
 
-        <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-6 overflow-y-auto flex-grow">
-          {isLockedForCurrentUser && (
-            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-900 text-xs font-bold shadow-xs">
-              <AlertCircle size={18} className="text-amber-600 shrink-0" />
-              <span>
-                🔒 This order is claimed and currently being handled by <strong>{order.claimedByName || order.createdByName || 'another staff member'}</strong>. Edit actions are locked for other staff to prevent conflicts.
-              </span>
-            </div>
-          )}
-
+        <div className="p-4 sm:p-8 flex flex-col gap-4 sm:gap-8 overflow-y-auto flex-grow">
           <WorkflowVisualizer order={order} />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
