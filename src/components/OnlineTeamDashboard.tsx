@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Phone, CheckCircle2, Clock, Search, Save, ClipboardList, AlertCircle, Plus, FileText, RefreshCw, Users, ArrowUpRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
+import { useDebounce } from '../hooks/useDebounce';
 
 
 
@@ -225,12 +226,17 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     );
   }, [leads, user, isOverallManager]);
 
-  const filteredAssignedLeads = assignedLeads.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          l.number.includes(searchTerm);
-    return matchesSearch;
-  });
+  const debouncedSearchTerm = useDebounce(searchTerm, 150);
+
+  const filteredAssignedLeads = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    if (!term) return assignedLeads;
+    return assignedLeads.filter(l => 
+      l.name.toLowerCase().includes(term) || 
+      (l.companyName || '').toLowerCase().includes(term) ||
+      l.number.includes(term)
+    );
+  }, [assignedLeads, debouncedSearchTerm]);
 
   // Filter leads created by Marketing (non-Online Team creators)
   const marketingLeads = React.useMemo(() => {
@@ -242,12 +248,15 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     });
   }, [leads, registeredUsers]);
 
-  const filteredMarketingLeads = marketingLeads.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          l.number.includes(searchTerm);
-    return matchesSearch;
-  });
+  const filteredMarketingLeads = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    if (!term) return marketingLeads;
+    return marketingLeads.filter(l => 
+      l.name.toLowerCase().includes(term) || 
+      (l.companyName || '').toLowerCase().includes(term) ||
+      l.number.includes(term)
+    );
+  }, [marketingLeads, debouncedSearchTerm]);
 
   const allCallLogs = React.useMemo(() => {
     const logsList: { leadId: string; leadName: string; number: string; timestamp: string; note: string }[] = [];
@@ -283,12 +292,15 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     return leads.filter(l => !l.isOnlineLead && !l.assignedTo);
   }, [leads]);
 
-  const filteredUnassignedLeads = unassignedLeads.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          l.number.includes(searchTerm);
-    return matchesSearch;
-  });
+  const filteredUnassignedLeads = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    if (!term) return unassignedLeads;
+    return unassignedLeads.filter(l => 
+      l.name.toLowerCase().includes(term) || 
+      (l.companyName || '').toLowerCase().includes(term) ||
+      l.number.includes(term)
+    );
+  }, [unassignedLeads, debouncedSearchTerm]);
 
   const userRoleMap = React.useMemo(() => {
     const map: Record<string, string> = {};

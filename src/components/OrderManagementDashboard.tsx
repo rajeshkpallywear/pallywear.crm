@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -72,6 +73,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
   const [vendorExpenses, setVendorExpenses] = useState<any[]>([]);
   const [registeredVendors, setRegisteredVendors] = useState<any[]>([]);
@@ -108,34 +110,38 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
   }, [selectedOrder?.id]);
 
-  // Filter lists based on selected tabs
-  const filteredOrders = orders.filter(o => {
-    const matchesSearch = (o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.category || '').toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter lists based on selected tabs with debounced search
+  const filteredOrders = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    return orders.filter(o => {
+      const matchesSearch = !term ||
+        (o.customerInfo?.name || '').toLowerCase().includes(term) ||
+        o.id.toLowerCase().includes(term) ||
+        (o.category || '').toLowerCase().includes(term);
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
 
-    if (selectedSection === 'hold') {
-      return o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus);
-    }
-    if (selectedSection === 'completed') {
-      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any));
-    }
-    if (selectedSection === 'process') {
-      return o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
-    }
-    if (selectedSection === 'vendors') {
+      if (selectedSection === 'hold') {
+        return o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus);
+      }
+      if (selectedSection === 'completed') {
+        return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any));
+      }
+      if (selectedSection === 'process') {
+        return o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
+      }
+      if (selectedSection === 'vendors') {
+        return o.status === OrderStatus.ORDER_MANAGEMENT;
+      }
+      // 'recent' shows Order Management active queue (excluding holds)
       return o.status === OrderStatus.ORDER_MANAGEMENT;
-    }
-    // 'recent' shows Order Management active queue (excluding holds)
-    return o.status === OrderStatus.ORDER_MANAGEMENT;
-  });
+    });
+  }, [orders, debouncedSearchTerm, selectedSection]);
 
-  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
-  const processOrdersCount = orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length;
-  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus)).length;
-  const completedOrdersCount = orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any))).length;
+  const recentOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length, [orders]);
+  const processOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length, [orders]);
+  const holdOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus)).length, [orders]);
+  const completedOrdersCount = useMemo(() => orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any))).length, [orders]);
 
   // Auto-select first order if none is selected (except completed tab)
   useEffect(() => {

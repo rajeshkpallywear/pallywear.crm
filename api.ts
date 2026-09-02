@@ -199,9 +199,14 @@ router.get('/auth/activity-logs', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
+    const includeFace = req.query.includeFaceData === 'true';
     let rows: any[] = [];
     try {
-      rows = await query('SELECT id, email, name, role, status, isBlocked, faceRegistered, faceData FROM users') as any[];
+      if (includeFace) {
+        rows = await query('SELECT id, email, name, role, status, isBlocked, faceRegistered, faceData FROM users') as any[];
+      } else {
+        rows = await query('SELECT id, email, name, role, status, isBlocked, faceRegistered, (faceData IS NOT NULL AND faceData != "") as hasFaceData FROM users') as any[];
+      }
     } catch (_) {
       rows = await query('SELECT id, email, name, role FROM users') as any[];
     }
@@ -213,7 +218,7 @@ router.get('/users', async (req, res) => {
       role: r.role,
       status: r.status || (r.isBlocked ? 'Blocked' : 'Active'),
       isBlocked: Boolean(r.isBlocked || r.status === 'Blocked'),
-      faceRegistered: Boolean(r.faceRegistered || r.faceData),
+      faceRegistered: Boolean(r.faceRegistered || r.hasFaceData || r.faceData),
       faceData: r.faceData || ''
     }));
     res.json(mapped);

@@ -407,6 +407,39 @@ export async function initDB() {
       }
     }
 
+    // 9. Create indexes on frequently queried/filtered columns for ultra-fast lookup (sub-millisecond)
+    console.log('Ensuring high-performance database indexes...');
+    const indexQueries = [
+      "CREATE INDEX idx_orders_status ON `orders` (`status`)",
+      "CREATE INDEX idx_orders_assigned ON `orders` (`assignedDesigner`)",
+      "CREATE INDEX idx_orders_phone ON `orders` (`customerPhone`)",
+      "CREATE INDEX idx_orders_name ON `orders` (`customerName`)",
+      "CREATE INDEX idx_orders_created ON `orders` (`createdAt`)",
+      "CREATE INDEX idx_orders_updated ON `orders` (`updatedAt`)",
+      "CREATE INDEX idx_orders_sentByAccounts ON `orders` (`sentByAccounts`)",
+      "CREATE INDEX idx_leads_status ON `leads` (`status`)",
+      "CREATE INDEX idx_leads_number ON `leads` (`number`)",
+      "CREATE INDEX idx_leads_assigned ON `leads` (`assignedTo`)",
+      "CREATE INDEX idx_leads_online ON `leads` (`isOnlineLead`)",
+      "CREATE INDEX idx_invoices_phone ON `invoices` (`billToPhone`)",
+      "CREATE INDEX idx_invoices_lead ON `invoices` (`leadId`)",
+      "CREATE INDEX idx_invoices_number ON `invoices` (`invoiceNumber`)",
+      "CREATE INDEX idx_users_role ON `users` (`role`)",
+      "CREATE INDEX idx_users_status ON `users` (`status`)",
+      "CREATE INDEX idx_user_activity_user ON `user_activity_logs` (`userId`)",
+      "CREATE INDEX idx_user_activity_time ON `user_activity_logs` (`loginTime`)",
+      "CREATE INDEX idx_inventory_product ON `inventory_movements` (`productId`)",
+      "CREATE INDEX idx_inventory_created ON `inventory_movements` (`createdAt`)",
+    ];
+
+    for (const q of indexQueries) {
+      try {
+        await pool.execute(q);
+      } catch (_) {
+        // Index already exists, ignore
+      }
+    }
+
     console.log('Database initialization completed successfully.');
   } catch (error) {
     console.error('Error initializing database:', error);

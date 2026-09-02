@@ -46,20 +46,94 @@ function saveLocalUsers(users: UserProfile[]) {
   } catch (_) {}
 }
 
+// In-Memory & LocalStorage SWR Cache Layer
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const memoryCache = new Map<string, CacheEntry<any>>();
+
+function getCached<T>(key: string, maxAgeMs = 15000): T | null {
+  const mem = memoryCache.get(key);
+  if (mem && (Date.now() - mem.timestamp < maxAgeMs)) {
+    return mem.data;
+  }
+  if (!mem) {
+    try {
+      const raw = localStorage.getItem(`pw_cache_${key}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.data) {
+          memoryCache.set(key, parsed);
+          return parsed.data;
+        }
+      }
+    } catch (_) {}
+  }
+  return mem ? mem.data : null;
+}
+
+function setCache<T>(key: string, data: T) {
+  const entry: CacheEntry<T> = { data, timestamp: Date.now() };
+  memoryCache.set(key, entry);
+  try {
+    if (Array.isArray(data) && data.length < 2000) {
+      localStorage.setItem(`pw_cache_${key}`, JSON.stringify(entry));
+    }
+  } catch (_) {}
+}
+
+export function invalidateCache(key?: string) {
+  if (key) {
+    memoryCache.delete(key);
+    try { localStorage.removeItem(`pw_cache_${key}`); } catch (_) {}
+  } else {
+    memoryCache.clear();
+  }
+}
+
 export const mockDataService = {
-  getOrders: async (): Promise<Order[]> => {
+  getOrders: async (forceFresh = false): Promise<Order[]> => {
+    if (!forceFresh) {
+      const cached = getCached<Order[]>('orders', 12000);
+      if (cached && cached.length > 0) {
+        // Return cached immediately and refresh in background
+        fetch(getApiUrl('/api/orders'))
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && Array.isArray(data)) setCache('orders', data);
+          })
+          .catch(() => {});
+        return cached;
+      }
+    }
     const res = await fetch(getApiUrl('/api/orders'));
-    if (!res.ok) throw new Error('Failed to fetch orders');
-    return res.json();
+    if (!res.ok) {
+      const fallback = getCached<Order[]>('orders', 86400000);
+      if (fallback) return fallback;
+      throw new Error('Failed to fetch orders');
+    }
+    const data = await res.json();
+    setCache('orders', data);
+    return data;
   },
 
   getOrderAttachments: async (id: string): Promise<any> => {
+    const cacheKey = `att_${sanitizeId(id)}`;
+    const cached = getCached<any>(cacheKey, 60000);
+    if (cached) return cached;
+
     const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}/attachments`));
     if (!res.ok) throw new Error('Failed to fetch order attachments');
-    return res.json();
+    const data = await res.json();
+    setCache(cacheKey, data);
+    return data;
   },
 
   patchOrder: async (id: string, updates: any): Promise<void> => {
+    invalidateCache('orders');
+    invalidateCache(`att_${sanitizeId(id)}`);
     const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -80,6 +154,8 @@ export const mockDataService = {
   },
 
   saveOrder: async (order: Order): Promise<void> => {
+    invalidateCache('orders');
+    invalidateCache(`att_${sanitizeId(order.id)}`);
     const res = await fetch(getApiUrl('/api/orders'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -120,6 +196,8 @@ export const mockDataService = {
   },
 
   deleteOrder: async (id: string): Promise<void> => {
+    invalidateCache('orders');
+    invalidateCache(`att_${sanitizeId(id)}`);
     const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
@@ -127,13 +205,32 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getLeads: async (): Promise<Lead[]> => {
+  getLeads: async (forceFresh = false): Promise<Lead[]> => {
+    if (!forceFresh) {
+      const cached = getCached<Lead[]>('leads', 12000);
+      if (cached && cached.length > 0) {
+        fetch(getApiUrl('/api/leads'))
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && Array.isArray(data)) setCache('leads', data);
+          })
+          .catch(() => {});
+        return cached;
+      }
+    }
     const res = await fetch(getApiUrl('/api/leads'));
-    if (!res.ok) throw new Error('Failed to fetch leads');
-    return res.json();
+    if (!res.ok) {
+      const fallback = getCached<Lead[]>('leads', 86400000);
+      if (fallback) return fallback;
+      throw new Error('Failed to fetch leads');
+    }
+    const data = await res.json();
+    setCache('leads', data);
+    return data;
   },
 
   addLead: async (lead: Lead): Promise<void> => {
+    invalidateCache('leads');
     const res = await fetch(getApiUrl('/api/leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,6 +241,7 @@ export const mockDataService = {
   },
 
   updateLead: async (id: string, updates: Partial<Lead>): Promise<void> => {
+    invalidateCache('leads');
     const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -154,6 +252,7 @@ export const mockDataService = {
   },
 
   deleteLead: async (id: string): Promise<void> => {
+    invalidateCache('leads');
     const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
@@ -162,6 +261,7 @@ export const mockDataService = {
   },
 
   clearLeads: async (): Promise<void> => {
+    invalidateCache('leads');
     const res = await fetch(getApiUrl('/api/leads/clear'), {
       method: 'POST'
     });
@@ -169,13 +269,32 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getInvoices: async (): Promise<Invoice[]> => {
+  getInvoices: async (forceFresh = false): Promise<Invoice[]> => {
+    if (!forceFresh) {
+      const cached = getCached<Invoice[]>('invoices', 12000);
+      if (cached && cached.length > 0) {
+        fetch(getApiUrl('/api/invoices'))
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && Array.isArray(data)) setCache('invoices', data);
+          })
+          .catch(() => {});
+        return cached;
+      }
+    }
     const res = await fetch(getApiUrl('/api/invoices'));
-    if (!res.ok) throw new Error('Failed to fetch invoices');
-    return res.json();
+    if (!res.ok) {
+      const fallback = getCached<Invoice[]>('invoices', 86400000);
+      if (fallback) return fallback;
+      throw new Error('Failed to fetch invoices');
+    }
+    const data = await res.json();
+    setCache('invoices', data);
+    return data;
   },
 
   addInvoice: async (invoice: Invoice): Promise<void> => {
+    invalidateCache('invoices');
     const res = await fetch(getApiUrl('/api/invoices'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -186,6 +305,7 @@ export const mockDataService = {
   },
 
   updateInvoice: async (id: string, updates: Partial<Invoice>): Promise<void> => {
+    invalidateCache('invoices');
     const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -196,6 +316,7 @@ export const mockDataService = {
   },
 
   deleteInvoice: async (id: string): Promise<void> => {
+    invalidateCache('invoices');
     const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
@@ -203,13 +324,32 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getInventoryMovements: async (): Promise<InventoryMovement[]> => {
+  getInventoryMovements: async (forceFresh = false): Promise<InventoryMovement[]> => {
+    if (!forceFresh) {
+      const cached = getCached<InventoryMovement[]>('inventory', 15000);
+      if (cached && cached.length > 0) {
+        fetch(getApiUrl('/api/inventory'))
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && Array.isArray(data)) setCache('inventory', data);
+          })
+          .catch(() => {});
+        return cached;
+      }
+    }
     const res = await fetch(getApiUrl('/api/inventory'));
-    if (!res.ok) throw new Error('Failed to fetch inventory movements');
-    return res.json();
+    if (!res.ok) {
+      const fallback = getCached<InventoryMovement[]>('inventory', 86400000);
+      if (fallback) return fallback;
+      throw new Error('Failed to fetch inventory movements');
+    }
+    const data = await res.json();
+    setCache('inventory', data);
+    return data;
   },
 
   addInventoryMovement: async (movement: InventoryMovement): Promise<void> => {
+    invalidateCache('inventory');
     const res = await fetch(getApiUrl('/api/inventory'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -220,6 +360,7 @@ export const mockDataService = {
   },
 
   updateInventoryMovement: async (id: string, updates: Partial<InventoryMovement>): Promise<void> => {
+    invalidateCache('inventory');
     const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -237,8 +378,8 @@ export const mockDataService = {
     return mockDataService.addInvoice(invoice);
   },
 
-  getInventory: async (): Promise<InventoryMovement[]> => {
-    return mockDataService.getInventoryMovements();
+  getInventory: async (forceFresh = false): Promise<InventoryMovement[]> => {
+    return mockDataService.getInventoryMovements(forceFresh);
   },
 
   saveInventoryMovement: async (movement: InventoryMovement): Promise<void> => {
@@ -246,6 +387,7 @@ export const mockDataService = {
   },
 
   deleteInventoryMovement: async (id: string): Promise<void> => {
+    invalidateCache('inventory');
     const res = await fetch(getApiUrl(`/api/inventory/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
     });
@@ -253,12 +395,25 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getUsers: async (): Promise<UserProfile[]> => {
+  getUsers: async (forceFresh = false): Promise<UserProfile[]> => {
+    if (!forceFresh) {
+      const cached = getCached<UserProfile[]>('users', 30000);
+      if (cached && cached.length > 0) {
+        fetch(getApiUrl('/api/users'))
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && Array.isArray(data) && data.length > 0) setCache('users', data);
+          })
+          .catch(() => {});
+        return cached;
+      }
+    }
     try {
       const res = await fetch(getApiUrl('/api/users'));
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
+          setCache('users', data);
           return data;
         }
       }

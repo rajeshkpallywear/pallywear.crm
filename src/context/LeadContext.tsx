@@ -42,6 +42,21 @@ function sanitizeForStorage(data: any): any {
   return sanitized;
 }
 
+function hasArrayChanged<T extends { id?: string; updatedAt?: number; createdAt?: any; status?: string }>(prev: T[], next: T[]): boolean {
+  if (prev === next) return false;
+  if (!prev || !next) return true;
+  if (prev.length !== next.length) return true;
+  for (let i = 0; i < prev.length; i++) {
+    const p = prev[i];
+    const n = next[i];
+    if (!p || !n) return true;
+    if (p.id !== n.id) return true;
+    if (p.updatedAt !== n.updatedAt) return true;
+    if (p.status !== n.status) return true;
+  }
+  return false;
+}
+
 export function LeadProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -50,18 +65,18 @@ export function LeadProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = async (force = false) => {
       try {
         const [leadsData, invoicesData, ordersData, inventoryData] = await Promise.all([
-          mockDataService.getLeads(),
-          mockDataService.getInvoices(),
-          mockDataService.getOrders(),
-          mockDataService.getInventory()
+          mockDataService.getLeads(force),
+          mockDataService.getInvoices(force),
+          mockDataService.getOrders(force),
+          mockDataService.getInventory(force)
         ]);
-        setLeads(leadsData);
-        setInvoices(invoicesData);
-        setOrders(ordersData);
-        setInventory(inventoryData);
+        setLeads(prev => hasArrayChanged(prev, leadsData) ? leadsData : prev);
+        setInvoices(prev => hasArrayChanged(prev, invoicesData) ? invoicesData : prev);
+        setOrders(prev => hasArrayChanged(prev, ordersData) ? ordersData : prev);
+        setInventory(prev => hasArrayChanged(prev, inventoryData) ? inventoryData : prev);
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -75,15 +90,31 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    loadData();
+    // Instant load from SWR memory/local cache
+    loadData(false);
 
-    // ⚡ Automatic background refresh every 10 seconds
-    const interval = setInterval(loadData, 10000);
+    // ⚡ Smart background refresh every 20 seconds (pauses when tab is hidden)
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        loadData(true);
+      }
+    }, 20000);
 
-    window.addEventListener('pallywear-data-updated', loadData);
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        loadData(false);
+      }
+    };
+
+    const handleDataUpdated = () => loadData(true);
+
+    window.addEventListener('pallywear-data-updated', handleDataUpdated);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener('pallywear-data-updated', loadData);
+      window.removeEventListener('pallywear-data-updated', handleDataUpdated);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [user]);
 

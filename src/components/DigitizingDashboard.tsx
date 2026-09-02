@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -47,6 +48,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 150);
   const [uploadFiles, setUploadFiles] = useState<string[]>([]);
   const { loadOrderAttachments } = useLeads();
 
@@ -58,24 +60,28 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     }
   }, [selectedOrder?.id]);
 
-  // Filter orders
-  const filteredOrders = orders.filter(o => {
-    const matchesSearch = (o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.category || '').toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter orders with debounced search
+  const filteredOrders = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    return orders.filter(o => {
+      const matchesSearch = !term ||
+        (o.customerInfo?.name || '').toLowerCase().includes(term) ||
+        o.id.toLowerCase().includes(term) ||
+        (o.category || '').toLowerCase().includes(term);
 
-    // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
-    // If in DESIGN status, only show if the original design file/zip uploader is complete (ready for digitizing)
-    const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-    const isOrderReady = !!o.original_design_file || !!o.original_design_zip;
-    const relevantStatus = effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady;
+      // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
+      // If in DESIGN status, only show if the original design file/zip uploader is complete (ready for digitizing)
+      const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+      const isOrderReady = !!o.original_design_file || !!o.original_design_zip;
+      const relevantStatus = effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady;
 
-    if (viewMode === 'pending') {
-      return matchesSearch && relevantStatus && !o.machineFiles?.length;
-    } else {
-      return matchesSearch && o.status === OrderStatus.DELIVERED;
-    }
-  });
+      if (viewMode === 'pending') {
+        return matchesSearch && relevantStatus && !o.machineFiles?.length;
+      } else {
+        return matchesSearch && o.status === OrderStatus.DELIVERED;
+      }
+    });
+  }, [orders, debouncedSearchTerm, viewMode]);
 
   // Auto-select first order when section, view mode or search changes (except completed mode)
   useEffect(() => {
@@ -88,7 +94,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     } else {
       setSelectedOrder(null);
     }
-  }, [viewMode, searchTerm, filteredOrders.length]);
+  }, [viewMode, filteredOrders]);
 
   const handleUploadSpecs = async () => {
     if (!selectedOrder || uploadFiles.length === 0) return;

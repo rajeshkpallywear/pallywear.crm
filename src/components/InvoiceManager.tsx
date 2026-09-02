@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 import { useLeads } from '../context/LeadContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -13,6 +14,7 @@ export default function InvoiceManager() {
     const { leads, invoices, addInvoice, updateInvoice, deleteInvoice } = useLeads();
     const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 150);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
@@ -36,15 +38,20 @@ export default function InvoiceManager() {
         setIsModalOpen(true);
     };
 
-    const filteredInvoices = invoices
-        .filter(inv => {
-            if (user?.role === 'admin' || user?.role === 'staff') return true;
-            return inv.createdBy === user?.id || inv.createdBy === user?.uid;
-        })
-        .filter(inv =>
-            inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inv.billToName.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+    const filteredInvoices = useMemo(() => {
+        const term = debouncedSearchTerm.toLowerCase().trim();
+        return invoices
+            .filter(inv => {
+                if (user?.role === 'admin' || user?.role === 'staff') return true;
+                return inv.createdBy === user?.id || inv.createdBy === user?.uid;
+            })
+            .filter(inv =>
+                !term ||
+                inv.invoiceNumber.toLowerCase().includes(term) ||
+                (inv.billToName || '').toLowerCase().includes(term) ||
+                (inv.billToPhone || '').includes(term)
+            );
+    }, [invoices, user, debouncedSearchTerm]);
 
     const handleOpenInvoice = (invoice: Invoice) => {
         setSelectedInvoice(invoice);

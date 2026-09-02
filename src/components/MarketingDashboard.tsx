@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, useMemo, FormEvent } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 import { motion } from 'motion/react';
 import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Trash2, Package, AlertCircle, Mic, Send, MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
@@ -306,38 +307,43 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     setIsCreating(true);
   };
 
-  const filteredOrders = orders.filter(o => {
-    const matchesSearch = (o.customerInfo?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || o.id.includes(searchTerm);
-    if (!matchesSearch) return false;
+  const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
-    if (selectedSection === 'hold') {
-      return o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT);
-    }
-    if (selectedSection === 'completed') {
-      return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
-    }
-    if (selectedSection === 'process') {
-      const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-      return effStatus !== OrderStatus.DELIVERY &&
-             effStatus !== OrderStatus.DELIVERED &&
-             effStatus !== OrderStatus.PENDING &&
-             effStatus !== OrderStatus.DRAFT &&
-             !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
-    }
-    return o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT;
-  });
+  const filteredOrders = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    return orders.filter(o => {
+      const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term);
+      if (!matchesSearch) return false;
 
-  const recentOrdersCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
-  const processOrdersCount = orders.filter(o => {
+      if (selectedSection === 'hold') {
+        return o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT);
+      }
+      if (selectedSection === 'completed') {
+        return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
+      }
+      if (selectedSection === 'process') {
+        const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+        return effStatus !== OrderStatus.DELIVERY &&
+               effStatus !== OrderStatus.DELIVERED &&
+               effStatus !== OrderStatus.PENDING &&
+               effStatus !== OrderStatus.DRAFT &&
+               !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+      }
+      return o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT;
+    });
+  }, [orders, debouncedSearchTerm, selectedSection]);
+
+  const recentOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length, [orders]);
+  const processOrdersCount = useMemo(() => orders.filter(o => {
     const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
     return effStatus !== OrderStatus.DELIVERY &&
            effStatus !== OrderStatus.DELIVERED &&
            effStatus !== OrderStatus.PENDING &&
            effStatus !== OrderStatus.DRAFT &&
            !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
-  }).length;
-  const holdOrdersCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
-  const completedOrdersCount = orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length;
+  }).length, [orders]);
+  const holdOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length, [orders]);
+  const completedOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length, [orders]);
 
   return (
     <div className="bg-white text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 sm:space-y-8 animate-in fade-in duration-300">

@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import cors from "cors"; // 1. Imported CORS package
+import compression from "compression"; // Fast gzip/brotli response compression
 import { initDB } from "./db";
 import apiRouter from "./api";
 
@@ -16,6 +17,12 @@ async function startServer() {
   await initDB();
 
   const app = express();
+
+  // Fast gzip compression for all API responses and static assets
+  app.use(compression({
+    level: 6,
+    threshold: 512, // Compress anything larger than 512 bytes
+  }));
 
   // 2. Enabled CORS so your frontend can communicate seamlessly with this backend
   app.use(cors({
