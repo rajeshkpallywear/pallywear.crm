@@ -216,6 +216,10 @@ export interface SidebarMessage {
   senderRole: string;
   message: string;
   attachment?: string;
+  fileName?: string;
+  fileType?: 'image' | 'audio' | 'document';
+  voiceNote?: string;
+  reaction?: string;
   recipientId?: string;
   createdAt: number;
 }
