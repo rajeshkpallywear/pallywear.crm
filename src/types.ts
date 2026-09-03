@@ -124,6 +124,8 @@ export interface SizeBreakdown {
   size: string;
   quantity: number;
   price: number;
+  gstRate?: number; // e.g. 0, 5, 12, 18, 28 (%)
+  gstAmount?: number;
   colour?: string;
   printType?: string;
   sleeve?: string;
@@ -136,6 +138,9 @@ export interface Financials {
   totalAmount: number;
   advancePay: number;
   balanceAmount: number;
+  deliveryAmount?: number;
+  gstAmount?: number;
+  itemsTotal?: number;
 }
 
 export interface Order {

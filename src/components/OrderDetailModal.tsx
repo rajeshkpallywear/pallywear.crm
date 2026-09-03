@@ -300,6 +300,14 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                           </span>
                         </div>
                         <div className="space-y-1">
+                          {(order.financials?.deliveryAmount || 0) > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="font-bold text-gray-500">Delivery Charges</span>
+                              <span className="font-black text-gray-900">
+                                ₹{(order.financials?.deliveryAmount || 0).toLocaleString()}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-xs">
                             <span className="font-bold text-green-600">Paid Amount</span>
                             <span className="font-black text-gray-900">
@@ -480,11 +488,21 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                             {item.model && <div><span className="text-[8px] text-gray-400 block mb-0.5">Model</span>{item.model}</div>}
                           </div>
                           <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-end">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
                               <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
                               <span className="text-[10px] font-black text-brand-primary">Rate: ₹{item.price}</span>
+                              {(item.gstRate || 0) > 0 && (
+                                <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  GST: {item.gstRate}%
+                                </span>
+                              )}
                             </div>
-                            <span className="text-xs font-black text-gray-900">Total: ₹{(item.quantity * (item.price || 0)).toLocaleString()}</span>
+                            <span className="text-xs font-black text-gray-900">
+                              Total: ₹{(
+                                item.quantity * (item.price || 0) +
+                                ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100)
+                              ).toLocaleString()}
+                            </span>
                           </div>
                         </div>
                       ))
