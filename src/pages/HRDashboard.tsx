@@ -472,7 +472,7 @@ export default function HRDashboard() {
   return (
     <div className="h-screen dashboard-page-bg text-slate-900 flex flex-col overflow-hidden">
       {/* Top Header Navigation */}
-      <header className="shrink-0 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-4 sm:px-8 py-3.5 shadow-lg z-30">
+      <header className="shrink-0 bg-white/70 backdrop-blur-2xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-4 sm:px-8 py-3.5 shadow-lg z-30">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button

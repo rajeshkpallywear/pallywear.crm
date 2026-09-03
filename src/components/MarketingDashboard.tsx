@@ -368,7 +368,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const completedOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length, [orders]);
 
   return (
-    <div className="bg-white/85 backdrop-blur-md text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-white/60 shadow-lg space-y-4 sm:space-y-8 animate-in fade-in duration-300">
+    <div className="bg-white/70 backdrop-blur-2xl text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-white/60 shadow-xl space-y-4 sm:space-y-8 animate-in fade-in duration-300">
       
       {/* Action Buttons Header */}
       <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-3 sm:pb-4">
@@ -400,8 +400,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         onCreateOrder={onCreateOrder}
       />
 
-      {/* Tabs Filter Bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 border border-gray-250 rounded-xl sm:rounded-2xl w-full sm:w-fit">
+      {/* Modern Filter Tabs Bar */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-white/60 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/60 shadow-xs">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
@@ -460,7 +460,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       {/* Primary Data Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side: Order intake lists */}
-        <div className="lg:col-span-2 bg-white border border-gray-100 rounded-[2rem] p-6 shadow-xs space-y-4">
+        <div className="lg:col-span-2 bg-white/80 backdrop-blur-xl border border-white/60 rounded-[2rem] p-4 sm:p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
             <Search className="text-gray-400" size={16} />
             <input
@@ -841,7 +841,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         </div>
 
         {/* Right Side: Stock Inventory view */}
-        <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-xs space-y-4">
+        <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-[2rem] p-4 sm:p-6 shadow-sm space-y-4">
           <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
             <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
               <Package size={14} className="text-brand-primary" />

@@ -297,7 +297,7 @@ export default function Dashboard() {
       {/* Sidebar */}
       {(layoutMode === 'system' || isMobileOpen) && (
         <aside className={cn(
-          "bg-white/95 backdrop-blur-xl border border-white/60 flex flex-col fixed top-3 bottom-3 left-3 md:left-4 z-40 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl transition-all duration-300 overflow-hidden",
+          "bg-white/75 backdrop-blur-2xl border border-white/60 flex flex-col fixed top-3 bottom-3 left-3 md:left-4 z-40 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl transition-all duration-300 overflow-hidden",
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           isSidebarCollapsed ? "md:w-20" : "md:w-64",
           "w-64"
@@ -741,7 +741,7 @@ export default function Dashboard() {
         "flex-1 h-screen flex flex-col min-w-0 overflow-hidden pb-2 md:pb-4 transition-all duration-300",
         isSidebarCollapsed ? "md:ml-28" : "md:ml-72"
       )}>
-        <header className="h-13 sm:h-16 shrink-0 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-3 sm:px-8 flex items-center justify-between shadow-lg pt-safe z-30">
+        <header className="h-13 sm:h-16 shrink-0 bg-white/70 backdrop-blur-2xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-3 sm:px-8 flex items-center justify-between shadow-lg pt-safe z-30">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}

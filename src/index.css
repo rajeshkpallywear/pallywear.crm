@@ -49,7 +49,7 @@
   body {
     @apply font-sans text-brand-dark;
     background-image: 
-      linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(245, 248, 255, 0.50) 100%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(240, 246, 255, 0.32) 100%),
       url('/dashboard-bg.jpg');
     background-size: cover;
     background-position: center top;
@@ -69,7 +69,15 @@
 }
 
 .glass-card {
-  @apply bg-white/85 backdrop-blur-xl border border-white/40 shadow-2xl;
+  @apply bg-white/75 backdrop-blur-2xl border border-white/60 shadow-xl;
+}
+
+.glass-panel {
+  @apply bg-white/70 backdrop-blur-2xl border border-white/60 shadow-xl;
+}
+
+.glass-inner {
+  @apply bg-white/75 backdrop-blur-xl border border-white/50 shadow-xs;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
