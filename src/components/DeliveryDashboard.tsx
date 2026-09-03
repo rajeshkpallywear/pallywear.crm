@@ -80,7 +80,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   };
 
   return (
-    <div className="bg-white text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs space-y-4 sm:space-y-8 text-left">
+    <div className="bg-white/85 backdrop-blur-md text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/60 shadow-lg space-y-4 sm:space-y-8 text-left">
 
       {/* Dynamic Real Stats Cards */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3">

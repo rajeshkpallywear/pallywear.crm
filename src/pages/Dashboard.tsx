@@ -285,7 +285,7 @@ export default function Dashboard() {
   }, [user?.role]);
 
   return (
-    <div className="flex bg-brand-light min-h-screen">
+    <div className="flex dashboard-page-bg min-h-screen">
       {/* Mobile Sidebar Backdrop */}
       {isMobileOpen && (
         <div

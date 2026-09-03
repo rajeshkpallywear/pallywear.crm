@@ -1570,10 +1570,10 @@ export default function AdminDashboard() {
       return { totalCount, holdCount, completedCount };
     };
 
-    if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-brand-light">Loading security context...</div>;
+    if (authLoading) return <div className="min-h-screen flex items-center justify-center dashboard-page-bg">Loading security context...</div>;
 
     return (
-      <div className="flex bg-brand-light min-h-screen">
+      <div className="flex dashboard-page-bg min-h-screen">
         {/* Mobile Sidebar Backdrop */}
         {layoutMode === 'system' && isMobileOpen && (
           <div
@@ -1697,17 +1697,6 @@ export default function AdminDashboard() {
                 <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
               </button>
 
-              <button
-                onClick={() => navigate('/hr-dashboard')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 mt-1 cursor-pointer",
-                  isSidebarCollapsed && "md:justify-center md:px-0"
-                )}
-                title={isSidebarCollapsed ? "HR & Payroll Dashboard" : ""}
-              >
-                <Briefcase className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>HR & Payroll</span>}
-              </button>
-
               <div className="pt-4 mt-2 border-t border-gray-100 space-y-2">
                 <button
                   onClick={() => setIsAdminOrderModalOpen(true)}
@@ -1767,14 +1756,6 @@ export default function AdminDashboard() {
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-              <button
-                onClick={() => setLayoutMode(prev => prev === 'mobile' ? 'system' : 'mobile')}
-                className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Toggle Mobile/System View"
-              >
-                {layoutMode === 'mobile' ? <Smartphone className="w-3.5 h-3.5 text-brand-primary" /> : <Monitor className="w-3.5 h-3.5 text-gray-500" />}
-                <span className="hidden sm:inline">{layoutMode === 'mobile' ? 'Mobile View' : 'System View'}</span>
-              </button>
               <button
                 onClick={() => navigate('/lead-dashboard')}
                 className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-brand-primary/30 bg-brand-primary/5 hover:bg-brand-primary/10 text-brand-primary flex items-center gap-1.5 transition-colors cursor-pointer"

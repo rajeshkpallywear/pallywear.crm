@@ -361,7 +361,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const completedOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length, [orders]);
 
   return (
-    <div className="bg-white text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 sm:space-y-8 animate-in fade-in duration-300">
+    <div className="bg-white/85 backdrop-blur-md text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-white/60 shadow-lg space-y-4 sm:space-y-8 animate-in fade-in duration-300">
       
       {/* Action Buttons Header */}
       <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-3 sm:pb-4">

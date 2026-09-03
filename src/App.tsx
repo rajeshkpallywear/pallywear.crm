@@ -66,7 +66,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 const PageLoader = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen bg-brand-light">
+  <div className="flex flex-col items-center justify-center min-h-screen dashboard-page-bg">
     <div className="relative w-16 h-16">
       <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20"></div>
       <div className="absolute inset-0 rounded-full border-4 border-t-brand-primary border-r-brand-primary animate-spin"></div>

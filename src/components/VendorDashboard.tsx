@@ -98,7 +98,7 @@ export default function VendorDashboard({ user }: VendorDashboardProps) {
   const completedInvoices = expenses.filter(e => e.billFile).length;
 
   return (
-    <div className="bg-white text-gray-800 p-6 rounded-[2.5rem] border border-gray-250 shadow-xl space-y-8">
+    <div className="bg-white/85 backdrop-blur-md text-gray-800 p-6 rounded-[2.5rem] border border-white/60 shadow-xl space-y-8">
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
         <div>

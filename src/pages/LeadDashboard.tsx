@@ -382,7 +382,7 @@ export default function LeadDashboard() {
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen dashboard-page-bg flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-100 shadow-xs sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">

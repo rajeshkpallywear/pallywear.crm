@@ -179,7 +179,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   return (
     <div className="space-y-6">
       {sidebarView !== 'orders' ? (
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="bg-white/85 backdrop-blur-md p-6 rounded-3xl border border-white/60 shadow-lg">
           {renderSidebarContent()}
         </div>
       ) : (
