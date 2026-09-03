@@ -621,6 +621,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
           await onUpdateOrder(selectedOrder.id, {
             status: OrderStatus.PENDING,
+            designSentToMarketing: true,
             notes: updatedNotes,
             updatedAt: Date.now()
           });

@@ -183,6 +183,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         await onCreateOrder({
           ...finalOrderData,
           status: OrderStatus.PENDING,
+          designSentToMarketing: false,
+          designCompleted: false,
+          original_design_file: '',
+          original_design_filename: '',
+          original_design_zip: '',
+          original_design_zip_filename: '',
           createdAt: Date.now(),
         });
         alert("Success: Order created successfully and added to your queue.");
@@ -1273,6 +1279,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         updates.assignedDesigner = 'Unassigned';
                         updates.claimedBy = undefined;
                         updates.claimedByName = undefined;
+                        updates.designSentToMarketing = false;
+                        updates.designCompleted = false;
                       } else {
                         updates.accountsNotes = noteModal.noteText.trim();
                       }

@@ -297,12 +297,12 @@ export default function Dashboard() {
       {/* Sidebar */}
       {(layoutMode === 'system' || isMobileOpen) && (
         <aside className={cn(
-          "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full overflow-hidden shadow-xl z-50 transition-all duration-300",
+          "bg-white/95 backdrop-blur-xl border border-white/60 flex flex-col fixed top-3 bottom-3 left-3 md:left-4 z-40 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl transition-all duration-300 overflow-hidden",
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           isSidebarCollapsed ? "md:w-20" : "md:w-64",
           "w-64"
         )}>
-        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
           {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
           <button
             onClick={() => {
@@ -318,7 +318,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 overflow-y-auto custom-scrollbar flex-1">
           {/* Admin Lead Management Tabs */}
           {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (
             <div className="space-y-1">
@@ -739,9 +739,9 @@ export default function Dashboard() {
 
       <main className={cn(
         "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
-        isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
+        isSidebarCollapsed ? "md:ml-28" : "md:ml-72"
       )}>
-        <header className="h-13 sm:h-16 bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs pt-safe">
+        <header className="h-13 sm:h-16 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-3 sm:px-8 flex items-center justify-between sticky top-3 sm:top-4 z-30 shadow-lg pt-safe">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}

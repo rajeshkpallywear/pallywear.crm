@@ -1585,12 +1585,12 @@ export default function AdminDashboard() {
         {/* Sidebar */}
         {layoutMode === 'system' && (
           <aside className={cn(
-            "bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 h-full z-40 shadow-sm transition-all duration-300",
+            "bg-white/95 backdrop-blur-xl border border-white/60 flex flex-col fixed top-3 bottom-3 left-3 md:left-4 z-40 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl transition-all duration-300 overflow-hidden",
             isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
             isSidebarCollapsed ? "md:w-20" : "md:w-64",
             "w-64"
           )}>
-            <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
               {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
               <button
                 onClick={() => {
@@ -1606,7 +1606,7 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <nav className="p-4 space-y-1">
+            <nav className="p-4 space-y-1 overflow-y-auto custom-scrollbar flex-1">
               <button
                 onClick={() => selectTab('overview')}
                 className={cn(
@@ -1725,7 +1725,7 @@ export default function AdminDashboard() {
 
             </nav>
 
-            <div className="mt-auto p-4 border-t border-gray-50">
+            <div className="mt-auto p-4 border-t border-gray-100 shrink-0">
               <button onClick={handleLogout} className={cn(
                 "text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm",
                 isSidebarCollapsed && "md:justify-center md:px-0"
@@ -1739,10 +1739,10 @@ export default function AdminDashboard() {
         {/* Main Content */}
         <main className={cn(
           "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
-          isSidebarCollapsed ? "md:ml-20" : "md:ml-64"
+          isSidebarCollapsed ? "md:ml-28" : "md:ml-72"
         )}>
           {/* Top Header */}
-          <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 shadow-xs">
+          <header className="h-16 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] flex items-center justify-between px-4 md:px-8 sticky top-3 sm:top-4 z-30 shadow-lg">
             <div className="flex items-center gap-3 text-gray-400">
               <button
                 onClick={() => setIsMobileOpen(true)}
