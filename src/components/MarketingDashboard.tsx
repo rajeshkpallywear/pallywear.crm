@@ -471,7 +471,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             />
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[calc(100vh-21rem)] min-h-[350px] overflow-y-auto custom-scrollbar pr-1">
             {/* Desktop Table View */}
             <table className="hidden md:table w-full text-left text-xs border-collapse">
               <thead>
@@ -659,7 +659,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </table>
 
             {/* Mobile View */}
-            <div className="block md:hidden divide-y divide-gray-100">
+            <div className="block md:hidden divide-y divide-gray-100 max-h-[calc(100vh-21rem)] overflow-y-auto custom-scrollbar pr-1">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => (
                   <div
@@ -848,7 +848,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </h4>
           </div>
 
-          <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-[calc(100vh-21rem)] min-h-[350px] overflow-y-auto custom-scrollbar pr-1">
             {inventory && inventory.length > 0 ? (
               Object.values(inventory.reduce((acc: any, item) => {
                 const key = `${item.product}-${item.productType}-${item.sleeve || 'none'}-${item.pocket || 'none'}`;

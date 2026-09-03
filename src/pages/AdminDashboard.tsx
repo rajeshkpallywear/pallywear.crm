@@ -1573,7 +1573,7 @@ export default function AdminDashboard() {
     if (authLoading) return <div className="min-h-screen flex items-center justify-center dashboard-page-bg">Loading security context...</div>;
 
     return (
-      <div className="flex dashboard-page-bg min-h-screen">
+      <div className="flex dashboard-page-bg h-screen overflow-hidden">
         {/* Mobile Sidebar Backdrop */}
         {layoutMode === 'system' && isMobileOpen && (
           <div
@@ -1738,11 +1738,11 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <main className={cn(
-          "flex-1 min-h-screen transition-all duration-300 pb-20 md:pb-8",
+          "flex-1 h-screen flex flex-col min-w-0 overflow-hidden pb-2 md:pb-4 transition-all duration-300",
           isSidebarCollapsed ? "md:ml-28" : "md:ml-72"
         )}>
           {/* Top Header */}
-          <header className="h-16 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] flex items-center justify-between px-4 md:px-8 sticky top-3 sm:top-4 z-30 shadow-lg">
+          <header className="h-16 shrink-0 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] flex items-center justify-between px-4 md:px-8 shadow-lg z-30">
             <div className="flex items-center gap-3 text-gray-400">
               <button
                 onClick={() => setIsMobileOpen(true)}
@@ -1812,7 +1812,8 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 md:p-8">
+            <div className="max-w-7xl mx-auto">
             {/* Header Action Row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
               <div>
@@ -3898,6 +3899,7 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             )}
+            </div>
           </div>
         </main>
 

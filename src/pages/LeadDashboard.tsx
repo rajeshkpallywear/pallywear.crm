@@ -382,9 +382,9 @@ export default function LeadDashboard() {
   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
   return (
-    <div className="min-h-screen dashboard-page-bg flex flex-col">
+    <div className="h-screen dashboard-page-bg flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] shadow-lg sticky top-3 sm:top-4 z-30">
+      <header className="shrink-0 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] shadow-lg z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
@@ -418,7 +418,8 @@ export default function LeadDashboard() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <main className="flex-1 overflow-y-auto custom-scrollbar w-full px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Page Title */}
         <div className="flex items-center gap-3">
@@ -854,7 +855,7 @@ export default function LeadDashboard() {
             </table>
           </div>
         </div>
-
+      </div>
       </main>
 
       {/* ── Add Revenue Modal ───────────────────────────────────────────────── */}

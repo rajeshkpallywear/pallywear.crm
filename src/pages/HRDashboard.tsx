@@ -470,9 +470,9 @@ export default function HRDashboard() {
   };
 
   return (
-    <div className="min-h-screen dashboard-page-bg text-slate-900 pb-16">
+    <div className="h-screen dashboard-page-bg text-slate-900 flex flex-col overflow-hidden">
       {/* Top Header Navigation */}
-      <header className="sticky top-3 sm:top-4 z-30 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-4 sm:px-8 py-3.5 shadow-lg">
+      <header className="shrink-0 bg-white/90 backdrop-blur-xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] px-4 sm:px-8 py-3.5 shadow-lg z-30">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
@@ -542,7 +542,8 @@ export default function HRDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 space-y-6">
+      <main className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-8 pt-6 pb-16 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* KPI Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
@@ -1000,6 +1001,7 @@ export default function HRDashboard() {
             </div>
           </div>
         )}
+        </div>
       </main>
 
       {/* ========================================================================= */}
