@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useDebounce } from '../hooks/useDebounce';
 import { motion } from 'motion/react';
 import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Trash2, Package, AlertCircle, Mic, Send, MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight } from 'lucide-react';
@@ -903,8 +904,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       </div>
 
       {/* Forms and Creation Modal */}
-      {isCreating && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {isCreating && createPortal(
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[100] flex items-center justify-center p-3 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1207,7 +1208,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               </div>
             </form>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Global detailed view modal */}
@@ -1225,8 +1227,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       )}
 
       {/* Note modal */}
-      {noteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      {noteModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
           <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between text-left">
               <h3 className="text-base font-black text-gray-900 uppercase italic tracking-tight">
@@ -1300,11 +1302,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {isLeadModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+      {isLeadModalOpen && createPortal(
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[100] flex items-center justify-center p-4">
           <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative">
             <button
               onClick={() => setIsLeadModalOpen(false)}
@@ -1314,7 +1317,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </button>
             {leadManagerComponent}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { X, ZoomIn, ZoomOut, Download, Sparkles, RotateCcw } from 'lucide-react';
 
@@ -51,12 +52,12 @@ export default function ImageViewer({ src, onClose, fileName = 'design_original'
 
   const isImage = src.startsWith('data:image') || src.includes('.png') || src.includes('.jpg') || src.includes('.jpeg') || src.includes('.webp');
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+      className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
     >
       <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex flex-wrap items-center gap-2 sm:gap-4 z-50">
         {isImage && (
@@ -147,7 +148,8 @@ export default function ImageViewer({ src, onClose, fileName = 'design_original'
           )}
         </motion.div>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 

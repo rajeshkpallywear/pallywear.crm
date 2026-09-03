@@ -1,4 +1,5 @@
 
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
@@ -83,8 +84,8 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[100] flex items-center justify-center p-4 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -961,6 +962,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
           </div>
         )}
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
