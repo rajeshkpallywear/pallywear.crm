@@ -1,11 +1,11 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "POP"
+    namespace "pallywear.in"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
 
-        applicationId "POP"
+        applicationId "pallywear.in"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 13
