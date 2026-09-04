@@ -340,10 +340,44 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
   const isReturnedFromDesign = (o: Order) => {
-    return !!(
-      (o.designCompleted || o.designSentToMarketing || (o.original_design_file && o.original_design_file.length > 0)) &&
-      (o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT)
+    const s = String(o.status || '').toLowerCase();
+    const isPendingOrDraft = s === 'pending' || s === 'draft';
+    const hasDesign = Boolean(
+      o.designCompleted ||
+      o.designSentToMarketing ||
+      (o.original_design_file && o.original_design_file.length > 0) ||
+      (o.original_design_filename && o.original_design_filename.length > 0) ||
+      (o.original_design_zip_filename && o.original_design_zip_filename.length > 0)
     );
+    return isPendingOrDraft && hasDesign;
+  };
+
+  const isRecentOrder = (o: Order) => {
+    const s = String(o.status || '').toLowerCase();
+    const isPendingOrDraft = s === 'pending' || s === 'draft';
+    return isPendingOrDraft && !isReturnedFromDesign(o);
+  };
+
+  const isProcessOrder = (o: Order) => {
+    const s = String(o.status || '').toLowerCase();
+    const prev = String(o.previousStatus || '').toLowerCase();
+    const effStatus = s === 'hold' ? prev : s;
+    const isDelivery = effStatus === 'delivery' || effStatus === 'delivered';
+    const isPendingOrDraft = effStatus === 'pending' || effStatus === 'draft' || effStatus === '';
+    const isPendingHold = s === 'hold' && (!prev || prev === 'pending' || prev === 'draft');
+    return !isDelivery && !isPendingOrDraft && !isPendingHold;
+  };
+
+  const isHoldOrder = (o: Order) => {
+    const s = String(o.status || '').toLowerCase();
+    const prev = String(o.previousStatus || '').toLowerCase();
+    return s === 'hold' && (!prev || prev === 'pending' || prev === 'draft');
+  };
+
+  const isDoneOrder = (o: Order) => {
+    const s = String(o.status || '').toLowerCase();
+    const prev = String(o.previousStatus || '').toLowerCase();
+    return s === 'delivery' || s === 'delivered' || (s === 'hold' && (prev === 'delivery' || prev === 'delivered'));
   };
 
   const filteredOrders = useMemo(() => {
@@ -356,36 +390,24 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         return isReturnedFromDesign(o);
       }
       if (selectedSection === 'hold') {
-        return o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT);
+        return isHoldOrder(o);
       }
       if (selectedSection === 'completed') {
-        return o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
+        return isDoneOrder(o);
       }
       if (selectedSection === 'process') {
-        const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-        return effStatus !== OrderStatus.DELIVERY &&
-               effStatus !== OrderStatus.DELIVERED &&
-               effStatus !== OrderStatus.PENDING &&
-               effStatus !== OrderStatus.DRAFT &&
-               !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+        return isProcessOrder(o);
       }
       // 'recent': newly created orders that have NOT yet returned from designs
-      return (o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT) && !isReturnedFromDesign(o);
+      return isRecentOrder(o);
     });
   }, [orders, debouncedSearchTerm, selectedSection]);
 
-  const recentOrdersCount = useMemo(() => orders.filter(o => (o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT) && !isReturnedFromDesign(o)).length, [orders]);
-  const designReceivedOrdersCount = useMemo(() => orders.filter(o => isReturnedFromDesign(o)).length, [orders]);
-  const processOrdersCount = useMemo(() => orders.filter(o => {
-    const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-    return effStatus !== OrderStatus.DELIVERY &&
-           effStatus !== OrderStatus.DELIVERED &&
-           effStatus !== OrderStatus.PENDING &&
-           effStatus !== OrderStatus.DRAFT &&
-           !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
-  }).length, [orders]);
-  const holdOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length, [orders]);
-  const completedOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.DELIVERY || o.status === OrderStatus.DELIVERED || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY)).length, [orders]);
+  const recentOrdersCount = useMemo(() => orders.filter(isRecentOrder).length, [orders]);
+  const designReceivedOrdersCount = useMemo(() => orders.filter(isReturnedFromDesign).length, [orders]);
+  const processOrdersCount = useMemo(() => orders.filter(isProcessOrder).length, [orders]);
+  const holdOrdersCount = useMemo(() => orders.filter(isHoldOrder).length, [orders]);
+  const completedOrdersCount = useMemo(() => orders.filter(isDoneOrder).length, [orders]);
 
   return (
     <div className="bg-white/70 backdrop-blur-2xl text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-white/60 shadow-xl space-y-4 sm:space-y-8 animate-in fade-in duration-300">

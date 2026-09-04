@@ -409,14 +409,6 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                         <span className="font-bold text-gray-900">Total:</span>
                                         <span className="font-black text-gray-900">₹{invoice.total.toLocaleString()}</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="font-bold text-gray-500">Amount paid:</span>
-                                        <span className="font-black text-gray-900">₹{invoice.amountPaid.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center p-4 sm:p-5 bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 rounded-2xl mt-6 border border-brand-primary/5">
-                                        <span className="text-sm font-black text-brand-primary uppercase tracking-widest">Balance Due:</span>
-                                        <span className="text-lg sm:text-xl font-black text-brand-primary">₹{invoice.balanceDue.toLocaleString()}</span>
-                                    </div>
                                 </div>
                             </div>
 
