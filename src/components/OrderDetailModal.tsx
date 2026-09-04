@@ -1,7 +1,7 @@
 
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -714,6 +714,20 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                       <p className="text-xs font-semibold text-purple-900 whitespace-pre-line">"{order.notes || order.designNotes}"</p>
                     </div>
                   )}
+                  {order.voiceNote && (
+                    <div className="mt-4 p-4 bg-purple-50/80 rounded-2xl border border-purple-200 text-left space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] font-black text-purple-800 uppercase tracking-widest flex items-center gap-1.5">
+                          <Mic size={14} className="text-purple-600 animate-pulse" />
+                          🎙️ Client Voice Instructions
+                        </span>
+                        <span className="text-[8px] font-black bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                          Audio Note
+                        </span>
+                      </div>
+                      <audio controls src={order.voiceNote} className="w-full h-8 rounded-xl bg-white p-0.5 outline-none shadow-2xs" />
+                    </div>
+                  )}
                   {order.accountsNotes && (
                     <div className="mt-4 p-4 bg-amber-50/50 rounded-2xl border border-amber-100 text-left">
                       <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest block mb-1">Accounts Notes</span>
@@ -947,7 +961,19 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                           updatedAt: Date.now()
                         };
                         if (noteModal.target === 'design') {
+                          updates.notes = noteModal.noteText.trim();
                           updates.designNotes = noteModal.noteText.trim();
+                          updates.designSentToMarketing = false;
+                          updates.designCompleted = false;
+                          if (order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned') {
+                            updates.assignedDesigner = order.assignedDesigner;
+                          }
+                          if (order.claimedBy) {
+                            updates.claimedBy = order.claimedBy;
+                          }
+                          if (order.claimedByName) {
+                            updates.claimedByName = order.claimedByName;
+                          }
                           if (order.status === OrderStatus.ACCOUNTS) {
                             updates.sentByAccounts = true;
                           }

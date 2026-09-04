@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store, Edit } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store, Edit, Eye, Mic, MapPin, User, Phone, Sparkles, FolderOpen } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
@@ -271,11 +271,11 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           <div className="space-y-3">
             {filteredOrders.length > 0 ? (
               filteredOrders.map(order => (
-                <button
+                <div
                   key={order.id}
                   onClick={() => order.status !== OrderStatus.DELIVERED && setSelectedOrder(order)}
                   className={cn(
-                    "w-full text-left p-4 rounded-2xl border transition-all",
+                    "w-full text-left p-4 rounded-2xl border transition-all space-y-2",
                     order.status === OrderStatus.DELIVERED
                       ? "bg-white border-gray-100 cursor-default opacity-85"
                       : selectedOrder?.id === order.id
@@ -283,8 +283,8 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                         : "bg-white border-gray-100 hover:border-gray-300 shadow-sm cursor-pointer"
                   )}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-mono opacity-60">#{order.id.slice(-6)}</span>
                       {order.status === OrderStatus.HOLD && (
                         <span className="bg-red-500 text-white text-[8px] font-black px-1 rounded ml-1">ON HOLD</span>
@@ -292,24 +292,52 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       {order.isUrgent && (
                         <span className="bg-red-500 text-white text-[8px] font-black px-1 rounded animate-pulse">URGENT</span>
                       )}
+                      {order.voiceNote && (
+                        <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[8px] font-black px-1 rounded flex items-center gap-0.5">
+                          🎙️ Voice
+                        </span>
+                      )}
                     </div>
                     <span className="text-[8px] font-bold uppercase py-0.5 px-1 bg-gray-400/20 rounded">
                       {getDisplayCategory(order)}
                     </span>
                   </div>
-                  <div className="font-bold truncate">{order.customerInfo.name}</div>
-                  <div className={cn("text-[9px] font-bold uppercase tracking-wide", selectedOrder?.id === order.id ? "text-gray-300" : "text-brand-primary")}>
-                    By: {order.createdByName || 'System'}
+                  <div>
+                    <div className="font-bold text-sm truncate">{order.customerInfo.name}</div>
+                    <div className={cn("text-[9px] font-bold uppercase tracking-wide", selectedOrder?.id === order.id ? "text-gray-300" : "text-brand-primary")}>
+                      By: {order.createdByName || 'System'}
+                    </div>
                   </div>
                   {order.status === OrderStatus.HOLD && order.holdReason && (
-                    <div className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 px-1.5 py-0.5 rounded italic border border-red-100">
+                    <div className="text-[10px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded italic border border-red-100">
                       Reason: {order.holdReason}
                     </div>
                   )}
-                  <div className={`text-xs mt-1 ${selectedOrder?.id === order.id ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Created: {new Date(order.createdAt).toLocaleDateString()}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-white/10">
+                    <span className={selectedOrder?.id === order.id ? 'text-gray-300' : 'text-gray-500'}>
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </span>
+                    <span className={cn("font-black", selectedOrder?.id === order.id ? "text-emerald-400" : "text-gray-900")}>
+                      ₹{(order.financials?.totalAmount || 0).toLocaleString()}
+                    </span>
                   </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedHubOrder(order);
+                    }}
+                    className={cn(
+                      "w-full py-1 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all border cursor-pointer",
+                      selectedOrder?.id === order.id
+                        ? "bg-white/10 hover:bg-white/20 text-white border-white/20"
+                        : "bg-purple-50 hover:bg-purple-100 text-brand-primary border-purple-200 shadow-2xs"
+                    )}
+                  >
+                    <Eye size={12} />
+                    <span>View Full Details</span>
+                  </button>
+                </div>
               ))
             ) : (
               <div className="p-12 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center">
@@ -325,9 +353,9 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white rounded-3xl border border-gray-150 shadow-sm overflow-hidden"
             >
-              <div className="p-8 border-b border-gray-50 bg-white">
+              <div className="p-6 sm:p-8 border-b border-gray-100 bg-white">
                 {/* Mobile Back Button */}
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -335,11 +363,13 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 >
                   <ArrowLeft size={14} /> Back to List
                 </button>
+                
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
-                    <span className="text-xs font-mono text-gray-400">ORDER DETAILS</span>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-2xl font-bold text-gray-900">#{selectedOrder.id.slice(-8)} <span className="text-xs text-gray-500 font-bold ml-2">(Created by: {selectedOrder.createdByName || 'System'})</span></h4>
+                    <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">ORDER SPECIFICATIONS & BILLING</span>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <h4 className="text-2xl font-black text-gray-900 tracking-tight">#{selectedOrder.id}</h4>
+                      <span className="text-xs text-gray-500 font-bold">(Created by: {selectedOrder.createdByName || 'System'})</span>
                       <button
                         onClick={() => {
                           const newId = window.prompt("Enter new Order ID:", selectedOrder.id);
@@ -358,47 +388,77 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                         className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-900 transition-colors cursor-pointer border-none bg-transparent"
                         title="Edit Order ID"
                       >
-                        <Edit size={16} />
+                        <Edit size={15} />
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 md:mt-0">
-                    <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                  
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedHubOrder(selectedOrder)}
+                      className="px-3.5 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs cursor-pointer border-none"
+                    >
+                      <Eye size={13} />
+                      <span>Open Full Modal</span>
+                    </button>
+                    <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider">
                       Status: {selectedOrder.status}
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer Info</h5>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo.name}</p>
-                      <p className="text-xs text-gray-600">{selectedOrder.customerInfo.phone}</p>
-                      <p className="text-xs text-gray-600 mt-1">{selectedOrder.customerInfo.address}</p>
+                {/* Customer Info & Order Category */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/70 p-5 rounded-2xl border border-gray-150">
+                  <div className="space-y-2">
+                    <h5 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                      <User size={13} />
+                      Customer Details
+                    </h5>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-gray-900">{selectedOrder.customerInfo.name}</p>
+                      <a href={`tel:${selectedOrder.customerInfo.phone}`} className="text-xs text-gray-700 hover:text-brand-primary font-semibold flex items-center gap-1.5">
+                        <Phone size={12} className="text-brand-primary" /> {selectedOrder.customerInfo.phone}
+                      </a>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedOrder.customerInfo.address || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-1.5 text-xs text-gray-600 hover:text-red-600 mt-1 leading-relaxed"
+                      >
+                        <MapPin size={13} className="text-red-500 shrink-0 mt-0.5" />
+                        <span>{selectedOrder.customerInfo.address || 'No address specified'}</span>
+                      </a>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order Category</h5>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{getDisplayCategory(selectedOrder)} <span className="text-xs font-normal text-gray-500">(Total Qty: {selectedOrder.quantity || 1})</span></p>
 
-                      {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                          {selectedOrder.sizeBreakdown.map((item, idx) => (
-                            <div key={idx} onClick={() => setSelectedHubOrder(selectedOrder)} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col gap-1 cursor-pointer hover:border-brand-primary/45 hover:scale-[1.01] transition-all">
-                              <div className="flex justify-between items-start mb-1">
-                                <span className="text-[10px] font-black text-brand-primary uppercase">{item.category}</span>
-                                <span className="text-[10px] font-black text-gray-900 bg-gray-50 px-1 rounded">{item.size}</span>
-                              </div>
-                              <div className="text-[10px] text-gray-500 font-bold leading-tight">
-                                {item.colour && <div>Col: {item.colour}</div>}
-                                {item.printType && <div>Prn: {item.printType}</div>}
-                              </div>
-                              <div className="mt-1 pt-1 border-t border-gray-50 flex justify-between items-center bg-gray-50/50 -mx-3 -mb-3 px-3 py-2 rounded-b-xl">
-                                <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
-                                <span className="text-[10px] font-black text-brand-primary">₹{item.price}</span>
-                              </div>
+                  <div className="space-y-2">
+                    <h5 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                      <Package size={13} />
+                      Category & Technical Details
+                    </h5>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs font-black uppercase">
+                          {getDisplayCategory(selectedOrder)}
+                        </span>
+                        <span className="text-xs font-bold text-gray-600">
+                          Total Quantity: <strong className="text-gray-950">{selectedOrder.quantity || 1} pcs</strong>
+                        </span>
+                        {selectedOrder.isUrgent && (
+                          <span className="px-2 py-0.5 bg-red-500 text-white rounded text-[9px] font-black uppercase animate-pulse">
+                            🚨 Urgent Rush
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Technical details key-values */}
+                      {selectedOrder.details && Object.keys(selectedOrder.details).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {Object.entries(selectedOrder.details).map(([k, v]) => (
+                            <div key={k} className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-semibold text-gray-700 shadow-2xs">
+                              <span className="text-gray-400 uppercase font-black mr-1">{k}:</span>
+                              <span className="font-bold text-gray-900">{String(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -407,78 +467,258 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
                 </div>
 
-                <div className="mt-8 space-y-3">
-                  <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order Amount Details</h5>
-                  <div className="p-6 bg-white border border-gray-200 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-6 shadow-sm">
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Amount</p>
-                      <p className="text-2xl font-black text-gray-900">₹{(selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
+                {/* Specs, Notes & Voice Instructions */}
+                <div className="mt-5 space-y-3">
+                  {(selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes) && (
+                    <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-1 text-left">
+                      <span className="text-[10px] font-black text-amber-900 uppercase tracking-widest block flex items-center gap-1.5">
+                        📋 Client Specifications & Intake Notes:
+                      </span>
+                      <p className="text-xs text-gray-800 font-semibold whitespace-pre-line leading-relaxed">
+                        {selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">Advance Pay</p>
-                      <p className="text-2xl font-black text-amber-600">₹{(selectedOrder.financials?.advancePay || 0).toLocaleString()}</p>
+                  )}
+
+                  {/* Voice Note Audio Player */}
+                  {selectedOrder.voiceNote && (
+                    <div className="p-3.5 bg-purple-50/90 border-2 border-purple-200 rounded-2xl space-y-2 text-left shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                          <Mic size={14} className="text-purple-600 animate-pulse" />
+                          🎙️ Client Voice Instructions from Marketing:
+                        </span>
+                        <span className="text-[8.5px] font-extrabold bg-purple-200/80 text-purple-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          Audio Note Attached
+                        </span>
+                      </div>
+                      <audio controls src={selectedOrder.voiceNote} className="w-full h-8 rounded-xl bg-white p-0.5 outline-none shadow-2xs" />
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Balance Due</p>
-                      <p className="text-2xl font-black text-red-600">₹{(selectedOrder.financials?.balanceAmount || 0).toLocaleString()}</p>
+                  )}
+
+                  {selectedOrder.accountsNotes && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">
+                      <span className="text-[9.5px] font-black text-blue-800 uppercase tracking-wider block mb-0.5">Accounts Record Notes:</span>
+                      <p className="text-xs text-blue-950 font-semibold italic">"{selectedOrder.accountsNotes}"</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detailed Size Breakdown Table */}
+                {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-[10.5px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-1.5">
+                        <Package size={13} className="text-brand-primary" />
+                        Complete Sizing Breakdown Table ({selectedOrder.sizeBreakdown.length} items)
+                      </h5>
+                    </div>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-2xs">
+                      <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-wider text-gray-500 border-b border-gray-200">
+                            <th className="px-3 py-2">Category</th>
+                            <th className="px-3 py-2">Size</th>
+                            <th className="px-3 py-2">Color</th>
+                            <th className="px-3 py-2">Print / Style</th>
+                            <th className="px-3 py-2">Sleeve / Pocket</th>
+                            <th className="px-3 py-2">Material / Model</th>
+                            <th className="px-3 py-2 text-center">Qty</th>
+                            <th className="px-3 py-2 text-right">Price</th>
+                            <th className="px-3 py-2 text-right">GST %</th>
+                            <th className="px-3 py-2 text-right">Total (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white font-semibold text-gray-800">
+                          {selectedOrder.sizeBreakdown.map((item, idx) => {
+                            const base = item.quantity * (item.price || 0);
+                            const gst = (base * (item.gstRate || 0)) / 100;
+                            const total = base + gst;
+                            return (
+                              <tr key={idx} className="hover:bg-purple-50/40 transition-colors">
+                                <td className="px-3 py-2 font-black text-brand-primary uppercase text-[11px]">{item.category}</td>
+                                <td className="px-3 py-2 font-black text-gray-900 bg-gray-50/50">{item.size}</td>
+                                <td className="px-3 py-2">{item.colour || '-'}</td>
+                                <td className="px-3 py-2">{item.printType || '-'}</td>
+                                <td className="px-3 py-2">{[item.sleeve, item.pocket].filter(Boolean).join(' | ') || '-'}</td>
+                                <td className="px-3 py-2">{[item.material, item.model].filter(Boolean).join(' | ') || '-'}</td>
+                                <td className="px-3 py-2 text-center font-black text-gray-900">{item.quantity}</td>
+                                <td className="px-3 py-2 text-right font-mono">₹{item.price || 0}</td>
+                                <td className="px-3 py-2 text-right font-mono">{item.gstRate || 0}%</td>
+                                <td className="px-3 py-2 text-right font-black text-emerald-700 font-mono">₹{total.toLocaleString()}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Financial Summary Breakdown */}
+                <div className="mt-6 space-y-2">
+                  <h5 className="text-[10.5px] font-black text-gray-700 uppercase tracking-widest">Financial Overview</h5>
+                  <div className="p-5 bg-white border border-gray-200 rounded-2xl grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 shadow-xs text-center">
+                    <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
+                      <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">Items Total</p>
+                      <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.itemsTotal || selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
+                      <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">GST Amount</p>
+                      <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.gstAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
+                      <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">Delivery</p>
+                      <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.deliveryAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+                      <p className="text-[8.5px] font-black text-brand-primary uppercase tracking-wider">Grand Total</p>
+                      <p className="text-base font-black text-brand-primary mt-0.5">₹{(selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                      <p className="text-[8.5px] font-black text-amber-600 uppercase tracking-wider">Advance Paid</p>
+                      <p className="text-base font-black text-amber-700 mt-0.5">₹{(selectedOrder.financials?.advancePay || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-red-50 p-2.5 rounded-xl border border-red-200">
+                      <p className="text-[8.5px] font-black text-red-600 uppercase tracking-wider">Balance Due</p>
+                      <p className="text-base font-black text-red-700 mt-0.5">₹{(selectedOrder.financials?.balanceAmount || 0).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Staff Pictures</h5>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {(selectedOrder.staffImages || []).map((file, idx) => (
-                        <div key={idx} onClick={() => setViewingImage(file)} className="aspect-square bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center group relative overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all">
-                          <img src={file} className="w-full h-full object-cover" />
+              {/* Visual Assets, Documents & Output Files */}
+              <div className="p-6 sm:p-8 space-y-8 bg-gray-50/30">
+                <section className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Pictures */}
+                    <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-2xs space-y-3">
+                      <h5 className="text-xs font-black text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                        <span>Staff Pictures & References ({[...(selectedOrder.marketing_image ? [selectedOrder.marketing_image] : []), ...(selectedOrder.staffImages || [])].length})</span>
+                      </h5>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                        {selectedOrder.marketing_image && (
                           <div
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            onClick={() => setViewingImage(selectedOrder.marketing_image!)}
+                            className="aspect-square bg-purple-50 rounded-xl border-2 border-brand-primary/40 overflow-hidden cursor-pointer relative group shadow-2xs"
+                            title="Marketing Main Image"
                           >
-                            <ZoomIn size={20} className="text-white" />
-                          </div>
-                        </div>
-                      ))}
-                      {(selectedOrder.staffImages || []).length === 0 && <p className="text-xs text-gray-400 italic">No pictures</p>}
-                    </div>
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Staff PDFs</h5>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {(selectedOrder.staffPdfs || []).map((file, idx) => (
-                        <div key={idx} onClick={() => setViewingImage(file)} className="aspect-square bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center group relative overflow-hidden cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all">
-                          <FileText size={24} className="text-gray-400" />
-                          <div
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                          >
-                            <ExternalLink size={20} className="text-white" />
-                          </div>
-                        </div>
-                      ))}
-                      {(selectedOrder.staffPdfs || []).length === 0 && <p className="text-xs text-gray-400 italic">No PDFs</p>}
-                    </div>
-                  </div>
-                  {(selectedOrder.original_design_file || (selectedOrder.designAttachments?.length || 0) > 0 || (selectedOrder.machineFiles?.length || 0) > 0) && (
-                    <div className="md:col-span-2">
-                      <h5 className="text-sm font-bold text-purple-400 uppercase tracking-widest mb-4 border-t border-gray-50 pt-4">Design Studio Output</h5>
-                      <div className="flex flex-wrap gap-3">
-                        {selectedOrder.original_design_file && (
-                          <div onClick={() => setViewingImage(selectedOrder.original_design_file!)} className="w-16 h-16 bg-pink-50 rounded-xl border border-pink-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-pink-500 overflow-hidden" title="Original Design file">
-                            {selectedOrder.original_design_file.startsWith('data:image/') ? <img src={selectedOrder.original_design_file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
+                            <img src={selectedOrder.marketing_image} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn size={16} />
+                            </div>
+                            <span className="absolute bottom-0 inset-x-0 bg-brand-primary/80 text-[7px] text-white text-center font-black uppercase py-0.5">Marketing</span>
                           </div>
                         )}
-                        {selectedOrder.designAttachments?.map((file, idx) => (
-                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-purple-500 overflow-hidden">
-                            {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover rounded-xl" /> : <FileText size={24} />}
+                        {(selectedOrder.staffImages || []).map((file, idx) => {
+                          if (file === selectedOrder.marketing_image) return null;
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setViewingImage(file)}
+                              className="aspect-square bg-gray-100 rounded-xl border border-gray-200 overflow-hidden cursor-pointer relative group hover:shadow-md transition-all shadow-2xs"
+                            >
+                              <img src={file} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <ZoomIn size={16} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {!selectedOrder.marketing_image && (selectedOrder.staffImages || []).length === 0 && (
+                          <p className="text-xs text-gray-400 italic col-span-3 py-4 text-center">No images uploaded</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Staff PDFs & Specs */}
+                    <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-2xs space-y-3">
+                      <h5 className="text-xs font-black text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                        <span>Staff Documents & Specifications ({(selectedOrder.staffPdfs || []).length})</span>
+                      </h5>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {(selectedOrder.staffPdfs || []).map((file, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setViewingImage(file)}
+                            className="p-3 bg-gray-50 hover:bg-purple-50 rounded-xl border border-gray-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all text-gray-600 hover:text-brand-primary"
+                          >
+                            <FileText size={22} className="text-purple-600" />
+                            <span className="text-[9px] font-black uppercase">Doc #{idx + 1}</span>
+                            <span className="text-[8px] text-gray-400">View Spec</span>
                           </div>
                         ))}
-                        {selectedOrder.machineFiles?.map((file, idx) => (
-                          <div key={idx} onClick={() => setViewingImage(file)} className="w-16 h-16 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-[1.05] transition-all text-indigo-500">
-                            <Download size={24} />
+                        {(selectedOrder.staffPdfs || []).length === 0 && (
+                          <p className="text-xs text-gray-400 italic col-span-2 py-4 text-center">No PDF documents</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Design Deliverables Output */}
+                  {(selectedOrder.original_design_file || selectedOrder.original_design_zip || (selectedOrder.designAttachments && selectedOrder.designAttachments.length > 0)) && (
+                    <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-150 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-black text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles size={14} className="text-purple-600" />
+                          Design Deliverables (Ready for Production / Digitizing)
+                        </h5>
+                        <span className="text-[9px] font-black bg-purple-200/60 text-purple-800 px-2 py-0.5 rounded-full">
+                          Original Quality Assets
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedOrder.original_design_file && (
+                          <div className="bg-white p-3 rounded-xl border border-purple-200 flex items-center justify-between gap-3 shadow-2xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                onClick={() => setViewingImage(selectedOrder.original_design_file!)}
+                                className="w-10 h-10 rounded-lg overflow-hidden border border-purple-100 bg-gray-50 cursor-pointer relative shrink-0"
+                              >
+                                <img src={selectedOrder.original_design_file} alt="Original PNG" className="w-full h-full object-cover" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate">
+                                  {selectedOrder.original_design_filename || 'Original_Design.png'}
+                                </p>
+                                <span className="text-[9px] text-purple-700 font-extrabold">Original PNG Asset</span>
+                              </div>
+                            </div>
+                            <a
+                              href={selectedOrder.original_design_file}
+                              download={selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
+                              className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[9.5px] font-black uppercase transition-all flex items-center gap-1 shadow-2xs no-underline shrink-0"
+                            >
+                              <Download size={11} />
+                              Download
+                            </a>
                           </div>
-                        ))}
+                        )}
+
+                        {selectedOrder.original_design_zip && (
+                          <div className="bg-white p-3 rounded-xl border border-indigo-200 flex items-center justify-between gap-3 shadow-2xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                <FolderOpen size={18} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate">
+                                  {selectedOrder.original_design_zip_filename || 'Design_Package.zip'}
+                                </p>
+                                <span className="text-[9px] text-indigo-700 font-extrabold">Design ZIP Archive</span>
+                              </div>
+                            </div>
+                            <a
+                              href={selectedOrder.original_design_zip}
+                              download={selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9.5px] font-black uppercase transition-all flex items-center gap-1 shadow-2xs no-underline shrink-0"
+                            >
+                              <Download size={11} />
+                              Download
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -488,50 +728,54 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${selectedOrder.id}`} />
                 )}
 
-                <div className="h-px bg-gray-100" />
+                <div className="h-px bg-gray-200" />
 
-                <section className="space-y-4">
-                  <h5 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Billing Action</h5>
+                {/* Billing Action Section */}
+                <section className="bg-white p-5 rounded-2xl border border-gray-150 shadow-2xs space-y-4">
+                  <h5 className="text-xs font-black text-gray-800 uppercase tracking-widest flex items-center gap-1.5">
+                    <CreditCard size={14} className="text-amber-600" />
+                    Accounts Billing Action & Document Attachment
+                  </h5>
                   <FileUpload
                     key={selectedOrder.id}
-                    label="Add Billing PDF or Picture (Auto-Optimized)"
+                    label="Attach Billing Invoice / Payment Receipt (PNG, JPG, PDF)"
                     onFilesSelected={(files) => setBillingFiles(files)}
                   />
-                  <div className="pt-4 flex gap-3">
+                  <div className="pt-3 flex flex-wrap gap-3">
                     <button
                       onClick={handleHoldOrder}
                       disabled={isProcessing}
                       className={cn(
-                        "px-6 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70",
+                        "px-6 py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70 cursor-pointer border-none",
                         selectedOrder.status === OrderStatus.HOLD ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"
                       )}
                     >
-                      {selectedOrder.status === OrderStatus.HOLD ? "Release" : "Hold"}
+                      {selectedOrder.status === OrderStatus.HOLD ? "✓ Release from Hold" : "⏸ Put on Hold"}
                     </button>
                     <button
                       onClick={handleProcessOrder}
                       disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                      className="flex-1 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
+                      className="flex-1 py-3.5 bg-black text-white rounded-2xl font-black uppercase text-xs tracking-wider hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70 cursor-pointer border-none"
                       title="Send invoice to Design team for this account"
                     >
                       {isProcessing ? (
                         <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Sending...
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Processing...</span>
                         </>
                       ) : (
                         <>
-                          <ChevronRight size={20} />
-                          {selectedOrder.status === OrderStatus.HOLD ? 'Hold Active' : 'Send to Design'}
+                          <span>Forward & Send to Design</span>
+                          <ChevronRight size={16} />
                         </>
                       )}
                     </button>
-                    {billingFiles.length === 0 && (
-                      <p className="text-[10px] text-center text-amber-600 font-bold mt-2 font-mono uppercase tracking-wider">
-                        Warning: No billing documents attached
-                      </p>
-                    )}
                   </div>
+                  {billingFiles.length === 0 && (
+                    <p className="text-[10px] text-center text-amber-600 font-bold font-mono uppercase tracking-wider">
+                      Notice: You can attach payment receipts or advance invoices before forwarding.
+                    </p>
+                  )}
                 </section>
               </div>
             </motion.div>
@@ -541,7 +785,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 <CreditCard className="text-gray-300" size={40} />
               </div>
               <h4 className="text-xl font-bold text-gray-900">Select an Order</h4>
-              <p className="text-gray-500 max-w-xs mt-2">Choose a pending order from the list on the left to start billing process.</p>
+              <p className="text-gray-500 max-w-xs mt-2">Choose a pending order from the list on the left to inspect full specs and proceed with billing.</p>
             </div>
           )}
         </div>

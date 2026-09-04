@@ -6,8 +6,13 @@
 import React, { useState, useEffect, useMemo, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useDebounce } from '../hooks/useDebounce';
-import { motion } from 'motion/react';
-import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Trash2, Package, AlertCircle, Mic, Send, MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight, ClipboardPaste } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn,
+  Copy, Share2, Trash2, Package, AlertCircle, AlertTriangle, Mic, Send,
+  MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight,
+  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck
+} from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
@@ -55,6 +60,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     }
   }, [selectedHubOrder?.id]);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [showSubmitReviewModal, setShowSubmitReviewModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const [formData, setFormData] = useState({
     customerName: '',
     phone: '',
@@ -68,6 +78,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     totalAmount: 0,
     advancePay: 0,
     notes: '',
+    voiceNote: '',
     isUrgent: false
   });
 
@@ -75,6 +86,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+
+  // Voice recording state
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
 
   const [noteModal, setNoteModal] = useState<{
     isOpen: boolean;
@@ -94,6 +113,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   }, []);
 
   const resetForm = () => {
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+    }
     setFormData({
       customerName: '',
       phone: '',
@@ -107,23 +129,106 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       totalAmount: 0,
       advancePay: 0,
       notes: '',
+      voiceNote: '',
       isUrgent: false
     });
     setEditingOrderId(null);
     setNoteFeedback(null);
+    setRecordingSeconds(0);
+    setValidationErrors([]);
+    setFieldErrors({});
+    setShowSubmitReviewModal(false);
+    setShowValidationModal(false);
   };
 
   const [noteFeedback, setNoteFeedback] = useState<string | null>(null);
 
-  const insertNotePreset = (presetText: string) => {
-    setFormData(prev => {
-      const existing = (prev.notes || '').trim();
-      const newNotes = existing ? `${existing}\n\n${presetText}` : presetText;
-      return { ...prev, notes: newNotes };
-    });
-    setNoteFeedback("✓ Preset inserted into specs!");
-    setTimeout(() => setNoteFeedback(null), 2500);
+  const startVoiceRecording = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Microphone access is not supported by your browser or environment.");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64Audio = reader.result as string;
+          setFormData(prev => ({ ...prev, voiceNote: base64Audio }));
+          setNoteFeedback("✓ Voice note recorded and attached to order!");
+          setTimeout(() => setNoteFeedback(null), 3000);
+        };
+        reader.readAsDataURL(audioBlob);
+
+        // Stop all microphone tracks
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+          audioStreamRef.current = null;
+        }
+      };
+
+      mediaRecorder.start(200);
+      setIsRecordingVoice(true);
+      setRecordingSeconds(0);
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Microphone access error:", err);
+      alert("Microphone permission was denied or unavailable. Please enable microphone permissions in your browser.");
+    }
   };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    setIsRecordingVoice(false);
+  };
+
+  const deleteVoiceRecording = () => {
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+    }
+    setFormData(prev => ({ ...prev, voiceNote: '' }));
+    setRecordingSeconds(0);
+    setNoteFeedback("Voice note deleted");
+    setTimeout(() => setNoteFeedback(null), 2000);
+  };
+
+  const formatAudioTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
 
   const handlePasteNoteFromClipboard = async () => {
     try {
@@ -220,8 +325,83 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     };
   }, [orders]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const validateOrderForm = () => {
+    const errors: string[] = [];
+    const fields: Record<string, string> = {};
+
+    if (!formData.customerName || !formData.customerName.trim()) {
+      errors.push("Customer Name is required.");
+      fields.customerName = "Customer Name is required";
+    }
+
+    const rawPhone = formData.phone.trim().replace(/[\s\-\(\)\+]/g, '');
+    if (!formData.phone || !formData.phone.trim()) {
+      errors.push("Phone Number is required.");
+      fields.phone = "Phone Number is required";
+    } else if (rawPhone.length < 10) {
+      errors.push("Phone Number must be at least 10 digits.");
+      fields.phone = "At least 10 digits required";
+    }
+
+    if (!formData.address || !formData.address.trim()) {
+      errors.push("Shipping Address is required.");
+      fields.address = "Shipping Address is required";
+    }
+
+    if (!formData.sizeBreakdown || formData.sizeBreakdown.length === 0) {
+      errors.push("At least one item row is required in Item Breakdown.");
+      fields.sizeBreakdown = "Add at least one item row";
+    } else {
+      formData.sizeBreakdown.forEach((item, idx) => {
+        const row = idx + 1;
+        if (!item.category) {
+          errors.push(`Row #${row}: Product Category must be selected.`);
+        }
+        if (!item.size) {
+          errors.push(`Row #${row}: Size must be selected.`);
+        }
+        if (!item.quantity || item.quantity <= 0) {
+          errors.push(`Row #${row} (${item.category || 'Item'} ${item.size || ''}): Quantity must be at least 1.`);
+        }
+        if (item.price === undefined || item.price === null || item.price <= 0) {
+          errors.push(`Row #${row} (${item.category || 'Item'} ${item.size || ''}): Unit Price must be greater than ₹0.`);
+        }
+      });
+    }
+
+    if (!formData.totalAmount || formData.totalAmount <= 0) {
+      errors.push("Total Order Amount must be greater than ₹0.");
+      fields.totalAmount = "Total amount must be greater than 0";
+    }
+
+    if (formData.advancePay > formData.totalAmount) {
+      errors.push("Advance Payment cannot be greater than Total Amount.");
+      fields.advancePay = "Advance cannot exceed Total Amount";
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      fields
+    };
+  };
+
+  const handleInitiateSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const validation = validateOrderForm();
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      setFieldErrors(validation.fields);
+      setShowValidationModal(true);
+      return;
+    }
+
+    setValidationErrors([]);
+    setFieldErrors({});
+    setShowSubmitReviewModal(true);
+  };
+
+  const handleFinalSubmit = async () => {
     if (isProcessing) return;
 
     const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
@@ -245,9 +425,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       claimedByName: existingOrder ? existingOrder.claimedByName : (user?.name || undefined),
       claimedAt: existingOrder ? existingOrder.claimedAt : Date.now(),
       customerInfo: {
-        name: formData.customerName,
-        phone: formData.phone,
-        address: formData.address
+        name: formData.customerName.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim()
       },
       details: formData.details,
       sizeBreakdown: formData.sizeBreakdown,
@@ -268,6 +448,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       staffAttachments: [...formData.imageAttachments, ...formData.pdfAttachments], // Legacy
       marketing_image: formData.imageAttachments[0] || '',
       marketing_notes: formData.notes.trim(),
+      voiceNote: formData.voiceNote || undefined,
       updatedAt: Date.now(),
     };
 
@@ -296,6 +477,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         });
         alert("Success: Order created successfully and added to your queue.");
       }
+      setShowSubmitReviewModal(false);
       setIsCreating(false);
       setEditingOrderId(null);
       resetForm();
@@ -416,6 +598,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const startEdit = (order: Order) => {
     setEditingOrderId(order.id);
+    setValidationErrors([]);
+    setFieldErrors({});
+    setShowSubmitReviewModal(false);
+    setShowValidationModal(false);
     setFormData({
       customerName: order.customerInfo.name,
       phone: order.customerInfo.phone,
@@ -429,6 +615,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       totalAmount: order.financials?.totalAmount || 0,
       advancePay: order.financials?.advancePay || 0,
       notes: order.notes || order.designNotes || order.marketing_notes || '',
+      voiceNote: order.voiceNote || '',
       isUrgent: order.isUrgent || false
     });
     setIsCreating(true);
@@ -1073,45 +1260,72 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-4 sm:space-y-8 text-left">
+            <form onSubmit={handleInitiateSubmit} className="p-4 sm:p-8 space-y-4 sm:space-y-8 text-left">
               <section className="space-y-4">
-                <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
-                  <User size={16} className="text-brand-primary" />
-                  Customer Information
-                </h4>
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider">
+                    <User size={16} className="text-brand-primary" />
+                    Customer Information
+                  </h4>
+                  <span className="text-[10px] font-black text-red-500 uppercase tracking-wider">* Mandatory Fields</span>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5">Customer Name</label>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5 flex items-center justify-between">
+                      <span>Customer Name <span className="text-red-500 font-black">*</span></span>
+                      {fieldErrors.customerName && <span className="text-[9px] text-red-500 font-bold lowercase tracking-normal">{fieldErrors.customerName}</span>}
+                    </label>
                     <input
-                      required
                       type="text"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none"
+                      className={cn(
+                        "w-full px-4 py-3 bg-white border rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none transition-colors",
+                        fieldErrors.customerName ? "border-red-400 bg-red-50/20 focus:border-red-500" : "border-gray-200"
+                      )}
                       placeholder="Full name"
                       value={formData.customerName}
-                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, customerName: e.target.value });
+                        if (fieldErrors.customerName) setFieldErrors(prev => ({ ...prev, customerName: '' }));
+                      }}
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5">Phone Number</label>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5 flex items-center justify-between">
+                      <span>Phone Number <span className="text-red-500 font-black">*</span></span>
+                      {fieldErrors.phone && <span className="text-[9px] text-red-500 font-bold lowercase tracking-normal">{fieldErrors.phone}</span>}
+                    </label>
                     <input
-                      required
                       type="tel"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none"
-                      placeholder="+91"
+                      className={cn(
+                        "w-full px-4 py-3 bg-white border rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none transition-colors",
+                        fieldErrors.phone ? "border-red-400 bg-red-50/20 focus:border-red-500" : "border-gray-200"
+                      )}
+                      placeholder="+91 / 10-digit number"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, phone: e.target.value });
+                        if (fieldErrors.phone) setFieldErrors(prev => ({ ...prev, phone: '' }));
+                      }}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5">Shipping Address</label>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5 flex items-center justify-between">
+                    <span>Shipping Address <span className="text-red-500 font-black">*</span></span>
+                    {fieldErrors.address && <span className="text-[9px] text-red-500 font-bold lowercase tracking-normal">{fieldErrors.address}</span>}
+                  </label>
                   <textarea
-                    required
                     rows={2}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none resize-none"
-                    placeholder="Full shipping details"
+                    className={cn(
+                      "w-full px-4 py-3 bg-white border rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none resize-none transition-colors",
+                      fieldErrors.address ? "border-red-400 bg-red-50/20 focus:border-red-500" : "border-gray-200"
+                    )}
+                    placeholder="Full shipping details & pin code"
                     value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, address: e.target.value });
+                      if (fieldErrors.address) setFieldErrors(prev => ({ ...prev, address: '' }));
+                    }}
                   />
                 </div>
               </section>
@@ -1119,24 +1333,37 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               <section className="space-y-4">
                 <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
                   <Package size={16} className="text-brand-primary" />
-                  Item Breakdown
+                  Item Breakdown & Specifications
                 </h4>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sizing & Specification Bench</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Sizing & Specification Bench</span>
+                      <span className="text-red-500 font-black">*</span>
+                    </span>
                     <button
                       type="button"
                       onClick={addSizeQuantity}
-                      className="text-[9px] font-black bg-brand-primary text-white px-3.5 py-1.5 rounded-lg hover:opacity-90 transition-all uppercase tracking-wider border-none cursor-pointerflex items-center gap-1"
+                      className="text-[9px] font-black bg-brand-primary text-white px-3.5 py-1.5 rounded-lg hover:opacity-90 transition-all uppercase tracking-wider border-none cursor-pointer flex items-center gap-1"
                     >
                       <Plus size={12} /> Add Row
                     </button>
                   </div>
 
+                  {fieldErrors.sizeBreakdown && formData.sizeBreakdown.length === 0 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 flex items-center gap-2">
+                      <AlertCircle size={14} className="text-red-600 shrink-0" />
+                      <span>{fieldErrors.sizeBreakdown} (Must add at least 1 row with valid quantity and price)</span>
+                    </div>
+                  )}
+
                   {formData.sizeBreakdown.length > 0 ? (
                     <div className="space-y-4">
                       {formData.sizeBreakdown.map((item, idx) => (
-                        <div key={idx} className="p-3 sm:p-4 bg-gray-50/60 rounded-xl sm:rounded-2xl border border-gray-100 shadow-xs relative group flex flex-col gap-3">
+                        <div key={idx} className={cn(
+                          "p-3 sm:p-4 rounded-xl sm:rounded-2xl border shadow-xs relative group flex flex-col gap-3 transition-colors",
+                          (!item.price || item.price <= 0) ? "bg-amber-50/30 border-amber-200" : "bg-gray-50/60 border-gray-100"
+                        )}>
                           <button
                             type="button"
                             onClick={() => removeSizeQuantity(idx)}
@@ -1180,13 +1407,19 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase mb-0.5 sm:mb-1">Price (₹)</label>
+                              <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase mb-0.5 sm:mb-1 flex items-center justify-between">
+                                <span>Price (₹) <span className="text-red-500 font-black">*</span></span>
+                                {(!item.price || item.price <= 0) && <span className="text-[8px] text-amber-600 font-bold lowercase">required</span>}
+                              </label>
                               <input
                                 type="number"
                                 placeholder="0"
                                 value={item.price || ''}
                                 onChange={(e) => updateSizeQuantity(idx, 'price', parseFloat(e.target.value) || 0)}
-                                className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
+                                className={cn(
+                                  "w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border rounded-xl sm:rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none transition-colors",
+                                  (!item.price || item.price <= 0) ? "border-amber-400 bg-amber-50/20 focus:border-amber-500" : "border-gray-200"
+                                )}
                               />
                             </div>
                             <div>
@@ -1283,9 +1516,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   ) : (
                     <div
                       onClick={addSizeQuantity}
-                      className="p-8 border-2 border-dashed border-gray-250 rounded-2xl text-center cursor-pointer hover:bg-gray-50/50 transition-all text-xs text-gray-400"
+                      className={cn(
+                        "p-8 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all text-xs",
+                        fieldErrors.sizeBreakdown ? "border-red-300 bg-red-50/20 text-red-600" : "border-gray-250 hover:bg-gray-50/50 text-gray-400"
+                      )}
                     >
-                      No active items. Click to add a size breakdown row.
+                      + Click to add a size breakdown row (Required).
                     </div>
                   )}
 
@@ -1325,23 +1561,41 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5">Total Amount (₹)</label>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5 flex items-center justify-between">
+                        <span>Total Amount (₹) <span className="text-red-500 font-black">*</span></span>
+                        {fieldErrors.totalAmount && <span className="text-[8px] text-red-500 font-bold lowercase">{fieldErrors.totalAmount}</span>}
+                      </label>
                       <input
                         type="number"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:border-brand-primary outline-none"
+                        className={cn(
+                          "w-full px-4 py-3 bg-white border rounded-xl text-xs font-bold text-gray-900 focus:border-brand-primary outline-none transition-colors",
+                          fieldErrors.totalAmount ? "border-red-400 bg-red-50/20" : "border-gray-200"
+                        )}
                         placeholder="0.00"
                         value={formData.totalAmount || ''}
-                        onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 });
+                          if (fieldErrors.totalAmount) setFieldErrors(prev => ({ ...prev, totalAmount: '' }));
+                        }}
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5">Advance Payment (₹)</label>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase mb-1.5 flex items-center justify-between">
+                        <span>Advance Payment (₹)</span>
+                        {fieldErrors.advancePay && <span className="text-[8px] text-red-500 font-bold lowercase">{fieldErrors.advancePay}</span>}
+                      </label>
                       <input
                         type="number"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-green-700 font-bold focus:border-brand-primary outline-none"
+                        className={cn(
+                          "w-full px-4 py-3 bg-white border rounded-xl text-xs text-green-700 font-bold focus:border-brand-primary outline-none transition-colors",
+                          fieldErrors.advancePay ? "border-red-400 bg-red-50/20" : "border-gray-200"
+                        )}
                         placeholder="0.00"
                         value={formData.advancePay || ''}
-                        onChange={(e) => setFormData({ ...formData, advancePay: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, advancePay: parseFloat(e.target.value) || 0 });
+                          if (fieldErrors.advancePay) setFieldErrors(prev => ({ ...prev, advancePay: '' }));
+                        }}
                       />
                     </div>
                     <div>
@@ -1405,51 +1659,99 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   </div>
                 </div>
 
-                {/* Quick Specs Presets Chips */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider mr-0.5">Quick Presets:</span>
-                  <button
-                    type="button"
-                    onClick={() => insertNotePreset('[Logo Specs]\n• Left Chest: 3.5" (High-Density Embroidery)\n• Back Center: 10" (Screen Print)\n• Sleeve: 2.5" Logo')}
-                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
-                  >
-                    + 📐 Logo Specs
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertNotePreset('[Print & Embroidery]\n• 4-Color Plastisol Screen Print with soft finish\n• High-density 3D puff embroidery on chest\n• Exact Pantone match required')}
-                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
-                  >
-                    + 🧵 Embroidery / Print
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertNotePreset('[Fabric Specs]\n• 220 GSM 100% Combed Compact Cotton\n• Bio-washed, Silicone softened, Pre-shrunk\n• Colorfast reactive dyeing')}
-                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
-                  >
-                    + 👕 Fabric & GSM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertNotePreset('[Packaging Specs]\n• Individual master polybag packing with barcode\n• Size sticker on front fold\n• Tagged with retail invoice')}
-                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
-                  >
-                    + 📦 Packaging Specs
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertNotePreset('[URGENT TIMELINE]\n• Required dispatch deadline: [Date]\n• Immediate production sample photo requested for client approval before full batch run.')}
-                    className="px-2 py-0.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md text-[9px] font-black text-red-700 transition-all cursor-pointer shadow-2xs"
-                  >
-                    + 🚀 Urgent Rush
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertNotePreset(`=== CLIENT ORDER SPECIFICATIONS ===\n• Logo & Branding: Left Chest 3.5" (Embroidery), Back 10" (Print)\n• Fabric & Color: 220 GSM Bio-wash Cotton\n• Sizing Breakdown: As selected in size table\n• Packaging: Individual polybag packing with size tags\n• Special Notes: Check thread & print quality before final dispatch\n====================================`)}
-                    className="px-2 py-0.5 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-md text-[9px] font-black text-brand-primary transition-all cursor-pointer shadow-2xs"
-                  >
-                    + 📋 Full Specs Sheet
-                  </button>
+                {/* Voice Recording / Microphone Spec Note */}
+                <div className="pt-0.5 pb-1">
+                  {isRecordingVoice ? (
+                    <div className="flex items-center justify-between bg-red-50/90 border-2 border-red-300 p-3 rounded-2xl shadow-xs animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                          <Mic size={16} className="animate-bounce" />
+                        </div>
+                        <div className="text-left">
+                          <span className="text-[11px] font-black text-red-950 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+                            Recording in Progress ({formatAudioTime(recordingSeconds)})
+                          </span>
+                          <span className="text-[9.5px] text-red-700 font-semibold block">
+                            Speak voice instructions clearly into your mic...
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={stopVoiceRecording}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs border-none"
+                        >
+                          <span className="w-2 h-2 bg-white rounded-xs" />
+                          <span>Stop & Save Voice</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : formData.voiceNote ? (
+                    <div className="bg-purple-50/90 border-2 border-purple-200 p-3 rounded-2xl shadow-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                            <Mic size={14} />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black text-purple-950 uppercase tracking-tight block">
+                              ✓ Voice Instructions Attached for Designer
+                            </span>
+                            <span className="text-[9px] text-purple-700 font-medium">
+                              Designer can listen to this recording directly in Design Studio
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={startVoiceRecording}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Re-record voice instructions"
+                          >
+                            <Mic size={11} />
+                            <span>Re-record</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={deleteVoiceRecording}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Delete voice note"
+                          >
+                            <Trash2 size={11} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                      <audio controls src={formData.voiceNote} className="w-full h-8 rounded-xl bg-white p-0.5 outline-none shadow-2xs" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-gradient-to-r from-purple-50/80 via-white to-purple-50/50 p-2.5 rounded-2xl border border-purple-150 shadow-2xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 text-brand-primary flex items-center justify-center shrink-0">
+                          <Mic size={16} />
+                        </div>
+                        <div className="text-left">
+                          <span className="text-[10.5px] font-black text-gray-900 uppercase tracking-tight block">
+                            Voice Instructions (Microphone)
+                          </span>
+                          <span className="text-[9px] text-gray-500 font-medium">
+                            Record spoken instructions for logos, placements, and client details
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={startVoiceRecording}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl text-[10.5px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-102 active:scale-98 border-none"
+                      >
+                        <Mic size={13} className="animate-pulse" />
+                        <span>Record Voice Note</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="relative">
@@ -1494,10 +1796,322 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   disabled={isProcessing}
                   className="flex-1 px-6 py-4 bg-brand-primary text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? "Submitting..." : "Submit Order Details"}
+                  <CheckCircle2 size={16} />
+                  <span>Submit Order Details</span>
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {/* Validation Alert Warning Modal */}
+      {showValidationModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[120] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white border border-red-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden text-left"
+          >
+            <div className="p-5 sm:p-6 bg-red-50/90 border-b border-red-100 flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-red-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-red-500/20">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-black text-red-950 uppercase tracking-tight">
+                  Fill Required Order Details
+                </h3>
+                <p className="text-xs text-red-700 font-semibold mt-0.5 leading-relaxed">
+                  Please fill all mandatory details to submit this order.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="p-1.5 hover:bg-red-100 rounded-lg text-red-400 hover:text-red-700 transition-colors border-none bg-transparent cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-3.5 max-h-[55vh] overflow-y-auto custom-scrollbar">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                Missing or Incomplete Details:
+              </p>
+              <div className="space-y-2">
+                {validationErrors.map((err, i) => (
+                  <div key={i} className="flex items-start gap-2.5 p-3 bg-red-50/60 rounded-xl border border-red-100 text-xs text-red-900 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1" />
+                    <span className="leading-snug">{err}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="w-full py-3 bg-brand-primary hover:opacity-90 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer border-none text-center"
+              >
+                Return & Fill Details
+              </button>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {/* Submit Order Details Summary & Confirmation Modal */}
+      {showSubmitReviewModal && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[115] flex items-center justify-center p-3 sm:p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white border border-gray-100 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-left"
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white px-5 sm:px-8 py-4 sm:py-5 border-b border-gray-100 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
+                  <ClipboardCheck size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black text-gray-900 uppercase italic tracking-tight">
+                      {editingOrderId ? 'Review & Update Order Details' : 'Submit Order Details Verification'}
+                    </h3>
+                    {formData.isUrgent && (
+                      <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase animate-pulse">
+                        URGENT
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-gray-500 font-semibold mt-0.5">
+                    All mandatory details verified • Review summary before final confirmation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSubmitReviewModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 border-none bg-transparent cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 custom-scrollbar bg-slate-50/40">
+              {/* Customer Information Card */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs space-y-3">
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <User size={14} className="text-brand-primary" />
+                  Customer Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Customer Name</span>
+                    <span className="text-xs font-black text-gray-900 uppercase mt-0.5 block">{formData.customerName}</span>
+                  </div>
+                  <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Phone Number</span>
+                    <a href={`tel:${formData.phone}`} className="text-xs font-black text-brand-primary mt-0.5 flex items-center gap-1.5 hover:underline">
+                      <Phone size={12} /> {formData.phone}
+                    </a>
+                  </div>
+                  <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Shipping Address</span>
+                    <span className="text-xs font-bold text-gray-800 mt-0.5 block whitespace-pre-wrap">{formData.address}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items & Size Breakdown Table */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <Package size={14} className="text-brand-primary" />
+                    Item Breakdown & Specifications
+                  </h4>
+                  <span className="text-[10px] font-black text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-lg">
+                    {formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0)} Total Units
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-400 font-black uppercase text-[9px] tracking-wider border-b border-gray-150">
+                        <th className="py-2.5 px-3">Item / Category</th>
+                        <th className="py-2.5 px-3">Size</th>
+                        <th className="py-2.5 px-3">Specs (Material/Model/Colour)</th>
+                        <th className="py-2.5 px-3">Print Type</th>
+                        <th className="py-2.5 px-3 text-center">Qty</th>
+                        <th className="py-2.5 px-3 text-right">Price</th>
+                        <th className="py-2.5 px-3 text-right">GST</th>
+                        <th className="py-2.5 px-3 text-right">Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {formData.sizeBreakdown.map((item, idx) => {
+                        const base = item.quantity * (item.price || 0);
+                        const gst = (base * (item.gstRate || 0)) / 100;
+                        const total = base + gst;
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-gray-900 uppercase">{item.category}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded font-black text-[10px]">
+                                {item.size}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-[10px] text-gray-600">
+                              {[item.material, item.model, item.colour, item.sleeve ? `${item.sleeve} sleeve` : null, item.pocket ? `pocket: ${item.pocket}` : null]
+                                .filter(Boolean)
+                                .join(' • ') || 'Standard'}
+                            </td>
+                            <td className="py-3 px-3 text-[10px] text-gray-600">{item.printType || '—'}</td>
+                            <td className="py-3 px-3 text-center font-black text-gray-900">{item.quantity}</td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-700">₹{(item.price || 0).toLocaleString()}</td>
+                            <td className="py-3 px-3 text-right text-[10px] font-bold text-emerald-700">
+                              {item.gstRate ? `${item.gstRate}% (₹${gst.toLocaleString()})` : '0%'}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-black text-brand-primary text-xs">
+                              ₹{total.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs space-y-3">
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <IndianRupee size={14} className="text-brand-primary" />
+                  Financial Summary
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Items Base Total</span>
+                    <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">
+                      ₹{formData.sizeBreakdown.reduce((sum, item) => sum + (item.quantity * (item.price || 0)), 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total GST</span>
+                    <span className="text-xs sm:text-sm font-black text-emerald-700 mt-0.5 block">
+                      ₹{formData.sizeBreakdown.reduce((sum, item) => sum + ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100), 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Delivery Fee</span>
+                    <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">
+                      ₹{(formData.deliveryAmount || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-brand-primary/5 p-3 rounded-xl border border-brand-primary/20">
+                    <span className="text-[9px] font-black text-brand-primary uppercase block">Total Order Amount</span>
+                    <span className="text-sm sm:text-base font-black text-brand-primary mt-0.5 block">
+                      ₹{formData.totalAmount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] font-black text-emerald-800 uppercase block">Advance Payment Received</span>
+                      <span className="text-sm sm:text-base font-black text-emerald-700 mt-0.5 block">₹{formData.advancePay.toLocaleString()}</span>
+                    </div>
+                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">Paid</span>
+                  </div>
+                  <div className="bg-amber-50/80 p-3.5 rounded-xl border border-amber-200 flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] font-black text-amber-800 uppercase block">Balance Payment Due</span>
+                      <span className="text-sm sm:text-base font-black text-amber-900 mt-0.5 block">₹{Math.max(0, formData.totalAmount - formData.advancePay).toLocaleString()}</span>
+                    </div>
+                    <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full uppercase">Due</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Specs & Notes & Voice Note */}
+              {(formData.notes || formData.voiceNote) && (
+                <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs space-y-4">
+                  <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2">
+                    📋 Client Specifications & Instructions
+                  </h4>
+                  {formData.voiceNote && (
+                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-200 space-y-1.5">
+                      <div className="flex items-center gap-2 text-purple-900 text-xs font-black uppercase">
+                        <Mic size={14} className="text-brand-primary" />
+                        <span>Voice Note Attached</span>
+                      </div>
+                      <audio controls src={formData.voiceNote} className="w-full h-8 rounded-lg bg-white p-0.5 outline-none" />
+                    </div>
+                  )}
+                  {formData.notes && (
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs font-mono text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {formData.notes}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Blueprints / Images Attachments */}
+              {formData.imageAttachments && formData.imageAttachments.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-xs space-y-3">
+                  <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2">
+                    🖼️ Reference Artwork & Files ({formData.imageAttachments.length})
+                  </h4>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    {formData.imageAttachments.map((img, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setViewingImage(img)}
+                        className="aspect-square rounded-xl border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer hover:opacity-90 transition-all shadow-2xs"
+                      >
+                        <img src={img} alt={`attachment ${i+1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="sticky bottom-0 bg-white px-5 sm:px-8 py-4 border-t border-gray-150 flex flex-wrap gap-3 z-10">
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => setShowSubmitReviewModal(false)}
+                className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer transition-all text-center"
+              >
+                ✏️ Back to Edit Details
+              </button>
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={handleFinalSubmit}
+                className="flex-1 px-6 py-3.5 bg-brand-primary hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2 text-center"
+              >
+                {isProcessing ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Processing Submission...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={16} />
+                    <span>✓ Confirm & Place Order</span>
+                  </>
+                )}
+              </button>
+            </div>
           </motion.div>
         </div>,
         document.body
@@ -1567,11 +2181,19 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         updatedAt: Date.now()
                       };
                       if (noteModal.target === 'design') {
+                        const existingOrder = orders.find(o => o.id === noteModal.orderId);
                         updates.notes = noteModal.noteText.trim();
                         updates.designNotes = noteModal.noteText.trim();
-                        updates.assignedDesigner = 'Unassigned';
-                        updates.claimedBy = undefined;
-                        updates.claimedByName = undefined;
+                        // Preserve the designer who already claimed/was assigned to this order
+                        if (existingOrder?.assignedDesigner && existingOrder.assignedDesigner !== 'Unassigned' && existingOrder.assignedDesigner !== 'Designer assigned') {
+                          updates.assignedDesigner = existingOrder.assignedDesigner;
+                        }
+                        if (existingOrder?.claimedBy) {
+                          updates.claimedBy = existingOrder.claimedBy;
+                        }
+                        if (existingOrder?.claimedByName) {
+                          updates.claimedByName = existingOrder.claimedByName;
+                        }
                         updates.designSentToMarketing = false;
                         updates.designCompleted = false;
                       } else {

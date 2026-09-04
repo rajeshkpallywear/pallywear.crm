@@ -157,20 +157,31 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Assist sorting / parsing designer name rules
   const isClaimedByMe = (item: any) => {
+    if (item?.claimedBy && (user?.id || user?.uid)) {
+      if (String(item.claimedBy) === String(user.id || user.uid)) return true;
+    }
+    if (item?.claimedByName && (designerName || user?.name)) {
+      const cleanClaimed = String(item.claimedByName).trim().toLowerCase();
+      const myName = String(designerName || user?.name || '').trim().toLowerCase();
+      if (cleanClaimed && myName && (cleanClaimed.includes(myName) || myName.includes(cleanClaimed))) return true;
+    }
     if (!item?.assignedDesigner) return false;
     const clean = String(item.assignedDesigner).trim().toLowerCase();
-    const myName = String(designerName || '').toLowerCase();
-    return clean.includes(myName) || myName.includes(clean);
+    if (clean === 'unassigned' || clean === 'designer assigned' || clean === '') return false;
+    const myName = String(designerName || user?.name || '').trim().toLowerCase();
+    if (myName && (clean.includes(myName) || myName.includes(clean))) return true;
+    return false;
   };
 
-  const isUnclaimedItem = (assigned: string) => {
+  const isUnclaimedItem = (assigned?: string, claimedBy?: string) => {
+    if (claimedBy) return false;
     if (!assigned) return true;
     const clean = String(assigned).trim().toLowerCase();
     return clean === 'unassigned' || clean === 'designer assigned' || clean === '' || clean.includes('staff');
   };
 
   const isClaimedByOther = (item: any) => {
-    return !isUnclaimedItem(item?.assignedDesigner) && !isClaimedByMe(item);
+    return !isUnclaimedItem(item?.assignedDesigner, item?.claimedBy) && !isClaimedByMe(item);
   };
 
   // 1. Process Order and Conversation Items for MARKETING QUEUE (Marketing Sent)
@@ -199,6 +210,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         notes: orderNotes,
         isUrgent: o.isUrgent || false,
         assignedDesigner: o.assignedDesigner || 'Unassigned',
+        claimedBy: o.claimedBy,
+        claimedByName: o.claimedByName,
         createdByName: o.createdByName || '',
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
@@ -208,7 +221,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         staffPdfs: o.staffPdfs || [],
         marketing_image: o.marketing_image || '',
         accountsAttachments: [],
-        sizeBreakdown: o.sizeBreakdown || []
+        sizeBreakdown: o.sizeBreakdown || [],
+        designSentToMarketing: o.designSentToMarketing,
+        designCompleted: o.designCompleted,
+        original_design_file: o.original_design_file,
+        original_design_filename: o.original_design_filename,
+        original_design_zip: o.original_design_zip,
+        original_design_zip_filename: o.original_design_zip_filename,
+        designAttachments: o.designAttachments,
+        machineFiles: o.machineFiles,
+        designNotes: o.designNotes,
+        voiceNote: o.voiceNote
       };
     });
 
@@ -227,6 +250,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         notes: c.message || '',
         isUrgent: false,
         assignedDesigner: c.staffName || 'Unassigned',
+        claimedBy: undefined,
+        claimedByName: c.staffName || undefined,
         createdByName: c.staffName || 'Staff',
         status: isCompleted ? OrderStatus.ORDER_MANAGEMENT : OrderStatus.DESIGN, // simulate pipeline
         isHold: false,
@@ -270,6 +295,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         notes: orderNotes,
         isUrgent: o.isUrgent || false,
         assignedDesigner: o.assignedDesigner || 'Unassigned',
+        claimedBy: o.claimedBy,
+        claimedByName: o.claimedByName,
         createdByName: o.createdByName || '',
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
@@ -280,7 +307,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         staffPdfs: o.staffPdfs || [],
         marketing_image: o.marketing_image || '',
         accountsAttachments: o.accountsAttachments || [],
-        sizeBreakdown: o.sizeBreakdown || []
+        sizeBreakdown: o.sizeBreakdown || [],
+        designSentToMarketing: o.designSentToMarketing,
+        designCompleted: o.designCompleted,
+        original_design_file: o.original_design_file,
+        original_design_filename: o.original_design_filename,
+        original_design_zip: o.original_design_zip,
+        original_design_zip_filename: o.original_design_zip_filename,
+        designAttachments: o.designAttachments,
+        machineFiles: o.machineFiles,
+        designNotes: o.designNotes,
+        voiceNote: o.voiceNote
       };
     });
 
@@ -294,7 +331,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } else if (selectedSection === 'completed') {
       baseList = baseList.filter(item => item.isCompleted);
     } else if (selectedSection === 'unclaimed') {
-      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold);
+      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'my_tasks') {
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     }
@@ -312,8 +349,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
     // Queue Sorting: return a new sorted array copy
     return [...baseList].sort((a, b) => {
-      const aMine = isClaimedByMe(a) ? 2 : (isUnclaimedItem(a.assignedDesigner) ? 1 : 0);
-      const bMine = isClaimedByMe(b) ? 2 : (isUnclaimedItem(b.assignedDesigner) ? 1 : 0);
+      const aMine = isClaimedByMe(a) ? 2 : (isUnclaimedItem(a.assignedDesigner, a.claimedBy) ? 1 : 0);
+      const bMine = isClaimedByMe(b) ? 2 : (isUnclaimedItem(b.assignedDesigner, b.claimedBy) ? 1 : 0);
       if (aMine !== bMine) return bMine - aMine;
       if ((a.isUrgent ? 1 : 0) !== (b.isUrgent ? 1 : 0)) return (b.isUrgent ? 1 : 0) - (a.isUrgent ? 1 : 0);
       return (b.createdAt || 0) - (a.createdAt || 0);
@@ -323,7 +360,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
-    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner) && !item.isCompleted && !item.isHold).length;
+    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold).length;
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
@@ -857,7 +894,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 getFilteredItems().map((item, idx) => {
                   const isSelected = selectedOrder?.id === item.id;
                   const claimedByMe = isClaimedByMe(item);
-                  const isUnclaimed = isUnclaimedItem(item.assignedDesigner);
+                  const isUnclaimed = isUnclaimedItem(item.assignedDesigner, item.claimedBy);
 
                   const matchingInvoice = (invoices || []).find(inv => 
                     inv?.leadId === item.id || 
@@ -882,13 +919,23 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-black text-gray-500 text-xs">#{idx + 1}</span>
                             <span className="font-mono text-xs font-black text-brand-primary">
                               #{item.id.slice(-8)}
                             </span>
                             {item.isUrgent && (
                               <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                            )}
+                            {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && (
+                              <span className="bg-purple-100 text-purple-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-purple-300 tracking-wide uppercase flex items-center gap-0.5">
+                                🔄 Revise
+                              </span>
+                            )}
+                            {item.voiceNote && (
+                              <span className="bg-emerald-100 text-emerald-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-emerald-300 tracking-wide uppercase flex items-center gap-0.5">
+                                🎙️ Voice Note
+                              </span>
                             )}
                           </div>
                           {matchingInvoice && (
@@ -1018,7 +1065,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               getFilteredItems().map((item, idx) => {
                 const isSelected = selectedOrder?.id === item.id;
                 const claimedByMe = isClaimedByMe(item);
-                const isUnclaimed = isUnclaimedItem(item.assignedDesigner);
+                const isUnclaimed = isUnclaimedItem(item.assignedDesigner, item.claimedBy);
 
                 return (
                   <div
@@ -1030,11 +1077,21 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     )}
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-black text-gray-500 text-xs">#{idx + 1}</span>
                         <span className="font-mono font-black text-brand-primary">#{item.id.slice(-8)}</span>
                         {item.isUrgent && (
                           <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
+                        )}
+                        {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && (
+                          <span className="bg-purple-100 text-purple-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-purple-300 tracking-wide uppercase flex items-center gap-0.5">
+                            🔄 Revise
+                          </span>
+                        )}
+                        {item.voiceNote && (
+                          <span className="bg-emerald-100 text-emerald-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-emerald-300 tracking-wide uppercase flex items-center gap-0.5">
+                            🎙️ Voice Note
+                          </span>
                         )}
                       </div>
                       <span className="text-[9px] text-gray-400 font-mono">{new Date(item.createdAt).toLocaleDateString()}</span>
@@ -1223,6 +1280,22 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         {selectedOrder.notes || selectedOrder.designNotes || 'No notes provided by marketing.'}
                       </p>
                     </div>
+
+                    {/* Marketing Voice Instructions Audio Player */}
+                    {selectedOrder.voiceNote && (
+                      <div className="p-3.5 bg-purple-50/90 border-2 border-purple-200 rounded-2xl space-y-2 text-left shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                            <Mic size={14} className="text-purple-600 animate-pulse" />
+                            🎙️ Client Voice Instructions:
+                          </span>
+                          <span className="text-[8.5px] font-extrabold bg-purple-200/80 text-purple-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Listen to Audio
+                          </span>
+                        </div>
+                        <audio controls src={selectedOrder.voiceNote} className="w-full h-8 rounded-xl bg-white p-0.5 outline-none shadow-2xs" />
+                      </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center">

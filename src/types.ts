@@ -186,6 +186,7 @@ export interface Order {
   original_design_zip_filename?: string;
   marketing_image?: string;
   marketing_notes?: string;
+  voiceNote?: string;
   claimedBy?: string;
   claimedByName?: string;
   claimedAt?: number;
