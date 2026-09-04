@@ -1663,17 +1663,6 @@ export default function AdminDashboard() {
                 <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
               </button>
               <button
-                onClick={() => selectTab('user-logs')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  (activeTab === 'user-logs' || activeTab === 'user-activity') ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "User Activity" : ""}
-              >
-                <Clock className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>User Activity</span>}
-              </button>
-              <button
                 onClick={() => selectTab('logs')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
@@ -3944,16 +3933,6 @@ export default function AdminDashboard() {
             >
               <Shield className="w-4 h-4 flex-shrink-0" />
               <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Workflow</span>
-            </button>
-            <button
-              onClick={() => selectTab('user-logs')}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
-                activeTab === 'user-logs' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <Clock className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Logins</span>
             </button>
             <button
               onClick={() => setShowProfileModal(true)}
