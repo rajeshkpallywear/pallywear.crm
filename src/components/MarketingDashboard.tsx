@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useDebounce } from '../hooks/useDebounce';
 import { motion } from 'motion/react';
-import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Trash2, Package, AlertCircle, Mic, Send, MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight } from 'lucide-react';
+import { Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn, Copy, Share2, Trash2, Package, AlertCircle, Mic, Send, MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight, ClipboardPaste } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
@@ -110,7 +110,104 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       isUrgent: false
     });
     setEditingOrderId(null);
+    setNoteFeedback(null);
   };
+
+  const [noteFeedback, setNoteFeedback] = useState<string | null>(null);
+
+  const insertNotePreset = (presetText: string) => {
+    setFormData(prev => {
+      const existing = (prev.notes || '').trim();
+      const newNotes = existing ? `${existing}\n\n${presetText}` : presetText;
+      return { ...prev, notes: newNotes };
+    });
+    setNoteFeedback("✓ Preset inserted into specs!");
+    setTimeout(() => setNoteFeedback(null), 2500);
+  };
+
+  const handlePasteNoteFromClipboard = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          setFormData(prev => {
+            const existing = (prev.notes || '').trim();
+            const newNotes = existing ? `${existing}\n\n${text.trim()}` : text.trim();
+            return { ...prev, notes: newNotes };
+          });
+          setNoteFeedback("✓ Pasted clipboard text into specs!");
+          setTimeout(() => setNoteFeedback(null), 2500);
+          return;
+        }
+      }
+      setNoteFeedback("💡 Press Ctrl+V inside the text area to paste directly.");
+      setTimeout(() => setNoteFeedback(null), 3000);
+    } catch (err) {
+      setNoteFeedback("💡 Press Ctrl+V inside the text area to paste directly.");
+      setTimeout(() => setNoteFeedback(null), 3000);
+    }
+  };
+
+  const handleCopyNoteToClipboard = async () => {
+    if (!formData.notes || !formData.notes.trim()) {
+      setNoteFeedback("No notes to copy.");
+      setTimeout(() => setNoteFeedback(null), 2000);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(formData.notes);
+      setNoteFeedback("✓ Copied specs to clipboard!");
+      setTimeout(() => setNoteFeedback(null), 2500);
+    } catch (err) {
+      setNoteFeedback("Failed to copy to clipboard.");
+      setTimeout(() => setNoteFeedback(null), 2500);
+    }
+  };
+
+  // Global image paste handler for the Order Intake Modal
+  useEffect(() => {
+    if (!isCreating) return;
+
+    const handleGlobalModalPaste = (e: globalThis.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items || items.length === 0) return;
+
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        for (const file of imageFiles) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            if (dataUrl) {
+              setFormData(prev => {
+                if (prev.imageAttachments.includes(dataUrl)) return prev;
+                return {
+                  ...prev,
+                  imageAttachments: [...prev.imageAttachments, dataUrl].slice(-10)
+                };
+              });
+              setNoteFeedback("✓ Screenshot/Image attached to blueprints!");
+              setTimeout(() => setNoteFeedback(null), 3000);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalModalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalModalPaste);
+    };
+  }, [isCreating]);
 
   useEffect(() => {
     const handleCreateOrderEvent = () => {
@@ -1259,28 +1356,126 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               </section>
 
               {/* Instructions and notes */}
-              <section className="space-y-4">
-                <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider border-b border-gray-150 pb-2">
-                  📋 Client Specs & Notes
-                </h4>
-                <textarea
-                  rows={4}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none resize-none"
-                  placeholder="Provide client logo dimensions, embroidery directions, layout specs, or details..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
+              <section className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-gray-150 pb-2">
+                  <div className="flex items-center gap-2">
+                    <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider">
+                      📋 Client Specs & Notes
+                    </h4>
+                    {noteFeedback && (
+                      <span className="text-[10px] font-bold text-brand-primary bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md animate-in fade-in duration-200">
+                        {noteFeedback}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handlePasteNoteFromClipboard}
+                      title="Paste text/records directly from clipboard"
+                      className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-brand-primary border border-purple-200 rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                    >
+                      <ClipboardPaste size={12} />
+                      <span>Paste Record (Ctrl+V)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyNoteToClipboard}
+                      title="Copy notes content to clipboard"
+                      className="flex items-center gap-1 px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      <Copy size={12} />
+                      <span>Copy Notes</span>
+                    </button>
+                    {formData.notes && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, notes: '' });
+                          setNoteFeedback("Notes cleared");
+                          setTimeout(() => setNoteFeedback(null), 1500);
+                        }}
+                        title="Clear notes"
+                        className="flex items-center gap-1 px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                        <span>Clear</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Specs Presets Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1">
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider mr-0.5">Quick Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => insertNotePreset('[Logo Specs]\n• Left Chest: 3.5" (High-Density Embroidery)\n• Back Center: 10" (Screen Print)\n• Sleeve: 2.5" Logo')}
+                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+                  >
+                    + 📐 Logo Specs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertNotePreset('[Print & Embroidery]\n• 4-Color Plastisol Screen Print with soft finish\n• High-density 3D puff embroidery on chest\n• Exact Pantone match required')}
+                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+                  >
+                    + 🧵 Embroidery / Print
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertNotePreset('[Fabric Specs]\n• 220 GSM 100% Combed Compact Cotton\n• Bio-washed, Silicone softened, Pre-shrunk\n• Colorfast reactive dyeing')}
+                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+                  >
+                    + 👕 Fabric & GSM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertNotePreset('[Packaging Specs]\n• Individual master polybag packing with barcode\n• Size sticker on front fold\n• Tagged with retail invoice')}
+                    className="px-2 py-0.5 bg-gray-50 hover:bg-purple-50 hover:border-brand-primary border border-gray-200 rounded-md text-[9px] font-black text-gray-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+                  >
+                    + 📦 Packaging Specs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertNotePreset('[URGENT TIMELINE]\n• Required dispatch deadline: [Date]\n• Immediate production sample photo requested for client approval before full batch run.')}
+                    className="px-2 py-0.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md text-[9px] font-black text-red-700 transition-all cursor-pointer shadow-2xs"
+                  >
+                    + 🚀 Urgent Rush
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertNotePreset(`=== CLIENT ORDER SPECIFICATIONS ===\n• Logo & Branding: Left Chest 3.5" (Embroidery), Back 10" (Print)\n• Fabric & Color: 220 GSM Bio-wash Cotton\n• Sizing Breakdown: As selected in size table\n• Packaging: Individual polybag packing with size tags\n• Special Notes: Check thread & print quality before final dispatch\n====================================`)}
+                    className="px-2 py-0.5 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-md text-[9px] font-black text-brand-primary transition-all cursor-pointer shadow-2xs"
+                  >
+                    + 📋 Full Specs Sheet
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={4}
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none resize-y font-mono leading-relaxed"
+                    placeholder="Provide client logo dimensions, embroidery directions, layout specs, or paste records directly..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                  <div className="absolute bottom-2.5 right-3 text-[9px] text-gray-400 font-semibold pointer-events-none bg-white/90 px-1 rounded">
+                    {formData.notes.length} chars • {formData.notes.split('\n').filter(Boolean).length} lines
+                  </div>
+                </div>
               </section>
 
               {/* File Uploads */}
-              <section className="border-t border-gray-150 pt-6">
+              <section className="border-t border-gray-150 pt-5">
                 <div className="space-y-3">
                   <FileUpload
-                    label="Reference Blueprints (Images)"
-                    accept="image/*"
+                    label="Reference Blueprints & Sample Images"
+                    accept="image/*,.pdf,.zip,.emb,.dst,.cdr"
                     maxFiles={10}
                     initialFiles={formData.imageAttachments}
                     onFilesSelected={(files) => setFormData({ ...formData, imageAttachments: files })}
+                    helperText="Supports PNG, JPG, WEBP, ZIP, PDF, EMB, DST, CDR (Drag & Drop or Ctrl+V to paste screenshot)"
                   />
                 </div>
               </section>
