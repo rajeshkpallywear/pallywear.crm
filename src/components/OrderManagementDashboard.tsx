@@ -35,7 +35,13 @@ import {
   Truck,
   Edit,
   Sparkles,
-  FolderOpen
+  FolderOpen,
+  Eye,
+  User,
+  Phone,
+  MapPin,
+  Mic,
+  IndianRupee
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
@@ -629,7 +635,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
             <div className="space-y-2.5 max-h-[70vh] overflow-y-auto pr-1">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map(order => (
-                  <button
+                  <div
                     key={order.id}
                     onClick={() => setSelectedOrder(order)}
                     className={cn(
@@ -640,7 +646,17 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono opacity-60">#{order.id.slice(-8)}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono opacity-60">#{order.id.slice(-8)}</span>
+                        {order.isUrgent && (
+                          <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">URGENT</span>
+                        )}
+                        {order.voiceNote && (
+                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            🎙️ Voice
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[8px] font-black uppercase py-0.5 px-1.5 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-100 shrink-0">
                         {getDisplayCategory(order)}
                       </span>
@@ -657,7 +673,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                     </div>
 
                     {/* Indicators */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {order.original_design_file && (
                         <span className="text-[8px] font-black uppercase bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-150">
                           Design Sent
@@ -669,7 +685,25 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                         </span>
                       )}
                     </div>
-                  </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOrder(order);
+                        setSelectedHubOrder(order);
+                      }}
+                      className={cn(
+                        "w-full py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all border cursor-pointer mt-1.5",
+                        selectedOrder?.id === order.id
+                          ? "bg-white/10 hover:bg-white/20 text-white border-white/20"
+                          : "bg-purple-50 hover:bg-purple-100 text-brand-primary border-purple-200 shadow-2xs"
+                      )}
+                    >
+                      <Eye size={12} />
+                      <span>View Full Details</span>
+                    </button>
+                  </div>
                 ))
               ) : (
                 <div className="p-8 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center">
@@ -697,68 +731,286 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                 >
                   <ArrowLeft size={14} /> Back to List
                 </button>
-                <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order verification workspace</span>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-base font-black text-slate-900">Order #{selectedOrder.id} <span className="text-xs text-gray-500 font-bold ml-2">(Created by: {selectedOrder.createdByName || 'System'})</span></h4>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Order verification workspace</span>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <h4 className="text-base sm:text-lg font-black text-slate-900">Order #{selectedOrder.id}</h4>
+                      <span className="text-xs text-gray-500 font-bold ml-1">(Created by: {selectedOrder.createdByName || 'System'})</span>
+                      <button
+                        onClick={() => {
+                          const newId = window.prompt("Enter new Order ID:", selectedOrder.id);
+                          if (newId && newId.trim() && newId !== selectedOrder.id) {
+                            onUpdateOrder(selectedOrder.id, { id: newId.trim() })
+                              .then(() => {
+                                alert(`Order ID updated successfully to ${newId.trim()}!`);
+                                setSelectedOrder(prev => prev ? { ...prev, id: newId.trim() } : null);
+                              })
+                              .catch((err) => {
+                                console.error(err);
+                                alert("Failed to update Order ID. ID might already exist.");
+                              });
+                          }
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-slate-950 transition-colors cursor-pointer border-none bg-transparent"
+                        title="Edit Order ID"
+                      >
+                        <Edit size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
-                      onClick={() => {
-                        const newId = window.prompt("Enter new Order ID:", selectedOrder.id);
-                        if (newId && newId.trim() && newId !== selectedOrder.id) {
-                          onUpdateOrder(selectedOrder.id, { id: newId.trim() })
-                            .then(() => {
-                              alert(`Order ID updated successfully to ${newId.trim()}!`);
-                              setSelectedOrder(prev => prev ? { ...prev, id: newId.trim() } : null);
-                            })
-                            .catch((err) => {
-                              console.error(err);
-                              alert("Failed to update Order ID. ID might already exist.");
-                            });
-                        }
-                      }}
-                      className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-slate-950 transition-colors cursor-pointer border-none bg-transparent"
-                      title="Edit Order ID"
+                      type="button"
+                      onClick={() => setSelectedHubOrder(selectedOrder)}
+                      className="px-3.5 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs cursor-pointer border-none"
                     >
-                      <Edit size={14} />
+                      <Eye size={13} />
+                      <span>Open Full Modal</span>
                     </button>
+                    <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-[10px] font-black uppercase">
+                      {selectedOrder.status}
+                    </span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-[10px] font-black uppercase">
-                    {selectedOrder.status}
-                  </span>
-                </div>
               </div>
-            </div>
 
               {/* Workspace Body */}
               <div className="p-6 space-y-6">
-                {/* Client detail grids */}
+                {/* Customer Info & Order Category */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-150/40 text-left">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Customer Specs</span>
-                    <p className="text-xs font-bold text-slate-800">{selectedOrder.customerInfo.name}</p>
-                    <p className="text-[10px] text-gray-500 font-medium">{selectedOrder.customerInfo.phone}</p>
-                    <p className="text-[9.5px] text-gray-400 italic mt-1">{selectedOrder.customerInfo.address}</p>
+                  <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-150/60 text-left space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-brand-primary flex items-center gap-1.5">
+                      <User size={13} />
+                      Customer Specs
+                    </span>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-slate-900">{selectedOrder.customerInfo.name}</p>
+                      <a href={`tel:${selectedOrder.customerInfo.phone}`} className="text-xs text-gray-700 hover:text-brand-primary font-semibold flex items-center gap-1.5">
+                        <Phone size={12} className="text-brand-primary" /> {selectedOrder.customerInfo.phone}
+                      </a>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedOrder.customerInfo.address || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-1.5 text-xs text-gray-600 hover:text-red-600 mt-1 leading-relaxed"
+                      >
+                        <MapPin size={13} className="text-red-500 shrink-0 mt-0.5" />
+                        <span>{selectedOrder.customerInfo.address || 'No address specified'}</span>
+                      </a>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-150/40 text-left">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Category & Quantities</span>
-                    <p className="text-xs font-bold text-slate-800">{getDisplayCategory(selectedOrder)}</p>
-                    <p className="text-[10px] text-gray-500 font-medium">Total Quantity: {selectedOrder.quantity}</p>
-                    <p className="text-[10px] text-brand-primary font-black uppercase mt-1">Total Amount: ${selectedOrder.financials?.totalAmount}</p>
+
+                  <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-150/60 text-left space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-brand-primary flex items-center gap-1.5">
+                      <Package size={13} />
+                      Category & Technical Details
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs font-black uppercase">
+                          {getDisplayCategory(selectedOrder)}
+                        </span>
+                        <span className="text-xs font-bold text-gray-600">
+                          Total Quantity: <strong className="text-gray-950">{selectedOrder.quantity || 1} pcs</strong>
+                        </span>
+                        {selectedOrder.isUrgent && (
+                          <span className="px-2 py-0.5 bg-red-500 text-white rounded text-[9px] font-black uppercase animate-pulse">
+                            🚨 Urgent Rush
+                          </span>
+                        )}
+                      </div>
+
+                      {selectedOrder.details && Object.keys(selectedOrder.details).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {Object.entries(selectedOrder.details).map(([k, v]) => (
+                            <div key={k} className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-semibold text-gray-700 shadow-2xs">
+                              <span className="text-gray-400 uppercase font-black mr-1">{k}:</span>
+                              <span className="font-bold text-gray-900">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Notes box */}
-                {(selectedOrder.notes || selectedOrder.designNotes) && (
-                  <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-1 text-left">
-                    <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest block">
-                      📝 Notes / Instructions Log:
-                    </span>
-                    <p className="text-xs text-gray-800 font-medium whitespace-pre-line leading-relaxed">
-                      {selectedOrder.notes || selectedOrder.designNotes}
-                    </p>
+                {/* Notes box & Voice instructions */}
+                <div className="space-y-3">
+                  {(selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes) && (
+                    <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1 text-left">
+                      <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest block flex items-center gap-1.5">
+                        📝 Client Specifications & Intake Notes:
+                      </span>
+                      <p className="text-xs text-gray-800 font-semibold whitespace-pre-line leading-relaxed">
+                        {selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedOrder.voiceNote && (
+                    <div className="p-3.5 bg-purple-50/90 border-2 border-purple-200 rounded-2xl space-y-2 text-left shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                          <Mic size={14} className="text-purple-600 animate-pulse" />
+                          🎙️ Client Voice Instructions:
+                        </span>
+                        <span className="text-[8.5px] font-extrabold bg-purple-200/80 text-purple-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          Audio Note Attached
+                        </span>
+                      </div>
+                      <audio controls src={selectedOrder.voiceNote} className="w-full h-8 rounded-xl bg-white p-0.5 outline-none shadow-2xs" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Detailed Size Breakdown Table */}
+                {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-[10.5px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-1.5">
+                        <Package size={13} className="text-brand-primary" />
+                        Complete Sizing Breakdown Table ({selectedOrder.sizeBreakdown.length} items)
+                      </h5>
+                    </div>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-2xs">
+                      <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-wider text-gray-500 border-b border-gray-200">
+                            <th className="px-3 py-2">Category</th>
+                            <th className="px-3 py-2">Size</th>
+                            <th className="px-3 py-2">Material / Specs</th>
+                            <th className="px-3 py-2">Colour</th>
+                            <th className="px-3 py-2">Print Type</th>
+                            <th className="px-3 py-2">Model</th>
+                            <th className="px-3 py-2 text-center">Qty</th>
+                            <th className="px-3 py-2 text-right">Unit Price</th>
+                            <th className="px-3 py-2 text-right">GST</th>
+                            <th className="px-3 py-2 text-right">Line Total</th>
+                            <th className="px-3 py-2">Custom Names / Numbers</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {selectedOrder.sizeBreakdown.map((item, idx) => {
+                            const lineBase = (item.quantity || 0) * (item.price || 0);
+                            const lineGst = (lineBase * (item.gstRate || 0)) / 100;
+                            const lineTotal = lineBase + lineGst;
+                            return (
+                              <tr key={idx} className="hover:bg-purple-50/30 transition-colors">
+                                <td className="px-3 py-2.5 font-black text-brand-primary uppercase text-[10px]">{item.category}</td>
+                                <td className="px-3 py-2.5 font-bold text-gray-900">{item.size}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{item.material || '-'}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{item.colour || '-'}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{item.printType || '-'}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{item.model || '-'}</td>
+                                <td className="px-3 py-2.5 font-black text-center text-gray-900">{item.quantity}</td>
+                                <td className="px-3 py-2.5 text-right font-semibold text-gray-700">₹{(item.price || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-500 font-semibold">{item.gstRate ? `${item.gstRate}%` : '0%'}</td>
+                                <td className="px-3 py-2.5 text-right font-black text-gray-900">₹{lineTotal.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-[10px] text-gray-500 italic max-w-[200px] truncate" title={item.customDetails}>
+                                  {item.customDetails || '-'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Financial Breakdown Ledger */}
+                {selectedOrder.financials && (
+                  <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-gray-200 text-left space-y-3">
+                    <h5 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <IndianRupee size={13} />
+                      Financial & Payment Breakdown
+                    </h5>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-150 shadow-2xs">
+                        <span className="text-[8.5px] font-black text-gray-400 uppercase tracking-widest block">Items Base</span>
+                        <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">₹{(selectedOrder.financials.itemsTotal || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-150 shadow-2xs">
+                        <span className="text-[8.5px] font-black text-gray-400 uppercase tracking-widest block">GST Total</span>
+                        <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">₹{(selectedOrder.financials.totalGst || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-150 shadow-2xs">
+                        <span className="text-[8.5px] font-black text-gray-400 uppercase tracking-widest block">Delivery Fee</span>
+                        <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">₹{(selectedOrder.financials.deliveryCharge || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-brand-primary/30 shadow-2xs bg-purple-50/40">
+                        <span className="text-[8.5px] font-black text-brand-primary uppercase tracking-widest block">Total Amount</span>
+                        <span className="text-xs sm:text-sm font-black text-brand-primary mt-0.5 block">₹{(selectedOrder.financials.totalAmount || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-emerald-200 shadow-2xs bg-emerald-50/30">
+                        <span className="text-[8.5px] font-black text-emerald-700 uppercase tracking-widest block">Advance Paid</span>
+                        <span className="text-xs sm:text-sm font-black text-emerald-700 mt-0.5 block">₹{(selectedOrder.financials.advancePayment || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs bg-amber-50/30">
+                        <span className="text-[8.5px] font-black text-amber-700 uppercase tracking-widest block">Balance Due</span>
+                        <span className="text-xs sm:text-sm font-black text-amber-700 mt-0.5 block">₹{(selectedOrder.financials.balancePayment || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reference Blueprints & Visual Assets Gallery */}
+                {((selectedOrder.staffImages && selectedOrder.staffImages.length > 0) || selectedOrder.marketing_image || (selectedOrder.attachments && selectedOrder.attachments.length > 0)) && (
+                  <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-gray-200 text-left space-y-3">
+                    <h5 className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText size={13} />
+                      Client Reference Images & Blueprints
+                    </h5>
+                    <div className="flex flex-wrap gap-2.5">
+                      {selectedOrder.marketing_image && (
+                        <div
+                          onClick={() => setViewingImage(selectedOrder.marketing_image!)}
+                          className="w-20 h-20 rounded-xl border border-brand-primary/40 shadow-xs overflow-hidden cursor-pointer hover:scale-105 transition-all relative group shrink-0 bg-white"
+                          title="Marketing Reference Blueprint"
+                        >
+                          <img src={selectedOrder.marketing_image} className="w-full h-full object-cover" />
+                          <span className="absolute bottom-0 inset-x-0 bg-brand-primary/90 text-[7px] text-white text-center font-black uppercase py-0.5">Marketing</span>
+                        </div>
+                      )}
+                      {selectedOrder.staffImages?.map((img, i) => {
+                        if (img === selectedOrder.marketing_image) return null;
+                        return (
+                          <div
+                            key={`staff_${i}`}
+                            onClick={() => setViewingImage(img)}
+                            className="w-20 h-20 rounded-xl border border-gray-200 shadow-xs overflow-hidden cursor-pointer hover:scale-105 transition-all shrink-0 bg-white relative group"
+                            title={`Reference Image ${i + 1}`}
+                          >
+                            <img src={img} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <ZoomIn size={14} className="text-white" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {selectedOrder.attachments?.map((att, i) => (
+                        <div
+                          key={`att_${i}`}
+                          onClick={() => att.startsWith('data:image') && setViewingImage(att)}
+                          className="w-20 h-20 rounded-xl border border-gray-200 shadow-xs overflow-hidden cursor-pointer hover:scale-105 transition-all shrink-0 bg-white flex flex-col items-center justify-center p-1 relative group"
+                        >
+                          {att.startsWith('data:image') ? (
+                            <img src={att} className="w-full h-full object-cover" />
+                          ) : (
+                            <FileText size={22} className="text-gray-400" />
+                          )}
+                          <a
+                            href={att}
+                            download={`attachment_${i + 1}_order_${selectedOrder.id.slice(-6)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Download size={10} />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
