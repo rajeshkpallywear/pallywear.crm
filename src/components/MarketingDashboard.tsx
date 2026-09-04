@@ -95,12 +95,36 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
 
-  const [noteModal, setNoteModal] = useState<{
-    isOpen: boolean;
-    orderId: string;
-    target: 'design' | 'accounts';
-    noteText: string;
-  } | null>(null);
+  const handleDirectForward = async (orderId: string, target: 'design' | 'accounts') => {
+    setIsProcessing(true);
+    try {
+      const updates: Partial<Order> = {
+        status: target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
+        updatedAt: Date.now()
+      };
+      if (target === 'design') {
+        const existingOrder = orders.find(o => o.id === orderId);
+        // Preserve the designer who already claimed/was assigned to this order
+        if (existingOrder?.assignedDesigner && existingOrder.assignedDesigner !== 'Unassigned' && existingOrder.assignedDesigner !== 'Designer assigned') {
+          updates.assignedDesigner = existingOrder.assignedDesigner;
+        }
+        if (existingOrder?.claimedBy) {
+          updates.claimedBy = existingOrder.claimedBy;
+        }
+        if (existingOrder?.claimedByName) {
+          updates.claimedByName = existingOrder.claimedByName;
+        }
+        updates.designSentToMarketing = false;
+        updates.designCompleted = false;
+      }
+      await onUpdateOrder(orderId, updates);
+      alert(`Order #${orderId.slice(-6)} forwarded to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);
+    } catch (err) {
+      alert("Action failed.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   useEffect(() => {
     const handleOpenFeed = () => {
@@ -880,12 +904,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setNoteModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      target: 'accounts',
-                                      noteText: ''
-                                    });
+                                    handleDirectForward(order.id, 'accounts');
                                   }}
                                   className="text-[9px] font-black text-white bg-brand-primary hover:opacity-90 rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider shadow-xs"
                                 >
@@ -894,12 +913,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setNoteModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      target: 'design',
-                                      noteText: ''
-                                    });
+                                    handleDirectForward(order.id, 'design');
                                   }}
                                   className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded px-2 py-1 transition-all cursor-pointer uppercase tracking-wider"
                                 >
@@ -926,12 +940,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setNoteModal({
-                                        isOpen: true,
-                                        orderId: order.id,
-                                        target: 'design',
-                                        noteText: ''
-                                      });
+                                      handleDirectForward(order.id, 'design');
                                     }}
                                     className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-650 hover:text-white border border-purple-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
                                   >
@@ -940,12 +949,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setNoteModal({
-                                        isOpen: true,
-                                        orderId: order.id,
-                                        target: 'accounts',
-                                        noteText: ''
-                                      });
+                                      handleDirectForward(order.id, 'accounts');
                                     }}
                                     className="text-[9px] font-black text-amber-700 bg-amber-50 hover:bg-amber-650 hover:text-white border border-amber-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
                                   >
@@ -1059,27 +1063,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           )}
                           <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
                             <button
-                              onClick={() => {
-                                setNoteModal({
-                                  isOpen: true,
-                                  orderId: order.id,
-                                  target: 'accounts',
-                                  noteText: ''
-                                });
-                              }}
+                              onClick={() => handleDirectForward(order.id, 'accounts')}
                               className="py-2 bg-brand-primary text-white hover:opacity-90 rounded-xl font-black text-[9px] transition-all uppercase cursor-pointer border-none shadow-xs text-center"
                             >
                               💳 To Accounts
                             </button>
                             <button
-                              onClick={() => {
-                                setNoteModal({
-                                  isOpen: true,
-                                  orderId: order.id,
-                                  target: 'design',
-                                  noteText: ''
-                                });
-                              }}
+                              onClick={() => handleDirectForward(order.id, 'design')}
                               className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer text-center"
                             >
                               ✏️ Revise Art
@@ -1117,27 +1107,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             {order.status === OrderStatus.PENDING ? (
                               <>
                                 <button
-                                  onClick={() => {
-                                    setNoteModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      target: 'design',
-                                      noteText: ''
-                                    });
-                                  }}
+                                  onClick={() => handleDirectForward(order.id, 'design')}
                                   className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer"
                                 >
                                   Designs
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    setNoteModal({
-                                      isOpen: true,
-                                      orderId: order.id,
-                                      target: 'accounts',
-                                      noteText: ''
-                                    });
-                                  }}
+                                  onClick={() => handleDirectForward(order.id, 'accounts')}
                                   className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-black text-[9px] border border-amber-200 transition-colors uppercase cursor-pointer"
                                 >
                                   Accounts
@@ -2129,94 +2105,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             startEdit(ord);
           }}
         />
-      )}
-
-      {/* Note modal */}
-      {noteModal && createPortal(
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
-          <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between text-left">
-              <h3 className="text-base font-black text-gray-900 uppercase italic tracking-tight">
-                {noteModal.target === 'design' ? 'Send to Designs Studio' : 'Send to Billing Desk'}
-              </h3>
-              <button
-                onClick={() => setNoteModal(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors border-none bg-transparent cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4 text-left">
-              <div>
-                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                  Required Instructions
-                </label>
-                <textarea
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs text-gray-800 outline-none focus:border-brand-primary resize-none"
-                  rows={4}
-                  placeholder={
-                    noteModal.target === 'design' 
-                      ? "Describe vector specs, materials and details..." 
-                      : "Describe payment status, invoices or discount codes..."
-                  }
-                  value={noteModal.noteText}
-                  onChange={(e) => setNoteModal({ ...noteModal, noteText: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setNoteModal(null)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-[10px] uppercase border-none cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={!noteModal.noteText.trim() || isProcessing}
-                  onClick={async () => {
-                    if (!noteModal.noteText.trim()) return;
-                    setIsProcessing(true);
-                    try {
-                      const updates: Partial<Order> = {
-                        status: noteModal.target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
-                        updatedAt: Date.now()
-                      };
-                      if (noteModal.target === 'design') {
-                        const existingOrder = orders.find(o => o.id === noteModal.orderId);
-                        updates.notes = noteModal.noteText.trim();
-                        updates.designNotes = noteModal.noteText.trim();
-                        // Preserve the designer who already claimed/was assigned to this order
-                        if (existingOrder?.assignedDesigner && existingOrder.assignedDesigner !== 'Unassigned' && existingOrder.assignedDesigner !== 'Designer assigned') {
-                          updates.assignedDesigner = existingOrder.assignedDesigner;
-                        }
-                        if (existingOrder?.claimedBy) {
-                          updates.claimedBy = existingOrder.claimedBy;
-                        }
-                        if (existingOrder?.claimedByName) {
-                          updates.claimedByName = existingOrder.claimedByName;
-                        }
-                        updates.designSentToMarketing = false;
-                        updates.designCompleted = false;
-                      } else {
-                        updates.accountsNotes = noteModal.noteText.trim();
-                      }
-                      await onUpdateOrder(noteModal.orderId, updates);
-                      alert(`Order #${noteModal.orderId.slice(-6)} forwarded to ${noteModal.target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);
-                      setNoteModal(null);
-                    } catch (err) {
-                      alert("Action failed.");
-                    } finally {
-                      setIsProcessing(false);
-                    }
-                  }}
-                  className="flex-1 py-3 bg-brand-primary hover:opacity-90 text-white disabled:opacity-50 rounded-xl font-black text-[10px] uppercase border-none cursor-pointer text-center"
-                >
-                  Confirm Forward
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
       )}
 
       {isLeadModalOpen && createPortal(

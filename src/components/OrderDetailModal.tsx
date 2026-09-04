@@ -27,10 +27,45 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   const [editedOrder, setEditedOrder] = useState<Order>(order);
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
-  const [noteModal, setNoteModal] = useState<{
-    target: 'design' | 'accounts';
-    noteText: string;
-  } | null>(null);
+
+  const handleDirectForward = async (target: 'design' | 'accounts') => {
+    setIsProcessingAction(true);
+    try {
+      const updates: Partial<Order> = {
+        status: target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
+        updatedAt: Date.now()
+      };
+      if (target === 'design') {
+        updates.designSentToMarketing = false;
+        updates.designCompleted = false;
+        if (order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned') {
+          updates.assignedDesigner = order.assignedDesigner;
+        }
+        if (order.claimedBy) {
+          updates.claimedBy = order.claimedBy;
+        }
+        if (order.claimedByName) {
+          updates.claimedByName = order.claimedByName;
+        }
+        if (order.status === OrderStatus.ACCOUNTS) {
+          updates.sentByAccounts = true;
+        }
+      }
+
+      if (onUpdateOrder) {
+        await onUpdateOrder(order.id, updates);
+      } else if (onUpdateStatus) {
+        onUpdateStatus(updates.status);
+      }
+
+      alert(`Success: Order sent to ${target === 'design' ? 'Designs' : 'Accounts'}.`);
+      onClose();
+    } catch (err) {
+      alert("Failed to update order.");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
 
   useEffect(() => {
     setEditedOrder(order);
@@ -814,12 +849,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                           <div className="flex flex-col gap-2">
                             <button
                               disabled={isProcessingAction}
-                              onClick={() => {
-                                  setNoteModal({
-                                    target: 'design',
-                                    noteText: ''
-                                  });
-                              }}
+                              onClick={() => handleDirectForward('design')}
                               className="w-full py-3 bg-purple-600 hover:bg-purple-750 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
                             >
                               <CheckCircle size={14} /> Send to Designs
@@ -827,12 +857,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                             {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
                               <button
                                 disabled={isProcessingAction}
-                                onClick={() => {
-                                  setNoteModal({
-                                    target: 'accounts',
-                                    noteText: ''
-                                  });
-                                }}
+                                onClick={() => handleDirectForward('accounts')}
                                 className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
                               >
                                 <CheckCircle size={14} /> Send to Accounts
@@ -911,99 +936,6 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
 
         {viewingImage && (
           <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${order.id}`} />
-        )}
-        {noteModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">
-                  {noteModal.target === 'design' ? 'Send to Designs' : 'Send to Accounts'}
-                </h3>
-                <button
-                  onClick={() => setNoteModal(null)}
-                  className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                    Instructions / Notes (Required)
-                  </label>
-                  <textarea
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all resize-none"
-                    rows={4}
-                    placeholder={
-                      noteModal.target === 'design' 
-                        ? "Enter design requirements, dimensions, logo placement..." 
-                        : "Enter billing instructions, payment terms, advance details..."
-                    }
-                    value={noteModal.noteText}
-                    onChange={(e) => setNoteModal({ ...noteModal, noteText: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => setNoteModal(null)}
-                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    disabled={!noteModal.noteText.trim() || isProcessingAction}
-                    onClick={async () => {
-                      if (!noteModal.noteText.trim()) return;
-                      setIsProcessingAction(true);
-                      try {
-                        const updates: Partial<Order> = {
-                          status: noteModal.target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
-                          updatedAt: Date.now()
-                        };
-                        if (noteModal.target === 'design') {
-                          updates.notes = noteModal.noteText.trim();
-                          updates.designNotes = noteModal.noteText.trim();
-                          updates.designSentToMarketing = false;
-                          updates.designCompleted = false;
-                          if (order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned') {
-                            updates.assignedDesigner = order.assignedDesigner;
-                          }
-                          if (order.claimedBy) {
-                            updates.claimedBy = order.claimedBy;
-                          }
-                          if (order.claimedByName) {
-                            updates.claimedByName = order.claimedByName;
-                          }
-                          if (order.status === OrderStatus.ACCOUNTS) {
-                            updates.sentByAccounts = true;
-                          }
-                        } else {
-                          updates.accountsNotes = noteModal.noteText.trim();
-                        }
-                        
-                        if (onUpdateOrder) {
-                          await onUpdateOrder(order.id, updates);
-                        } else if (onUpdateStatus) {
-                          onUpdateStatus(updates.status);
-                        }
-                        
-                        alert(`Success: Order sent to ${noteModal.target === 'design' ? 'Designs' : 'Accounts'}.`);
-                        setNoteModal(null);
-                        onClose();
-                      } catch (err) {
-                        alert("Failed to update order.");
-                      } finally {
-                        setIsProcessingAction(false);
-                      }
-                    }}
-                    className="flex-1 py-3 bg-brand-primary hover:bg-opacity-95 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-md text-center"
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         )}
       </motion.div>
     </div>,
