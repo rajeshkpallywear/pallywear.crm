@@ -210,7 +210,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
           >
             ⏳ Pending ({orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && !!o.original_design_file && !o.machineFiles?.length;
+              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && (!!o.original_design_file || !!o.original_design_zip) && !o.machineFiles?.length;
             }).length})
           </button>
           <button
@@ -317,7 +317,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
         </div>
 
         {/* Right Side: Active Workspace */}
-        <div className={cn("lg:col-span-2", selectedOrder ? "block" : "hidden lg:block")}>
+        <div className={cn("lg:col-span-8", selectedOrder ? "block" : "hidden lg:block")}>
           {selectedOrder ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
