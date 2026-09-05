@@ -16,7 +16,6 @@ import VendorExpensePage from './VendorExpensePage';
 import OtherExpensePage from './OtherExpensePage';
 import ExpensesHub from './ExpensesHub';
 import OrdersChart from './OrdersChart';
-import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue' | 'expenses-hub';
 
@@ -36,13 +35,6 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Staff & Date Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [staffFilter, setStaffFilter] = useState('all');
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
-  const [customDate, setCustomDate] = useState('');
-
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -59,7 +51,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
 
-  const baseSectionOrders = orders.filter(o => {
+  const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
@@ -68,14 +60,6 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
     return o.status === OrderStatus.ACCOUNTS;
   });
-
-  const filteredOrders = filterOrdersWithStaffAndDate(
-    baseSectionOrders,
-    staffFilter,
-    dateRangeFilter,
-    customDate,
-    searchQuery
-  );
 
   // Auto-select first order when section or filtered order list changes (except completed tab)
   useEffect(() => {
@@ -199,28 +183,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           {renderSidebarContent()}
         </div>
       ) : (
-      <div className="space-y-6">
-        {/* Staff Breakdown & Upload Analytics Bar */}
-        <StaffBreakdownBar
-          orders={orders}
-          staffFilter={staffFilter}
-          onStaffFilterChange={setStaffFilter}
-          dateRangeFilter={dateRangeFilter}
-          onDateRangeFilterChange={setDateRangeFilter}
-          customDate={customDate}
-          onCustomDateChange={setCustomDate}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          filteredCount={filteredOrders.length}
-          itemLabel="Orders"
-          onResetFilters={() => {
-            setSearchQuery('');
-            setStaffFilter('all');
-            setDateRangeFilter('all');
-            setCustomDate('');
-          }}
-        />
-
+      <div className="space-y-8">
         {/* Summary Stats Section */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <button

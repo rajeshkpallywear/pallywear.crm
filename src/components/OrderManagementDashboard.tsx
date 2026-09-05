@@ -50,7 +50,6 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
 import OrdersChart from './OrdersChart';
-import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 import { useLeads } from '../context/LeadContext';
 import { getApiBaseUrl } from '../lib/apiConfig';
 
@@ -80,11 +79,6 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 150);
-
-  // Staff & Date Filter State
-  const [staffFilter, setStaffFilter] = useState('all');
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
-  const [customDate, setCustomDate] = useState('');
 
   const [vendorExpenses, setVendorExpenses] = useState<any[]>([]);
   const [registeredVendors, setRegisteredVendors] = useState<any[]>([]);
@@ -121,9 +115,17 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
   }, [selectedOrder?.id]);
 
-  // Filter lists based on selected tabs with debounced search, staff filter and date range
+  // Filter lists based on selected tabs with debounced search
   const filteredOrders = useMemo(() => {
-    const baseList = orders.filter(o => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    return orders.filter(o => {
+      const matchesSearch = !term ||
+        (o.customerInfo?.name || '').toLowerCase().includes(term) ||
+        o.id.toLowerCase().includes(term) ||
+        (o.category || '').toLowerCase().includes(term);
+
+      if (!matchesSearch) return false;
+
       if (selectedSection === 'hold') {
         return o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus);
       }
@@ -139,15 +141,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
       // 'recent' shows Order Management active queue (excluding holds)
       return o.status === OrderStatus.ORDER_MANAGEMENT;
     });
-
-    return filterOrdersWithStaffAndDate(
-      baseList,
-      staffFilter,
-      dateRangeFilter,
-      customDate,
-      debouncedSearchTerm
-    );
-  }, [orders, debouncedSearchTerm, selectedSection, staffFilter, dateRangeFilter, customDate]);
+  }, [orders, debouncedSearchTerm, selectedSection]);
 
   const recentOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length, [orders]);
   const processOrdersCount = useMemo(() => orders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)).length, [orders]);
@@ -615,26 +609,17 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
         ))}
       </div>
 
-      {/* Staff Breakdown & Upload Analytics Bar */}
-      <StaffBreakdownBar
-        orders={orders}
-        staffFilter={staffFilter}
-        onStaffFilterChange={setStaffFilter}
-        dateRangeFilter={dateRangeFilter}
-        onDateRangeFilterChange={setDateRangeFilter}
-        customDate={customDate}
-        onCustomDateChange={setCustomDate}
-        searchQuery={searchTerm}
-        onSearchQueryChange={setSearchTerm}
-        filteredCount={filteredOrders.length}
-        itemLabel="Orders"
-        onResetFilters={() => {
-          setSearchTerm('');
-          setStaffFilter('all');
-          setDateRangeFilter('all');
-          setCustomDate('');
-        }}
-      />
+      {/* Search Bar */}
+      <div className="relative w-full max-w-md bg-white rounded-xl border border-gray-200 shadow-inner px-3 py-1 flex items-center">
+        <Search className="text-gray-400 mr-2" size={16} />
+        <input
+          type="text"
+          placeholder="Filter by Customer, Category, or ID..."
+          className="w-full bg-transparent outline-none text-xs font-medium text-slate-800 py-1.5"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
 
       {/* Main interactive grid layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

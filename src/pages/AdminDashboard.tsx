@@ -6,7 +6,8 @@ import {
   Users, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
-  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace, Briefcase
+  Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace, Briefcase,
+  Palette, Truck, Package, ArrowRight, Layers
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
@@ -1081,8 +1082,8 @@ export default function AdminDashboard() {
         }
       }
     };
-    const [selectedDept, setSelectedDept] = useState<'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers'>('staff');
-    const [selectedSection, setSelectedSection] = useState<'total' | 'hold' | 'completed'>('total');
+    const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers'>('all');
+    const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
     const [orderStaffSearch, setOrderStaffSearch] = useState('');
     const [orderStaffFilter, setOrderStaffFilter] = useState('all');
     const [orderDateRangeFilter, setOrderDateRangeFilter] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('all');
@@ -1445,8 +1446,196 @@ export default function AdminDashboard() {
       return staffUploadStats.reduce((sum, s) => sum + s.todayTotalValue, 0);
     }, [staffUploadStats]);
 
+    const getEffectiveStatus = (o: Order) => {
+      return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
+    };
+
+    const isOrderDesignCompleted = (o: Order) => {
+      const eff = getEffectiveStatus(o);
+      return (
+        [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+        Boolean((o as any).designCompleted) ||
+        Boolean(o.designAttachments && o.designAttachments.length > 0) ||
+        Boolean(o.machineFiles && o.machineFiles.length > 0) ||
+        Boolean((o as any).original_design_file)
+      );
+    };
+
+    const isOrderAccountsCompleted = (o: Order) => {
+      const eff = getEffectiveStatus(o);
+      return (
+        [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+        Boolean(o.sentByAccounts) ||
+        Boolean(o.accountsAttachments && o.accountsAttachments.length > 0)
+      );
+    };
+
+    const isOrderOmCompleted = (o: Order) => {
+      const eff = getEffectiveStatus(o);
+      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+    };
+
+    const isOrderProductionCompleted = (o: Order) => {
+      const eff = getEffectiveStatus(o);
+      return [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+    };
+
+    const isOrderDeliveryCompleted = (o: Order) => {
+      return o.status === OrderStatus.DELIVERED;
+    };
+
+    const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers') => {
+      let totalCount = 0;
+      let queueCount = 0;
+      let holdCount = 0;
+      let completedCount = 0;
+
+      switch (dept) {
+        case 'all':
+          totalCount = orders.length;
+          completedCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
+          queueCount = Math.max(0, totalCount - completedCount - holdCount);
+          break;
+
+        case 'staff':
+          totalCount = orders.length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
+          queueCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
+          completedCount = orders.filter(o => {
+            const eff = getEffectiveStatus(o);
+            return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
+          }).length;
+          break;
+
+        case 'accounts':
+          queueCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
+          completedCount = orders.filter(o => isOrderAccountsCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+
+        case 'designers':
+          queueCount = orders.filter(o => o.status === OrderStatus.DESIGN).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned'))).length;
+          completedCount = orders.filter(o => isOrderDesignCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+
+        case 'order_management':
+          queueCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
+          completedCount = orders.filter(o => isOrderOmCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+
+        case 'production':
+          queueCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
+          completedCount = orders.filter(o => isOrderProductionCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+
+        case 'delivery':
+          queueCount = orders.filter(o => o.status === OrderStatus.DELIVERY).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
+          completedCount = orders.filter(o => isOrderDeliveryCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+      }
+
+      const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      return { totalCount, queueCount, holdCount, completedCount, completionRate };
+    };
+
     const getFilteredDeptOrders = () => {
       let baseList = orders;
+
+      // Filter by selected department & section
+      if (selectedDept !== 'all') {
+        switch (selectedDept) {
+          case 'staff':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => {
+                const eff = getEffectiveStatus(o);
+                return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
+              });
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT);
+            }
+            break;
+
+          case 'accounts':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderAccountsCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => o.status === OrderStatus.ACCOUNTS);
+            } else {
+              baseList = baseList.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS) || isOrderAccountsCompleted(o));
+            }
+            break;
+
+          case 'designers':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderDesignCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned')));
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => o.status === OrderStatus.DESIGN);
+            } else {
+              baseList = baseList.filter(o => o.status === OrderStatus.DESIGN || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN) || isOrderDesignCompleted(o));
+            }
+            break;
+
+          case 'order_management':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderOmCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT);
+            } else {
+              baseList = baseList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT) || isOrderOmCompleted(o));
+            }
+            break;
+
+          case 'production':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderProductionCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION);
+            } else {
+              baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION) || isOrderProductionCompleted(o));
+            }
+            break;
+
+          case 'delivery':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderDeliveryCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => o.status === OrderStatus.DELIVERY);
+            } else {
+              baseList = baseList.filter(o => o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY) || isOrderDeliveryCompleted(o));
+            }
+            break;
+        }
+      } else {
+        if (selectedSection === 'completed') {
+          baseList = baseList.filter(o => o.status === OrderStatus.DELIVERED);
+        } else if (selectedSection === 'hold') {
+          baseList = baseList.filter(o => o.status === OrderStatus.HOLD);
+        } else if (selectedSection === 'queue') {
+          baseList = baseList.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD);
+        }
+      }
 
       // Filter by Staff Name / Search Query
       if (orderStaffSearch.trim()) {
@@ -1497,77 +1686,6 @@ export default function AdminDashboard() {
       }
 
       return baseList;
-    };
-
-    const getDeptStats = (dept: 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers') => {
-      let totalCount = 0;
-      let holdCount = 0;
-      let completedCount = 0;
-
-      switch (dept) {
-        case 'staff':
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
-          completedCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT && !(o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
-          }).length;
-          totalCount = orders.length;
-          break;
-        case 'accounts':
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-          completedCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(eff) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
-          }).length;
-          totalCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING].includes(eff);
-          }).length;
-          break;
-        case 'order_management':
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
-          completedCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
-          }).length;
-          totalCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff);
-          }).length;
-          break;
-        case 'production':
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
-          completedCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
-          }).length;
-          totalCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT].includes(eff);
-          }).length;
-          break;
-        case 'delivery':
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
-          completedCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
-          totalCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff);
-          }).length;
-          break;
-        case 'designers':
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN).length;
-          completedCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS, OrderStatus.DESIGN].includes(eff) && !(o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN);
-          }).length;
-          totalCount = orders.filter(o => {
-            const eff = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-            return eff && ![OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.ACCOUNTS].includes(eff);
-          }).length;
-          break;
-      }
-
-      return { totalCount, holdCount, completedCount };
     };
 
     if (authLoading) return <div className="min-h-screen flex items-center justify-center dashboard-page-bg">Loading security context...</div>;
@@ -1859,6 +1977,289 @@ export default function AdminDashboard() {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+
+                {/* ─── Department Order Completion & Pipeline Analytics ─────────── */}
+                <div className="bg-white/80 backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm mb-6 sm:mb-8 text-left space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+                        <Layers className="w-5 h-5 text-brand-primary" />
+                        Department Order Completion & Pipeline Progress
+                      </h3>
+                      <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                        Live breakdown of completed orders across Designs, Accounts, Order Management, Production & Delivery
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedDept('all');
+                        setSelectedSection('total');
+                        selectTab('orders');
+                      }}
+                      className="px-3.5 py-1.5 bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-brand-primary text-xs font-black rounded-xl transition-all flex items-center gap-1.5 w-fit cursor-pointer border border-brand-primary/20"
+                    >
+                      <span>View Full Workflow Pipeline</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                    {/* 1. Designs */}
+                    {(() => {
+                      const stats = getDeptStats('designers');
+                      return (
+                        <div className="bg-purple-50/40 hover:bg-purple-50/70 border border-purple-100/80 p-4 rounded-2xl transition-all shadow-xs flex flex-col justify-between space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                                <Palette size={16} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-purple-950 uppercase tracking-wider">Designs</h4>
+                                <span className="text-[10px] text-purple-600 font-bold">Artwork & Proofs</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-200/60 text-purple-800">
+                              {stats.completionRate}%
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-purple-950">{stats.completedCount}</span>
+                              <span className="text-[11px] font-bold text-purple-700">Completed</span>
+                            </div>
+                            <div className="w-full bg-purple-200/50 h-1.5 rounded-full overflow-hidden mt-1.5 mb-2">
+                              <div
+                                className="bg-purple-600 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(4, Math.min(100, stats.completionRate))}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className="text-amber-700">⚡ In Queue: {stats.queueCount}</span>
+                              <span className="text-rose-600">⏸ Hold: {stats.holdCount}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSelectedDept('designers');
+                              setSelectedSection('total');
+                              selectTab('orders');
+                            }}
+                            className="w-full py-1.5 px-2 bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-200 text-[10px] font-black rounded-xl transition-all cursor-pointer text-center"
+                          >
+                            View Designs ({stats.totalCount}) →
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 2. Accounts */}
+                    {(() => {
+                      const stats = getDeptStats('accounts');
+                      return (
+                        <div className="bg-amber-50/40 hover:bg-amber-50/70 border border-amber-100/80 p-4 rounded-2xl transition-all shadow-xs flex flex-col justify-between space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                                <DollarSign size={16} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-amber-950 uppercase tracking-wider">Accounts</h4>
+                                <span className="text-[10px] text-amber-700 font-bold">Billing & Advance</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-200/60 text-amber-900">
+                              {stats.completionRate}%
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-amber-950">{stats.completedCount}</span>
+                              <span className="text-[11px] font-bold text-amber-800">Completed</span>
+                            </div>
+                            <div className="w-full bg-amber-200/50 h-1.5 rounded-full overflow-hidden mt-1.5 mb-2">
+                              <div
+                                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(4, Math.min(100, stats.completionRate))}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className="text-amber-700">⚡ In Queue: {stats.queueCount}</span>
+                              <span className="text-rose-600">⏸ Hold: {stats.holdCount}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSelectedDept('accounts');
+                              setSelectedSection('total');
+                              selectTab('orders');
+                            }}
+                            className="w-full py-1.5 px-2 bg-white hover:bg-amber-500 hover:text-white text-amber-800 border border-amber-200 text-[10px] font-black rounded-xl transition-all cursor-pointer text-center"
+                          >
+                            View Accounts ({stats.totalCount}) →
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 3. Order Management */}
+                    {(() => {
+                      const stats = getDeptStats('order_management');
+                      return (
+                        <div className="bg-blue-50/40 hover:bg-blue-50/70 border border-blue-100/80 p-4 rounded-2xl transition-all shadow-xs flex flex-col justify-between space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                                <Package size={16} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-blue-950 uppercase tracking-wider">Order Mgmt</h4>
+                                <span className="text-[10px] text-blue-600 font-bold">Verification & Dispatch</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-200/60 text-blue-900">
+                              {stats.completionRate}%
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-blue-950">{stats.completedCount}</span>
+                              <span className="text-[11px] font-bold text-blue-700">Completed</span>
+                            </div>
+                            <div className="w-full bg-blue-200/50 h-1.5 rounded-full overflow-hidden mt-1.5 mb-2">
+                              <div
+                                className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(4, Math.min(100, stats.completionRate))}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className="text-amber-700">⚡ In Queue: {stats.queueCount}</span>
+                              <span className="text-rose-600">⏸ Hold: {stats.holdCount}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSelectedDept('order_management');
+                              setSelectedSection('total');
+                              selectTab('orders');
+                            }}
+                            className="w-full py-1.5 px-2 bg-white hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-200 text-[10px] font-black rounded-xl transition-all cursor-pointer text-center"
+                          >
+                            View Order Mgmt ({stats.totalCount}) →
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 4. Production */}
+                    {(() => {
+                      const stats = getDeptStats('production');
+                      return (
+                        <div className="bg-indigo-50/40 hover:bg-indigo-50/70 border border-indigo-100/80 p-4 rounded-2xl transition-all shadow-xs flex flex-col justify-between space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                                <Zap size={16} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider">Production</h4>
+                                <span className="text-[10px] text-indigo-600 font-bold">Manufacturing</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-indigo-200/60 text-indigo-900">
+                              {stats.completionRate}%
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-indigo-950">{stats.completedCount}</span>
+                              <span className="text-[11px] font-bold text-indigo-700">Completed</span>
+                            </div>
+                            <div className="w-full bg-indigo-200/50 h-1.5 rounded-full overflow-hidden mt-1.5 mb-2">
+                              <div
+                                className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(4, Math.min(100, stats.completionRate))}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className="text-amber-700">⚡ In Queue: {stats.queueCount}</span>
+                              <span className="text-rose-600">⏸ Hold: {stats.holdCount}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSelectedDept('production');
+                              setSelectedSection('total');
+                              selectTab('orders');
+                            }}
+                            className="w-full py-1.5 px-2 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 text-[10px] font-black rounded-xl transition-all cursor-pointer text-center"
+                          >
+                            View Production ({stats.totalCount}) →
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 5. Delivery */}
+                    {(() => {
+                      const stats = getDeptStats('delivery');
+                      return (
+                        <div className="bg-emerald-50/40 hover:bg-emerald-50/70 border border-emerald-100/80 p-4 rounded-2xl transition-all shadow-xs flex flex-col justify-between space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                <Truck size={16} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-emerald-950 uppercase tracking-wider">Delivery</h4>
+                                <span className="text-[10px] text-emerald-600 font-bold">Dispatch & Delivered</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900">
+                              {stats.completionRate}%
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-emerald-950">{stats.completedCount}</span>
+                              <span className="text-[11px] font-bold text-emerald-700">Delivered</span>
+                            </div>
+                            <div className="w-full bg-emerald-200/50 h-1.5 rounded-full overflow-hidden mt-1.5 mb-2">
+                              <div
+                                className="bg-emerald-600 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${Math.max(4, Math.min(100, stats.completionRate))}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className="text-amber-700">⚡ In Transit: {stats.queueCount}</span>
+                              <span className="text-rose-600">⏸ Hold: {stats.holdCount}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSelectedDept('delivery');
+                              setSelectedSection('total');
+                              selectTab('orders');
+                            }}
+                            className="w-full py-1.5 px-2 bg-white hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[10px] font-black rounded-xl transition-all cursor-pointer text-center"
+                          >
+                            View Delivery ({stats.totalCount}) →
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Role Revenue Breakdown: Marketing vs Online Team */}
@@ -2389,6 +2790,87 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
 
+                {/* Department Pipeline Selector Tabs */}
+                <div className="bg-white/90 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm space-y-3 text-left">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider mr-1">Department Pipeline:</span>
+                    {(
+                      [
+                        { id: 'all', label: 'All Orders', icon: Globe, stats: getDeptStats('all'), color: 'text-gray-700', activeBg: 'bg-black text-white' },
+                        { id: 'designers', label: 'Designs', icon: Palette, stats: getDeptStats('designers'), color: 'text-purple-700', activeBg: 'bg-purple-600 text-white' },
+                        { id: 'accounts', label: 'Accounts', icon: DollarSign, stats: getDeptStats('accounts'), color: 'text-amber-700', activeBg: 'bg-amber-600 text-white' },
+                        { id: 'order_management', label: 'Order Mgmt', icon: Package, stats: getDeptStats('order_management'), color: 'text-blue-700', activeBg: 'bg-blue-600 text-white' },
+                        { id: 'production', label: 'Production', icon: Zap, stats: getDeptStats('production'), color: 'text-indigo-700', activeBg: 'bg-indigo-600 text-white' },
+                        { id: 'delivery', label: 'Delivery', icon: Truck, stats: getDeptStats('delivery'), color: 'text-emerald-700', activeBg: 'bg-emerald-600 text-white' },
+                      ] as const
+                    ).map(d => {
+                      const isSelected = selectedDept === d.id;
+                      const Icon = d.icon;
+                      return (
+                        <button
+                          key={d.id}
+                          onClick={() => {
+                            setSelectedDept(d.id);
+                            setSelectedSection('total');
+                          }}
+                          className={cn(
+                            "px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border",
+                            isSelected
+                              ? cn(d.activeBg, "border-transparent shadow-sm")
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                          )}
+                        >
+                          <Icon size={14} className={isSelected ? 'text-white' : d.color} />
+                          <span>{d.label}</span>
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[9px] font-black flex items-center gap-1",
+                            isSelected ? "bg-white/20 text-white" : "bg-gray-200/80 text-gray-700"
+                          )}>
+                            <span className={isSelected ? "text-emerald-200" : "text-emerald-600"}>✓{d.stats.completedCount}</span>
+                            <span>/</span>
+                            <span>{d.stats.queueCount} Q</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Stage Sub-filters for Selected Department */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-dashed border-gray-100">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider mr-1">Stage Filter:</span>
+                      {(() => {
+                        const currentStats = getDeptStats(selectedDept);
+                        return (
+                          [
+                            { id: 'total', label: `All (${currentStats.totalCount})` },
+                            { id: 'queue', label: `⚡ In Queue (${currentStats.queueCount})` },
+                            { id: 'completed', label: `✓ Completed (${currentStats.completedCount})` },
+                            { id: 'hold', label: `⏸ On Hold (${currentStats.holdCount})` },
+                          ] as const
+                        ).map(sec => (
+                          <button
+                            key={sec.id}
+                            onClick={() => setSelectedSection(sec.id)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer border",
+                              selectedSection === sec.id
+                                ? "bg-brand-primary text-white border-brand-primary shadow-xs"
+                                : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                            )}
+                          >
+                            {sec.label}
+                          </button>
+                        ));
+                      })()}
+                    </div>
+
+                    <div className="text-[10px] font-bold text-gray-500">
+                      Viewing <span className="font-black text-gray-900">{getFilteredDeptOrders().length}</span> orders
+                    </div>
+                  </div>
+                </div>
+
                 {/* Today's Staff Uploads Analytics Bar */}
                 <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3 text-left">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2520,13 +3002,15 @@ export default function AdminDashboard() {
                     <span className="text-xs font-black text-gray-500 px-2">
                       {getFilteredDeptOrders().length} Orders Found
                     </span>
-                    {(orderStaffSearch || orderStaffFilter !== 'all' || orderDateRangeFilter !== 'all') && (
+                    {(orderStaffSearch || orderStaffFilter !== 'all' || orderDateRangeFilter !== 'all' || selectedDept !== 'all' || selectedSection !== 'total') && (
                       <button
                         onClick={() => {
                           setOrderStaffSearch('');
                           setOrderStaffFilter('all');
                           setOrderDateRangeFilter('all');
                           setOrderCustomDate('');
+                          setSelectedDept('all');
+                          setSelectedSection('total');
                         }}
                         className="px-3.5 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-xl hover:bg-red-100 transition-colors whitespace-nowrap cursor-pointer"
                       >

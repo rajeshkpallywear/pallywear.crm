@@ -37,7 +37,6 @@ import { useLeads } from '../context/LeadContext';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import ConversationDashboard, { Conversation } from './ConversationDashboard';
 import OrdersChart from './OrdersChart';
-import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 interface DesignDashboardProps {
   orders: Order[];
@@ -63,9 +62,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
-  const [staffFilter, setStaffFilter] = useState('all');
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
-  const [customDate, setCustomDate] = useState('');
 
   // Selection
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -340,14 +336,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     }
 
-    // Apply Staff, Date Range, and Search Filtering
-    baseList = filterOrdersWithStaffAndDate(
-      baseList,
-      staffFilter,
-      dateRangeFilter,
-      customDate,
-      searchTerm
-    );
+    // Search term matching
+    if (searchTerm && searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      baseList = baseList.filter(item =>
+        (item.customerName || '').toLowerCase().includes(term) ||
+        (item.id || '').toLowerCase().includes(term) ||
+        (item.category || '').toLowerCase().includes(term) ||
+        (item.notes || '').toLowerCase().includes(term)
+      );
+    }
 
     // Queue Sorting: return a new sorted array copy
     return [...baseList].sort((a, b) => {
@@ -830,27 +828,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         </button>
       </div>
 
-      {/* Staff Breakdown & Upload Analytics Bar */}
-      <StaffBreakdownBar
-        orders={orders}
-        staffFilter={staffFilter}
-        onStaffFilterChange={setStaffFilter}
-        dateRangeFilter={dateRangeFilter}
-        onDateRangeFilterChange={setDateRangeFilter}
-        customDate={customDate}
-        onCustomDateChange={setCustomDate}
-        searchQuery={searchTerm}
-        onSearchQueryChange={setSearchTerm}
-        filteredCount={getFilteredItems().length}
-        itemLabel="Designs"
-        onResetFilters={() => {
-          setSearchTerm('');
-          setStaffFilter('all');
-          setDateRangeFilter('all');
-          setCustomDate('');
-        }}
-      />
-
       {/* Design Project Queue — Live Orders */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-150 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
@@ -862,6 +839,18 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-xl">
               {getFilteredItems().length} Order{getFilteredItems().length !== 1 ? 's' : ''}
             </span>
+          </div>
+
+          {/* Search bar inside queue */}
+          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 sm:w-72">
+            <Search size={14} className="text-gray-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search queue orders, client, ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-transparent border-none text-xs text-gray-800 placeholder:text-gray-400 outline-none w-full"
+            />
           </div>
         </div>
 

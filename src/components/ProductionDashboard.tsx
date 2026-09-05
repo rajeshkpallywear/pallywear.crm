@@ -7,7 +7,6 @@ import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
 import OrdersChart from './OrdersChart';
-import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 interface ProductionDashboardProps {
   orders: Order[];
@@ -22,13 +21,6 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Staff & Date Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [staffFilter, setStaffFilter] = useState('all');
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
-  const [customDate, setCustomDate] = useState('');
-
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -39,7 +31,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     }
   }, [selectedOrder?.id]);
 
-  const baseSectionOrders = orders.filter(o => {
+  const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION;
     }
@@ -51,14 +43,6 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     }
     return o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted;
   });
-
-  const filteredOrders = filterOrdersWithStaffAndDate(
-    baseSectionOrders,
-    staffFilter,
-    dateRangeFilter,
-    customDate,
-    searchQuery
-  );
 
   // Auto-select first order when section or filtered order list changes (except completed tab)
   useEffect(() => {
@@ -126,28 +110,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   };
 
   return (
-    <div className="bg-white text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-200 shadow-xl space-y-4 sm:space-y-6 text-left">
-      {/* Staff Breakdown & Upload Analytics Bar */}
-      <StaffBreakdownBar
-        orders={orders}
-        staffFilter={staffFilter}
-        onStaffFilterChange={setStaffFilter}
-        dateRangeFilter={dateRangeFilter}
-        onDateRangeFilterChange={setDateRangeFilter}
-        customDate={customDate}
-        onCustomDateChange={setCustomDate}
-        searchQuery={searchQuery}
-        onSearchQueryChange={setSearchQuery}
-        filteredCount={filteredOrders.length}
-        itemLabel="Production Orders"
-        onResetFilters={() => {
-          setSearchQuery('');
-          setStaffFilter('all');
-          setDateRangeFilter('all');
-          setCustomDate('');
-        }}
-      />
-
+    <div className="bg-white text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-200 shadow-xl space-y-4 sm:space-y-8 text-left">
       {/* Tabs Filter Bar */}
       <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 border border-gray-200 rounded-xl sm:rounded-2xl w-full sm:w-fit">
         <button
