@@ -1361,10 +1361,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
                             <div className="col-span-2 sm:col-span-1">
-                              <Select
+                              <EditableSelect
                                 label="Category"
                                 value={item.category}
                                 options={CATEGORIES}
+                                placeholder="e.g. Custom Apparel"
                                 onChange={(v) => {
                                   updateSizeQuantity(idx, 'category', v);
                                   updateSizeQuantity(idx, 'material', '');
@@ -1374,10 +1375,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               />
                             </div>
                             <div>
-                              <Select
+                              <EditableSelect
                                 label="Size"
                                 value={item.size}
                                 options={SIZE_OPTIONS}
+                                placeholder="e.g. M, L, Free Size"
                                 onChange={(v) => updateSizeQuantity(idx, 'size', v)}
                               />
                             </div>
@@ -1425,60 +1427,46 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-                            {getMaterialsForCategory(item.category).length > 0 && (
-                              <div>
-                                <Select
-                                  label="Material"
-                                  value={item.material || ''}
-                                  options={getMaterialsForCategory(item.category)}
-                                  onChange={(v) => {
-                                    updateSizeQuantity(idx, 'material', v);
-                                    if (item.category === 'T-Shirt') updateSizeQuantity(idx, 'colour', '');
-                                  }}
-                                />
-                              </div>
-                            )}
-                            {getModelsForCategory(item.category).length > 0 && (
-                              <div>
-                                <Select
-                                  label="Model"
-                                  value={item.model || ''}
-                                  options={getModelsForCategory(item.category)}
-                                  onChange={(v) => updateSizeQuantity(idx, 'model', v)}
-                                />
-                              </div>
-                            )}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
                             <div>
-                              {getColoursForCategory(item.category, item.material).length > 0 ? (
-                                <Select
-                                  label="Colour"
-                                  value={item.colour || ''}
-                                  options={getColoursForCategory(item.category, item.material)}
-                                  onChange={(v) => updateSizeQuantity(idx, 'colour', v)}
-                                />
-                              ) : (
-                                <div>
-                                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase mb-0.5 sm:mb-1">Colour</label>
-                                  <input
-                                    type="text"
-                                    placeholder="White"
-                                    value={item.colour || ''}
-                                    onChange={(e) => updateSizeQuantity(idx, 'colour', e.target.value)}
-                                    className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl text-xs text-gray-800 focus:border-brand-primary outline-none"
-                                  />
-                                </div>
-                              )}
+                              <EditableSelect
+                                label="Material"
+                                value={item.material || ''}
+                                options={getMaterialsForCategory(item.category)}
+                                placeholder="e.g. Cotton / Poly / Fleece"
+                                onChange={(v) => {
+                                  updateSizeQuantity(idx, 'material', v);
+                                  if (item.category === 'T-Shirt') updateSizeQuantity(idx, 'colour', '');
+                                }}
+                              />
                             </div>
                             <div>
-                              <Select
+                              <EditableSelect
+                                label="Model"
+                                value={item.model || ''}
+                                options={getModelsForCategory(item.category)}
+                                placeholder="e.g. Regular / Oversized"
+                                onChange={(v) => updateSizeQuantity(idx, 'model', v)}
+                              />
+                            </div>
+                            <div>
+                              <EditableSelect
+                                label="Colour"
+                                value={item.colour || ''}
+                                options={getColoursForCategory(item.category, item.material)}
+                                placeholder="e.g. White / Black / Navy"
+                                onChange={(v) => updateSizeQuantity(idx, 'colour', v)}
+                              />
+                            </div>
+                            <div>
+                              <EditableSelect
                                 label="Print"
                                 value={item.printType || ''}
                                 options={PRINT_TYPES}
+                                placeholder="e.g. DTF / Embroidery"
                                 onChange={(v) => updateSizeQuantity(idx, 'printType', v)}
                               />
                             </div>
-
                           </div>
                           
                           <div className="flex flex-wrap items-center justify-between border-t border-gray-100 pt-2 text-[10px]">
@@ -2136,20 +2124,97 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   );
 }
 
-function Select({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) {
+function EditableSelect({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder,
+  allowCustom = true
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  placeholder?: string;
+  allowCustom?: boolean;
+}) {
+  const isValueInOptions = options && options.some(opt => opt.toLowerCase() === (value || '').toLowerCase());
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(!isValueInOptions && Boolean(value));
+
+  useEffect(() => {
+    if (value && options && !options.some(opt => opt.toLowerCase() === value.toLowerCase())) {
+      setIsCustomMode(true);
+    }
+  }, [value, options]);
+
   return (
     <div className="space-y-1 sm:space-y-1.5 text-left">
-      <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase tracking-widest">{label}</label>
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-xs text-gray-800 focus:border-brand-primary outline-none"
-      >
-        <option value="" disabled className="bg-white text-gray-400">Select {label}</option>
-        {options.map(opt => <option key={opt} value={opt} className="bg-white text-gray-800">{opt}</option>)}
-      </select>
+      <div className="flex items-center justify-between">
+        <label className="block text-[8px] sm:text-[10px] font-black text-gray-400 sm:text-gray-500 uppercase tracking-widest">
+          {label}
+        </label>
+        {allowCustom && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => {
+              const nextMode = !isCustomMode;
+              setIsCustomMode(nextMode);
+              if (!nextMode && !isValueInOptions && options && options.length > 0) {
+                onChange(options[0]);
+              }
+            }}
+            className="text-[8px] sm:text-[9px] font-bold text-brand-primary hover:underline flex items-center gap-0.5 border-none bg-transparent cursor-pointer p-0"
+            title={isCustomMode ? "Switch to standard list" : "Switch to custom edit"}
+          >
+            {isCustomMode ? (
+              <span className="text-gray-500 hover:text-brand-primary">📋 Select List</span>
+            ) : (
+              <span>✏️ Custom / Edit</span>
+            )}
+          </button>
+        )}
+      </div>
+
+      {isCustomMode ? (
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder || `Type custom ${label.toLowerCase()}...`}
+          className="w-full bg-white border border-brand-primary/40 focus:border-brand-primary rounded-xl sm:rounded-2xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-800 font-semibold outline-none shadow-2xs"
+          autoFocus
+        />
+      ) : (
+        <select
+          value={isValueInOptions ? value : ''}
+          onChange={(e) => {
+            if (e.target.value === '__custom__') {
+              setIsCustomMode(true);
+            } else {
+              onChange(e.target.value);
+            }
+          }}
+          className="w-full bg-white border border-gray-200 rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-xs text-gray-800 focus:border-brand-primary outline-none"
+        >
+          <option value="" disabled className="bg-white text-gray-400">Select {label}</option>
+          {(options || []).map(opt => (
+            <option key={opt} value={opt} className="bg-white text-gray-800">{opt}</option>
+          ))}
+          {allowCustom && (
+            <option value="__custom__" className="bg-amber-50 text-amber-700 font-bold">
+              ✏️ Other / Custom (Edit...)
+            </option>
+          )}
+        </select>
+      )}
     </div>
   );
+}
+
+function Select({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) {
+  return <EditableSelect label={label} value={value} options={options} onChange={onChange} />;
 }
 
 const getStatusStyles = (status: OrderStatus) => {

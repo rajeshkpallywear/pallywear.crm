@@ -21,6 +21,8 @@ interface InvoiceItemInput {
     quantity: number;
     taxRate: number;
     discountRate: number;
+    isCustomCategory?: boolean;
+    isCustomStyle?: boolean;
 }
 
 export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }: InvoiceFormModalProps) {
@@ -186,6 +188,20 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
     }, [invoice, isOpen]);
 
     const handleItemProductChange = (idx: number, type: string) => {
+        if (type === '__custom__') {
+            setFormData(prev => {
+                const nextItems = [...prev.items];
+                nextItems[idx] = {
+                    ...nextItems[idx],
+                    isCustomCategory: true,
+                    isCustomStyle: true,
+                    productType: '',
+                    productSubCategory: ''
+                };
+                return { ...prev, items: nextItems };
+            });
+            return;
+        }
         const price = calculatePrice(type, '');
         setFormData(prev => {
             const nextItems = [...prev.items];
@@ -193,6 +209,8 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                 ...nextItems[idx],
                 productType: type,
                 productSubCategory: '',
+                isCustomCategory: false,
+                isCustomStyle: false,
                 unitPrice: price
             };
             return {
@@ -203,12 +221,26 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
     };
 
     const handleItemSubCategoryChange = (idx: number, sub: string) => {
-        const price = calculatePrice(formData.items[idx].productType, sub);
+        if (sub === '__custom__') {
+            setFormData(prev => {
+                const nextItems = [...prev.items];
+                nextItems[idx] = {
+                    ...nextItems[idx],
+                    isCustomStyle: true,
+                    productSubCategory: ''
+                };
+                return { ...prev, items: nextItems };
+            });
+            return;
+        }
+        const currentType = formData.items[idx].productType;
+        const price = calculatePrice(currentType, sub);
         setFormData(prev => {
             const nextItems = [...prev.items];
             nextItems[idx] = {
                 ...nextItems[idx],
                 productSubCategory: sub,
+                isCustomStyle: false,
                 unitPrice: price
             };
             return {
@@ -469,44 +501,105 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
 
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-1.5">
-                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
-                                                            <select
-                                                                value={item.productType}
-                                                                onChange={(e) => handleItemProductChange(idx, e.target.value)}
-                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
-                                                            >
-                                                                {products.map(p => (
-                                                                    <option key={p} value={p}>{p}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-
-                                                        {(item.productType === 'tshirt' || item.productType === 'jersey' || item.productType === 'corporate gift') ? (
-                                                            <div className="space-y-1.5">
-                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Style Selection</label>
-                                                                <select
-                                                                    value={item.productSubCategory}
-                                                                    onChange={(e) => handleItemSubCategoryChange(idx, e.target.value)}
-                                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
+                                                            <div className="flex items-center justify-between pl-1">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</label>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const isCustom = Boolean(item.isCustomCategory || (!products.includes(item.productType) && item.productType));
+                                                                        const nextCustom = !isCustom;
+                                                                        setFormData(prev => {
+                                                                            const nextItems = [...prev.items];
+                                                                            nextItems[idx] = {
+                                                                                ...nextItems[idx],
+                                                                                isCustomCategory: nextCustom,
+                                                                                productType: nextCustom ? item.productType : (products.includes(item.productType) ? item.productType : products[0])
+                                                                            };
+                                                                            return { ...prev, items: nextItems };
+                                                                        });
+                                                                    }}
+                                                                    className="text-[9px] font-bold text-brand-primary hover:underline border-none bg-transparent cursor-pointer p-0"
                                                                 >
-                                                                    <option value="">Select Option</option>
-                                                                    {(productSubCategories[item.productType] || []).map(s => (
-                                                                        <option key={s} value={s}>{s}</option>
-                                                                    ))}
-                                                                </select>
+                                                                    {(item.isCustomCategory || (!products.includes(item.productType) && item.productType)) ? '📋 Select List' : '✏️ Custom / Edit'}
+                                                                </button>
                                                             </div>
-                                                        ) : (
-                                                            <div className="space-y-1.5">
-                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Style Selection</label>
+                                                            {(item.isCustomCategory || (!products.includes(item.productType) && item.productType)) ? (
                                                                 <input
                                                                     type="text"
-                                                                    placeholder="e.g. Standard"
-                                                                    value={item.productSubCategory}
-                                                                    onChange={(e) => handleItemFieldChange(idx, 'productSubCategory', e.target.value)}
-                                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                                    placeholder="e.g. Custom Jacket, Apron, Banner"
+                                                                    value={item.productType}
+                                                                    onChange={(e) => handleItemFieldChange(idx, 'productType', e.target.value)}
+                                                                    className="w-full bg-white border border-brand-primary/40 focus:border-brand-primary rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary outline-none"
+                                                                    autoFocus
                                                                 />
-                                                            </div>
-                                                        )}
+                                                            ) : (
+                                                                <select
+                                                                    value={products.includes(item.productType) ? item.productType : ''}
+                                                                    onChange={(e) => handleItemProductChange(idx, e.target.value)}
+                                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-black text-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
+                                                                >
+                                                                    <option value="" disabled>Select Category</option>
+                                                                    {products.map(p => (
+                                                                        <option key={p} value={p}>{p}</option>
+                                                                    ))}
+                                                                    <option value="__custom__" className="bg-amber-50 text-amber-700 font-bold">✏️ Other / Custom (Edit...)</option>
+                                                                </select>
+                                                            )}
+                                                        </div>
+
+                                                        {(() => {
+                                                            const hasPredefinedStyles = Boolean(productSubCategories[item.productType] && productSubCategories[item.productType].length > 0);
+                                                            const isCustomStyleMode = item.isCustomStyle || !hasPredefinedStyles || (!productSubCategories[item.productType]?.includes(item.productSubCategory) && Boolean(item.productSubCategory));
+
+                                                            return (
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center justify-between pl-1">
+                                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Style Selection</label>
+                                                                        {hasPredefinedStyles && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const nextCustom = !isCustomStyleMode;
+                                                                                    setFormData(prev => {
+                                                                                        const nextItems = [...prev.items];
+                                                                                        nextItems[idx] = {
+                                                                                            ...nextItems[idx],
+                                                                                            isCustomStyle: nextCustom
+                                                                                        };
+                                                                                        return { ...prev, items: nextItems };
+                                                                                    });
+                                                                                }}
+                                                                                className="text-[9px] font-bold text-brand-primary hover:underline border-none bg-transparent cursor-pointer p-0"
+                                                                            >
+                                                                                {isCustomStyleMode ? '📋 Select List' : '✏️ Custom / Edit'}
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {isCustomStyleMode ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            placeholder="e.g. Standard, Raglan, Custom Style"
+                                                                            value={item.productSubCategory}
+                                                                            onChange={(e) => handleItemFieldChange(idx, 'productSubCategory', e.target.value)}
+                                                                            className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                                        />
+                                                                    ) : (
+                                                                        <select
+                                                                            value={item.productSubCategory}
+                                                                            onChange={(e) => handleItemSubCategoryChange(idx, e.target.value)}
+                                                                            className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none capitalize"
+                                                                        >
+                                                                            <option value="">Select Option</option>
+                                                                            {(productSubCategories[item.productType] || []).map(s => (
+                                                                                <option key={s} value={s}>{s}</option>
+                                                                            ))}
+                                                                            <option value="__custom__" className="bg-amber-50 text-amber-700 font-bold">✏️ Other / Custom (Edit...)</option>
+                                                                        </select>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
 
                                                     <div className="grid grid-cols-3 gap-4">

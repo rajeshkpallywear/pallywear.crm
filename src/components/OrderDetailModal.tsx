@@ -393,8 +393,18 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                     editedOrder.sizeBreakdown?.length ? (
                       editedOrder.sizeBreakdown.map((item, idx) => (
                         <div key={idx} className="p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border border-gray-200 space-y-3 shadow-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-black text-brand-primary uppercase">{item.category}</span>
+                          <div className="flex justify-between items-center gap-2">
+                            <input
+                              type="text"
+                              className="px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-black text-brand-primary uppercase"
+                              value={item.category || ''}
+                              onChange={e => {
+                                const updated = [...editedOrder.sizeBreakdown];
+                                updated[idx] = { ...updated[idx], category: e.target.value };
+                                setEditedOrder({ ...editedOrder, sizeBreakdown: updated });
+                              }}
+                              placeholder="Category"
+                            />
                             <input
                               type="text"
                               className="w-20 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-center"
