@@ -114,6 +114,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         if (existingOrder?.claimedByName) {
           updates.claimedByName = existingOrder.claimedByName;
         }
+        const hadPriorDesign = Boolean(
+          existingOrder?.designCompleted ||
+          existingOrder?.designSentToMarketing ||
+          (existingOrder?.original_design_file && existingOrder.original_design_file.length > 0) ||
+          (existingOrder?.designAttachments && existingOrder.designAttachments.length > 0) ||
+          (existingOrder?.machineFiles && existingOrder.machineFiles.length > 0)
+        );
+        if (hadPriorDesign) {
+          updates.isRework = true;
+          updates.reworkNotes = `Correction requested by Marketing on ${new Date().toLocaleDateString()}`;
+        }
         updates.designSentToMarketing = false;
         updates.designCompleted = false;
       }

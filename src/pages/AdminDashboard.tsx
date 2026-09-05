@@ -1038,11 +1038,12 @@ export default function AdminDashboard() {
           designNotes: adminOrderForm.notes,
           staffImages: adminOrderForm.staffImages,
           staffPdfs: [] as string[],
-          staffAttachments: adminOrderForm.staffImages,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           createdBy: user?.id || user?.uid || '',
-          createdByName: user?.name || 'Admin'
+          createdByName: user?.name || 'Admin',
+          isAdminOrder: true,
+          sentByAdmin: true
         };
         await addOrder(newOrder);
         alert('Order created successfully!');

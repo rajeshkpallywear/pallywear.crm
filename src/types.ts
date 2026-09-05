@@ -193,6 +193,10 @@ export interface Order {
   designCompleted?: boolean;
   designSentToMarketing?: boolean;
   designCompletedAt?: number;
+  isRework?: boolean;
+  isAdminOrder?: boolean;
+  reworkNotes?: string;
+  sentByAdmin?: boolean;
 }
 
 export interface InventoryMovement {

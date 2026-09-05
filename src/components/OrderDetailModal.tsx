@@ -36,6 +36,21 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         updatedAt: Date.now()
       };
       if (target === 'design') {
+        const hadPriorDesign = Boolean(
+          order.designCompleted ||
+          order.designSentToMarketing ||
+          (order.original_design_file && order.original_design_file.length > 0) ||
+          (order.designAttachments && order.designAttachments.length > 0) ||
+          (order.machineFiles && order.machineFiles.length > 0)
+        );
+        if (hadPriorDesign) {
+          updates.isRework = true;
+          updates.reworkNotes = `Correction/rework requested on ${new Date().toLocaleDateString()}`;
+        }
+        if (isAdmin) {
+          updates.isAdminOrder = true;
+          updates.sentByAdmin = true;
+        }
         updates.designSentToMarketing = false;
         updates.designCompleted = false;
         if (order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned') {

@@ -57,8 +57,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
   const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('marketing_queue');
 
-  // Subsection filters: 'unclaimed', 'my_tasks', 'hold', 'completed'
-  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'hold' | 'completed'>('unclaimed');
+  // Subsection filters: 'unclaimed', 'my_tasks', 'hold', 'completed', 'rework', 'admin_order'
+  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'hold' | 'completed' | 'rework' | 'admin_order'>('unclaimed');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -184,6 +184,34 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     return !isUnclaimedItem(item?.assignedDesigner, item?.claimedBy) && !isClaimedByMe(item);
   };
 
+  // Helper to detect rework / corrections
+  const isItemRework = (o: any) => {
+    if (o?.isRework) return true;
+    if (o?.reworkNotes) return true;
+    const notesStr = String(o?.notes || o?.designNotes || '').toLowerCase();
+    if (notesStr.includes('[rework') || notesStr.includes('rework') || notesStr.includes('correction requested') || notesStr.includes('sent back from marketing')) return true;
+    const hadPriorDesign = Boolean(
+      o?.designCompleted ||
+      o?.designSentToMarketing ||
+      (o?.original_design_file && o.original_design_file.length > 0) ||
+      (o?.original_design_filename && o.original_design_filename.length > 0) ||
+      (o?.designAttachments && o.designAttachments.length > 0) ||
+      (o?.machineFiles && o.machineFiles.length > 0)
+    );
+    return Boolean((o?.status === OrderStatus.DESIGN || o?.status === 'design') && hadPriorDesign);
+  };
+
+  // Helper to detect Admin orders
+  const isItemAdminOrder = (o: any) => {
+    if (o?.isAdminOrder) return true;
+    if (o?.sentByAdmin) return true;
+    const creator = String(o?.createdByName || o?.createdBy || '').toLowerCase();
+    if (creator.includes('admin') || creator.includes('administrator')) return true;
+    const notesStr = String(o?.notes || o?.designNotes || '').toLowerCase();
+    if (notesStr.includes('[admin') || notesStr.includes('admin created') || notesStr.includes('admin order')) return true;
+    return false;
+  };
+
   // 1. Process Order and Conversation Items for MARKETING QUEUE (Marketing Sent)
   const marketingOrderItems = (orders || [])
     .filter(o => {
@@ -216,6 +244,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
+        isRework: isItemRework(o),
+        isAdminOrder: isItemAdminOrder(o),
+        reworkNotes: o.reworkNotes,
         createdAt: o.createdAt || Date.now(),
         staffImages: o.staffImages || [],
         staffPdfs: o.staffPdfs || [],
@@ -256,6 +287,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         status: isCompleted ? OrderStatus.ORDER_MANAGEMENT : OrderStatus.DESIGN, // simulate pipeline
         isHold: false,
         isCompleted: isCompleted,
+        isRework: false,
+        isAdminOrder: false,
+        reworkNotes: undefined,
         createdAt: c.createdAt || Date.now(),
         staffImages: c.imageAttachments || [],
         staffPdfs: c.pdfAttachments || [],
@@ -301,6 +335,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
+        isRework: isItemRework(o),
+        isAdminOrder: isItemAdminOrder(o),
+        reworkNotes: o.reworkNotes,
         createdAt: o.createdAt || Date.now(),
         hasOmChat: hasOmChat,
         staffImages: o.staffImages || [],
@@ -334,6 +371,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'my_tasks') {
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
+    } else if (selectedSection === 'rework') {
+      baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold);
+    } else if (selectedSection === 'admin_order') {
+      baseList = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold);
     }
 
     // Search term matching
@@ -364,9 +405,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
+    const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold).length;
+    const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold).length;
     const totalCount = baseList.length;
 
-    return { unclaimedCount, myTasksCount, holdCount, completedCount, totalCount };
+    return { unclaimedCount, myTasksCount, holdCount, completedCount, reworkCount, adminOrderCount, totalCount };
   };
 
   const handleClaimItem = async (item: any, e?: React.MouseEvent) => {
@@ -857,22 +900,30 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         {/* Section Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {([
-            { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount },
-            { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount },
-            { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount },
-            { key: 'completed', label: '✓ Done', count: activeStats.completedCount },
-          ] as const).map(({ key, label, count }) => (
+            { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount, color: 'bg-brand-primary' },
+            { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
+            { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
+            { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
+            { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
+            { key: 'admin_order', label: '👑 Admin Order', count: activeStats.adminOrderCount, color: 'bg-indigo-600' },
+          ] as const).map(({ key, label, count, color }) => (
             <button
               key={key}
               onClick={() => setSelectedSection(key)}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer",
+                "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer flex items-center gap-1.5",
                 selectedSection === key
-                  ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                  ? `${color || 'bg-brand-primary'} text-white border-transparent shadow-sm`
                   : "bg-gray-50 text-gray-600 border-gray-200 hover:border-brand-primary/40 hover:bg-gray-100"
               )}
             >
-              {label} ({count})
+              <span>{label}</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded-md text-[9px] font-black",
+                selectedSection === key ? "bg-white/20 text-white" : "bg-gray-200 text-gray-700"
+              )}>
+                {count}
+              </span>
             </button>
           ))}
         </div>
@@ -927,7 +978,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             {item.isUrgent && (
                               <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
                             )}
-                            {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && (
+                            {item.isRework && (
+                              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
+                                🔁 REWORK
+                              </span>
+                            )}
+                            {item.isAdminOrder && (
+                              <span className="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
+                                👑 ADMIN ORDER
+                              </span>
+                            )}
+                            {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && !item.isRework && (
                               <span className="bg-purple-100 text-purple-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-purple-300 tracking-wide uppercase flex items-center gap-0.5">
                                 🔄 Revise
                               </span>
@@ -1096,7 +1157,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         {item.isUrgent && (
                           <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
                         )}
-                        {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && (
+                        {item.isRework && (
+                          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
+                            🔁 REWORK
+                          </span>
+                        )}
+                        {item.isAdminOrder && (
+                          <span className="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
+                            👑 ADMIN ORDER
+                          </span>
+                        )}
+                        {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && !item.isRework && (
                           <span className="bg-purple-100 text-purple-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-purple-300 tracking-wide uppercase flex items-center gap-0.5">
                             🔄 Revise
                           </span>
