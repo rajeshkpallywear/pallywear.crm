@@ -1,13 +1,13 @@
 
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
 import { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
-import { cn } from '../lib/utils';
+import { cn, shareOrderToWhatsApp } from '../lib/utils';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -180,6 +180,15 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             )}
           </div>
           <div className="flex items-center gap-3">
+            {!isEditing && (
+              <button
+                onClick={() => shareOrderToWhatsApp(order)}
+                className="px-5 py-3 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-700 transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none"
+                title="Share Order to WhatsApp"
+              >
+                <MessageSquare size={14} /> WhatsApp
+              </button>
+            )}
             {onUpdateOrder && !isEditing && (
               <button
                 onClick={() => setIsEditing(true)}

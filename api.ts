@@ -391,7 +391,8 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes, voiceNote
+             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes, voiceNote,
+             isRework, isAdminOrder, sentByAdmin, reworkNotes
       FROM orders
     `) as any[];
 
@@ -448,6 +449,10 @@ router.get('/orders', async (req, res) => {
       claimedBy: r.claimedBy || '',
       claimedByName: r.claimedByName || '',
       claimedAt: Number(r.claimedAt || 0),
+      isRework: r.isRework === 1 || r.isRework === true,
+      isAdminOrder: r.isAdminOrder === 1 || r.isAdminOrder === true,
+      sentByAdmin: r.sentByAdmin === 1 || r.sentByAdmin === true,
+      reworkNotes: r.reworkNotes || '',
     }));
     res.json(mapped);
   } catch (error: any) {
@@ -520,6 +525,7 @@ router.post('/orders', async (req, res) => {
         assignedDesigner=?, holdReason=?, previousStatus=?, createdBy=?, createdByName=?, accountsNotes=?,
         original_design_file=?, original_design_filename=?, original_design_zip=?, original_design_zip_filename=?,
         sentByAccounts=?, marketing_image=?, marketing_notes=?, voiceNote=?,
+        isRework=?, isAdminOrder=?, sentByAdmin=?, reworkNotes=?,
         updatedAt=? WHERE id=?`,
         [
           customer.name, customer.company, customer.phone, customer.address,
@@ -537,6 +543,7 @@ router.post('/orders', async (req, res) => {
           order.original_design_zip || null, order.original_design_zip_filename || null,
           order.sentByAccounts ? 1 : 0, order.marketing_image || null, order.marketing_notes || null,
           order.voiceNote || null,
+          order.isRework ? 1 : 0, order.isAdminOrder ? 1 : 0, order.sentByAdmin ? 1 : 0, order.reworkNotes || null,
           Date.now(), order.id
         ]
       );
@@ -608,8 +615,9 @@ router.post('/orders', async (req, res) => {
         assignedDesigner, holdReason, previousStatus, createdBy, createdByName, accountsNotes,
         original_design_file, original_design_filename, original_design_zip, original_design_zip_filename,
         sentByAccounts, marketing_image, marketing_notes, voiceNote,
+        isRework, isAdminOrder, sentByAdmin, reworkNotes,
         createdAt, updatedAt) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.id, customer.name, customer.company, customer.phone, customer.address,
           order.category, order.quantity, JSON.stringify(order.details || {}), JSON.stringify(order.sizeBreakdown || []),
@@ -626,6 +634,7 @@ router.post('/orders', async (req, res) => {
           order.original_design_zip || null, order.original_design_zip_filename || null,
           order.sentByAccounts ? 1 : 0, order.marketing_image || null, order.marketing_notes || null,
           order.voiceNote || null,
+          order.isRework ? 1 : 0, order.isAdminOrder ? 1 : 0, order.sentByAdmin ? 1 : 0, order.reworkNotes || null,
           Date.now(), Date.now()
         ]
       );
@@ -794,6 +803,10 @@ const handleUpdateOrderFields = async (req, res) => {
       claimedBy: 'claimedBy',
       claimedByName: 'claimedByName',
       claimedAt: 'claimedAt',
+      isRework: 'isRework',
+      isAdminOrder: 'isAdminOrder',
+      sentByAdmin: 'sentByAdmin',
+      reworkNotes: 'reworkNotes',
     };
     
     if (updates.customerInfo) {

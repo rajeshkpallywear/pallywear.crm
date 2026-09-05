@@ -46,7 +46,11 @@ $queries = [
     "ALTER TABLE `orders` MODIFY COLUMN `designAttachments` LONGTEXT DEFAULT NULL",
     "ALTER TABLE `orders` MODIFY COLUMN `machineFiles` LONGTEXT DEFAULT NULL",
     "ALTER TABLE `invoices` MODIFY COLUMN `items` LONGTEXT DEFAULT NULL",
-    "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `sentByAccounts` tinyint(1) DEFAULT 0"
+    "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `sentByAccounts` tinyint(1) DEFAULT 0",
+    "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `isRework` tinyint(1) DEFAULT 0",
+    "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `isAdminOrder` tinyint(1) DEFAULT 0",
+    "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `sentByAdmin` tinyint(1) DEFAULT 0",
+    "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `reworkNotes` text DEFAULT NULL"
 ];
 
 // 4. Run queries

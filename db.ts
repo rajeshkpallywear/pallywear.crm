@@ -147,6 +147,10 @@ export async function initDB() {
         \`is_hold\` tinyint DEFAULT '0',
         \`balance_received_notes\` text,
         \`sentByAccounts\` tinyint(1) DEFAULT '0',
+        \`isRework\` tinyint(1) DEFAULT '0',
+        \`isAdminOrder\` tinyint(1) DEFAULT '0',
+        \`sentByAdmin\` tinyint(1) DEFAULT '0',
+        \`reworkNotes\` text DEFAULT NULL,
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
@@ -255,6 +259,18 @@ export async function initDB() {
     } catch (_) {}
     try {
       await pool.execute('ALTER TABLE `orders` ADD COLUMN `claimedAt` bigint DEFAULT NULL');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `isRework` tinyint(1) DEFAULT 0');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `isAdminOrder` tinyint(1) DEFAULT 0');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `sentByAdmin` tinyint(1) DEFAULT 0');
+    } catch (_) {}
+    try {
+      await pool.execute('ALTER TABLE `orders` ADD COLUMN `reworkNotes` text DEFAULT NULL');
     } catch (_) {}
 
 

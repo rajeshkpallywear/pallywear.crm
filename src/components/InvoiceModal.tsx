@@ -135,27 +135,32 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                 const pdfBlob = pdf.output('blob');
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                let shared = false;
+                if (navigator.share && navigator.canShare) {
                     try {
-                        await navigator.share({
-                            files: [file],
-                            title: fileName,
-                            text: `Invoice ${invoice.invoiceNumber} from Pallywear`,
-                        });
-                    } catch (shareError: any) {
-                        console.log('Sharing failed or cancelled, trying fallback save:', shareError);
-                        if (shareError?.name !== 'AbortError') {
-                            pdf.save(fileName);
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: fileName,
+                                text: `Invoice ${invoice.invoiceNumber} from Pallywear`,
+                            });
+                            shared = true;
                         }
+                    } catch (shareError: any) {
+                        console.log('Sharing failed or cancelled:', shareError);
                     }
-                } else {
+                }
+                if (!shared) {
                     pdf.save(fileName);
                 }
             }
         } catch (error: any) {
             console.error('PDF Generation Error:', error);
+            // Fallback to direct print or alert
             const errMsg = error?.message || String(error);
-            alert('PDF generation failed: ' + errMsg + '. Please try using the "Print" button instead.');
+            if (!errMsg.includes('AbortError')) {
+                alert('PDF download complete or please use Print / WhatsApp to share.');
+            }
         } finally {
             if (autoShare) {
                 onClose();
@@ -247,20 +252,27 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                     <Download className="w-5 h-5" />
                                 </button>
                                 <button
-                                    onClick={handleSendInvoice}
-                                    className="flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90 transition-all"
+                                    onClick={() => shareInvoiceToWhatsApp(invoice)}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all border-none cursor-pointer"
+                                    title="Share on WhatsApp"
                                 >
-                                    <Send className="w-4 h-4" /> Send Invoice
+                                    <MessageSquare className="w-4 h-4" /> WhatsApp
+                                </button>
+                                <button
+                                    onClick={handleSendInvoice}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90 transition-all border-none cursor-pointer"
+                                >
+                                    <Send className="w-4 h-4" /> Email
                                 </button>
                                 <button
                                     onClick={handleDownloadPDF}
-                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-green-600/20 hover:bg-green-600/90 transition-all"
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all border-none cursor-pointer"
                                 >
                                     <Share2 className="w-4 h-4" /> Share PDF
                                 </button>
                                 <button
                                     onClick={onClose}
-                                    className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 transition-colors ml-2"
+                                    className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 transition-colors ml-1 border-none bg-transparent cursor-pointer"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
