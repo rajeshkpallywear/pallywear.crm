@@ -177,6 +177,26 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
     }
   };
 
+  const handleSendToDelivery = async () => {
+    if (!selectedOrder || isProcessing) return;
+
+    setIsProcessing(true);
+    try {
+      await onUpdateOrder(selectedOrder.id, {
+        status: OrderStatus.DELIVERY,
+        updatedAt: Date.now()
+      });
+
+      setSelectedOrder(null);
+      alert("Success: Order sent to Delivery Team.");
+    } catch (e: any) {
+      console.error("Order Management send to delivery failed:", e);
+      alert("Failed to send order to delivery.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleHoldOrder = async () => {
     if (!selectedOrder || isProcessing) return;
 
@@ -1227,19 +1247,27 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
               {/* Action Footer */}
               {selectedSection === 'recent' && selectedOrder.status === OrderStatus.ORDER_MANAGEMENT && (
-                <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex justify-end gap-3">
+                <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex flex-wrap justify-end gap-3 items-center">
                   <button
                     disabled={isProcessing}
                     onClick={handleHoldOrder}
-                    className="px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-red-200"
+                    className="px-5 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-red-200"
                   >
                     <AlertCircle size={14} />
                     Hold Order
                   </button>
                   <button
                     disabled={isProcessing}
+                    onClick={handleSendToDelivery}
+                    className="flex-1 min-w-[160px] px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer border-none"
+                  >
+                    <Truck size={14} />
+                    {isProcessing ? 'Processing...' : 'Send to Delivery'}
+                  </button>
+                  <button
+                    disabled={isProcessing}
                     onClick={handleProcessOrder}
-                    className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer border-none"
+                    className="flex-1 min-w-[160px] px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer border-none"
                   >
                     {isProcessing ? 'Processing...' : 'Send to Production'}
                     <ChevronRight size={14} />
