@@ -16,6 +16,7 @@ import VendorExpensePage from './VendorExpensePage';
 import OtherExpensePage from './OtherExpensePage';
 import ExpensesHub from './ExpensesHub';
 import OrdersChart from './OrdersChart';
+import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue' | 'expenses-hub';
 
@@ -35,6 +36,13 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Staff & Date Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [staffFilter, setStaffFilter] = useState('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
+  const [customDate, setCustomDate] = useState('');
+
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -51,7 +59,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
 
-  const filteredOrders = orders.filter(o => {
+  const baseSectionOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS;
     }
@@ -60,6 +68,14 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
     return o.status === OrderStatus.ACCOUNTS;
   });
+
+  const filteredOrders = filterOrdersWithStaffAndDate(
+    baseSectionOrders,
+    staffFilter,
+    dateRangeFilter,
+    customDate,
+    searchQuery
+  );
 
   // Auto-select first order when section or filtered order list changes (except completed tab)
   useEffect(() => {
@@ -183,11 +199,30 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
           {renderSidebarContent()}
         </div>
       ) : (
-      <div className="space-y-8">
+      <div className="space-y-6">
+        {/* Staff Breakdown & Upload Analytics Bar */}
+        <StaffBreakdownBar
+          orders={orders}
+          staffFilter={staffFilter}
+          onStaffFilterChange={setStaffFilter}
+          dateRangeFilter={dateRangeFilter}
+          onDateRangeFilterChange={setDateRangeFilter}
+          customDate={customDate}
+          onCustomDateChange={setCustomDate}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          filteredCount={filteredOrders.length}
+          itemLabel="Orders"
+          onResetFilters={() => {
+            setSearchQuery('');
+            setStaffFilter('all');
+            setDateRangeFilter('all');
+            setCustomDate('');
+          }}
+        />
 
-
-      {/* Summary Stats Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        {/* Summary Stats Section */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <button
           onClick={() => setSelectedSection('recent')}
           className={cn(
@@ -304,8 +339,21 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
                   <div>
                     <div className="font-bold text-sm truncate">{order.customerInfo.name}</div>
-                    <div className={cn("text-[9px] font-bold uppercase tracking-wide", selectedOrder?.id === order.id ? "text-gray-300" : "text-brand-primary")}>
-                      By: {order.createdByName || 'System'}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={cn("text-[9px] font-bold uppercase tracking-wide", selectedOrder?.id === order.id ? "text-gray-300" : "text-brand-primary")}>
+                        By: {order.createdByName || 'System'}
+                      </span>
+                      {(() => {
+                        if (!order.createdAt) return null;
+                        const d = new Date(order.createdAt);
+                        const now = new Date();
+                        const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                        return isToday ? (
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-white shadow-xs">
+                            ⚡ Today
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   {order.status === OrderStatus.HOLD && order.holdReason && (

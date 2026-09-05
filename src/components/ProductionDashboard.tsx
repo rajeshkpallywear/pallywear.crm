@@ -7,6 +7,7 @@ import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
 import OrdersChart from './OrdersChart';
+import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 interface ProductionDashboardProps {
   orders: Order[];
@@ -21,6 +22,13 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Staff & Date Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [staffFilter, setStaffFilter] = useState('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
+  const [customDate, setCustomDate] = useState('');
+
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -31,7 +39,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     }
   }, [selectedOrder?.id]);
 
-  const filteredOrders = orders.filter(o => {
+  const baseSectionOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION;
     }
@@ -43,6 +51,14 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     }
     return o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted;
   });
+
+  const filteredOrders = filterOrdersWithStaffAndDate(
+    baseSectionOrders,
+    staffFilter,
+    dateRangeFilter,
+    customDate,
+    searchQuery
+  );
 
   // Auto-select first order when section or filtered order list changes (except completed tab)
   useEffect(() => {
@@ -110,7 +126,27 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   };
 
   return (
-    <div className="bg-white text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-200 shadow-xl space-y-4 sm:space-y-8 text-left">
+    <div className="bg-white text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-gray-200 shadow-xl space-y-4 sm:space-y-6 text-left">
+      {/* Staff Breakdown & Upload Analytics Bar */}
+      <StaffBreakdownBar
+        orders={orders}
+        staffFilter={staffFilter}
+        onStaffFilterChange={setStaffFilter}
+        dateRangeFilter={dateRangeFilter}
+        onDateRangeFilterChange={setDateRangeFilter}
+        customDate={customDate}
+        onCustomDateChange={setCustomDate}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        filteredCount={filteredOrders.length}
+        itemLabel="Production Orders"
+        onResetFilters={() => {
+          setSearchQuery('');
+          setStaffFilter('all');
+          setDateRangeFilter('all');
+          setCustomDate('');
+        }}
+      />
 
       {/* Tabs Filter Bar */}
       <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 border border-gray-200 rounded-xl sm:rounded-2xl w-full sm:w-fit">
@@ -191,8 +227,21 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                   </div>
                   
                   <div className="font-bold text-base uppercase italic leading-tight">{order.customerInfo.name}</div>
-                  <div className={cn("text-[10px] font-bold uppercase tracking-wider", selectedOrder?.id === order.id ? "text-indigo-200" : "text-brand-primary")}>
-                    Created by: {order.createdByName || 'System'}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className={cn("text-[10px] font-bold uppercase tracking-wider", selectedOrder?.id === order.id ? "text-indigo-200" : "text-brand-primary")}>
+                      Created by: {order.createdByName || 'System'}
+                    </div>
+                    {(() => {
+                      if (!order.createdAt) return null;
+                      const d = new Date(order.createdAt);
+                      const now = new Date();
+                      const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                      return isToday ? (
+                        <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-white shadow-xs">
+                          ⚡ Today
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   
                   {order.status === OrderStatus.HOLD && order.holdReason && (

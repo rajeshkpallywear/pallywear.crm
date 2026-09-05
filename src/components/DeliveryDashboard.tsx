@@ -7,6 +7,7 @@ import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
 import OrdersChart from './OrdersChart';
+import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 interface DeliveryDashboardProps {
   orders: Order[];
@@ -21,6 +22,13 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Staff & Date Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [staffFilter, setStaffFilter] = useState('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
+  const [customDate, setCustomDate] = useState('');
+
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -31,7 +39,7 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
   }, [selectedOrder?.id]);
 
-  const filteredOrders = orders.filter(o => {
+  const baseSectionOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY;
     }
@@ -43,6 +51,14 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
     }
     return o.status === OrderStatus.DELIVERY;
   });
+
+  const filteredOrders = filterOrdersWithStaffAndDate(
+    baseSectionOrders,
+    staffFilter,
+    dateRangeFilter,
+    customDate,
+    searchQuery
+  );
 
   // Auto-select first order when section or filtered order list changes
   useEffect(() => {
@@ -80,7 +96,27 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
   };
 
   return (
-    <div className="bg-white/85 backdrop-blur-md text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/60 shadow-lg space-y-4 sm:space-y-8 text-left">
+    <div className="bg-white/85 backdrop-blur-md text-slate-800 p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/60 shadow-lg space-y-4 sm:space-y-6 text-left">
+      {/* Staff Breakdown & Upload Analytics Bar */}
+      <StaffBreakdownBar
+        orders={orders}
+        staffFilter={staffFilter}
+        onStaffFilterChange={setStaffFilter}
+        dateRangeFilter={dateRangeFilter}
+        onDateRangeFilterChange={setDateRangeFilter}
+        customDate={customDate}
+        onCustomDateChange={setCustomDate}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        filteredCount={filteredOrders.length}
+        itemLabel="Delivery Orders"
+        onResetFilters={() => {
+          setSearchQuery('');
+          setStaffFilter('all');
+          setDateRangeFilter('all');
+          setCustomDate('');
+        }}
+      />
 
       {/* Dynamic Real Stats Cards */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
@@ -172,8 +208,21 @@ export default function DeliveryDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
 
                   <div className="font-bold text-base uppercase italic leading-tight">{order.customerInfo.name}</div>
-                  <div className={cn("text-[10px] font-bold uppercase tracking-wider", selectedOrder?.id === order.id ? "text-orange-100" : "text-brand-primary")}>
-                    Created by: {order.createdByName || 'System'}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className={cn("text-[10px] font-bold uppercase tracking-wider", selectedOrder?.id === order.id ? "text-orange-100" : "text-brand-primary")}>
+                      Created by: {order.createdByName || 'System'}
+                    </div>
+                    {(() => {
+                      if (!order.createdAt) return null;
+                      const d = new Date(order.createdAt);
+                      const now = new Date();
+                      const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                      return isToday ? (
+                        <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-white shadow-xs">
+                          ⚡ Today
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
 
                   {order.status === OrderStatus.HOLD && order.holdReason && (

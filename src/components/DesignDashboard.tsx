@@ -37,6 +37,7 @@ import { useLeads } from '../context/LeadContext';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import ConversationDashboard, { Conversation } from './ConversationDashboard';
 import OrdersChart from './OrdersChart';
+import StaffBreakdownBar, { DateRangeFilterType, filterOrdersWithStaffAndDate } from './StaffBreakdownBar';
 
 interface DesignDashboardProps {
   orders: Order[];
@@ -62,6 +63,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
+  const [staffFilter, setStaffFilter] = useState('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilterType>('all');
+  const [customDate, setCustomDate] = useState('');
 
   // Selection
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -336,16 +340,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     }
 
-    // Search term matching
-    if (searchTerm && searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      baseList = baseList.filter(item =>
-        (item.customerName || '').toLowerCase().includes(term) ||
-        (item.id || '').toLowerCase().includes(term) ||
-        (item.category || '').toLowerCase().includes(term) ||
-        (item.notes || '').toLowerCase().includes(term)
-      );
-    }
+    // Apply Staff, Date Range, and Search Filtering
+    baseList = filterOrdersWithStaffAndDate(
+      baseList,
+      staffFilter,
+      dateRangeFilter,
+      customDate,
+      searchTerm
+    );
 
     // Queue Sorting: return a new sorted array copy
     return [...baseList].sort((a, b) => {
@@ -828,6 +830,27 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         </button>
       </div>
 
+      {/* Staff Breakdown & Upload Analytics Bar */}
+      <StaffBreakdownBar
+        orders={orders}
+        staffFilter={staffFilter}
+        onStaffFilterChange={setStaffFilter}
+        dateRangeFilter={dateRangeFilter}
+        onDateRangeFilterChange={setDateRangeFilter}
+        customDate={customDate}
+        onCustomDateChange={setCustomDate}
+        searchQuery={searchTerm}
+        onSearchQueryChange={setSearchTerm}
+        filteredCount={getFilteredItems().length}
+        itemLabel="Designs"
+        onResetFilters={() => {
+          setSearchTerm('');
+          setStaffFilter('all');
+          setDateRangeFilter('all');
+          setCustomDate('');
+        }}
+      />
+
       {/* Design Project Queue — Live Orders */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-150 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
@@ -839,18 +862,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-xl">
               {getFilteredItems().length} Order{getFilteredItems().length !== 1 ? 's' : ''}
             </span>
-          </div>
-
-          {/* Search bar inside queue */}
-          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 sm:w-72">
-            <Search size={14} className="text-gray-400 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search queue orders, client, ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent border-none text-xs text-gray-800 placeholder:text-gray-400 outline-none w-full"
-            />
           </div>
         </div>
 
@@ -958,9 +969,22 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           )}
                           <div className="flex flex-col gap-0.5 max-w-[240px]">
                             <span className="font-black text-gray-900 text-xs uppercase italic truncate">{item.customerName}</span>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                              By: {item.createdByName || 'Marketing'}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                                By: {item.createdByName || 'Marketing'}
+                              </span>
+                              {(() => {
+                                if (!item.createdAt) return null;
+                                const d = new Date(item.createdAt);
+                                const now = new Date();
+                                const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                                return isToday ? (
+                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-white shadow-xs">
+                                    ⚡ Today
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                             <span className="text-[10px] text-gray-500 font-mono">{item.phone}</span>
                             {item.notes && item.notes !== 'No notes' && (
                               <span className="text-[9px] text-gray-400 italic truncate" title={item.notes}>
@@ -1105,8 +1129,21 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       )}
                       <div className="space-y-1">
                         <div className="font-black text-gray-900 text-sm uppercase italic">{item.customerName}</div>
-                        <div className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
-                          By: {item.createdByName || 'Marketing'}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
+                            By: {item.createdByName || 'Marketing'}
+                          </span>
+                          {(() => {
+                            if (!item.createdAt) return null;
+                            const d = new Date(item.createdAt);
+                            const now = new Date();
+                            const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                            return isToday ? (
+                              <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-white shadow-xs">
+                                ⚡ Today
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                         <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <Phone size={12} className="text-brand-primary" /> {item.phone}
