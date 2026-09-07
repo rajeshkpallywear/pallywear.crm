@@ -60,6 +60,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     }
   }, [selectedOrder?.id]);
 
+  // Helper to check if an order was explicitly sent to Digitizer by Design
+  const isOrderForDigitizer = (o: Order) => {
+    return Boolean(
+      o.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === 'true'
+    );
+  };
+
   // Filter orders with debounced search
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
@@ -69,20 +78,13 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
         o.id.toLowerCase().includes(term) ||
         (o.category || '').toLowerCase().includes(term);
 
-      // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
-      // If ready for digitizing: has design file, design zip, design filename, design zip filename, design attachments, or sent to digitizer
+      // ONLY show orders that Design explicitly sent to Digitizer
+      const sentToDigitizer = isOrderForDigitizer(o);
+      if (!sentToDigitizer) return false;
+
       const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
       const normStatus = String(effStatus || '').toLowerCase();
-      const isOrderReady = Boolean(
-        o.original_design_file ||
-        o.original_design_zip ||
-        o.original_design_filename ||
-        o.original_design_zip_filename ||
-        (o.designAttachments && o.designAttachments.length > 0) ||
-        o.designSentToDigitizer ||
-        o.details?.designSentToDigitizer
-      );
-      const relevantStatus = ['design', 'order_management', 'production'].includes(normStatus) && isOrderReady;
+      const relevantStatus = ['design', 'order_management', 'production'].includes(normStatus);
 
       if (viewMode === 'pending') {
         return matchesSearch && relevantStatus && !o.machineFiles?.length;
@@ -220,16 +222,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
             ⏳ Pending ({orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
               const normStatus = String(effStatus || '').toLowerCase();
-              const isOrderReady = Boolean(
-                o.original_design_file ||
-                o.original_design_zip ||
-                o.original_design_filename ||
-                o.original_design_zip_filename ||
-                (o.designAttachments && o.designAttachments.length > 0) ||
-                o.designSentToDigitizer ||
-                o.details?.designSentToDigitizer
-              );
-              return ['design', 'order_management', 'production'].includes(normStatus) && isOrderReady && !o.machineFiles?.length;
+              return isOrderForDigitizer(o) && ['design', 'order_management', 'production'].includes(normStatus) && !o.machineFiles?.length;
             }).length})
           </button>
           <button
@@ -241,7 +234,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ✓ Done ({orders.filter(o => (o.machineFiles && o.machineFiles.length > 0) || String(o.status || '').toLowerCase() === 'delivered').length})
+            ✓ Done ({orders.filter(o => isOrderForDigitizer(o) && ((o.machineFiles && o.machineFiles.length > 0) || String(o.status || '').toLowerCase() === 'delivered')).length})
           </button>
         </div>
 
