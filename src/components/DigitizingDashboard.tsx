@@ -70,22 +70,24 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
         (o.category || '').toLowerCase().includes(term);
 
       // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
-      // If ready for digitizing: has design file, design zip, design filename, design zip filename, or design attachments
+      // If ready for digitizing: has design file, design zip, design filename, design zip filename, design attachments, or sent to digitizer
       const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+      const normStatus = String(effStatus || '').toLowerCase();
       const isOrderReady = Boolean(
         o.original_design_file ||
         o.original_design_zip ||
         o.original_design_filename ||
         o.original_design_zip_filename ||
         (o.designAttachments && o.designAttachments.length > 0) ||
-        o.designSentToDigitizer
+        o.designSentToDigitizer ||
+        o.details?.designSentToDigitizer
       );
-      const relevantStatus = effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady;
+      const relevantStatus = ['design', 'order_management', 'production'].includes(normStatus) && isOrderReady;
 
       if (viewMode === 'pending') {
         return matchesSearch && relevantStatus && !o.machineFiles?.length;
       } else {
-        return matchesSearch && o.status === OrderStatus.DELIVERED;
+        return matchesSearch && ((o.machineFiles && o.machineFiles.length > 0) || normStatus === 'delivered');
       }
     });
   }, [orders, debouncedSearchTerm, viewMode]);
@@ -217,15 +219,17 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
           >
             ⏳ Pending ({orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+              const normStatus = String(effStatus || '').toLowerCase();
               const isOrderReady = Boolean(
                 o.original_design_file ||
                 o.original_design_zip ||
                 o.original_design_filename ||
                 o.original_design_zip_filename ||
                 (o.designAttachments && o.designAttachments.length > 0) ||
-                o.designSentToDigitizer
+                o.designSentToDigitizer ||
+                o.details?.designSentToDigitizer
               );
-              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady && !o.machineFiles?.length;
+              return ['design', 'order_management', 'production'].includes(normStatus) && isOrderReady && !o.machineFiles?.length;
             }).length})
           </button>
           <button
@@ -237,7 +241,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ✓ Done ({orders.filter(o => o.status === OrderStatus.DELIVERED).length})
+            ✓ Done ({orders.filter(o => (o.machineFiles && o.machineFiles.length > 0) || String(o.status || '').toLowerCase() === 'delivered').length})
           </button>
         </div>
 

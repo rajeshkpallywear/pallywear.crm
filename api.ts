@@ -396,64 +396,71 @@ router.get('/orders', async (req, res) => {
       FROM orders
     `) as any[];
 
-    const mapped = rows.map(r => ({
-      id: r.id,
-      customerInfo: {
-        name: r.customerName,
-        phone: r.customerPhone,
-        address: r.customerAddress,
-        company: r.customerCompany,
-      },
-      category: r.category,
-      quantity: r.quantity,
-      details: safeJSONParse(r.details, {}),
-      sizeBreakdown: safeJSONParse(r.sizeBreakdown, []),
-      financials: {
-        totalAmount: Number(r.totalAmount || 0),
-        advancePay: Number(r.advancePay || 0),
-        balanceAmount: Number(r.balanceAmount || 0),
-        gstAmount: Number(r.gstAmount || 0),
-        discountAmount: Number(r.discountAmount || 0),
-        shippingCharges: Number(r.shippingCharges || 0),
-      },
-      status: r.status,
-      isUrgent: r.isUrgent === 1,
-      notes: r.notes,
-      staffImages: [],
-      staffPdfs: [],
-      accountsAttachments: [],
-      orderManagementAttachments: [],
-      designAttachments: [],
-      machineFiles: [],
-      marketing_image: '',
-      marketing_notes: r.marketing_notes || '',
-      voiceNote: r.voiceNote || '',
-      createdAt: Number(r.createdAt || 0),
-      updatedAt: Number(r.updatedAt || 0),
-      designName: r.designName || '',
-      designAmount: Number(r.designAmount || 0),
-      designGst: Number(r.designGst || 0),
-      designDiscount: Number(r.designDiscount || 0),
-      designNotes: r.designNotes || '',
-      assignedDesigner: r.assignedDesigner || 'Unassigned',
-      holdReason: r.holdReason || '',
-      previousStatus: r.previousStatus || '',
-      createdBy: r.createdBy || '',
-      createdByName: r.createdByName || '',
-      accountsNotes: r.accountsNotes || '',
-      original_design_file: '',
-      original_design_filename: r.original_design_filename || '',
-      original_design_zip: '',
-      original_design_zip_filename: r.original_design_zip_filename || '',
-      sentByAccounts: r.sentByAccounts === 1,
-      claimedBy: r.claimedBy || '',
-      claimedByName: r.claimedByName || '',
-      claimedAt: Number(r.claimedAt || 0),
-      isRework: r.isRework === 1 || r.isRework === true,
-      isAdminOrder: r.isAdminOrder === 1 || r.isAdminOrder === true,
-      sentByAdmin: r.sentByAdmin === 1 || r.sentByAdmin === true,
-      reworkNotes: r.reworkNotes || '',
-    }));
+    const mapped = rows.map(r => {
+      const details = safeJSONParse(r.details, {});
+      return {
+        id: r.id,
+        customerInfo: {
+          name: r.customerName,
+          phone: r.customerPhone,
+          address: r.customerAddress,
+          company: r.customerCompany,
+        },
+        category: r.category,
+        quantity: r.quantity,
+        details: details,
+        sizeBreakdown: safeJSONParse(r.sizeBreakdown, []),
+        financials: {
+          totalAmount: Number(r.totalAmount || 0),
+          advancePay: Number(r.advancePay || 0),
+          balanceAmount: Number(r.balanceAmount || 0),
+          gstAmount: Number(r.gstAmount || 0),
+          discountAmount: Number(r.discountAmount || 0),
+          shippingCharges: Number(r.shippingCharges || 0),
+        },
+        status: r.status,
+        isUrgent: r.isUrgent === 1,
+        notes: r.notes,
+        staffImages: [],
+        staffPdfs: [],
+        accountsAttachments: [],
+        orderManagementAttachments: [],
+        designAttachments: [],
+        machineFiles: [],
+        marketing_image: '',
+        marketing_notes: r.marketing_notes || '',
+        voiceNote: r.voiceNote || '',
+        createdAt: Number(r.createdAt || 0),
+        updatedAt: Number(r.updatedAt || 0),
+        designName: r.designName || '',
+        designAmount: Number(r.designAmount || 0),
+        designGst: Number(r.designGst || 0),
+        designDiscount: Number(r.designDiscount || 0),
+        designNotes: r.designNotes || '',
+        assignedDesigner: r.assignedDesigner || 'Unassigned',
+        holdReason: r.holdReason || '',
+        previousStatus: r.previousStatus || '',
+        createdBy: r.createdBy || '',
+        createdByName: r.createdByName || '',
+        accountsNotes: r.accountsNotes || '',
+        original_design_file: '',
+        original_design_filename: r.original_design_filename || '',
+        original_design_zip: '',
+        original_design_zip_filename: r.original_design_zip_filename || '',
+        sentByAccounts: r.sentByAccounts === 1,
+        claimedBy: r.claimedBy || '',
+        claimedByName: r.claimedByName || '',
+        claimedAt: Number(r.claimedAt || 0),
+        isRework: r.isRework === 1 || r.isRework === true,
+        isAdminOrder: r.isAdminOrder === 1 || r.isAdminOrder === true,
+        sentByAdmin: r.sentByAdmin === 1 || r.sentByAdmin === true,
+        reworkNotes: r.reworkNotes || '',
+        designCompleted: details.designCompleted === true || details.designCompleted === 'true' || false,
+        designSentToMarketing: details.designSentToMarketing === true || details.designSentToMarketing === 'true' || false,
+        designSentToDigitizer: details.designSentToDigitizer === true || details.designSentToDigitizer === 'true' || false,
+        designCompletedAt: details.designCompletedAt ? Number(details.designCompletedAt) : null,
+      };
+    });
     res.json(mapped);
   } catch (error: any) {
     console.error('Error fetching orders:', error);
@@ -737,7 +744,7 @@ const handleUpdateOrderFields = async (req, res) => {
     if (!id) {
       return res.status(404).json({ success: false, message: 'Order not found.' });
     }
-    const existing = await query('SELECT status, original_design_file, totalAmount, customerName, category, quantity FROM orders WHERE id = ?', [id]) as any[];
+    const existing = await query('SELECT status, original_design_file, details, totalAmount, customerName, category, quantity FROM orders WHERE id = ?', [id]) as any[];
     const oldStatus = existing[0].status;
     const oldDesignFile = existing[0].original_design_file;
     
@@ -827,9 +834,26 @@ const handleUpdateOrderFields = async (req, res) => {
       if (fin.shippingCharges !== undefined) { fields.push('shippingCharges = ?'); params.push(fin.shippingCharges); }
     }
     
-    if (updates.details !== undefined) {
+    let detailsObj = updates.details;
+    if (
+      updates.designCompleted !== undefined ||
+      updates.designSentToDigitizer !== undefined ||
+      updates.designSentToMarketing !== undefined ||
+      updates.designCompletedAt !== undefined
+    ) {
+      const existingDetails = safeJSONParse(existing[0]?.details, {});
+      detailsObj = {
+        ...existingDetails,
+        ...(detailsObj || {}),
+        ...(updates.designCompleted !== undefined ? { designCompleted: updates.designCompleted } : {}),
+        ...(updates.designSentToDigitizer !== undefined ? { designSentToDigitizer: updates.designSentToDigitizer } : {}),
+        ...(updates.designSentToMarketing !== undefined ? { designSentToMarketing: updates.designSentToMarketing } : {}),
+        ...(updates.designCompletedAt !== undefined ? { designCompletedAt: updates.designCompletedAt } : {}),
+      };
+    }
+    if (detailsObj !== undefined) {
       fields.push('details = ?');
-      params.push(JSON.stringify(updates.details || {}));
+      params.push(JSON.stringify(detailsObj || {}));
     }
     if (updates.sizeBreakdown !== undefined) {
       fields.push('sizeBreakdown = ?');
@@ -935,6 +959,21 @@ const handleUpdateOrderFields = async (req, res) => {
           ]
         );
       }
+    }
+
+    if (updates.designSentToDigitizer) {
+      await query(
+        'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [
+          `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          'digitizer',
+          `Design Ready for Digitizing`,
+          `Artwork for Order #${id.slice(-6)} is ready in the Digitizing queue.`,
+          id,
+          0,
+          Date.now()
+        ]
+      );
     }
 
     if (newStatus === 'accounts') {
