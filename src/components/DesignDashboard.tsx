@@ -190,15 +190,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     if (o?.reworkNotes) return true;
     const notesStr = String(o?.notes || o?.designNotes || '').toLowerCase();
     if (notesStr.includes('[rework') || notesStr.includes('rework') || notesStr.includes('correction requested') || notesStr.includes('sent back from marketing')) return true;
-    const hadPriorDesign = Boolean(
-      o?.designCompleted ||
-      o?.designSentToMarketing ||
-      (o?.original_design_file && o.original_design_file.length > 0) ||
-      (o?.original_design_filename && o.original_design_filename.length > 0) ||
-      (o?.designAttachments && o.designAttachments.length > 0) ||
-      (o?.machineFiles && o.machineFiles.length > 0)
-    );
-    return Boolean((o?.status === OrderStatus.DESIGN || o?.status === 'design') && hadPriorDesign);
+    return false;
   };
 
   // Helper to detect Admin orders
@@ -215,14 +207,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // 1. Process Order and Conversation Items for MARKETING QUEUE (Marketing Sent)
   const marketingOrderItems = (orders || [])
     .filter(o => {
+      const isCompletedDesign = o.status === OrderStatus.DELIVERED || Boolean(o.designCompleted && (o.designSentToMarketing || o.status === OrderStatus.PENDING));
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN;
-      const isCompletedDesign = o.status === OrderStatus.DELIVERED;
       const isMarketing = !o.sentByAccounts && (!o.accountsAttachments || o.accountsAttachments.length === 0);
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing;
     })
     .map(o => {
-      const isCompleted = o.status === OrderStatus.DELIVERED;
+      const isRework = isItemRework(o);
+      const isCompleted = (o.status === OrderStatus.DELIVERED || Boolean(o.designCompleted && (o.designSentToMarketing || o.status === OrderStatus.PENDING))) && !isRework;
 
       const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
         ? o.sizeBreakdown.map(s => [s.category, s.material, s.colour, s.printType, s.model].filter(Boolean).join(' ')).filter(Boolean).join(' | ') 
@@ -244,7 +237,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
-        isRework: isItemRework(o),
+        isRework: isRework,
         isAdminOrder: isItemAdminOrder(o),
         reworkNotes: o.reworkNotes,
         createdAt: o.createdAt || Date.now(),
@@ -254,6 +247,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         accountsAttachments: [],
         sizeBreakdown: o.sizeBreakdown || [],
         designSentToMarketing: o.designSentToMarketing,
+        designSentToDigitizer: o.designSentToDigitizer,
         designCompleted: o.designCompleted,
         original_design_file: o.original_design_file,
         original_design_filename: o.original_design_filename,
@@ -304,9 +298,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // 2. Process Items for ACCOUNTS QUEUE (Accounts Sent)
   const accountsOrderItems = (orders || [])
     .filter(o => {
+      const isCompletedDesign = o.status === OrderStatus.DELIVERED || Boolean(o.designCompleted && (o.designSentToDigitizer || o.status === OrderStatus.ORDER_MANAGEMENT || o.status === OrderStatus.PRODUCTION));
       const isDesignPhase = o.status === OrderStatus.DESIGN;
       const isHoldFromDesign = o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || o.previousStatus === OrderStatus.ACCOUNTS);
-      const isCompletedDesign = o.status === OrderStatus.DELIVERED;
       const isAccounts = o.sentByAccounts || (o.accountsAttachments && o.accountsAttachments.length > 0);
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts;
     })
@@ -314,7 +308,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
       const hasOmChat = !!localStorage.getItem(chatKey);
 
-      const isCompleted = o.status === OrderStatus.DELIVERED;
+      const isRework = isItemRework(o);
+      const isCompleted = (o.status === OrderStatus.DELIVERED || Boolean(o.designCompleted && (o.designSentToDigitizer || o.status === OrderStatus.ORDER_MANAGEMENT || o.status === OrderStatus.PRODUCTION))) && !isRework;
       const orderNotes = o.notes || o.designNotes || (o.sizeBreakdown && o.sizeBreakdown.length > 0 
         ? o.sizeBreakdown.map(s => [s.category, s.material, s.colour, s.printType, s.model].filter(Boolean).join(' ')).filter(Boolean).join(' | ') 
         : '') || 'No notes';
@@ -335,7 +330,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
-        isRework: isItemRework(o),
+        isRework: isRework,
         isAdminOrder: isItemAdminOrder(o),
         reworkNotes: o.reworkNotes,
         createdAt: o.createdAt || Date.now(),
@@ -346,6 +341,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         accountsAttachments: o.accountsAttachments || [],
         sizeBreakdown: o.sizeBreakdown || [],
         designSentToMarketing: o.designSentToMarketing,
+        designSentToDigitizer: o.designSentToDigitizer,
         designCompleted: o.designCompleted,
         original_design_file: o.original_design_file,
         original_design_filename: o.original_design_filename,
@@ -602,6 +598,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     setIsProcessing(true);
     try {
       await onUpdateOrder(selectedOrder.id, {
+        designCompleted: true,
+        designSentToDigitizer: true,
+        designCompletedAt: Date.now(),
         original_design_file: originalFile,
         original_design_filename: originalFilename,
         original_design_zip: designZipFile,
@@ -619,7 +618,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       setOriginalFilename('');
       setDesignZipFile('');
       setDesignZipFilename('');
-      alert("Success: Original design file uploaded and order made available to Digitizer.");
+      alert("Success: Original design file uploaded and order sent to Digitizer (Embroidery Queue).");
     } catch (e) {
       console.error(e);
       alert("An error occurred while sending to Digitizer.");
@@ -656,6 +655,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     try {
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.ORDER_MANAGEMENT,
+        designCompleted: true,
+        designCompletedAt: Date.now(),
         original_design_file: originalFile,
         original_design_filename: originalFilename,
         original_design_zip: designZipFile,

@@ -192,6 +192,7 @@ export interface Order {
   claimedAt?: number;
   designCompleted?: boolean;
   designSentToMarketing?: boolean;
+  designSentToDigitizer?: boolean;
   designCompletedAt?: number;
   isRework?: boolean;
   isAdminOrder?: boolean;

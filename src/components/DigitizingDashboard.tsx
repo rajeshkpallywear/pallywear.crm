@@ -70,9 +70,16 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
         (o.category || '').toLowerCase().includes(term);
 
       // Show orders in DESIGN, ORDER_MANAGEMENT, or PRODUCTION status for digitizing
-      // If in DESIGN status, only show if the original design file/zip uploader is complete (ready for digitizing)
+      // If ready for digitizing: has design file, design zip, design filename, design zip filename, or design attachments
       const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-      const isOrderReady = !!o.original_design_file || !!o.original_design_zip;
+      const isOrderReady = Boolean(
+        o.original_design_file ||
+        o.original_design_zip ||
+        o.original_design_filename ||
+        o.original_design_zip_filename ||
+        (o.designAttachments && o.designAttachments.length > 0) ||
+        o.designSentToDigitizer
+      );
       const relevantStatus = effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady;
 
       if (viewMode === 'pending') {
@@ -210,7 +217,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
           >
             ⏳ Pending ({orders.filter(o => {
               const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && (!!o.original_design_file || !!o.original_design_zip) && !o.machineFiles?.length;
+              const isOrderReady = Boolean(
+                o.original_design_file ||
+                o.original_design_zip ||
+                o.original_design_filename ||
+                o.original_design_zip_filename ||
+                (o.designAttachments && o.designAttachments.length > 0) ||
+                o.designSentToDigitizer
+              );
+              return effStatus && [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION].includes(effStatus) && isOrderReady && !o.machineFiles?.length;
             }).length})
           </button>
           <button
@@ -290,13 +305,13 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                       <span>{new Date(order.createdAt).toLocaleDateString()}</span>
                     </div>
 
-                    {(order.original_design_file || order.original_design_zip) && (
+                    {(order.original_design_file || order.original_design_zip || order.original_design_filename || order.original_design_zip_filename || (order.designAttachments && order.designAttachments.length > 0) || order.designSentToDigitizer) && (
                       <div className="mt-1.5 pt-1.5 border-t border-dashed border-gray-150 flex items-center justify-between text-[9px] font-bold text-green-600">
                         <span className="flex items-center gap-1">
                           <CheckCircle size={10} />
                           Original design assets ready
                         </span>
-                        {order.original_design_zip && (
+                        {(order.original_design_zip || order.original_design_zip_filename) && (
                           <span className="text-indigo-600 font-extrabold flex items-center gap-0.5">
                             <FolderOpen size={10} />
                             ZIP
