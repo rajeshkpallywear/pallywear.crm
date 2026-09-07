@@ -1354,19 +1354,121 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 <div className="lg:col-span-6 space-y-6">
                   {/* Customer Spec Card */}
                   <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                    <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5 border-b border-gray-200 pb-2">
-                      <User size={13} />
-                      Order Details
-                    </h4>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-black text-sm shadow-sm">
-                        {selectedOrder.customerInfo?.name?.charAt(0)?.toUpperCase() || 'C'}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo?.name || 'Customer'}</p>
-                        <p className="text-[9.5px] font-bold uppercase tracking-wider text-brand-primary">Created by: {selectedOrder.createdByName || 'System'}</p>
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                      <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                        <User size={13} />
+                        Order Details
+                      </h4>
+                      <span className="text-[9.5px] font-mono font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border border-gray-200">
+                        #{selectedOrder.id.slice(-8)}
+                      </span>
+                    </div>
+
+                    {/* Customer & Creator Information */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+                          {selectedOrder.customerInfo?.name?.charAt(0)?.toUpperCase() || 'C'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo?.name || 'Customer'}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[9.5px] font-bold uppercase tracking-wider text-brand-primary">
+                              Created by: {selectedOrder.createdByName || 'System'}
+                            </p>
+                            {selectedOrder.customerInfo?.phone && (
+                              <a
+                                href={`tel:${selectedOrder.customerInfo.phone}`}
+                                className="text-[10px] text-gray-500 hover:text-brand-primary font-semibold flex items-center gap-1 no-underline"
+                              >
+                                <Phone size={10} className="text-brand-primary" /> {selectedOrder.customerInfo.phone}
+                              </a>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Order Category & Quantities Banner */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-purple-100 shadow-2xs space-y-2.5 text-left">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                            <Package size={13} className="text-brand-primary" />
+                            Primary Category:
+                          </span>
+                          <span className="px-2.5 py-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-tight shadow-2xs">
+                            {getDisplayCategory(selectedOrder)}
+                          </span>
+                        </div>
+
+                        <span className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-lg text-xs font-black border border-gray-200 tracking-tight">
+                          Total Qty: {selectedOrder.quantity || selectedOrder.sizeBreakdown?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1} Pcs
+                        </span>
+                      </div>
+
+                      {/* All Distinct Categories Chips */}
+                      {(() => {
+                        const distinctCats = selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0
+                          ? Array.from(new Set(selectedOrder.sizeBreakdown.map(i => i.category).filter(Boolean)))
+                          : (selectedOrder.category ? [selectedOrder.category] : []);
+
+                        if (distinctCats.length === 0) return null;
+
+                        return (
+                          <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9.5px] font-black text-gray-500 uppercase tracking-wider">Order Categories:</span>
+                            {distinctCats.map((cat, idx) => (
+                              <span
+                                key={idx}
+                                className="text-[10px] font-extrabold bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-900 border border-purple-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Sizing / Garment Breakdown Table if sizeBreakdown exists */}
+                    {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
+                      <div className="space-y-1.5 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9.5px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                            <Package size={12} className="text-brand-primary" />
+                            Product Breakdown & Specs ({selectedOrder.sizeBreakdown.length} items)
+                          </span>
+                        </div>
+                        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-2xs max-h-[180px] overflow-y-auto">
+                          <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                            <thead className="sticky top-0 bg-gray-50 z-10">
+                              <tr className="text-[9px] font-black uppercase tracking-wider text-gray-500 border-b border-gray-200">
+                                <th className="px-2.5 py-1.5">Category</th>
+                                <th className="px-2.5 py-1.5">Size</th>
+                                <th className="px-2.5 py-1.5">Colour</th>
+                                <th className="px-2.5 py-1.5">Print / Specs</th>
+                                <th className="px-2.5 py-1.5">Material / Model</th>
+                                <th className="px-2.5 py-1.5 text-center">Qty</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {selectedOrder.sizeBreakdown.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                                  <td className="px-2.5 py-1.5 font-bold text-brand-primary text-[10px] uppercase">{item.category}</td>
+                                  <td className="px-2.5 py-1.5 font-bold text-gray-900 text-[10px]">{item.size}</td>
+                                  <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{item.colour || '-'}</td>
+                                  <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{item.printType || '-'}</td>
+                                  <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{[item.material, item.model].filter(Boolean).join(' ') || '-'}</td>
+                                  <td className="px-2.5 py-1.5 font-black text-center text-gray-900 text-[10px]">{item.quantity}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Marketing / Order Intake Notes Display Box */}
                     <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-1 text-left">

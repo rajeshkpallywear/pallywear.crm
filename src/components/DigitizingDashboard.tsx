@@ -358,9 +358,69 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-150/40 text-left">
                     <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 block mb-1">Details & Quantity</span>
                     <p className="text-xs font-bold text-slate-800">{getDisplayCategory(selectedOrder)}</p>
-                    <p className="text-[10px] text-gray-500 font-medium">Total Qty: {selectedOrder.quantity}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">Total Qty: {selectedOrder.quantity || selectedOrder.sizeBreakdown?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1} Pcs</p>
                   </div>
                 </div>
+
+                {/* Categories Banner */}
+                {(() => {
+                  const distinctCats = selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0
+                    ? Array.from(new Set(selectedOrder.sizeBreakdown.map(i => i.category).filter(Boolean)))
+                    : (selectedOrder.category ? [selectedOrder.category] : []);
+
+                  if (distinctCats.length === 0) return null;
+
+                  return (
+                    <div className="bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100 flex items-center gap-2 flex-wrap text-left">
+                      <span className="text-[9.5px] font-black text-indigo-900 uppercase tracking-wider">Order Categories:</span>
+                      {distinctCats.map((cat, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] font-extrabold bg-white text-indigo-900 border border-indigo-200 px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Garment Breakdown Specs Table if available */}
+                {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
+                  <div className="space-y-1.5 text-left">
+                    <span className="text-[9.5px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                      <Package size={12} className="text-indigo-600" />
+                      Product Breakdown & Specs ({selectedOrder.sizeBreakdown.length} items)
+                    </span>
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-2xs max-h-[180px] overflow-y-auto">
+                      <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                        <thead className="sticky top-0 bg-gray-50 z-10">
+                          <tr className="text-[9px] font-black uppercase tracking-wider text-gray-500 border-b border-gray-200">
+                            <th className="px-2.5 py-1.5">Category</th>
+                            <th className="px-2.5 py-1.5">Size</th>
+                            <th className="px-2.5 py-1.5">Colour</th>
+                            <th className="px-2.5 py-1.5">Print / Specs</th>
+                            <th className="px-2.5 py-1.5">Material / Model</th>
+                            <th className="px-2.5 py-1.5 text-center">Qty</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedOrder.sizeBreakdown.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-indigo-50/20 transition-colors">
+                              <td className="px-2.5 py-1.5 font-bold text-indigo-600 text-[10px] uppercase">{item.category}</td>
+                              <td className="px-2.5 py-1.5 font-bold text-gray-900 text-[10px]">{item.size}</td>
+                              <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{item.colour || '-'}</td>
+                              <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{item.printType || '-'}</td>
+                              <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{[item.material, item.model].filter(Boolean).join(' ') || '-'}</td>
+                              <td className="px-2.5 py-1.5 font-black text-center text-gray-900 text-[10px]">{item.quantity}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Intake Notes Display Box */}
                 {(selectedOrder.notes || selectedOrder.designNotes) && (
