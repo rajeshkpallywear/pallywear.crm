@@ -41,11 +41,13 @@ export default function Store() {
 
   // Interactive mobile simulation state: Live Orders
   const [ordersList, setOrdersList] = useState([
-    { id: '#ORD-8942', client: 'Godwin (Marketing)', item: 'Sublimation Jersey (500 pcs)', amt: '₹1,25,000', stage: 'Delivered', progress: 100 },
-    { id: '#ORD-8943', client: 'Vivek (Marketing)', item: 'Custom Fleece Hoodie (200 pcs)', amt: '₹84,000', stage: 'Production', progress: 65 },
-    { id: '#ORD-8944', client: 'Jimla (Online Team)', item: 'Dry-Fit Uniforms (150 pcs)', amt: '₹52,500', stage: 'Accounts', progress: 40 },
-    { id: '#ORD-8945', client: 'Rajan (Direct Sales)', item: 'Matty Polo Sportswear (300 pcs)', amt: '₹1,65,000', stage: 'Digitizing', progress: 25 }
+    { id: '#ORD-8942', client: 'Godwin (Marketing)', item: 'Sublimation Jersey (500 pcs)', amt: '₹1,25,000', stage: 'Delivered', progress: 100, prodNotes: 'Hex-mesh collar, heat-press names' },
+    { id: '#ORD-8943', client: 'Vivek (Marketing)', item: 'Custom Fleece Hoodie (200 pcs)', amt: '₹84,000', stage: 'Production', progress: 65, prodNotes: '320 GSM heavy fleece, double pouch stitch, gold lace tip' },
+    { id: '#ORD-8944', client: 'Jimla (Online Team)', item: 'Dry-Fit Uniforms (150 pcs)', amt: '₹52,500', stage: 'Accounts', progress: 40, prodNotes: '180 GSM Micro-PP, neon green piping' },
+    { id: '#ORD-8945', client: 'Rajan (Direct Sales)', item: 'Matty Polo Sportswear (300 pcs)', amt: '₹1,65,000', stage: 'Digitizing', progress: 25, prodNotes: '240 GSM Honeycomb Matty, 3-button placket' }
   ]);
+  const [editingMobileOrder, setEditingMobileOrder] = useState<string | null>(null);
+  const [mobileProdNoteDraft, setMobileProdNoteDraft] = useState('');
   const [orderFilter, setOrderFilter] = useState<'all' | 'Delivered' | 'Production' | 'Accounts' | 'Digitizing'>('all');
 
   // Interactive mobile simulation state: Leads
@@ -551,7 +553,7 @@ export default function Store() {
                           <div className="space-y-2">
                             {filteredOrders.map((ord, idx) => (
                               <div key={idx} className="bg-white p-2.5 rounded-xl border border-gray-100 shadow-xs hover:border-indigo-200 transition-all">
-                                <div className="flex justify-between items-start mb-1.5">
+                                <div className="flex justify-between items-start mb-1">
                                   <div>
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-mono font-black text-gray-900 text-[10px]">{ord.id}</span>
@@ -572,6 +574,52 @@ export default function Store() {
                                     </span>
                                   </div>
                                 </div>
+
+                                {/* Production Notes Tag & Inline Quick Edit */}
+                                {editingMobileOrder === ord.id ? (
+                                  <div className="mt-1.5 p-1.5 bg-indigo-50/60 border border-indigo-200 rounded-lg space-y-1">
+                                    <span className="text-[7px] font-black text-indigo-700 uppercase block">Edit Production Notes:</span>
+                                    <input
+                                      type="text"
+                                      value={mobileProdNoteDraft}
+                                      onChange={(e) => setMobileProdNoteDraft(e.target.value)}
+                                      className="w-full text-[8px] bg-white border border-indigo-200 rounded px-1.5 py-0.5 outline-none font-mono"
+                                    />
+                                    <div className="flex justify-end gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingMobileOrder(null)}
+                                        className="text-[7px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 border-none cursor-pointer"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOrdersList(ordersList.map(o => o.id === ord.id ? { ...o, prodNotes: mobileProdNoteDraft } : o));
+                                          setEditingMobileOrder(null);
+                                        }}
+                                        className="text-[7px] px-1.5 py-0.5 bg-indigo-600 text-white rounded font-bold border-none cursor-pointer"
+                                      >
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  ord.prodNotes && (
+                                    <div
+                                      onClick={() => {
+                                        setEditingMobileOrder(ord.id);
+                                        setMobileProdNoteDraft(ord.prodNotes || '');
+                                      }}
+                                      className="mt-1 p-1 bg-indigo-50/50 border border-indigo-100 rounded-md text-[7.5px] font-mono text-indigo-900 flex items-center justify-between cursor-pointer hover:bg-indigo-50 transition-colors"
+                                      title="Click to edit floor note in simulator"
+                                    >
+                                      <span className="truncate">🏭 <b>Floor:</b> {ord.prodNotes}</span>
+                                      <span className="text-[6.5px] text-indigo-600 uppercase font-black shrink-0 ml-1">Edit</span>
+                                    </div>
+                                  )
+                                )}
 
                                 {/* Mini Progress bar */}
                                 <div className="w-full bg-gray-100 h-1 rounded-full overflow-hidden mt-2">

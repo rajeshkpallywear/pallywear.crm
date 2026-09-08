@@ -1871,22 +1871,22 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                 </div>
               </section>
 
-              {/* Action Buttons */}
-              <div className="pt-6 flex gap-4 border-t border-gray-150">
+              {/* Sticky Action Buttons for Mobile & Desktop */}
+              <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-4 pb-2 flex gap-3 border-t border-gray-150 z-20">
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="flex-1 px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer"
+                  className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer text-center transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isProcessing}
-                  className="flex-1 px-6 py-4 bg-brand-primary text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-brand-primary hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2 text-center"
                 >
                   <CheckCircle2 size={16} />
-                  <span>Submit Order Details</span>
+                  <span>{editingOrderId ? 'Update Order Details' : 'Submit Order Details'}</span>
                 </button>
               </div>
             </form>
