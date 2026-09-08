@@ -1610,10 +1610,16 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
               )}
 
               {/* Requirement Notes */}
-              {(selectedIntakeOrder.notes || selectedIntakeOrder.designNotes || selectedIntakeOrder.accountsNotes) && (
+              {(selectedIntakeOrder.notes || selectedIntakeOrder.designNotes || selectedIntakeOrder.productionNotes || selectedIntakeOrder.accountsNotes) && (
                 <div className="space-y-2.5">
                   <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Requirement Notes & Instructions</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedIntakeOrder.productionNotes && (
+                      <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-150 space-y-1">
+                        <span className="text-[9px] font-black text-indigo-700 uppercase">🏭 Production Floor Notes</span>
+                        <p className="text-xs font-bold text-indigo-950 whitespace-pre-wrap">{selectedIntakeOrder.productionNotes}</p>
+                      </div>
+                    )}
                     {selectedIntakeOrder.notes && (
                       <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
                         <span className="text-[9px] font-black text-gray-400 uppercase">General Specifications</span>

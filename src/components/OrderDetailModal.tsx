@@ -1,7 +1,7 @@
 
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -777,11 +777,53 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                     </div>
                   )}
 
-                  {(order.notes || order.designNotes) && (
-                    <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-left">
-                      <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest block mb-1">Marketing / Design Notes</span>
-                      <p className="text-xs font-semibold text-purple-900 whitespace-pre-line">"{order.notes || order.designNotes}"</p>
+                  {isEditing ? (
+                    <div className="mt-4 space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-200 text-left">
+                      <div>
+                        <label className="text-[9px] font-black text-purple-700 uppercase tracking-wider block mb-1">
+                          Marketing / Design Notes
+                        </label>
+                        <textarea
+                          rows={2}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono"
+                          value={editedOrder.notes || ''}
+                          onChange={e => setEditedOrder({ ...editedOrder, notes: e.target.value, designNotes: e.target.value })}
+                          placeholder="Client / Design Notes..."
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-indigo-700 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                          <Factory size={11} /> 🏭 Production Notes (Factory Floor)
+                        </label>
+                        <textarea
+                          rows={2}
+                          className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-mono"
+                          value={editedOrder.productionNotes || ''}
+                          onChange={e => setEditedOrder({ ...editedOrder, productionNotes: e.target.value })}
+                          placeholder="Production floor instructions..."
+                        />
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      {order.productionNotes && (
+                        <div className="mt-4 p-4 bg-indigo-50/70 rounded-2xl border border-indigo-150 text-left">
+                          <span className="text-[9px] font-black text-indigo-700 uppercase tracking-widest block mb-1 flex items-center gap-1.5">
+                            <Factory size={12} className="text-indigo-600" />
+                            🏭 Production Floor Notes
+                          </span>
+                          <p className="text-xs font-semibold text-indigo-950 whitespace-pre-line leading-relaxed">
+                            "{order.productionNotes}"
+                          </p>
+                        </div>
+                      )}
+                      {(order.notes || order.designNotes) && (
+                        <div className="mt-4 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-left">
+                          <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest block mb-1">Marketing / Design Notes</span>
+                          <p className="text-xs font-semibold text-purple-900 whitespace-pre-line">"{order.notes || order.designNotes}"</p>
+                        </div>
+                      )}
+                    </>
                   )}
                   {order.voiceNote && (
                     <div className="mt-4 p-4 bg-purple-50/80 rounded-2xl border border-purple-200 text-left space-y-2">

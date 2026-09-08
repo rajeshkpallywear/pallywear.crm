@@ -41,7 +41,8 @@ import {
   Phone,
   MapPin,
   Mic,
-  IndianRupee
+  IndianRupee,
+  Factory
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
@@ -868,6 +869,18 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
 
                 {/* Notes box & Voice instructions */}
                 <div className="space-y-3">
+                  {selectedOrder.productionNotes && (
+                    <div className="p-4 bg-indigo-50/80 border border-indigo-200 rounded-2xl space-y-1 text-left">
+                      <span className="text-[9px] font-black text-indigo-800 uppercase tracking-widest block flex items-center gap-1.5">
+                        <Factory size={12} className="text-indigo-600" />
+                        🏭 Production & Floor Notes:
+                      </span>
+                      <p className="text-xs text-indigo-950 font-semibold whitespace-pre-line leading-relaxed">
+                        {selectedOrder.productionNotes}
+                      </p>
+                    </div>
+                  )}
+
                   {(selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes) && (
                     <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1 text-left">
                       <span className="text-[9px] font-black text-amber-800 uppercase tracking-widest block flex items-center gap-1.5">

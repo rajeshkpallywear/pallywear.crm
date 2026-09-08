@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen, Edit3, Save, Copy, Mic, MessageSquare, X } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
@@ -21,6 +21,10 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isEditingProductionNotes, setIsEditingProductionNotes] = useState(false);
+  const [productionNoteInput, setProductionNoteInput] = useState('');
+  const [noteToast, setNoteToast] = useState<string | null>(null);
+  const [showClientSpecs, setShowClientSpecs] = useState(false);
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -28,8 +32,41 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       loadOrderAttachments(selectedOrder.id).then(attachments => {
         setSelectedOrder(prev => prev && prev.id === selectedOrder.id ? { ...prev, ...attachments } : prev);
       });
+      setProductionNoteInput(selectedOrder.productionNotes || '');
+      setIsEditingProductionNotes(false);
     }
   }, [selectedOrder?.id]);
+
+  const handleSaveProductionNote = async () => {
+    if (!selectedOrder) return;
+    setIsProcessing(true);
+    try {
+      await onUpdateOrder(selectedOrder.id, {
+        productionNotes: productionNoteInput.trim(),
+        updatedAt: Date.now()
+      });
+      setSelectedOrder(prev => prev ? { ...prev, productionNotes: productionNoteInput.trim(), updatedAt: Date.now() } : null);
+      setIsEditingProductionNotes(false);
+      setNoteToast("✓ Production notes updated successfully!");
+      setTimeout(() => setNoteToast(null), 2500);
+    } catch (e) {
+      alert("Failed to save production notes.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCopyProductionNote = async () => {
+    if (!selectedOrder?.productionNotes) return;
+    try {
+      await navigator.clipboard.writeText(selectedOrder.productionNotes);
+      setNoteToast("✓ Copied production notes!");
+      setTimeout(() => setNoteToast(null), 2000);
+    } catch (e) {
+      setNoteToast("Failed to copy");
+      setTimeout(() => setNoteToast(null), 2000);
+    }
+  };
 
   const filteredOrders = orders.filter(o => {
     if (selectedSection === 'hold') {
@@ -207,6 +244,20 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                     })()}
                   </div>
                   
+                  {order.productionNotes && (
+                    <div className={cn(
+                      "text-[9.5px] p-2.5 rounded-xl border text-left font-medium line-clamp-2",
+                      selectedOrder?.id === order.id
+                        ? "bg-indigo-700/60 border-indigo-400 text-indigo-50"
+                        : "bg-indigo-50/80 border-indigo-150 text-indigo-950"
+                    )}>
+                      <span className="font-black uppercase text-[8px] tracking-wider block text-indigo-400">
+                        🏭 Prod Note:
+                      </span>
+                      {order.productionNotes}
+                    </div>
+                  )}
+
                   {order.status === OrderStatus.HOLD && order.holdReason && (
                     <div className="text-[9px] text-red-600 font-bold bg-red-50 p-2 rounded italic border border-red-200/50">
                       Blocked Reason: "{order.holdReason}"
@@ -259,6 +310,141 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                 </div>
               </div>
             </div>
+
+              {/* Production Floor Instructions Banner & Editor */}
+              <div className="bg-white border-2 border-indigo-200/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-indigo-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Factory size={14} />
+                    </div>
+                    <div>
+                      <h5 className="text-xs sm:text-sm font-black text-indigo-950 uppercase tracking-tight flex items-center gap-1.5">
+                        🏭 Production & Factory Floor Instructions
+                      </h5>
+                      <span className="text-[9px] text-indigo-600 font-bold uppercase tracking-wider block">
+                        Floor specifications & manufacturing directions
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5">
+                    {noteToast && (
+                      <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg animate-in fade-in">
+                        {noteToast}
+                      </span>
+                    )}
+                    {selectedOrder.productionNotes && !isEditingProductionNotes && (
+                      <button
+                        type="button"
+                        onClick={handleCopyProductionNote}
+                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all border border-indigo-200 cursor-pointer shadow-2xs"
+                        title="Copy production notes to clipboard"
+                      >
+                        <Copy size={11} />
+                        <span>Copy</span>
+                      </button>
+                    )}
+                    {!isEditingProductionNotes ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductionNoteInput(selectedOrder.productionNotes || '');
+                          setIsEditingProductionNotes(true);
+                        }}
+                        className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all border-none cursor-pointer shadow-xs"
+                      >
+                        <Edit3 size={11} />
+                        <span>{selectedOrder.productionNotes ? 'Edit Note' : '+ Add Production Note'}</span>
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={handleSaveProductionNote}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all border-none cursor-pointer shadow-xs disabled:opacity-50"
+                        >
+                          <Save size={11} />
+                          <span>Save</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={() => {
+                            setProductionNoteInput(selectedOrder.productionNotes || '');
+                            setIsEditingProductionNotes(false);
+                          }}
+                          className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-all border border-gray-200 cursor-pointer"
+                        >
+                          <X size={11} />
+                          <span>Cancel</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isEditingProductionNotes ? (
+                  <div className="space-y-2">
+                    <textarea
+                      rows={4}
+                      value={productionNoteInput}
+                      onChange={(e) => setProductionNoteInput(e.target.value)}
+                      placeholder="Enter specific factory floor directions, stitching specs, fabric guidelines, packaging rules..."
+                      className="w-full p-3 bg-indigo-50/40 border border-indigo-200 rounded-xl text-xs font-mono text-gray-900 focus:border-indigo-600 focus:bg-white outline-none resize-y leading-relaxed"
+                    />
+                    <div className="flex justify-between items-center text-[9px] text-gray-400 font-semibold px-1">
+                      <span>Press "Save" above to update production floor instructions immediately.</span>
+                      <span>{productionNoteInput.length} chars</span>
+                    </div>
+                  </div>
+                ) : selectedOrder.productionNotes ? (
+                  <div className="p-3.5 bg-indigo-50/50 rounded-xl border border-indigo-150 text-xs font-mono text-indigo-950 whitespace-pre-wrap leading-relaxed">
+                    {selectedOrder.productionNotes}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center text-xs text-gray-400 font-medium">
+                    No special production notes recorded during intake. Click "<span className="font-bold text-indigo-600">+ Add Production Note</span>" above if the factory floor needs instructions.
+                  </div>
+                )}
+
+                {/* Secondary: Client Specs / Marketing & Voice Notes */}
+                {(selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes || selectedOrder.voiceNote) && (
+                  <div className="pt-2 border-t border-indigo-100/60">
+                    <button
+                      type="button"
+                      onClick={() => setShowClientSpecs(!showClientSpecs)}
+                      className="w-full flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-wider py-1 bg-transparent border-none cursor-pointer hover:text-slate-900"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <MessageSquare size={12} className="text-purple-600" />
+                        📋 Marketing & Client Specifications ({showClientSpecs ? 'Hide' : 'View'})
+                      </span>
+                      <ChevronRight size={12} className={cn("transition-transform", showClientSpecs ? "rotate-90" : "")} />
+                    </button>
+
+                    {showClientSpecs && (
+                      <div className="mt-2 space-y-2.5 animate-in fade-in duration-150">
+                        {selectedOrder.voiceNote && (
+                          <div className="bg-purple-50 p-2.5 rounded-xl border border-purple-200 space-y-1">
+                            <div className="flex items-center gap-1.5 text-purple-900 text-[10px] font-black uppercase">
+                              <Mic size={12} className="text-purple-600 animate-pulse" />
+                              <span>Client Voice Instructions:</span>
+                            </div>
+                            <audio controls src={selectedOrder.voiceNote} className="w-full h-7 rounded-lg bg-white p-0.5 outline-none" />
+                          </div>
+                        )}
+                        {(selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes) && (
+                          <div className="bg-slate-50 p-3 rounded-xl border border-gray-200 text-[11px] font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
+                            {selectedOrder.notes || selectedOrder.designNotes || selectedOrder.marketing_notes}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Order Breakdown Grid */}
               <div className="space-y-4">

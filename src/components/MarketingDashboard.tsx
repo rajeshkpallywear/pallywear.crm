@@ -11,7 +11,7 @@ import {
   Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn,
   Copy, Share2, Trash2, Package, AlertCircle, AlertTriangle, Mic, Send,
   MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight,
-  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck
+  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck, Factory
 } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
@@ -78,6 +78,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     totalAmount: 0,
     advancePay: 0,
     notes: '',
+    productionNotes: '',
     voiceNote: '',
     isUrgent: false
   });
@@ -164,11 +165,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       totalAmount: 0,
       advancePay: 0,
       notes: '',
+      productionNotes: '',
       voiceNote: '',
       isUrgent: false
     });
     setEditingOrderId(null);
     setNoteFeedback(null);
+    setProductionNoteFeedback(null);
     setRecordingSeconds(0);
     setValidationErrors([]);
     setFieldErrors({});
@@ -177,6 +180,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   };
 
   const [noteFeedback, setNoteFeedback] = useState<string | null>(null);
+  const [productionNoteFeedback, setProductionNoteFeedback] = useState<string | null>(null);
 
   const startVoiceRecording = async () => {
     try {
@@ -301,6 +305,45 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     } catch (err) {
       setNoteFeedback("Failed to copy to clipboard.");
       setTimeout(() => setNoteFeedback(null), 2500);
+    }
+  };
+
+  const handlePasteProductionNoteFromClipboard = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          setFormData(prev => {
+            const existing = (prev.productionNotes || '').trim();
+            const newNotes = existing ? `${existing}\n\n${text.trim()}` : text.trim();
+            return { ...prev, productionNotes: newNotes };
+          });
+          setProductionNoteFeedback("✓ Pasted clipboard text into production notes!");
+          setTimeout(() => setProductionNoteFeedback(null), 2500);
+          return;
+        }
+      }
+      setProductionNoteFeedback("💡 Press Ctrl+V inside the text area to paste directly.");
+      setTimeout(() => setProductionNoteFeedback(null), 3000);
+    } catch (err) {
+      setProductionNoteFeedback("💡 Press Ctrl+V inside the text area to paste directly.");
+      setTimeout(() => setProductionNoteFeedback(null), 3000);
+    }
+  };
+
+  const handleCopyProductionNoteToClipboard = async () => {
+    if (!formData.productionNotes || !formData.productionNotes.trim()) {
+      setProductionNoteFeedback("No production notes to copy.");
+      setTimeout(() => setProductionNoteFeedback(null), 2000);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(formData.productionNotes);
+      setProductionNoteFeedback("✓ Copied production notes to clipboard!");
+      setTimeout(() => setProductionNoteFeedback(null), 2500);
+    } catch (err) {
+      setProductionNoteFeedback("Failed to copy to clipboard.");
+      setTimeout(() => setProductionNoteFeedback(null), 2500);
     }
   };
 
@@ -470,6 +513,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       isUrgent: formData.isUrgent,
       notes: formData.notes.trim(),
       designNotes: formData.notes.trim(),
+      productionNotes: formData.productionNotes.trim(),
       financials: {
         totalAmount: formData.totalAmount,
         advancePay: formData.advancePay,
@@ -650,6 +694,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       totalAmount: order.financials?.totalAmount || 0,
       advancePay: order.financials?.advancePay || 0,
       notes: order.notes || order.designNotes || order.marketing_notes || '',
+      productionNotes: order.productionNotes || (order as any).production_notes || '',
       voiceNote: order.voiceNote || '',
       isUrgent: order.isUrgent || false
     });
@@ -1743,6 +1788,75 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                 </div>
               </section>
 
+              {/* Production Notes / Factory Floor Instructions */}
+              <section className="space-y-3 pt-2">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-gray-150 pb-2">
+                  <div className="flex items-center gap-2">
+                    <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider">
+                      <Factory size={16} className="text-indigo-600" />
+                      🏭 Production Notes (Factory Floor & Manufacturing)
+                    </h4>
+                    {productionNoteFeedback && (
+                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md animate-in fade-in duration-200">
+                        {productionNoteFeedback}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handlePasteProductionNoteFromClipboard}
+                      title="Paste production notes directly from clipboard"
+                      className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                    >
+                      <ClipboardPaste size={12} />
+                      <span>Paste Record (Ctrl+V)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyProductionNoteToClipboard}
+                      title="Copy production notes to clipboard"
+                      className="flex items-center gap-1 px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      <Copy size={12} />
+                      <span>Copy Notes</span>
+                    </button>
+                    {formData.productionNotes && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, productionNotes: '' });
+                          setProductionNoteFeedback("Production notes cleared");
+                          setTimeout(() => setProductionNoteFeedback(null), 1500);
+                        }}
+                        title="Clear production notes"
+                        className="flex items-center gap-1 px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                        <span>Clear</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-gray-500 font-medium -mt-1">
+                  Specific manufacturing instructions, stitching details, thread numbers, fabric handling, custom neck tags, or packaging guidelines for the production team.
+                </p>
+
+                <div className="relative">
+                  <textarea
+                    rows={3}
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500/20 outline-none resize-y font-mono leading-relaxed"
+                    placeholder="Enter specific instructions for the production/factory floor (e.g. stitching density, thread colors, tag placements, pressing instructions, packing rules)..."
+                    value={formData.productionNotes}
+                    onChange={(e) => setFormData({ ...formData, productionNotes: e.target.value })}
+                  />
+                  <div className="absolute bottom-2.5 right-3 text-[9px] text-gray-400 font-semibold pointer-events-none bg-white/90 px-1 rounded">
+                    {formData.productionNotes.length} chars • {formData.productionNotes.split('\n').filter(Boolean).length} lines
+                  </div>
+                </div>
+              </section>
+
               {/* File Uploads */}
               <section className="border-t border-gray-150 pt-5">
                 <div className="space-y-3">
@@ -2034,6 +2148,24 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       {formData.notes}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Production Notes Review Box */}
+              {formData.productionNotes && (
+                <div className="bg-white p-5 rounded-2xl border border-indigo-150 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                    <h4 className="text-[11px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-1.5">
+                      <Factory size={13} className="text-indigo-600" />
+                      🏭 Production & Factory Floor Notes
+                    </h4>
+                    <span className="text-[9px] font-black bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200">
+                      Direct to Factory Floor
+                    </span>
+                  </div>
+                  <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100/70 text-xs font-mono text-indigo-950 whitespace-pre-wrap leading-relaxed">
+                    {formData.productionNotes}
+                  </div>
                 </div>
               )}
 
