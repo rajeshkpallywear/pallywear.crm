@@ -7,7 +7,7 @@ import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
 import { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
-import { cn, shareOrderToWhatsApp } from '../lib/utils';
+import { cn, shareOrderToWhatsApp, downloadFile } from '../lib/utils';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -700,15 +700,15 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                 </span>
                               </div>
                             </div>
-                            <a
-                              href={order.original_design_file}
-                              download={order.original_design_filename || `Design_Original_${order.id.slice(-6)}.png`}
-                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(order.original_design_file, order.original_design_filename || `Design_Original_${order.id.slice(-6)}.png`)}
+                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none shrink-0"
                               title="Download Original Quality PNG"
                             >
                               <Download size={11} />
                               Download
-                            </a>
+                            </button>
                           </div>
                         )}
 
@@ -728,15 +728,15 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                 </span>
                               </div>
                             </div>
-                            <a
-                              href={order.original_design_zip}
-                              download={order.original_design_zip_filename || `Design_Package_${order.id.slice(-6)}.zip`}
-                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(order.original_design_zip, order.original_design_zip_filename || `Design_Package_${order.id.slice(-6)}.zip`)}
+                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none shrink-0"
                               title="Download Design ZIP Package"
                             >
                               <Download size={11} />
                               Download
-                            </a>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -760,14 +760,14 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                       <FileText size={16} className="text-purple-600" />
                                     )}
                                   </div>
-                                  <a
-                                    href={file}
-                                    download={`Deliverable_${i + 1}_Order_${order.id.slice(-6)}`}
-                                    className="px-2 py-1 bg-gray-100 hover:bg-purple-100 text-purple-700 rounded text-[9.5px] font-bold uppercase transition-all flex items-center gap-1 no-underline"
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadFile(file, `Deliverable_${i + 1}_Order_${order.id.slice(-6)}${isImage ? '.png' : '.pdf'}`)}
+                                    className="px-2 py-1 bg-gray-100 hover:bg-purple-100 text-purple-700 rounded text-[9.5px] font-bold uppercase transition-all flex items-center gap-1 border-none cursor-pointer"
                                   >
                                     <Download size={10} />
                                     File #{i + 1}
-                                  </a>
+                                  </button>
                                 </div>
                               );
                             })}

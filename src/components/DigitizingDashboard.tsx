@@ -28,7 +28,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
+import { getDisplayCategory, cn, isOrderSizeValid, downloadFile } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
@@ -481,14 +481,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                               <p className="text-[9.5px] text-purple-700 font-extrabold">100% Original PNG</p>
                             </div>
                           </div>
-                          <a
-                            href={selectedOrder.original_design_file}
-                            download={selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
-                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow cursor-pointer text-center whitespace-nowrap no-underline shrink-0"
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(selectedOrder.original_design_file, selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`)}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow cursor-pointer text-center whitespace-nowrap border-none shrink-0"
+                            title="Download Original Quality PNG"
                           >
                             <Download size={11} />
                             Download
-                          </a>
+                          </button>
                         </div>
                       )}
 
@@ -506,14 +507,15 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                               <p className="text-[9.5px] text-indigo-700 font-extrabold">Design ZIP Archive</p>
                             </div>
                           </div>
-                          <a
-                            href={selectedOrder.original_design_zip}
-                            download={selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow cursor-pointer text-center whitespace-nowrap no-underline shrink-0"
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(selectedOrder.original_design_zip, selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`)}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow cursor-pointer text-center whitespace-nowrap border-none shrink-0"
+                            title="Download Design ZIP Package"
                           >
                             <Download size={11} />
                             Download
-                          </a>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -566,14 +568,14 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                             <span className="text-xs font-mono font-bold text-slate-800">Production_Code_{idx + 1}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <a
-                              href={file}
-                              download={`Machine_File_${idx + 1}_Order_${selectedOrder.id}`}
-                              className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-slate-700 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(file, `Machine_File_${idx + 1}_Order_${selectedOrder.id}.zip`)}
+                              className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-slate-700 transition-colors border-none cursor-pointer"
                               title="Download production file"
                             >
                               <Download size={14} />
-                            </a>
+                            </button>
                             {isAdmin && (
                               <button
                                 onClick={() => handleRemoveMachineFile(idx)}

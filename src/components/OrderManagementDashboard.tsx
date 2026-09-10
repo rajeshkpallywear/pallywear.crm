@@ -45,7 +45,7 @@ import {
   Factory
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
+import { cn, getDisplayCategory, isOrderSizeValid, downloadFile } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
@@ -1044,14 +1044,17 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                           ) : (
                             <FileText size={22} className="text-gray-400" />
                           )}
-                          <a
-                            href={att}
-                            download={`attachment_${i + 1}_order_${selectedOrder.id.slice(-6)}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadFile(att, `attachment_${i + 1}_order_${selectedOrder.id.slice(-6)}${att.startsWith('data:image/') ? '.png' : ''}`);
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-none"
+                            title="Download attachment"
                           >
                             <Download size={10} />
-                          </a>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -1080,13 +1083,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                                   <ZoomIn size={12} />
                                 </button>
                               )}
-                              <a
-                                href={file}
-                                download={`billing_doc_${i + 1}_order_${selectedOrder.id.slice(-6)}`}
-                                className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white cursor-pointer"
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(file, `billing_doc_${i + 1}_order_${selectedOrder.id.slice(-6)}${file.startsWith('data:image/') ? '.png' : '.pdf'}`)}
+                                className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white cursor-pointer border-none"
+                                title="Download billing doc"
                               >
                                 <Download size={12} />
-                              </a>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1111,7 +1115,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                               <p className="text-[8px] text-purple-700 font-bold uppercase">PNG File</p>
                             </div>
                           </div>
-                          <a href={selectedOrder.original_design_file} download={selectedOrder.original_design_filename || 'design.png'} className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"><Download size={12} /></a>
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(selectedOrder.original_design_file, selectedOrder.original_design_filename || 'design.png')}
+                            className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer border-none"
+                            title="Download PNG File"
+                          >
+                            <Download size={12} />
+                          </button>
                         </div>
                       )}
                       {selectedOrder.original_design_zip && (
@@ -1123,7 +1134,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                               <p className="text-[8px] text-indigo-700 font-bold uppercase">ZIP Package</p>
                             </div>
                           </div>
-                          <a href={selectedOrder.original_design_zip} download={selectedOrder.original_design_zip_filename || 'design.zip'} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Download size={12} /></a>
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(selectedOrder.original_design_zip, selectedOrder.original_design_zip_filename || 'design.zip')}
+                            className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer border-none"
+                            title="Download ZIP Package"
+                          >
+                            <Download size={12} />
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1152,13 +1170,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                               >
                                 {file.startsWith('data:image/') ? <ZoomIn size={12} /> : <ExternalLink size={12} />}
                               </button>
-                              <a
-                                href={file}
-                                download={`vector_design_${i + 1}_order_${selectedOrder.id.slice(-6)}`}
-                                className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white cursor-pointer"
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(file, `vector_design_${i + 1}_order_${selectedOrder.id.slice(-6)}${file.startsWith('data:image/') ? '.png' : '.pdf'}`)}
+                                className="p-1 bg-white/20 hover:bg-white/40 rounded-full text-white cursor-pointer border-none"
+                                title="Download vector design"
                               >
                                 <Download size={12} />
-                              </a>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1178,13 +1197,14 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                             <FileText size={18} className="text-indigo-500" />
                             <span className="text-xs font-mono font-bold text-slate-800">production_file_{idx + 1}.zip</span>
                           </div>
-                          <a
-                            href={file}
-                            download={`digitizer_file_${idx + 1}_order_${selectedOrder.id}`}
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(file, `digitizer_file_${idx + 1}_order_${selectedOrder.id}.zip`)}
                             className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-slate-700 border-none cursor-pointer"
+                            title="Download digitizer file"
                           >
                             <Download size={12} />
-                          </a>
+                          </button>
                         </div>
                       ))}
                     </div>

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { X, ZoomIn, ZoomOut, Download, Sparkles, RotateCcw } from 'lucide-react';
+import { downloadFile } from '../lib/fileDownload';
 
 interface ImageViewerProps {
   src: string;
@@ -42,12 +43,7 @@ export default function ImageViewer({ src, onClose, fileName = 'design_original'
   };
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = src;
-    link.download = getCleanFileName();
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(src, getCleanFileName());
   };
 
   const isImage = src.startsWith('data:image') || src.includes('.png') || src.includes('.jpg') || src.includes('.jpeg') || src.includes('.webp');

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ClipboardCheck, CreditCard, ChevronRight, ChevronDown, FileText, ExternalLink, ZoomIn, Share2, Globe, Trash2, Download, Package, Activity, TrendingUp, Clock, Building2, Users, Truck, IndianRupee, Store, Edit, Eye, Mic, MapPin, User, Phone, Sparkles, FolderOpen } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { getDisplayCategory, cn, isOrderSizeValid } from '../lib/utils';
+import { getDisplayCategory, cn, isOrderSizeValid, downloadFile } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import FileUpload from './FileUpload';
@@ -696,14 +696,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                                 <span className="text-[9px] text-purple-700 font-extrabold">Original PNG Asset</span>
                               </div>
                             </div>
-                            <a
-                              href={selectedOrder.original_design_file}
-                              download={selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
-                              className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[9.5px] font-black uppercase transition-all flex items-center gap-1 shadow-2xs no-underline shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(selectedOrder.original_design_file, selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`)}
+                              className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[9.5px] font-black uppercase transition-all flex items-center gap-1 shadow-2xs border-none cursor-pointer shrink-0"
+                              title="Download PNG Asset"
                             >
                               <Download size={11} />
                               Download
-                            </a>
+                            </button>
                           </div>
                         )}
 
@@ -720,14 +721,15 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                                 <span className="text-[9px] text-indigo-700 font-extrabold">Design ZIP Archive</span>
                               </div>
                             </div>
-                            <a
-                              href={selectedOrder.original_design_zip}
-                              download={selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
-                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9.5px] font-black uppercase transition-all flex items-center gap-1 shadow-2xs no-underline shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(selectedOrder.original_design_zip, selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`)}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9.5px] font-black uppercase transition-all flex items-center gap-1 shadow-2xs border-none cursor-pointer shrink-0"
+                              title="Download ZIP Archive"
                             >
                               <Download size={11} />
                               Download
-                            </a>
+                            </button>
                           </div>
                         )}
                       </div>

@@ -19,7 +19,7 @@ import {
   Calendar,
   Layers
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, downloadFile } from '../lib/utils';
 import { getApiBaseUrl } from '../lib/apiConfig';
 import FileUpload from './FileUpload';
 
@@ -396,13 +396,14 @@ export default function ExpensesHub({ user }: ExpensesHubProps) {
                         <td className="px-5 py-3.5 text-right font-black text-slate-900 text-xs">₹{exp.amount.toLocaleString()}</td>
                         <td className="px-5 py-3.5 text-center">
                           {exp.billFile ? (
-                            <a
-                              href={exp.billFile}
-                              download={`receipt_${exp.type}_${exp.id}`}
-                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[9px] font-black uppercase inline-flex items-center gap-1 border border-red-200 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(exp.billFile, `receipt_${exp.type}_${exp.id}.pdf`)}
+                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[9px] font-black uppercase inline-flex items-center gap-1 border border-red-200 transition-colors cursor-pointer"
+                              title="Download PDF Receipt"
                             >
                               <Download size={10} /> PDF
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-[10px] text-gray-400 italic">No file</span>
                           )}

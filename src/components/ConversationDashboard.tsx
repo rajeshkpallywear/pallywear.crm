@@ -14,6 +14,7 @@ import FileUpload from './FileUpload';
 import imageCompression from 'browser-image-compression';
 import ImageViewer from './ImageViewer';
 import { Order, OrderStatus, UserRole } from '../types';
+import { downloadFile } from '../lib/fileDownload';
 
 export interface Reply {
   id: string;
@@ -118,17 +119,7 @@ export default function ConversationDashboard({
   const consultAudioChunksRef = useRef<Blob[]>([]);
 
   const handleDownloadImage = (imgSrc: string, fileName: string) => {
-    try {
-      const link = document.createElement('a');
-      link.href = imgSrc;
-      link.download = fileName || 'pallywear_artwork_file.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (e) {
-      console.error('Download failed', e);
-      alert('Failed to trigger download automatically, please view image in HD and download.');
-    }
+    downloadFile(imgSrc, fileName || 'pallywear_artwork_file.png');
   };
 
   // Reply text state mapped by Conversation ID

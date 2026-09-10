@@ -39,7 +39,7 @@ import {
 import { useLeads } from '../context/LeadContext';
 import { InventoryMovement, Order, OrderStatus } from '../types';
 import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS, SIZE_OPTIONS } from '../constants';
-import { cn, getDisplayCategory } from '../lib/utils';
+import { cn, getDisplayCategory, downloadFile } from '../lib/utils';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import { getApiBaseUrl } from '../lib/apiConfig';
@@ -1687,9 +1687,15 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                             </div>
                           ))}
                           {(selectedIntakeOrder.machineFiles || []).map((file, idx) => (
-                            <a key={idx} href={file} download={`machine_file_${idx+1}_order_${selectedIntakeOrder.id}`} className="w-12 h-12 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center hover:shadow-md text-indigo-500 shrink-0">
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => downloadFile(file, `machine_file_${idx+1}_order_${selectedIntakeOrder.id}.zip`)}
+                              className="w-12 h-12 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center hover:shadow-md text-indigo-500 shrink-0 cursor-pointer"
+                              title="Download Machine File"
+                            >
                               <Download size={18} />
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>

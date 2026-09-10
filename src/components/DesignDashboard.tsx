@@ -34,7 +34,7 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import OrderDetailModal from './OrderDetailModal';
 import { useLeads } from '../context/LeadContext';
-import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
+import { cn, getDisplayCategory, isOrderSizeValid, downloadFile } from '../lib/utils';
 import ConversationDashboard, { Conversation } from './ConversationDashboard';
 import OrdersChart from './OrdersChart';
 
@@ -1596,13 +1596,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                                     <ZoomIn size={14} />
                                   </button>
                                 )}
-                                <a
-                                  href={file}
-                                  download={`Ref_Spec_${i + 1}_Order_${selectedOrder.id.slice(-6)}`}
-                                  className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer"
+                                <button
+                                  type="button"
+                                  onClick={() => downloadFile(file, `Ref_Spec_${i + 1}_Order_${selectedOrder.id.slice(-6)}${file.startsWith('data:image/') || file.includes('.png') ? '.png' : ''}`)}
+                                  className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer border-none"
+                                  title="Download File"
                                 >
                                   <Download size={14} />
-                                </a>
+                                </button>
                               </div>
                             </div>
                             {(isAudio || file.includes('audio/')) && (
@@ -1672,15 +1673,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <a
-                                href={originalFile}
-                                download={originalFilename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
-                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline"
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(originalFile, originalFilename || `Design_Original_${selectedOrder.id.slice(-6)}.png`)}
+                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none"
                                 title="Download Original Quality PNG"
                               >
                                 <Download size={11} />
                                 Download PNG
-                              </a>
+                              </button>
                               <button
                                 onClick={() => {
                                   setOriginalFile('');
@@ -1750,15 +1751,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <a
-                                href={designZipFile}
-                                download={designZipFilename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
-                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer no-underline"
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(designZipFile, designZipFilename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`)}
+                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none"
                                 title="Download Original ZIP Archive"
                               >
                                 <Download size={11} />
                                 Download ZIP
-                              </a>
+                              </button>
                               <button
                                 onClick={() => {
                                   setDesignZipFile('');
@@ -1820,13 +1821,13 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                                   <span className="truncate max-w-[150px] font-mono font-bold">Deliverable_{i + 1}.pdf</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <a
-                                    href={file}
-                                    download={`Deliverable_${i + 1}_Order_${selectedOrder.id.slice(-6)}`}
-                                    className="text-purple-600 hover:text-purple-800 font-bold"
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadFile(file, `Deliverable_${i + 1}_Order_${selectedOrder.id.slice(-6)}.pdf`)}
+                                    className="text-purple-600 hover:text-purple-800 font-bold bg-transparent border-none cursor-pointer text-[10px]"
                                   >
                                     Download
-                                  </a>
+                                  </button>
                                   <button
                                     onClick={() => handleRemoveFile(i, 'design')}
                                     className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"

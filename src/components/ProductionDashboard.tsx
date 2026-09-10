@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen, Edit3, Save, Copy, Mic, MessageSquare, X } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { getDisplayCategory, cn } from '../lib/utils';
+import { getDisplayCategory, cn, downloadFile } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
 import OrderDetailModal from './OrderDetailModal';
 import ImageViewer from './ImageViewer';
@@ -536,21 +536,21 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                               <ZoomIn size={12} />
                             </button>
                           </div>
-                          <a
-                            href={selectedOrder.original_design_file}
-                            download={selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`}
-                            className="w-full py-1 text-center bg-purple-600 hover:bg-purple-700 text-white rounded text-[8px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1 no-underline"
+                          <button
+                            type="button"
+                            onClick={() => downloadFile(selectedOrder.original_design_file, selectedOrder.original_design_filename || `Design_Original_${selectedOrder.id.slice(-6)}.png`)}
+                            className="w-full py-1 text-center bg-purple-600 hover:bg-purple-700 text-white rounded text-[8px] font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1 border-none"
                           >
                             <Download size={8} /> Download PNG (HD)
-                          </a>
+                          </button>
                         </div>
                       )}
 
                       {selectedOrder.original_design_zip && (
-                        <a
-                          href={selectedOrder.original_design_zip}
-                          download={selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`}
-                          className="p-2 bg-indigo-50/50 border border-indigo-150 rounded-xl flex items-center justify-between text-indigo-700 font-bold no-underline hover:bg-indigo-100 transition-colors"
+                        <button
+                          type="button"
+                          onClick={() => downloadFile(selectedOrder.original_design_zip, selectedOrder.original_design_zip_filename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`)}
+                          className="w-full p-2 bg-indigo-50/50 border border-indigo-150 rounded-xl flex items-center justify-between text-indigo-700 font-bold hover:bg-indigo-100 transition-colors cursor-pointer border-none"
                           title="Download Design ZIP Package"
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
@@ -558,7 +558,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                             <span className="truncate text-[9px]">{selectedOrder.original_design_zip_filename || 'Design_Package.zip'}</span>
                           </div>
                           <Download size={9} className="shrink-0 ml-1" />
-                        </a>
+                        </button>
                       )}
                     </div>
                   ) : (
@@ -570,16 +570,16 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                 <div className="space-y-2">
                   <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stitch Files (Garage)</h6>
                   {(selectedOrder.machineFiles || []).map((f, i) => (
-                    <a
+                    <button
                       key={i}
-                      href={f}
-                      download={`Stitch_Garage_File_${i + 1}_order_${selectedOrder.id}`}
-                      className="p-2 bg-indigo-50/40 border border-indigo-100 rounded-xl truncate hover:border-indigo-200 transition-colors flex items-center justify-between text-indigo-600 font-bold block no-underline cursor-pointer"
+                      type="button"
+                      onClick={() => downloadFile(f, `Stitch_Garage_File_${i + 1}_order_${selectedOrder.id}.dst`)}
+                      className="w-full p-2 bg-indigo-50/40 border border-indigo-100 rounded-xl truncate hover:border-indigo-200 transition-colors flex items-center justify-between text-indigo-600 font-bold block cursor-pointer border-none"
                       title="Click to download garage production file"
                     >
                       <span className="truncate text-[10px]">Stitch_{i + 1}.dst</span>
                       <Download size={10} className="shrink-0 ml-1" />
-                    </a>
+                    </button>
                   ))}
                   {(selectedOrder.machineFiles || []).length === 0 && (
                     <span className="text-[9px] text-slate-400 italic block">None uploaded</span>
