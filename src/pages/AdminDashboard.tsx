@@ -7,7 +7,7 @@ import {
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
   Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace, Briefcase,
-  Palette, Truck, Package, ArrowRight, Layers
+  Palette, Truck, Package, ArrowRight, Layers, Scissors
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import FileUpload from '../components/FileUpload';
@@ -1083,7 +1083,7 @@ export default function AdminDashboard() {
         }
       }
     };
-    const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers'>('all');
+    const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory'>('all');
     const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
     const [orderStaffSearch, setOrderStaffSearch] = useState('');
     const [orderStaffFilter, setOrderStaffFilter] = useState('all');
@@ -1485,7 +1485,48 @@ export default function AdminDashboard() {
       return o.status === OrderStatus.DELIVERED;
     };
 
-    const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers') => {
+    const isOrderForDigitizer = (o: Order) => {
+      return Boolean(
+        o.designSentToDigitizer === true ||
+        o.details?.designSentToDigitizer === true ||
+        o.details?.designSentToDigitizer === 'true'
+      );
+    };
+
+    const isOrderDigitizerCompleted = (o: Order) => {
+      const eff = getEffectiveStatus(o);
+      const hasMachineFiles = Boolean(o.machineFiles && o.machineFiles.length > 0);
+      const hasDigitizerFile = Boolean((o as any).digitizer_file || o.details?.digitizer_file);
+      const hasDstEmb = Boolean(
+        o.designAttachments && o.designAttachments.some(file => {
+          const name = typeof file === 'string' ? file.toLowerCase() : '';
+          return name.includes('.dst') || name.includes('.emb');
+        })
+      );
+      const isDelivered = eff === OrderStatus.DELIVERED;
+      return hasMachineFiles || hasDigitizerFile || hasDstEmb || isDelivered;
+    };
+
+    const isOrderForInventory = (o: Order) => {
+      const eff = getEffectiveStatus(o);
+      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+        Boolean(o.details?.dispatchType) ||
+        Boolean(o.details?.sentToDeliveryDashboard) ||
+        Boolean(o.details?.inventoryDispatched);
+    };
+
+    const isOrderInventoryCompleted = (o: Order) => {
+      return (
+        o.status === OrderStatus.DELIVERED ||
+        o.details?.sentToDeliveryDashboard === true ||
+        o.details?.dispatchType === 'in_house' ||
+        o.details?.dispatchType === 'courier' ||
+        o.details?.inventoryDispatched === true ||
+        Boolean(o.details?.courierName)
+      );
+    };
+
+    const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory') => {
       let totalCount = 0;
       let queueCount = 0;
       let holdCount = 0;
@@ -1523,6 +1564,13 @@ export default function AdminDashboard() {
           totalCount = queueCount + holdCount + completedCount;
           break;
 
+        case 'digitizer':
+          queueCount = orders.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD).length;
+          holdCount = orders.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD).length;
+          completedCount = orders.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+
         case 'order_management':
           queueCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
           holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
@@ -1534,6 +1582,17 @@ export default function AdminDashboard() {
           queueCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
           holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
           completedCount = orders.filter(o => isOrderProductionCompleted(o)).length;
+          totalCount = queueCount + holdCount + completedCount;
+          break;
+
+        case 'inventory':
+          queueCount = orders.filter(o => {
+            if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
+            if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
+            return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
+          }).length;
+          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY)).length;
+          completedCount = orders.filter(o => isOrderInventoryCompleted(o)).length;
           totalCount = queueCount + holdCount + completedCount;
           break;
 
@@ -1592,6 +1651,18 @@ export default function AdminDashboard() {
             }
             break;
 
+          case 'digitizer':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD);
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD);
+            } else {
+              baseList = baseList.filter(o => isOrderForDigitizer(o));
+            }
+            break;
+
           case 'order_management':
             if (selectedSection === 'completed') {
               baseList = baseList.filter(o => isOrderOmCompleted(o));
@@ -1613,6 +1684,22 @@ export default function AdminDashboard() {
               baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION);
             } else {
               baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION) || isOrderProductionCompleted(o));
+            }
+            break;
+
+          case 'inventory':
+            if (selectedSection === 'completed') {
+              baseList = baseList.filter(o => isOrderInventoryCompleted(o));
+            } else if (selectedSection === 'hold') {
+              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY));
+            } else if (selectedSection === 'queue') {
+              baseList = baseList.filter(o => {
+                if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
+                if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
+                return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
+              });
+            } else {
+              baseList = baseList.filter(o => isOrderForInventory(o));
             }
             break;
 
@@ -2799,9 +2886,11 @@ export default function AdminDashboard() {
                       [
                         { id: 'all', label: 'All Orders', icon: Globe, stats: getDeptStats('all'), color: 'text-gray-700', activeBg: 'bg-black text-white' },
                         { id: 'designers', label: 'Designs', icon: Palette, stats: getDeptStats('designers'), color: 'text-purple-700', activeBg: 'bg-purple-600 text-white' },
+                        { id: 'digitizer', label: 'Digitizing', icon: Scissors, stats: getDeptStats('digitizer'), color: 'text-pink-700', activeBg: 'bg-pink-600 text-white' },
                         { id: 'accounts', label: 'Accounts', icon: DollarSign, stats: getDeptStats('accounts'), color: 'text-amber-700', activeBg: 'bg-amber-600 text-white' },
                         { id: 'order_management', label: 'Order Mgmt', icon: Package, stats: getDeptStats('order_management'), color: 'text-blue-700', activeBg: 'bg-blue-600 text-white' },
                         { id: 'production', label: 'Production', icon: Zap, stats: getDeptStats('production'), color: 'text-indigo-700', activeBg: 'bg-indigo-600 text-white' },
+                        { id: 'inventory', label: 'Inventory', icon: Layers, stats: getDeptStats('inventory'), color: 'text-teal-700', activeBg: 'bg-teal-700 text-white' },
                         { id: 'delivery', label: 'Delivery', icon: Truck, stats: getDeptStats('delivery'), color: 'text-emerald-700', activeBg: 'bg-emerald-600 text-white' },
                       ] as const
                     ).map(d => {
