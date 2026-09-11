@@ -148,14 +148,21 @@ export const mockDataService = {
   },
 
   patchOrder: async (id: string, updates: any): Promise<void> => {
-    invalidateCache('orders');
+    // ⚡ Update in-memory & localStorage cache immediately for instant response
+    const cachedOrders = getCached<Order[]>('orders', 60000);
+    if (cachedOrders && Array.isArray(cachedOrders)) {
+      const updated = cachedOrders.map(o => o.id === id ? { ...o, ...updates, updatedAt: Date.now() } : o);
+      setCache('orders', updated);
+    }
     invalidateCache(`att_${sanitizeId(id)}`);
+
     const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
     if (!res.ok) {
+      invalidateCache('orders');
       const errText = await res.text();
       let errMsg = 'Failed to update order';
       try {
@@ -170,14 +177,22 @@ export const mockDataService = {
   },
 
   saveOrder: async (order: Order): Promise<void> => {
-    invalidateCache('orders');
+    const cachedOrders = getCached<Order[]>('orders', 60000);
+    if (cachedOrders && Array.isArray(cachedOrders)) {
+      const idx = cachedOrders.findIndex(o => o.id === order.id);
+      const updated = idx >= 0 ? cachedOrders.map(o => o.id === order.id ? order : o) : [order, ...cachedOrders];
+      setCache('orders', updated);
+    }
     invalidateCache(`att_${sanitizeId(order.id)}`);
     const res = await fetch(getApiUrl('/api/orders'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order)
     });
-    if (!res.ok) throw new Error('Failed to save order');
+    if (!res.ok) {
+      invalidateCache('orders');
+      throw new Error('Failed to save order');
+    }
     notifyUpdate();
   },
 
@@ -261,24 +276,39 @@ export const mockDataService = {
   },
 
   addLead: async (lead: Lead): Promise<void> => {
-    invalidateCache('leads');
+    const existingLeads = getCached<Lead[]>('leads', 60000);
+    if (existingLeads && Array.isArray(existingLeads)) {
+      const idx = existingLeads.findIndex(l => l.id === lead.id);
+      const updatedList = idx >= 0 ? existingLeads.map(l => l.id === lead.id ? lead : l) : [lead, ...existingLeads];
+      setCache('leads', updatedList);
+    }
     const res = await fetch(getApiUrl('/api/leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(lead)
     });
-    if (!res.ok) throw new Error('Failed to add lead');
+    if (!res.ok) {
+      invalidateCache('leads');
+      throw new Error('Failed to add lead');
+    }
     notifyUpdate();
   },
 
   updateLead: async (id: string, updates: Partial<Lead>): Promise<void> => {
-    invalidateCache('leads');
+    const existingLeads = getCached<Lead[]>('leads', 60000);
+    if (existingLeads && Array.isArray(existingLeads)) {
+      const updatedList = existingLeads.map(l => l.id === id ? { ...l, ...updates } : l);
+      setCache('leads', updatedList);
+    }
     const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
-    if (!res.ok) throw new Error('Failed to update lead');
+    if (!res.ok) {
+      invalidateCache('leads');
+      throw new Error('Failed to update lead');
+    }
     notifyUpdate();
   },
 

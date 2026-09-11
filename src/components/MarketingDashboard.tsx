@@ -96,6 +96,18 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
 
+  // Fast Non-blocking Toast Feedback
+  const [actionToast, setActionToast] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<any>(null);
+
+  const showActionToast = (msg: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setActionToast(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setActionToast(null);
+    }, 2500);
+  };
+
   const handleDirectForward = async (orderId: string, target: 'design' | 'accounts') => {
     setIsProcessing(true);
     try {
@@ -133,9 +145,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         updates.designCompleted = false;
       }
       await onUpdateOrder(orderId, updates);
-      alert(`Order #${orderId.slice(-6)} forwarded to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);
+      showActionToast(`Order #${orderId.slice(-6)} forwarded to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);
     } catch (err) {
-      alert("Action failed.");
+      showActionToast("Action failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -777,8 +789,23 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const completedOrdersCount = useMemo(() => orders.filter(isDoneOrder).length, [orders]);
 
   return (
-    <div className="bg-white/70 backdrop-blur-2xl text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-white/60 shadow-xl space-y-4 sm:space-y-8 animate-in fade-in duration-300">
+    <div className="bg-white/70 backdrop-blur-2xl text-gray-900 p-3.5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-white/60 shadow-xl space-y-4 sm:space-y-8 animate-in fade-in duration-300 relative">
       
+      {/* ⚡ Non-blocking Action Toast */}
+      <AnimatePresence>
+        {actionToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 right-6 z-[999] bg-gray-900/95 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-gray-700 text-xs font-bold tracking-wide backdrop-blur-md"
+          >
+            <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+            <span>{actionToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Action Buttons Header */}
       <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-3 sm:pb-4">
         <button

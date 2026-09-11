@@ -582,8 +582,8 @@ router.post('/orders', async (req, res) => {
           targetRoles.push('admin');
         }
 
-        for (const role of targetRoles) {
-          await query(
+        await Promise.all(targetRoles.map(role =>
+          query(
             'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
               `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -594,8 +594,8 @@ router.post('/orders', async (req, res) => {
               0,
               Date.now()
             ]
-          );
-        }
+          )
+        ));
       }
 
       // Design uploaded notification (to Digitizer)
@@ -950,8 +950,8 @@ const handleUpdateOrderFields = async (req, res) => {
       }
       
       const customerName = updates.customerInfo?.name || '';
-      for (const role of targetRoles) {
-        await query(
+      await Promise.all(targetRoles.map(role =>
+        query(
           'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -962,8 +962,8 @@ const handleUpdateOrderFields = async (req, res) => {
             0,
             Date.now()
           ]
-        );
-      }
+        )
+      ));
     }
 
     if (updates.designSentToDigitizer) {

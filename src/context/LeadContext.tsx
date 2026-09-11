@@ -116,13 +116,20 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const handleDataUpdated = () => loadData(true);
+    let refreshTimeout: any = null;
+    const handleDataUpdated = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        loadData(true);
+      }, 350);
+    };
 
     window.addEventListener('pallywear-data-updated', handleDataUpdated);
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       clearInterval(interval);
+      if (refreshTimeout) clearTimeout(refreshTimeout);
       window.removeEventListener('pallywear-data-updated', handleDataUpdated);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
@@ -139,8 +146,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       createdBy: lead.createdBy || user.id,
       createdByName: lead.createdByName || user.name,
     });
-    await mockDataService.saveLead(nextLead);
     setLeads((prev) => [...prev, nextLead]);
+    await mockDataService.saveLead(nextLead);
   };
 
   const updateLead = async (id: string, leadUpdate: Partial<Lead>) => {
@@ -150,8 +157,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       ...existing,
       ...sanitizeForStorage(leadUpdate),
     } as Lead;
-    await mockDataService.saveLead(nextLead);
     setLeads((prev) => prev.map((lead) => (lead.id === id ? nextLead : lead)));
+    await mockDataService.updateLead(id, sanitizeForStorage(leadUpdate));
   };
 
   const deleteLead = async (id: string) => {
@@ -238,22 +245,21 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       updatedAt: Date.now(),
     };
 
-    // ⚡ Instant optimistic UI update (1 second response)
+    // ⚡ Instant optimistic UI update (0ms lag)
     setOrders((prev) => prev.map((order) => (order.id === id ? nextOrder : order)));
 
     try {
       await mockDataService.patchOrder(id, sanitizeForStorage(orderUpdate));
 
-      // Sync changes to the associated Lead/Client
+      // Sync changes to associated Lead/Client in background only if client info changed
       const phone = nextOrder.customerInfo?.phone || existing.customerInfo?.phone;
-      if (phone) {
+      if (phone && (orderUpdate.customerInfo || orderUpdate.financials)) {
         const associatedLead = leads.find(l => l.number === phone);
         if (associatedLead) {
           const updates: Partial<Lead> = {};
           if (orderUpdate.customerInfo?.name) updates.name = orderUpdate.customerInfo.name;
           if (orderUpdate.customerInfo?.address) updates.companyName = orderUpdate.customerInfo.address;
           
-          // Re-calculate sum of all order amounts for this client phone number
           const clientOrders = orders.map(o => o.id === id ? nextOrder : o)
             .filter(o => o.customerInfo?.phone === phone);
           const totalValue = clientOrders.reduce((sum, o) => sum + (o.financials?.totalAmount || 0), 0);
@@ -261,7 +267,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
           updates.convertedValue = totalValue;
           updates.status = 'Converted';
 
-          await updateLead(associatedLead.id, updates);
+          updateLead(associatedLead.id, updates).catch(err => console.error("Background lead sync error:", err));
         }
       }
     } catch (err) {
