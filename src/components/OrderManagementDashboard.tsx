@@ -937,7 +937,7 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                         <tbody className="divide-y divide-gray-100 bg-white">
                           {selectedOrder.sizeBreakdown.map((item, idx) => {
                             const lineBase = (item.quantity || 0) * (item.price || 0);
-                            const lineGst = (lineBase * (item.gstRate || 0)) / 100;
+                            const lineGst = Math.round((lineBase * (item.gstRate || 0)) / 100);
                             const lineTotal = lineBase + lineGst;
                             return (
                               <tr key={idx} className="hover:bg-purple-50/30 transition-colors">
@@ -948,8 +948,8 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                                 <td className="px-3 py-2.5 text-gray-600">{item.printType || '-'}</td>
                                 <td className="px-3 py-2.5 text-gray-600">{item.model || '-'}</td>
                                 <td className="px-3 py-2.5 font-black text-center text-gray-900">{item.quantity}</td>
-                                <td className="px-3 py-2.5 text-right font-semibold text-gray-700">₹{(item.price || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2.5 text-right text-gray-500 font-semibold">{item.gstRate ? `${item.gstRate}%` : '0%'}</td>
+                                <td className="px-3 py-2.5 text-right font-semibold text-gray-700">₹{Math.round(item.price || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-500 font-semibold">{item.gstRate ? `${item.gstRate}% (₹${lineGst.toLocaleString()})` : '0%'}</td>
                                 <td className="px-3 py-2.5 text-right font-black text-gray-900">₹{lineTotal.toLocaleString()}</td>
                                 <td className="px-3 py-2.5 text-[10px] text-gray-500 italic max-w-[200px] truncate" title={item.customDetails}>
                                   {item.customDetails || '-'}

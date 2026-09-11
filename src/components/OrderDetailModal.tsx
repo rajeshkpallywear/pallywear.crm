@@ -1,7 +1,6 @@
 
 import { createPortal } from 'react-dom';
-import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -35,6 +34,9 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         status: target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
         updatedAt: Date.now()
       };
+      if (target === 'accounts') {
+        updates.movedToAccountsAt = Date.now();
+      }
       if (target === 'design') {
         const hadPriorDesign = Boolean(
           order.designCompleted ||
@@ -440,7 +442,11 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                   const updated = [...editedOrder.sizeBreakdown];
                                   updated[idx] = { ...updated[idx], quantity: qty };
                                   const newQty = updated.reduce((sum, i) => sum + i.quantity, 0);
-                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0);
+                                  const newTotal = Math.round(updated.reduce((sum, i) => {
+                                    const base = i.quantity * (i.price || 0);
+                                    const gst = Math.round((base * (i.gstRate || 0)) / 100);
+                                    return sum + base + gst;
+                                  }, 0));
                                   setEditedOrder({
                                     ...editedOrder,
                                     sizeBreakdown: updated,
@@ -460,14 +466,18 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                 type="number"
                                 min="0"
                                 step="any"
-                                placeholder="0.00"
+                                placeholder="0"
                                 className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-brand-primary"
                                 value={item.price || ''}
                                 onChange={e => {
                                   const rate = e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0);
                                   const updated = [...editedOrder.sizeBreakdown];
                                   updated[idx] = { ...updated[idx], price: rate };
-                                  const newTotal = updated.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0);
+                                  const newTotal = Math.round(updated.reduce((sum, i) => {
+                                    const base = i.quantity * (i.price || 0);
+                                    const gst = Math.round((base * (i.gstRate || 0)) / 100);
+                                    return sum + base + gst;
+                                  }, 0));
                                   setEditedOrder({
                                     ...editedOrder,
                                     sizeBreakdown: updated,
@@ -559,15 +569,15 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                           <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-end">
                             <div className="flex items-center gap-3">
                               <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
-                              <span className="text-[10px] font-black text-brand-primary">Rate: ₹{item.price}</span>
+                              <span className="text-[10px] font-black text-brand-primary">Rate: ₹{Math.round(item.price || 0)}</span>
                               {(item.gstRate || 0) > 0 && (
                                 <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                  GST: {item.gstRate}%
+                                  GST: {item.gstRate}% (+₹{Math.round((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100).toLocaleString()})
                                 </span>
                               )}
                             </div>
                             <span className="text-xs font-black text-gray-900">
-                              Total: ₹{(
+                              Total: ₹{Math.round(
                                 item.quantity * (item.price || 0) +
                                 ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100)
                               ).toLocaleString()}
@@ -647,22 +657,92 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                       {!order.staffPdfs?.length && <span className="text-[10px] text-gray-300 italic">None</span>}
                     </div>
                   </div>
-                  {order.orderManagementAttachments?.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-bold text-blue-500 uppercase mb-2">Management Files</p>
-                      <div className="flex flex-wrap gap-2">
-                        {order.orderManagementAttachments.map((file, i) => (
+
+                  {/* Production Finished Goods & QC Photos */}
+                  {((order.details?.productionImages && order.details.productionImages.length > 0) ||
+                    (order.details?.finishedGarmentImages && order.details.finishedGarmentImages.length > 0)) && (
+                    <div className="space-y-3 bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10.5px] font-black text-indigo-900 uppercase tracking-widest flex items-center gap-1.5">
+                          <Factory size={14} className="text-indigo-600" />
+                          🏭 Production Output & Finished Garment Photos
+                        </p>
+                        <span className="text-[9px] font-black bg-indigo-200/80 text-indigo-900 px-2.5 py-0.5 rounded-full">
+                          Manufactured
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2.5">
+                        {Array.from(new Set([
+                          ...(order.details?.productionImages || []),
+                          ...(order.details?.finishedGarmentImages || [])
+                        ])).map((img, i) => (
                           <div
                             key={i}
-                            onClick={() => setViewingImage(file)}
-                            className="w-16 h-16 rounded-xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition-all text-blue-500 group"
+                            onClick={() => setViewingImage(img)}
+                            className="w-20 h-20 rounded-xl border-2 border-indigo-300 shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-all relative group shrink-0 bg-white"
+                            title="Click to view full finished garment photo"
                           >
-                            {file.includes('zip') ? <Download size={24} /> : <FileText size={24} />}
+                            <img src={img} alt="Finished Garment" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn size={16} />
+                            </div>
+                            <span className="absolute bottom-0 inset-x-0 bg-indigo-700/90 text-[7.5px] text-white text-center font-bold uppercase py-0.5">
+                              QC Finished
+                            </span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
+
+                  {/* Dispatch & Courier Proof Photos (Proof of Delivery / Dispatch) */}
+                  {((order.details?.dispatchImages && order.details.dispatchImages.length > 0) ||
+                    (order.details?.courierImages && order.details.courierImages.length > 0) ||
+                    (order.orderManagementAttachments && order.orderManagementAttachments.length > 0)) && (
+                    <div className="space-y-3 bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10.5px] font-black text-emerald-900 uppercase tracking-widest flex items-center gap-1.5">
+                          <Truck size={14} className="text-emerald-600" />
+                          Dispatch & Courier Photos (Proof of Dispatch)
+                        </p>
+                        <span className="text-[9px] font-black bg-emerald-200/80 text-emerald-900 px-2.5 py-0.5 rounded-full">
+                          {order.details?.courierName || 'Dispatched'}
+                        </span>
+                      </div>
+
+                      {order.details?.trackingNumber && (
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-100">
+                          <span className="text-gray-400 text-[10px] uppercase">Tracking ID:</span>
+                          <span className="font-mono text-emerald-800 font-black">{order.details.trackingNumber}</span>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-2.5">
+                        {Array.from(new Set([
+                          ...(order.details?.dispatchImages || []),
+                          ...(order.details?.courierImages || []),
+                          ...(order.orderManagementAttachments || [])
+                        ])).map((img, i) => (
+                          <div
+                            key={i}
+                            onClick={() => setViewingImage(img)}
+                            className="w-20 h-20 rounded-xl border-2 border-emerald-300 shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-all relative group shrink-0 bg-white"
+                            title="Click to view full dispatch photo"
+                          >
+                            <img src={img} alt="Courier Proof" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn size={16} />
+                            </div>
+                            <span className="absolute bottom-0 inset-x-0 bg-emerald-700/90 text-[7.5px] text-white text-center font-bold uppercase py-0.5">
+                              Dispatch Proof
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Original Design Assets (PNG & ZIP) */}
                   {(order.original_design_file || order.original_design_zip || (order.designAttachments && order.designAttachments.length > 0)) && (
                     <div className="space-y-3 bg-purple-50/50 p-4 rounded-2xl border border-purple-150">

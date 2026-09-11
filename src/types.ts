@@ -199,6 +199,7 @@ export interface Order {
   isAdminOrder?: boolean;
   reworkNotes?: string;
   sentByAdmin?: boolean;
+  movedToAccountsAt?: number;
 }
 
 export interface InventoryMovement {

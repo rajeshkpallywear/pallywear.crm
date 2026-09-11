@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen, Edit3, Save, Copy, Mic, MessageSquare, X } from 'lucide-react';
+import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen, Edit3, Save, Copy, Mic, MessageSquare, X, Camera, Upload, Image as ImageIcon } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { Order, OrderStatus } from '../types';
 import { getDisplayCategory, cn, downloadFile } from '../lib/utils';
 import { useLeads } from '../context/LeadContext';
@@ -25,6 +26,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   const [productionNoteInput, setProductionNoteInput] = useState('');
   const [noteToast, setNoteToast] = useState<string | null>(null);
   const [showClientSpecs, setShowClientSpecs] = useState(false);
+  const [completedProductionImages, setCompletedProductionImages] = useState<string[]>([]);
   const { loadOrderAttachments } = useLeads();
 
   useEffect(() => {
@@ -34,8 +36,43 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       });
       setProductionNoteInput(selectedOrder.productionNotes || '');
       setIsEditingProductionNotes(false);
+      setCompletedProductionImages(selectedOrder.details?.productionImages || selectedOrder.details?.finishedGarmentImages || []);
+    } else {
+      setCompletedProductionImages([]);
     }
   }, [selectedOrder?.id]);
+
+  // Helper to handle image capture from camera or file upload with compression
+  const handleProductionImageCaptureOrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const readFiles: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      let file: File = files[i];
+      try {
+        if (file.type.startsWith('image/')) {
+          file = await imageCompression(file, {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1400,
+            useWebWorker: true
+          });
+        }
+      } catch (err) {
+        console.warn('Image compression skipped:', err);
+      }
+
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      readFiles.push(base64);
+    }
+
+    setCompletedProductionImages(prev => [...prev, ...readFiles]);
+    e.target.value = '';
+  };
 
   const handleSaveProductionNote = async () => {
     if (!selectedOrder) return;
@@ -48,9 +85,9 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
       setSelectedOrder(prev => prev ? { ...prev, productionNotes: productionNoteInput.trim(), updatedAt: Date.now() } : null);
       setIsEditingProductionNotes(false);
       setNoteToast("✓ Production notes updated successfully!");
-      setTimeout(() => setNoteToast(null), 2500);
+      setTimeout(() => setNoteToast(null), 3000);
     } catch (e) {
-      alert("Failed to save production notes.");
+      alert("Failed to save production note.");
     } finally {
       setIsProcessing(false);
     }
@@ -69,14 +106,17 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
   };
 
   const filteredOrders = orders.filter(o => {
+    if (selectedSection === 'recent') {
+      return o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted;
+    }
+    if (selectedSection === 'process') {
+      return o.status === OrderStatus.PRODUCTION && o.details?.productionStarted === true;
+    }
     if (selectedSection === 'hold') {
       return o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION;
     }
     if (selectedSection === 'completed') {
       return o.status === OrderStatus.DELIVERED;
-    }
-    if (selectedSection === 'process') {
-      return o.status === OrderStatus.PRODUCTION && o.details?.productionStarted === true;
     }
     return o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted;
   });
@@ -104,13 +144,30 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
     setIsProcessing(true);
 
     try {
+      const images = completedProductionImages;
+      const existingManagement = selectedOrder.orderManagementAttachments || [];
+      const updatedManagement = Array.from(new Set([...existingManagement, ...images]));
+      const photoNote = images.length > 0 ? ` (${images.length} finished product photos attached)` : '';
+      const completionNote = `[PRODUCTION COMPLETED] ${new Date().toLocaleString()}: Finished goods manufactured and sent to Inventory Management intake.${photoNote}`;
+      const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n${completionNote}` : completionNote;
+
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.DELIVERY,
+        notes: updatedNotes,
+        orderManagementAttachments: updatedManagement,
+        details: {
+          ...(selectedOrder.details || {}),
+          productionCompleted: true,
+          productionCompletedAt: Date.now(),
+          productionImages: images,
+          finishedGarmentImages: images
+        },
         updatedAt: Date.now()
       });
 
       setSelectedOrder(null);
-      alert("Success: Production run completed! Dispatched to delivery team.");
+      setCompletedProductionImages([]);
+      alert(`Success: Order #${selectedOrder.id.slice(-8)} finished and forwarded to Inventory Management Intake Queue${images.length > 0 ? ' with finished product photos' : ''}!`);
     } catch (e) {
       console.error(e);
       alert("Failed to move order forward.");
@@ -587,6 +644,93 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                 </div>
               </div>
 
+              {/* Finished Garments Photo Capture & Upload (QC / Finished Goods) */}
+              <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-indigo-150 shadow-xs space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Camera size={14} />
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        📸 Finished Garment Photos (QC & Verification)
+                      </h5>
+                      <p className="text-[10px] text-gray-500 font-semibold">
+                        Take live photos or upload finished product pictures before sending to Inventory Management
+                      </p>
+                    </div>
+                  </div>
+                  {completedProductionImages.length > 0 && (
+                    <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-200">
+                      ✓ {completedProductionImages.length} {completedProductionImages.length === 1 ? 'Photo' : 'Photos'} Attached
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 flex-wrap pt-1">
+                  {/* Preview Thumbnails */}
+                  {completedProductionImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative group w-16 h-16 rounded-xl overflow-hidden border-2 border-indigo-200 shrink-0 bg-white shadow-xs"
+                    >
+                      <img
+                        src={img}
+                        alt="Finished Garment"
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => setViewingImage(img)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCompletedProductionImages(prev => prev.filter((_, i) => i !== idx))}
+                        className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-bl hover:bg-red-700 cursor-pointer border-none shadow-xs"
+                        title="Remove photo"
+                      >
+                        <X size={10} />
+                      </button>
+                      <div
+                        onClick={() => setViewingImage(img)}
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer"
+                      >
+                        <ZoomIn size={14} />
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Camera Button */}
+                  <label
+                    className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                    title="Take live photo using device camera"
+                  >
+                    <Camera size={15} className="text-amber-600" />
+                    <span>Take Photo (Camera)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleProductionImageCaptureOrUpload}
+                    />
+                  </label>
+
+                  {/* Upload Image Button */}
+                  <label
+                    className="px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                    title="Upload photos from device"
+                  >
+                    <Upload size={15} className="text-indigo-600" />
+                    <span>Upload Product Photos</span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      multiple
+                      className="hidden"
+                      onChange={handleProductionImageCaptureOrUpload}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Action Buttons Panel */}
               <div className="flex gap-3 border-t border-gray-200 pt-4">
                 {selectedOrder.status === OrderStatus.HOLD ? (
@@ -692,7 +836,7 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                     disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
                     className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-indigo-650/10"
                   >
-                    {isProcessing ? "Completing run..." : "Finish Production & Send to Inventory Management"}
+                    {isProcessing ? "Completing run..." : `Finish Production & Send to Inventory Management${completedProductionImages.length > 0 ? ` (${completedProductionImages.length} Photos Attached)` : ''}`}
                     <CheckCircle size={14} />
                   </button>
                 )}

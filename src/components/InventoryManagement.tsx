@@ -34,8 +34,12 @@ import {
   CreditCard,
   FileText,
   Download,
-  ZoomIn
+  ZoomIn,
+  Camera,
+  Image as ImageIcon,
+  Factory
 } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { useLeads } from '../context/LeadContext';
 import { InventoryMovement, Order, OrderStatus } from '../types';
 import { CATEGORIES, SLEEVE_OPTIONS, POCKET_OPTIONS, SIZE_OPTIONS } from '../constants';
@@ -91,7 +95,53 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
   const [movementTab, setMovementTab] = useState<'logs' | 'inward' | 'outward'>('logs');
   const [productionTab, setProductionTab] = useState<'intake' | 'delivery' | 'shipped'>('intake');
   const [searchTerm, setSearchTerm] = useState('');
-  const [shipForms, setShipForms] = useState<Record<string, { courierName: string; trackingNumber: string }>>({});
+  const [shipForms, setShipForms] = useState<Record<string, { courierName: string; trackingNumber: string; images?: string[] }>>({});
+  const [modalDispatchImages, setModalDispatchImages] = useState<string[]>([]);
+
+  // Helper to handle image capture from device camera or file upload with compression
+  const handleImageCaptureOrUpload = async (e: React.ChangeEvent<HTMLInputElement>, orderId?: string) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const readFiles: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      let file: File = files[i];
+      try {
+        if (file.type.startsWith('image/')) {
+          file = await imageCompression(file, {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1400,
+            useWebWorker: true
+          });
+        }
+      } catch (err) {
+        console.warn('Image compression skipped:', err);
+      }
+
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      readFiles.push(base64);
+    }
+
+    if (orderId) {
+      setShipForms(prev => {
+        const current = prev[orderId] || { courierName: '', trackingNumber: '', images: [] };
+        return {
+          ...prev,
+          [orderId]: {
+            ...current,
+            images: [...(current.images || []), ...readFiles]
+          }
+        };
+      });
+    } else {
+      setModalDispatchImages(prev => [...prev, ...readFiles]);
+    }
+    e.target.value = '';
+  };
 
   // Intake Order Processing state
   const [selectedIntakeOrder, setSelectedIntakeOrder] = useState<Order | null>(null);
@@ -433,7 +483,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
     }
   };
 
-  const handleShipOrder = async (order: Order, courierName: string, trackingNumber: string) => {
+  const handleShipOrder = async (order: Order, courierName: string, trackingNumber: string, images: string[] = []) => {
     if (!courierName.trim() || !trackingNumber.trim()) {
       alert("Please enter both Courier Partner and Tracking Number.");
       return;
@@ -453,20 +503,35 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
         quantity: order.quantity
       });
 
-      const shipNotes = `[DELIVERY] ${new Date().toLocaleString()}: Goods dispatched via ${courierName.trim()}. Tracking ID: ${trackingNumber.trim()}`;
+      const photoNote = images.length > 0 ? ` (${images.length} parcel / slip photos attached)` : '';
+      const shipNotes = `[DELIVERY] ${new Date().toLocaleString()}: Goods dispatched via ${courierName.trim()}. Tracking ID: ${trackingNumber.trim()}${photoNote}`;
+      
+      const existingManagement = order.orderManagementAttachments || [];
+      const updatedManagement = Array.from(new Set([...existingManagement, ...images]));
+
       await updateOrder(order.id, {
         status: OrderStatus.DELIVERED,
         notes: order.notes ? `${order.notes}\n${shipNotes}` : shipNotes,
+        orderManagementAttachments: updatedManagement,
         details: {
           ...(order.details || {}),
           courierName: courierName.trim(),
           trackingNumber: trackingNumber.trim(),
+          dispatchImages: images,
+          courierImages: images,
           shippedAt: Date.now()
         },
         updatedAt: Date.now()
       });
 
-      alert(`Success: Order #${order.id} shipped and marked as Delivered.`);
+      // Clear ship form for this order
+      setShipForms(prev => {
+        const next = { ...prev };
+        delete next[order.id];
+        return next;
+      });
+
+      alert(`Success: Order #${order.id.slice(-8)} shipped and marked as Delivered${images.length > 0 ? ' with photos' : ''}.`);
     } catch (e) {
       console.error(e);
       alert('Failed to ship order.');
@@ -1376,6 +1441,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                           <div>
                             <span>{order.customerInfo?.name}</span>
                             <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
+                            <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">By: {order.createdByName || order.createdBy || 'System'}</span>
                           </div>
                         </td>
                         <td className="px-5 py-3.5 font-bold text-slate-700">{getDisplayCategory(order)}</td>
@@ -1410,30 +1476,34 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   <thead>
                     <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                       <th className="px-5 py-3.5">Order ID</th>
-                      <th className="px-5 py-3.5">Customer Name</th>
+                      <th className="px-5 py-3.5">Customer & Creator</th>
                       <th className="px-5 py-3.5">Garment Category</th>
                       <th className="px-5 py-3.5">Courier Partner</th>
                       <th className="px-5 py-3.5">Tracking Number</th>
+                      <th className="px-5 py-3.5">📦 Parcel / Slip Photo</th>
                       <th className="px-5 py-3.5 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
                     {orders.filter(o => o.status === OrderStatus.DELIVERY).map(order => {
-                      const currentForm = shipForms[order.id] || { courierName: '', trackingNumber: '' };
+                      const currentForm = shipForms[order.id] || { courierName: '', trackingNumber: '', images: [] };
+                      const formImages = currentForm.images || [];
+
                       return (
                         <tr key={order.id} className="hover:bg-slate-50/50">
-                          <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
+                          <td className="px-5 py-3.5 font-black text-slate-900">#{order.id.slice(-8)}</td>
                           <td className="px-5 py-3.5 font-bold text-slate-800">
                             <div>
                               <span>{order.customerInfo?.name}</span>
                               <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
+                              <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">By: {order.createdByName || order.createdBy || 'System'}</span>
                             </div>
                           </td>
                           <td className="px-5 py-3.5 font-bold text-indigo-600">{getDisplayCategory(order)} ({order.quantity} Pcs)</td>
                           <td className="px-5 py-3.5">
                             <input
                               type="text"
-                              placeholder="e.g. DHL Express"
+                              placeholder="e.g. Professional / DTDC"
                               className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:border-indigo-500 w-36"
                               value={currentForm.courierName}
                               onChange={e => setShipForms({
@@ -1454,12 +1524,73 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                               })}
                             />
                           </td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2">
+                              {/* Preview uploaded photos */}
+                              {formImages.map((img, idx) => (
+                                <div key={idx} className="relative group w-10 h-10 rounded-lg overflow-hidden border border-emerald-300 shrink-0 bg-gray-50 shadow-xs">
+                                  <img
+                                    src={img}
+                                    alt="Dispatch Proof"
+                                    className="w-full h-full object-cover cursor-pointer"
+                                    onClick={() => setViewingImage(img)}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const filtered = formImages.filter((_, i) => i !== idx);
+                                      setShipForms({
+                                        ...shipForms,
+                                        [order.id]: { ...currentForm, images: filtered }
+                                      });
+                                    }}
+                                    className="absolute top-0 right-0 bg-red-600 text-white p-0.5 rounded-bl hover:bg-red-700 cursor-pointer border-none"
+                                    title="Remove photo"
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                </div>
+                              ))}
+
+                              {/* Camera Button */}
+                              <label
+                                className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-black uppercase tracking-tight inline-flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                                title="Take Photo with Camera"
+                              >
+                                <Camera size={12} className="text-amber-600" />
+                                <span>Camera</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  className="hidden"
+                                  onChange={(e) => handleImageCaptureOrUpload(e, order.id)}
+                                />
+                              </label>
+
+                              {/* Upload Button */}
+                              <label
+                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-tight inline-flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                                title="Upload Photo from Device"
+                              >
+                                <Upload size={12} className="text-indigo-600" />
+                                <span>Upload</span>
+                                <input
+                                  type="file"
+                                  accept="image/*,.pdf"
+                                  multiple
+                                  className="hidden"
+                                  onChange={(e) => handleImageCaptureOrUpload(e, order.id)}
+                                />
+                              </label>
+                            </div>
+                          </td>
                           <td className="px-5 py-3.5 text-center">
                             <button
-                              onClick={() => handleShipOrder(order, currentForm.courierName, currentForm.trackingNumber)}
-                              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer border-none transition-colors"
+                              onClick={() => handleShipOrder(order, currentForm.courierName, currentForm.trackingNumber, formImages)}
+                              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer border-none transition-colors shadow-xs"
                             >
-                              <Truck size={10} /> Ship Goods
+                              <Truck size={12} /> Ship Goods
                             </button>
                           </td>
                         </tr>
@@ -1467,7 +1598,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     })}
                     {orders.filter(o => o.status === OrderStatus.DELIVERY).length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-gray-400 italic">No checked-in inventory orders ready for courier dispatch.</td>
+                        <td colSpan={7} className="py-8 text-center text-gray-400 italic">No checked-in inventory orders ready for courier dispatch.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1481,36 +1612,69 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   <thead>
                     <tr className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                       <th className="px-5 py-3.5">Order ID</th>
-                      <th className="px-5 py-3.5">Customer Name</th>
+                      <th className="px-5 py-3.5">Customer & Creator</th>
                       <th className="px-5 py-3.5">Garment Category</th>
                       <th className="px-5 py-3.5">Courier Partner</th>
                       <th className="px-5 py-3.5">Tracking Number</th>
+                      <th className="px-5 py-3.5">📸 Dispatch Proof</th>
                       <th className="px-5 py-3.5 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => o.status === OrderStatus.DELIVERED).map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50/50">
-                        <td className="px-5 py-3.5 font-black text-slate-900">{order.id}</td>
-                        <td className="px-5 py-3.5 font-bold text-slate-800">
-                          <div>
-                            <span>{order.customerInfo?.name}</span>
-                            <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5 font-bold text-indigo-600">{getDisplayCategory(order)} ({order.quantity} Pcs)</td>
-                        <td className="px-5 py-3.5 text-slate-500 font-semibold">{order.details?.courierName || 'Standard Post'}</td>
-                        <td className="px-5 py-3.5 font-mono text-slate-600 font-bold">{order.details?.trackingNumber || 'LOCAL-DELIVERY'}</td>
-                        <td className="px-5 py-3.5 text-center">
-                          <span className="px-2.5 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[9px] font-black uppercase tracking-wider">
-                            Delivered
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {orders.filter(o => o.status === OrderStatus.DELIVERED).map(order => {
+                      const dispatchImgs = [
+                        ...(order.details?.dispatchImages || []),
+                        ...(order.details?.courierImages || []),
+                        ...(order.orderManagementAttachments || [])
+                      ].filter(Boolean);
+
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50/50">
+                          <td className="px-5 py-3.5 font-black text-slate-900">#{order.id.slice(-8)}</td>
+                          <td className="px-5 py-3.5 font-bold text-slate-800">
+                            <div>
+                              <span>{order.customerInfo?.name}</span>
+                              <span className="text-[9px] block text-gray-400 font-normal">{order.customerInfo?.phone || 'Direct Retail'}</span>
+                              <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">By: {order.createdByName || order.createdBy || 'System'}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 font-bold text-indigo-600">{getDisplayCategory(order)} ({order.quantity} Pcs)</td>
+                          <td className="px-5 py-3.5 text-slate-700 font-semibold">{order.details?.courierName || 'Standard Post'}</td>
+                          <td className="px-5 py-3.5 font-mono text-slate-600 font-bold">{order.details?.trackingNumber || 'LOCAL-DELIVERY'}</td>
+                          <td className="px-5 py-3.5">
+                            {dispatchImgs.length > 0 ? (
+                              <div className="flex items-center gap-1.5">
+                                {dispatchImgs.slice(0, 3).map((img, i) => (
+                                  <div
+                                    key={i}
+                                    onClick={() => setViewingImage(img)}
+                                    className="w-8 h-8 rounded-lg overflow-hidden border border-emerald-300 cursor-pointer hover:scale-110 transition-transform bg-white shadow-xs relative group shrink-0"
+                                    title="Click to view dispatch photo"
+                                  >
+                                    <img src={img} className="w-full h-full object-cover" />
+                                  </div>
+                                ))}
+                                {dispatchImgs.length > 3 && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                    +{dispatchImgs.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 italic">No photo</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <span className="px-2.5 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[9px] font-black uppercase tracking-wider">
+                              Delivered
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {orders.filter(o => o.status === OrderStatus.DELIVERED).length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-gray-400 italic">No shipped/delivered orders found in history.</td>
+                        <td colSpan={7} className="py-8 text-center text-gray-400 italic">No shipped/delivered orders found in history.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1536,7 +1700,13 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div>
                   <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Inventory Intake Queue • Production Order</span>
-                  <h3 className="text-2xl font-black text-slate-900 uppercase italic">#{selectedIntakeOrder.id.slice(-8)}</h3>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="text-2xl font-black text-slate-900 uppercase italic">#{selectedIntakeOrder.id.slice(-8)}</h3>
+                    <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+                      <User size={12} className="text-indigo-600" />
+                      Created by: <span className="font-extrabold text-indigo-900">{selectedIntakeOrder.createdByName || selectedIntakeOrder.createdBy || 'System / Admin'}</span>
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedIntakeOrder(null)}
@@ -1547,7 +1717,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
               </div>
 
               {/* Order Info & Address */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
                   <span className="text-[9px] font-black text-gray-400 uppercase">Customer Name</span>
                   <p className="text-sm font-bold text-slate-900">{selectedIntakeOrder.customerInfo?.name}</p>
@@ -1556,6 +1726,21 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     <a href={`tel:${selectedIntakeOrder.customerInfo?.phone}`} className="hover:underline text-indigo-600">
                       {selectedIntakeOrder.customerInfo?.phone}
                     </a>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-1">
+                  <span className="text-[9px] font-black text-gray-400 uppercase">Created By (Staff)</span>
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs shrink-0">
+                      {(selectedIntakeOrder.createdByName || selectedIntakeOrder.createdBy || 'S').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-indigo-950 truncate">
+                        {selectedIntakeOrder.createdByName || selectedIntakeOrder.createdBy || 'System / Admin'}
+                      </p>
+                      <span className="text-[9px] text-gray-400 font-semibold block">Order Creator</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1676,26 +1861,59 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         </div>
                       </div>
                     )}
-                    {/* Design Outputs */}
-                    {((selectedIntakeOrder.designAttachments || []).length > 0 || (selectedIntakeOrder.machineFiles || []).length > 0) && (
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-gray-150 space-y-3 md:col-span-2">
-                        <span className="text-[9px] font-black text-purple-600 uppercase block">Design Studio Outputs</span>
+                    {/* Finished Garments / QC Photos from Production */}
+                    {((selectedIntakeOrder.details?.productionImages || []).length > 0 ||
+                      (selectedIntakeOrder.details?.finishedGarmentImages || []).length > 0) && (
+                      <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-150 space-y-3 md:col-span-2">
+                        <span className="text-[9px] font-black text-indigo-800 uppercase block flex items-center gap-1.5">
+                          <Factory size={12} className="text-indigo-600" /> 🏭 Finished Garments & Production Completion Photos
+                        </span>
                         <div className="flex flex-wrap gap-2">
-                          {(selectedIntakeOrder.designAttachments || []).map((file, idx) => (
-                            <div key={idx} onClick={() => setViewingImage(file)} className="w-12 h-12 bg-purple-50 rounded-lg border border-purple-100 flex items-center justify-center cursor-pointer hover:shadow-md text-purple-500 overflow-hidden shrink-0">
-                              {file.startsWith('data:image/') ? <img src={file} className="w-full h-full object-cover" /> : <FileText size={20} />}
+                          {Array.from(new Set([
+                            ...(selectedIntakeOrder.details?.productionImages || []),
+                            ...(selectedIntakeOrder.details?.finishedGarmentImages || [])
+                          ])).map((file, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => setViewingImage(file)}
+                              className="w-14 h-14 bg-white rounded-xl border-2 border-indigo-200 flex items-center justify-center cursor-pointer hover:shadow-md overflow-hidden shrink-0 relative group shadow-xs"
+                              title="Click to zoom finished garment photo"
+                            >
+                              <img src={file} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <ZoomIn size={14} />
+                              </div>
                             </div>
                           ))}
-                          {(selectedIntakeOrder.machineFiles || []).map((file, idx) => (
-                            <button
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dispatch & Courier Proof Photos */}
+                    {((selectedIntakeOrder.details?.dispatchImages || []).length > 0 ||
+                      (selectedIntakeOrder.details?.courierImages || []).length > 0 ||
+                      (selectedIntakeOrder.orderManagementAttachments || []).length > 0) && (
+                      <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-150 space-y-3 md:col-span-2">
+                        <span className="text-[9px] font-black text-emerald-800 uppercase block flex items-center gap-1.5">
+                          <Truck size={12} className="text-emerald-600" /> Dispatch & Courier Proof Photos
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from(new Set([
+                            ...(selectedIntakeOrder.details?.dispatchImages || []),
+                            ...(selectedIntakeOrder.details?.courierImages || []),
+                            ...(selectedIntakeOrder.orderManagementAttachments || [])
+                          ])).map((file, idx) => (
+                            <div
                               key={idx}
-                              type="button"
-                              onClick={() => downloadFile(file, `machine_file_${idx+1}_order_${selectedIntakeOrder.id}.zip`)}
-                              className="w-12 h-12 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-center hover:shadow-md text-indigo-500 shrink-0 cursor-pointer"
-                              title="Download Machine File"
+                              onClick={() => setViewingImage(file)}
+                              className="w-14 h-14 bg-white rounded-xl border-2 border-emerald-200 flex items-center justify-center cursor-pointer hover:shadow-md overflow-hidden shrink-0 relative group shadow-xs"
+                              title="Click to zoom dispatch photo"
                             >
-                              <Download size={18} />
-                            </button>
+                              <img src={file} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <ZoomIn size={14} />
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -1792,10 +2010,59 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                       />
                     </div>
 
+                    {/* Image / Camera Upload for Courier Dispatch in Modal */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-gray-400 flex items-center justify-between">
+                        <span>Attach Parcel / Courier Receipt Photo (Optional)</span>
+                      </label>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {modalDispatchImages.map((img, idx) => (
+                          <div key={idx} className="relative group w-12 h-12 rounded-xl overflow-hidden border-2 border-emerald-300 shrink-0 bg-white shadow-xs">
+                            <img src={img} alt="Proof" className="w-full h-full object-cover cursor-pointer" onClick={() => setViewingImage(img)} />
+                            <button
+                              type="button"
+                              onClick={() => setModalDispatchImages(prev => prev.filter((_, i) => i !== idx))}
+                              className="absolute top-0 right-0 bg-red-600 text-white p-0.5 rounded-bl hover:bg-red-700 cursor-pointer border-none"
+                              title="Remove photo"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+
+                        <label className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs">
+                          <Camera size={14} className="text-amber-600" />
+                          <span>Take Photo (Camera)</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => handleImageCaptureOrUpload(e)}
+                          />
+                        </label>
+
+                        <label className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs">
+                          <Upload size={14} className="text-indigo-600" />
+                          <span>Upload Image</span>
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => handleImageCaptureOrUpload(e)}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
                     <div className="flex gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => setDispatchMode('none')}
+                        onClick={() => {
+                          setDispatchMode('none');
+                          setModalDispatchImages([]);
+                        }}
                         className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer"
                       >
                         Cancel
@@ -1812,21 +2079,34 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                           const details = selectedIntakeOrder.details || {};
                           const courier = selectedCourier;
                           const tracking = courierTrackingNo.trim() || 'COURIER-DISPATCH';
+                          const images = [...modalDispatchImages];
 
                           setSelectedIntakeOrder(null);
                           setDispatchMode('none');
+                          setModalDispatchImages([]);
+
+                          const photoNote = images.length > 0 ? ` (${images.length} parcel / slip photos attached)` : '';
+                          const shipNotes = `[DELIVERY] ${new Date().toLocaleString()}: Goods dispatched via ${courier}. Tracking ID: ${tracking}${photoNote}`;
+
+                          const existingManagement = selectedIntakeOrder.orderManagementAttachments || [];
+                          const updatedManagement = Array.from(new Set([...existingManagement, ...images]));
 
                           updateOrder(orderId, {
                             status: OrderStatus.DELIVERED,
+                            notes: selectedIntakeOrder.notes ? `${selectedIntakeOrder.notes}\n${shipNotes}` : shipNotes,
+                            orderManagementAttachments: updatedManagement,
                             details: {
                               ...details,
                               dispatchType: 'courier',
                               courierName: courier,
-                              trackingNumber: tracking
+                              trackingNumber: tracking,
+                              dispatchImages: images,
+                              courierImages: images,
+                              shippedAt: Date.now()
                             },
                             updatedAt: Date.now()
                           });
-                          alert(`Order successfully dispatched via ${courier}!`);
+                          alert(`Order successfully dispatched via ${courier}${images.length > 0 ? ' with photos' : ''}!`);
                         }}
                         className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase border-none cursor-pointer shadow-md"
                       >

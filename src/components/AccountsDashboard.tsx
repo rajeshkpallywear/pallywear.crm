@@ -35,7 +35,74 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [billingFiles, setBillingFiles] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGstModalOpen, setIsGstModalOpen] = useState(false);
+  const [selectedGstRate, setSelectedGstRate] = useState<number>(0);
+  const [customGstInput, setCustomGstInput] = useState<string>('');
+  const [isCustomGst, setIsCustomGst] = useState(false);
   const { loadOrderAttachments } = useLeads();
+
+  const openGstModal = () => {
+    if (!selectedOrder) return;
+    const currentRate = selectedOrder.sizeBreakdown?.[0]?.gstRate || 0;
+    setSelectedGstRate(currentRate);
+    if ([0, 5, 12, 18, 28].includes(currentRate)) {
+      setIsCustomGst(false);
+      setCustomGstInput('');
+    } else {
+      setIsCustomGst(true);
+      setCustomGstInput(String(currentRate));
+    }
+    setIsGstModalOpen(true);
+  };
+
+  const handleApplyGst = async () => {
+    if (!selectedOrder || isProcessing) return;
+    const effectiveRate = isCustomGst ? (parseFloat(customGstInput) || 0) : selectedGstRate;
+
+    const updatedBreakdown = (selectedOrder.sizeBreakdown || []).map(item => ({
+      ...item,
+      gstRate: effectiveRate
+    }));
+
+    const baseTotal = Math.round(updatedBreakdown.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0));
+    const totalGst = Math.round(updatedBreakdown.reduce((sum, i) => sum + ((i.quantity * (i.price || 0) * (i.gstRate || 0)) / 100), 0));
+    const delivery = Math.round(selectedOrder.financials?.deliveryAmount || 0);
+    const grandTotal = Math.round(baseTotal + totalGst + delivery);
+    const advance = Math.round(selectedOrder.financials?.advancePay || 0);
+    const balance = Math.max(0, grandTotal - advance);
+
+    const updatedFinancials = {
+      ...selectedOrder.financials,
+      itemsTotal: baseTotal,
+      gstAmount: totalGst,
+      totalAmount: grandTotal,
+      balanceAmount: balance,
+      deliveryAmount: delivery,
+      advancePay: advance
+    };
+
+    setIsProcessing(true);
+    try {
+      await onUpdateOrder(selectedOrder.id, {
+        sizeBreakdown: updatedBreakdown,
+        financials: updatedFinancials,
+        updatedAt: Date.now()
+      });
+      setSelectedOrder(prev => prev ? {
+        ...prev,
+        sizeBreakdown: updatedBreakdown,
+        financials: updatedFinancials,
+        updatedAt: Date.now()
+      } : null);
+      setIsGstModalOpen(false);
+      alert(`Success: ${effectiveRate}% GST added! Grand Total is updated to ₹${grandTotal.toLocaleString()}.`);
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to update GST: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedOrder) {
@@ -324,10 +391,20 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       Reason: {order.holdReason}
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-white/10">
-                    <span className={selectedOrder?.id === order.id ? 'text-gray-300' : 'text-gray-500'}>
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </span>
+                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-white/10">
+                    <div className="flex flex-col">
+                      <span className={cn("text-[9px] font-semibold flex items-center gap-1", selectedOrder?.id === order.id ? 'text-gray-300' : 'text-gray-500')}>
+                        <span>Moved:</span>
+                        <strong className={selectedOrder?.id === order.id ? 'text-amber-300 font-bold' : 'text-purple-700 font-black'}>
+                          {new Date(order.movedToAccountsAt || order.updatedAt || order.createdAt).toLocaleDateString()}
+                        </strong>
+                      </span>
+                      {order.movedToAccountsAt && order.createdAt && new Date(order.movedToAccountsAt).toDateString() !== new Date(order.createdAt).toDateString() && (
+                        <span className={cn("text-[7.5px] font-medium opacity-60", selectedOrder?.id === order.id ? 'text-gray-400' : 'text-gray-400')}>
+                          Created: {new Date(order.createdAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                     <span className={cn("font-black", selectedOrder?.id === order.id ? "text-emerald-400" : "text-gray-900")}>
                       ₹{(order.financials?.totalAmount || 0).toLocaleString()}
                     </span>
@@ -401,6 +478,22 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       >
                         <Edit size={15} />
                       </button>
+                    </div>
+
+                    {/* Moved to Accounts Date Tag */}
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 mt-2 bg-purple-50/70 border border-purple-200 px-3 py-1.5 rounded-xl">
+                      <span className="flex items-center gap-1 text-purple-900 font-extrabold text-[11px]">
+                        <Clock size={13} className="text-brand-primary shrink-0" />
+                        <span>Moved to Accounts:</span>
+                        <span className="text-brand-primary underline font-black">
+                          {new Date(selectedOrder.movedToAccountsAt || selectedOrder.updatedAt || selectedOrder.createdAt).toLocaleDateString()}
+                          {selectedOrder.movedToAccountsAt ? ` (${new Date(selectedOrder.movedToAccountsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                        </span>
+                      </span>
+                      <span className="text-purple-300">•</span>
+                      <span className="text-[10px] text-gray-600 font-semibold">
+                        Created: <strong>{new Date(selectedOrder.createdAt).toLocaleDateString()}</strong> by <strong>{selectedOrder.createdByName || 'Marketing'}</strong>
+                      </span>
                     </div>
                   </div>
                   
@@ -518,11 +611,20 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 {/* Detailed Size Breakdown Table */}
                 {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
                   <div className="mt-6 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <h5 className="text-[10.5px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-1.5">
                         <Package size={13} className="text-brand-primary" />
                         Complete Sizing Breakdown Table ({selectedOrder.sizeBreakdown.length} items)
                       </h5>
+                      <button
+                        type="button"
+                        onClick={openGstModal}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-black uppercase transition-all shadow-2xs cursor-pointer"
+                        title="Add or Change GST rate across all items"
+                      >
+                        <IndianRupee size={11} />
+                        <span>+ Add / Edit GST</span>
+                      </button>
                     </div>
                     <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-2xs">
                       <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
@@ -543,7 +645,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                         <tbody className="divide-y divide-gray-100 bg-white font-semibold text-gray-800">
                           {selectedOrder.sizeBreakdown.map((item, idx) => {
                             const base = item.quantity * (item.price || 0);
-                            const gst = (base * (item.gstRate || 0)) / 100;
+                            const gst = Math.round((base * (item.gstRate || 0)) / 100);
                             const total = base + gst;
                             return (
                               <tr key={idx} className="hover:bg-purple-50/40 transition-colors">
@@ -554,8 +656,22 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                                 <td className="px-3 py-2">{[item.sleeve, item.pocket].filter(Boolean).join(' | ') || '-'}</td>
                                 <td className="px-3 py-2">{[item.material, item.model].filter(Boolean).join(' | ') || '-'}</td>
                                 <td className="px-3 py-2 text-center font-black text-gray-900">{item.quantity}</td>
-                                <td className="px-3 py-2 text-right font-mono">₹{item.price || 0}</td>
-                                <td className="px-3 py-2 text-right font-mono">{item.gstRate || 0}%</td>
+                                <td className="px-3 py-2 text-right font-mono">₹{Math.round(item.price || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right font-mono">
+                                  <button
+                                    type="button"
+                                    onClick={openGstModal}
+                                    className={cn(
+                                      "px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
+                                      (item.gstRate || 0) > 0
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50 hover:text-emerald-700"
+                                    )}
+                                    title="Click to change GST"
+                                  >
+                                    {item.gstRate ? `${item.gstRate}% (₹${gst.toLocaleString()})` : '0% +'}
+                                  </button>
+                                </td>
                                 <td className="px-3 py-2 text-right font-black text-emerald-700 font-mono">₹{total.toLocaleString()}</td>
                               </tr>
                             );
@@ -568,16 +684,41 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
                 {/* Financial Summary Breakdown */}
                 <div className="mt-6 space-y-2">
-                  <h5 className="text-[10.5px] font-black text-gray-700 uppercase tracking-widest">Financial Overview</h5>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h5 className="text-[10.5px] font-black text-gray-700 uppercase tracking-widest">Financial Overview</h5>
+                    <button
+                      type="button"
+                      onClick={openGstModal}
+                      className="text-[9px] font-black text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <IndianRupee size={10} />
+                      <span>Click to Add / Edit GST</span>
+                    </button>
+                  </div>
                   <div className="p-5 bg-white border border-gray-200 rounded-2xl grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 shadow-xs text-center">
                     <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
                       <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">Items Total</p>
                       <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.itemsTotal || selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
                     </div>
-                    <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
-                      <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">GST Amount</p>
-                      <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.gstAmount || 0).toLocaleString()}</p>
+
+                    {/* Interactive GST Amount Card */}
+                    <div
+                      onClick={openGstModal}
+                      className="bg-emerald-50/80 hover:bg-emerald-100/90 p-2.5 rounded-xl border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group relative"
+                      title="Click to Add or Change GST for this order"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <p className="text-[8.5px] font-black text-emerald-800 uppercase tracking-wider">GST Amount</p>
+                        <Edit size={10} className="text-emerald-600 group-hover:scale-125 transition-transform" />
+                      </div>
+                      <p className="text-sm font-black text-emerald-700 mt-0.5">
+                        ₹{(selectedOrder.financials?.gstAmount || 0).toLocaleString()}
+                      </p>
+                      <span className="inline-block mt-1 text-[7.5px] font-black uppercase px-1.5 py-0.2 bg-emerald-200 text-emerald-900 rounded-md group-hover:bg-emerald-700 group-hover:text-white transition-colors shadow-2xs">
+                        {(selectedOrder.financials?.gstAmount || 0) > 0 ? 'Edit GST' : '+ Add GST'}
+                      </span>
                     </div>
+
                     <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
                       <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">Delivery</p>
                       <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.deliveryAmount || 0).toLocaleString()}</p>
@@ -811,6 +952,160 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       </div>
 
 
+
+      {/* GST Management Modal for Accounts */}
+      {isGstModalOpen && selectedOrder && (() => {
+        const effectiveRate = isCustomGst ? (parseFloat(customGstInput) || 0) : selectedGstRate;
+        const itemsBase = Math.round((selectedOrder.sizeBreakdown || []).reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0));
+        const computedGst = Math.round((itemsBase * effectiveRate) / 100);
+        const delivery = Math.round(selectedOrder.financials?.deliveryAmount || 0);
+        const newGrandTotal = Math.round(itemsBase + computedGst + delivery);
+        const advancePaid = Math.round(selectedOrder.financials?.advancePay || 0);
+        const newBalance = Math.max(0, newGrandTotal - advancePaid);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-150 max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150 text-left">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-xs shrink-0">
+                    <IndianRupee size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-gray-900 leading-tight">
+                      Add / Edit Order GST
+                    </h3>
+                    <span className="text-[11px] font-mono text-gray-400">
+                      #{selectedOrder.id} • {selectedOrder.customerInfo?.name}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGstModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-colors border-none cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Rate Selection */}
+              <div className="space-y-2.5">
+                <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block">
+                  Select GST Percentage Rate (%)
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {[
+                    { rate: 0, label: '0% (Exempt)' },
+                    { rate: 5, label: '5% GST' },
+                    { rate: 12, label: '12% GST' },
+                    { rate: 18, label: '18% GST' },
+                    { rate: 28, label: '28% GST' },
+                  ].map(item => (
+                    <button
+                      key={item.rate}
+                      type="button"
+                      onClick={() => {
+                        setSelectedGstRate(item.rate);
+                        setIsCustomGst(false);
+                      }}
+                      className={cn(
+                        "py-2.5 px-1 rounded-xl text-xs font-black transition-all border cursor-pointer flex flex-col items-center justify-center gap-0.5",
+                        !isCustomGst && selectedGstRate === item.rate
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-sm scale-102"
+                          : "bg-gray-50 text-gray-700 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/40"
+                      )}
+                    >
+                      <span>{item.rate}%</span>
+                      <span className={cn("text-[7.5px] font-bold uppercase", !isCustomGst && selectedGstRate === item.rate ? "text-emerald-100" : "text-gray-400")}>
+                        {item.rate === 0 ? 'Exempt' : 'GST'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomGst(true)}
+                    className={cn(
+                      "w-full py-2 px-3 rounded-xl text-xs font-black transition-all border cursor-pointer flex items-center justify-between",
+                      isCustomGst
+                        ? "bg-purple-50 text-brand-primary border-brand-primary"
+                        : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                    )}
+                  >
+                    <span>Custom GST Rate (%)</span>
+                    <span className="text-[9px] uppercase font-bold text-gray-400">Enter other %</span>
+                  </button>
+                  {isCustomGst && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        placeholder="Enter GST percentage (e.g. 15)"
+                        value={customGstInput}
+                        onChange={(e) => setCustomGstInput(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-white border-2 border-brand-primary rounded-xl text-xs font-bold text-gray-900 outline-none"
+                        autoFocus
+                      />
+                      <span className="text-xs font-black text-gray-500">%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Live Calculations Summary Box */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-2">
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <span>Items Base Total:</span>
+                  <strong className="font-mono text-gray-900">₹{itemsBase.toLocaleString()}</strong>
+                </div>
+                <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50/90 p-2.5 rounded-xl border border-emerald-200 font-bold">
+                  <span>+ GST ({effectiveRate}%):</span>
+                  <span className="font-mono font-black text-sm">₹{computedGst.toLocaleString()}</span>
+                </div>
+                {delivery > 0 && (
+                  <div className="flex items-center justify-between text-xs text-gray-600">
+                    <span>Delivery Fee:</span>
+                    <strong className="font-mono text-gray-900">₹{delivery.toLocaleString()}</strong>
+                  </div>
+                )}
+                <div className="border-t border-gray-200 pt-2 flex items-center justify-between text-xs">
+                  <span className="font-black text-gray-700 uppercase tracking-wider">New Grand Total:</span>
+                  <span className="text-base font-black text-brand-primary font-mono">₹{newGrandTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-0.5">
+                  <span>Advance Paid: ₹{advancePaid.toLocaleString()}</span>
+                  <span className="font-black text-amber-700">New Balance Due: ₹{newBalance.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsGstModalOpen(false)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase transition-all border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyGst}
+                  disabled={isProcessing}
+                  className="flex-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 border-none cursor-pointer active:scale-98 disabled:opacity-60"
+                >
+                  {isProcessing ? "Applying..." : `✓ Save & Apply ${effectiveRate}% GST`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {selectedHubOrder && (
         <OrderDetailModal

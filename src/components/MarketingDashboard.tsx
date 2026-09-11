@@ -103,6 +103,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         status: target === 'design' ? OrderStatus.DESIGN : OrderStatus.ACCOUNTS,
         updatedAt: Date.now()
       };
+      if (target === 'accounts') {
+        updates.movedToAccountsAt = Date.now();
+      }
       if (target === 'design') {
         const existingOrder = orders.find(o => o.id === orderId);
         // Preserve the designer who already claimed/was assigned to this order
@@ -515,12 +518,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       designNotes: formData.notes.trim(),
       productionNotes: formData.productionNotes.trim(),
       financials: {
-        totalAmount: formData.totalAmount,
-        advancePay: formData.advancePay,
-        balanceAmount: formData.totalAmount - formData.advancePay,
-        deliveryAmount: formData.deliveryAmount || 0,
-        itemsTotal: formData.sizeBreakdown.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0),
-        gstAmount: formData.sizeBreakdown.reduce((sum, i) => sum + ((i.quantity * (i.price || 0) * (i.gstRate || 0)) / 100), 0),
+        totalAmount: Math.round(formData.totalAmount),
+        advancePay: Math.round(formData.advancePay),
+        balanceAmount: Math.round(formData.totalAmount - formData.advancePay),
+        deliveryAmount: Math.round(formData.deliveryAmount || 0),
+        itemsTotal: Math.round(formData.sizeBreakdown.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0)),
+        gstAmount: Math.round(formData.sizeBreakdown.reduce((sum, i) => sum + ((i.quantity * (i.price || 0) * (i.gstRate || 0)) / 100), 0)),
       },
       staffImages: formData.imageAttachments,
       staffPdfs: formData.pdfAttachments,
@@ -576,10 +579,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const calculateAutoTotal = (breakdown: SizeBreakdown[], delivery: number = 0) => {
     const itemsSum = breakdown.reduce((sum, item) => {
       const base = item.quantity * (item.price || 0);
-      const gst = (base * (item.gstRate || 0)) / 100;
+      const gst = Math.round((base * (item.gstRate || 0)) / 100);
       return sum + base + gst;
     }, 0);
-    return Math.round((itemsSum + (delivery || 0)) * 100) / 100;
+    return Math.round(itemsSum + (delivery || 0));
   };
 
   const addSizeQuantity = () => {
@@ -1516,15 +1519,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           
                           <div className="flex flex-wrap items-center justify-between border-t border-gray-100 pt-2 text-[10px]">
                             <div className="text-gray-500 font-semibold flex items-center gap-2">
-                              <span>Base: ₹{(item.quantity * (item.price || 0)).toLocaleString()}</span>
+                              <span>Base: ₹{Math.round(item.quantity * (item.price || 0)).toLocaleString()}</span>
                               {(item.gstRate || 0) > 0 && (
                                 <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-bold">
-                                  + GST ({item.gstRate}%: ₹{((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100).toLocaleString()})
+                                  + GST ({item.gstRate}%: ₹{Math.round((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100).toLocaleString()})
                                 </span>
                               )}
                             </div>
                             <div className="text-brand-primary font-black italic text-xs">
-                              Line Total: ₹{(
+                              Line Total: ₹{Math.round(
                                 item.quantity * (item.price || 0) +
                                 ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100)
                               ).toLocaleString()}
@@ -1547,10 +1550,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
                   <div className="flex flex-wrap gap-3 justify-between items-center bg-gray-50/60 p-3.5 rounded-2xl border border-gray-150">
                     <div className="flex items-center gap-3 text-xs text-gray-500 font-bold">
-                      <span>Items Base: ₹{formData.sizeBreakdown.reduce((sum, item) => sum + (item.quantity * (item.price || 0)), 0).toLocaleString()}</span>
+                      <span>Items Base: ₹{Math.round(formData.sizeBreakdown.reduce((sum, item) => sum + (item.quantity * (item.price || 0)), 0)).toLocaleString()}</span>
                       {formData.sizeBreakdown.some(i => (i.gstRate || 0) > 0) && (
                         <span className="text-emerald-600">
-                          Total GST: ₹{formData.sizeBreakdown.reduce((sum, item) => sum + ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100), 0).toLocaleString()}
+                          Total GST: ₹{Math.round(formData.sizeBreakdown.reduce((sum, item) => sum + ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100), 0)).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -1571,10 +1574,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       <input
                         type="number"
                         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:border-brand-primary outline-none"
-                        placeholder="0.00"
+                        placeholder="0"
                         value={formData.deliveryAmount || ''}
                         onChange={(e) => {
-                          const del = parseFloat(e.target.value) || 0;
+                          const del = Math.round(parseFloat(e.target.value) || 0);
                           const newTotal = calculateAutoTotal(formData.sizeBreakdown, del);
                           setFormData({ ...formData, deliveryAmount: del, totalAmount: newTotal });
                         }}
@@ -1591,10 +1594,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           "w-full px-4 py-3 bg-white border rounded-xl text-xs font-bold text-gray-900 focus:border-brand-primary outline-none transition-colors",
                           fieldErrors.totalAmount ? "border-red-400 bg-red-50/20" : "border-gray-200"
                         )}
-                        placeholder="0.00"
-                        value={formData.totalAmount || ''}
+                        placeholder="0"
+                        value={formData.totalAmount ? Math.round(formData.totalAmount) : ''}
                         onChange={(e) => {
-                          setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 });
+                          setFormData({ ...formData, totalAmount: Math.round(parseFloat(e.target.value) || 0) });
                           if (fieldErrors.totalAmount) setFieldErrors(prev => ({ ...prev, totalAmount: '' }));
                         }}
                       />
@@ -1610,10 +1613,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           "w-full px-4 py-3 bg-white border rounded-xl text-xs text-green-700 font-bold focus:border-brand-primary outline-none transition-colors",
                           fieldErrors.advancePay ? "border-red-400 bg-red-50/20" : "border-gray-200"
                         )}
-                        placeholder="0.00"
-                        value={formData.advancePay || ''}
+                        placeholder="0"
+                        value={formData.advancePay ? Math.round(formData.advancePay) : ''}
                         onChange={(e) => {
-                          setFormData({ ...formData, advancePay: parseFloat(e.target.value) || 0 });
+                          setFormData({ ...formData, advancePay: Math.round(parseFloat(e.target.value) || 0) });
                           if (fieldErrors.advancePay) setFieldErrors(prev => ({ ...prev, advancePay: '' }));
                         }}
                       />
@@ -1621,7 +1624,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     <div>
                       <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5 opacity-60">Balance Collected (₹)</label>
                       <div className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-xl text-xs text-brand-primary font-black flex items-center justify-between">
-                        <span>₹{Math.max(0, formData.totalAmount - formData.advancePay).toLocaleString()}</span>
+                        <span>₹{Math.max(0, Math.round(formData.totalAmount) - Math.round(formData.advancePay)).toLocaleString()}</span>
                         <span className="text-[9px] text-gray-400 font-bold uppercase">Due</span>
                       </div>
                     </div>
@@ -2043,7 +2046,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     <tbody className="divide-y divide-gray-100">
                       {formData.sizeBreakdown.map((item, idx) => {
                         const base = item.quantity * (item.price || 0);
-                        const gst = (base * (item.gstRate || 0)) / 100;
+                        const gst = Math.round((base * (item.gstRate || 0)) / 100);
                         const total = base + gst;
                         return (
                           <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
@@ -2062,7 +2065,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             </td>
                             <td className="py-3 px-3 text-[10px] text-gray-600">{item.printType || '—'}</td>
                             <td className="py-3 px-3 text-center font-black text-gray-900">{item.quantity}</td>
-                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-700">₹{(item.price || 0).toLocaleString()}</td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-700">₹{Math.round(item.price || 0).toLocaleString()}</td>
                             <td className="py-3 px-3 text-right text-[10px] font-bold text-emerald-700">
                               {item.gstRate ? `${item.gstRate}% (₹${gst.toLocaleString()})` : '0%'}
                             </td>
@@ -2087,25 +2090,25 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Items Base Total</span>
                     <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">
-                      ₹{formData.sizeBreakdown.reduce((sum, item) => sum + (item.quantity * (item.price || 0)), 0).toLocaleString()}
+                      ₹{Math.round(formData.sizeBreakdown.reduce((sum, item) => sum + (item.quantity * (item.price || 0)), 0)).toLocaleString()}
                     </span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Total GST</span>
                     <span className="text-xs sm:text-sm font-black text-emerald-700 mt-0.5 block">
-                      ₹{formData.sizeBreakdown.reduce((sum, item) => sum + ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100), 0).toLocaleString()}
+                      ₹{Math.round(formData.sizeBreakdown.reduce((sum, item) => sum + ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100), 0)).toLocaleString()}
                     </span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Delivery Fee</span>
                     <span className="text-xs sm:text-sm font-black text-gray-800 mt-0.5 block">
-                      ₹{(formData.deliveryAmount || 0).toLocaleString()}
+                      ₹{Math.round(formData.deliveryAmount || 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="bg-brand-primary/5 p-3 rounded-xl border border-brand-primary/20">
                     <span className="text-[9px] font-black text-brand-primary uppercase block">Total Order Amount</span>
                     <span className="text-sm sm:text-base font-black text-brand-primary mt-0.5 block">
-                      ₹{formData.totalAmount.toLocaleString()}
+                      ₹{Math.round(formData.totalAmount).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -2114,14 +2117,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between">
                     <div>
                       <span className="text-[9px] font-black text-emerald-800 uppercase block">Advance Payment Received</span>
-                      <span className="text-sm sm:text-base font-black text-emerald-700 mt-0.5 block">₹{formData.advancePay.toLocaleString()}</span>
+                      <span className="text-sm sm:text-base font-black text-emerald-700 mt-0.5 block">₹{Math.round(formData.advancePay).toLocaleString()}</span>
                     </div>
                     <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">Paid</span>
                   </div>
                   <div className="bg-amber-50/80 p-3.5 rounded-xl border border-amber-200 flex items-center justify-between">
                     <div>
                       <span className="text-[9px] font-black text-amber-800 uppercase block">Balance Payment Due</span>
-                      <span className="text-sm sm:text-base font-black text-amber-900 mt-0.5 block">₹{Math.max(0, formData.totalAmount - formData.advancePay).toLocaleString()}</span>
+                      <span className="text-sm sm:text-base font-black text-amber-900 mt-0.5 block">₹{Math.max(0, Math.round(formData.totalAmount) - Math.round(formData.advancePay)).toLocaleString()}</span>
                     </div>
                     <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full uppercase">Due</span>
                   </div>
