@@ -547,10 +547,31 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
     (item.gsm && item.gsm.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Completed production orders (orders in PRODUCTION state or completed logs ready for delivery)
-  const productionOrders = orders.filter(o =>
-    [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status)
-  );
+  // Orders waiting in Inventory Intake Queue (NOT yet dispatched to Delivery Dashboard or Courier)
+  const intakeOrders = orders.filter(o => {
+    if (o.status === OrderStatus.DELIVERED) return false;
+    // If order was already shared to in-house delivery dashboard, exclude from Inventory
+    if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true) {
+      return false;
+    }
+    // If order was already dispatched via courier
+    if (o.details?.dispatchType === 'courier' || o.details?.courierName) {
+      return false;
+    }
+    return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
+  });
+
+  // Orders waiting for Courier shipping in Inventory
+  const courierOrders = orders.filter(o => {
+    if (o.status === OrderStatus.DELIVERED) return false;
+    if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house') return false;
+    return o.status === OrderStatus.DELIVERY && (o.details?.dispatchType === 'courier' || Boolean(o.details?.courierName));
+  });
+
+  // Shipped orders
+  const shippedOrders = orders.filter(o => o.status === OrderStatus.DELIVERED);
+
+  const activeInventoryOperationsCount = intakeOrders.length + courierOrders.length;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 text-left">
@@ -641,7 +662,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
           >
             <div className="flex items-center gap-2">
               <span>🏭</span>
-              <span>Production Orders ({productionOrders.length})</span>
+              <span>Production Orders ({activeInventoryOperationsCount})</span>
             </div>
             <ChevronRight size={12} className="opacity-50" />
           </button>
@@ -1384,9 +1405,9 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
               {/* Sub-tabs to toggle between intake, delivery, and shipped */}
               <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                 {([
-                  { key: 'intake', label: '📥 Intake Queue' },
-                  { key: 'delivery', label: '🚚 Delivery & Courier' },
-                  { key: 'shipped', label: '✓ Shipped Archive' }
+                  { key: 'intake', label: `📥 Intake Queue (${intakeOrders.length})` },
+                  { key: 'delivery', label: `🚚 Courier Shipping (${courierOrders.length})` },
+                  { key: 'shipped', label: `✓ Shipped Archive (${shippedOrders.length})` }
                 ] as const).map(t => (
                   <button
                     key={t.key}
@@ -1415,7 +1436,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.status)).map(order => (
+                    {intakeOrders.map(order => (
                       <tr
                         key={order.id}
                         onClick={() => {
@@ -1460,7 +1481,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         </td>
                       </tr>
                     ))}
-                    {orders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.status)).length === 0 && (
+                    {intakeOrders.length === 0 && (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-gray-400 italic font-medium">No active or completed production orders waiting in queue.</td>
                       </tr>
@@ -1485,7 +1506,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => o.status === OrderStatus.DELIVERY).map(order => {
+                    {courierOrders.map(order => {
                       const currentForm = shipForms[order.id] || { courierName: '', trackingNumber: '', images: [] };
                       const formImages = currentForm.images || [];
 
@@ -1596,7 +1617,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         </tr>
                       );
                     })}
-                    {orders.filter(o => o.status === OrderStatus.DELIVERY).length === 0 && (
+                    {courierOrders.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-gray-400 italic">No checked-in inventory orders ready for courier dispatch.</td>
                       </tr>
@@ -1621,7 +1642,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
-                    {orders.filter(o => o.status === OrderStatus.DELIVERED).map(order => {
+                    {shippedOrders.map(order => {
                       const dispatchImgs = [
                         ...(order.details?.dispatchImages || []),
                         ...(order.details?.courierImages || []),
@@ -1672,7 +1693,7 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                         </tr>
                       );
                     })}
-                    {orders.filter(o => o.status === OrderStatus.DELIVERED).length === 0 && (
+                    {shippedOrders.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-gray-400 italic">No shipped/delivered orders found in history.</td>
                       </tr>
@@ -1930,15 +1951,21 @@ export default function InventoryManagement({ userRole }: InventoryManagementPro
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Option 1: In-House Delivery */}
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (!selectedIntakeOrder) return;
                         const orderId = selectedIntakeOrder.id;
                         const details = selectedIntakeOrder.details || {};
                         setSelectedIntakeOrder(null);
                         setDispatchMode('none');
-                        updateOrder(orderId, {
+                        await updateOrder(orderId, {
                           status: OrderStatus.DELIVERY,
-                          details: { ...details, dispatchType: 'in_house' },
+                          details: {
+                            ...details,
+                            dispatchType: 'in_house',
+                            sentToDeliveryDashboard: true,
+                            inventoryDispatched: true,
+                            dispatchedAt: Date.now()
+                          },
                           updatedAt: Date.now()
                         });
                         alert("Order successfully shared to Delivery Dashboard for in-house delivery!");
