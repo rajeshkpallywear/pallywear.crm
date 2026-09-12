@@ -126,6 +126,7 @@ export interface SizeBreakdown {
   price: number;
   gstRate?: number; // e.g. 0, 5, 12, 18, 28 (%)
   gstAmount?: number;
+  gstType?: 'exclusive' | 'inclusive'; // 'exclusive' = External GST (+ on top), 'inclusive' = Included in price
   colour?: string;
   printType?: string;
   sleeve?: string;
@@ -141,6 +142,9 @@ export interface Financials {
   deliveryAmount?: number;
   gstAmount?: number;
   itemsTotal?: number;
+  netTaxableAmount?: number;
+  gstType?: 'exclusive' | 'inclusive';
+  gstIncluded?: boolean;
 }
 
 export interface Order {

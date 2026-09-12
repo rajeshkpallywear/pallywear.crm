@@ -206,11 +206,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   const isOrderDesignDone = (o: any) => {
     const statusLower = String(o.status || '').toLowerCase();
+    // Orders in active DESIGN status are NEVER done in Design dashboard
+    if (statusLower === 'design') return false;
+    // Orders on HOLD from design are on hold, not done
+    if (statusLower === 'hold' && String(o.previousStatus || '').toLowerCase() === 'design') return false;
+
     if (statusLower === 'delivered') return true;
+    if (['order_management', 'production', 'delivery', 'delivered'].includes(statusLower)) return true;
     if (o.designSentToDigitizer || o.details?.designSentToDigitizer) return true;
     if (o.designSentToMarketing || o.details?.designSentToMarketing) return true;
     if (o.designCompleted || o.details?.designCompleted) return true;
-    if (['order_management', 'production', 'delivery', 'delivered'].includes(statusLower)) return true;
     return false;
   };
 
@@ -878,8 +883,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       {/* Header section with synchronized database updates */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 italic text-xs font-bold">
-            ðŸ”’ Designer Account: {designerName}
+          <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 italic text-xs font-bold flex items-center gap-1.5">
+            <span className="not-italic">🔒</span> Designer Account: {designerName}
           </div>
         </div>
       </div>
@@ -903,7 +908,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('accounts_queue');
-            setSelectedSection('unclaimed');
+            const stats = getChannelStats('accounts_queue');
+            if (stats.myTasksCount > 0 && stats.unclaimedCount === 0) {
+              setSelectedSection('my_tasks');
+            } else {
+              setSelectedSection('unclaimed');
+            }
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",

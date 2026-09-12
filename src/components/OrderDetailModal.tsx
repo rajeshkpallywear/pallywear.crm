@@ -56,6 +56,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         }
         updates.designSentToMarketing = false;
         updates.designCompleted = false;
+        updates.designSentToDigitizer = false;
         if (order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned') {
           updates.assignedDesigner = order.assignedDesigner;
         }
@@ -444,7 +445,8 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                   const newQty = updated.reduce((sum, i) => sum + i.quantity, 0);
                                   const newTotal = Math.round(updated.reduce((sum, i) => {
                                     const base = i.quantity * (i.price || 0);
-                                    const gst = Math.round((base * (i.gstRate || 0)) / 100);
+                                    const itemIncl = (i as any).gstType === 'inclusive' || (editedOrder.financials as any)?.gstType === 'inclusive';
+                                    const gst = itemIncl ? 0 : Math.round((base * (i.gstRate || 0)) / 100);
                                     return sum + base + gst;
                                   }, 0));
                                   setEditedOrder({
@@ -475,7 +477,8 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                                   updated[idx] = { ...updated[idx], price: rate };
                                   const newTotal = Math.round(updated.reduce((sum, i) => {
                                     const base = i.quantity * (i.price || 0);
-                                    const gst = Math.round((base * (i.gstRate || 0)) / 100);
+                                    const itemIncl = (i as any).gstType === 'inclusive' || (editedOrder.financials as any)?.gstType === 'inclusive';
+                                    const gst = itemIncl ? 0 : Math.round((base * (i.gstRate || 0)) / 100);
                                     return sum + base + gst;
                                   }, 0));
                                   setEditedOrder({
@@ -567,21 +570,33 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                             {item.model && <div><span className="text-[8px] text-gray-400 block mb-0.5">Model</span>{item.model}</div>}
                           </div>
                           <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-end">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
-                              <span className="text-[10px] font-black text-brand-primary">Rate: ₹{Math.round(item.price || 0)}</span>
-                              {(item.gstRate || 0) > 0 && (
-                                <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                  GST: {item.gstRate}% (+₹{Math.round((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100).toLocaleString()})
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-xs font-black text-gray-900">
-                              Total: ₹{Math.round(
-                                item.quantity * (item.price || 0) +
-                                ((item.quantity * (item.price || 0) * (item.gstRate || 0)) / 100)
-                              ).toLocaleString()}
-                            </span>
+                            {(() => {
+                              const rawLine = item.quantity * (item.price || 0);
+                              const isIncl = (item as any).gstType === 'inclusive' || (order.financials as any)?.gstType === 'inclusive' || (order.details as any)?.gstType === 'inclusive';
+                              const lineGst = isIncl
+                                ? ((item.gstRate || 0) > 0 ? Math.round((rawLine * (item.gstRate || 0)) / (100 + (item.gstRate || 0))) : 0)
+                                : Math.round((rawLine * (item.gstRate || 0)) / 100);
+                              const lineTotal = isIncl ? rawLine : (rawLine + lineGst);
+                              return (
+                                <>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-black text-gray-900">Qty: {item.quantity}</span>
+                                    <span className="text-[10px] font-black text-brand-primary">Rate: ₹{Math.round(item.price || 0)}</span>
+                                    {(item.gstRate || 0) > 0 && (
+                                      <span className={cn(
+                                        "text-[9px] font-black px-1.5 py-0.5 rounded border",
+                                        isIncl ? "text-indigo-700 bg-indigo-50 border-indigo-200" : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                                      )}>
+                                        GST: {item.gstRate}% ({isIncl ? `₹${lineGst.toLocaleString()} incl.` : `+₹${lineGst.toLocaleString()}`})
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs font-black text-gray-900">
+                                    Total: ₹{lineTotal.toLocaleString()}
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))

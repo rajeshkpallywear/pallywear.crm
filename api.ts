@@ -518,7 +518,7 @@ router.post('/orders', async (req, res) => {
   }
 
   try {
-    const existing = await query('SELECT id, status, original_design_file FROM orders WHERE id = ?', [order.id]) as any[];
+    const existing = await query('SELECT id, status, original_design_file, customerName, category, quantity, createdByName FROM orders WHERE id = ?', [order.id]) as any[];
     let oldStatus = null;
     let oldDesignFile = null;
     if (existing.length > 0) {
@@ -582,14 +582,23 @@ router.post('/orders', async (req, res) => {
           targetRoles.push('admin');
         }
 
+        const clientName = customer.name || order.customerName || existing[0]?.customerName || 'Client';
+        const rawId = String(order.id || '');
+        const orderIdDisplay = rawId.startsWith('#') ? rawId : `#${rawId.slice(-8)}`;
+        const categoryName = order.category || existing[0]?.category || 'Items';
+        const qtyNum = Number(order.quantity || existing[0]?.quantity || 1);
+        const statusUpper = String(order.status).replace('_', ' ').toUpperCase();
+        const createdByName = order.createdByName || existing[0]?.createdByName || '';
+        const byText = createdByName ? ` [By: ${createdByName}]` : '';
+
         await Promise.all(targetRoles.map(role =>
           query(
             'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
               `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
               role,
-              `Order Status Moved`,
-              `Order for ${customer.name || 'Client'} has been moved to ${order.status.toUpperCase()}`,
+              `Order ${orderIdDisplay} (${clientName})`,
+              `Order ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) has been moved to ${statusUpper}${byText}`,
               order.id,
               0,
               Date.now()
@@ -600,13 +609,16 @@ router.post('/orders', async (req, res) => {
 
       // Design uploaded notification (to Digitizer)
       if (oldStatus && !oldDesignFile && order.original_design_file) {
+        const clientName = customer.name || order.customerName || existing[0]?.customerName || 'Client';
+        const rawId = String(order.id || '');
+        const orderIdDisplay = rawId.startsWith('#') ? rawId : `#${rawId.slice(-8)}`;
         await query(
           'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             'digitizer',
-            `Design Ready for Digitizing`,
-            `Original design file for Order #${order.id.slice(-6)} is ready.`,
+            `Design Ready: ${orderIdDisplay}`,
+            `Original design file for Order ${orderIdDisplay} (${clientName}) is ready in Digitizing queue.`,
             order.id,
             0,
             Date.now()
@@ -658,14 +670,23 @@ router.post('/orders', async (req, res) => {
         targetRoles.push('admin');
       }
 
+      const clientName = customer.name || order.customerName || 'Client';
+      const rawId = String(order.id || '');
+      const orderIdDisplay = rawId.startsWith('#') ? rawId : `#${rawId.slice(-8)}`;
+      const categoryName = order.category || 'Items';
+      const qtyNum = Number(order.quantity || 1);
+      const createdIn = String(order.status || 'DRAFT').replace('_', ' ').toUpperCase();
+      const createdByName = order.createdByName || '';
+      const byText = createdByName ? ` [By: ${createdByName}]` : '';
+
       for (const role of targetRoles) {
         await query(
           'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             role,
-            `New Order Created`,
-            `Order #${order.id.slice(-6)} has been created in ${order.status.toUpperCase()}`,
+            `New Order ${orderIdDisplay} (${clientName})`,
+            `Order ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) created in ${createdIn}${byText}`,
             order.id,
             0,
             Date.now()
@@ -747,7 +768,7 @@ const handleUpdateOrderFields = async (req, res) => {
     if (!id) {
       return res.status(404).json({ success: false, message: 'Order not found.' });
     }
-    const existing = await query('SELECT status, original_design_file, details, totalAmount, customerName, category, quantity FROM orders WHERE id = ?', [id]) as any[];
+    const existing = await query('SELECT status, original_design_file, details, totalAmount, customerName, category, quantity, createdByName FROM orders WHERE id = ?', [id]) as any[];
     const oldStatus = existing[0].status;
     const oldDesignFile = existing[0].original_design_file;
     
@@ -949,15 +970,23 @@ const handleUpdateOrderFields = async (req, res) => {
         targetRoles.push('admin');
       }
       
-      const customerName = updates.customerInfo?.name || '';
+      const clientName = updates.customerName || updates.customerInfo?.name || existing[0]?.customerName || 'Client';
+      const rawId = String(newId || id || '');
+      const orderIdDisplay = rawId.startsWith('#') ? rawId : `#${rawId.slice(-8)}`;
+      const categoryName = updates.category || existing[0]?.category || 'Items';
+      const qtyNum = Number(updates.quantity || existing[0]?.quantity || 1);
+      const statusUpper = String(newStatus).replace('_', ' ').toUpperCase();
+      const createdByName = updates.createdByName || existing[0]?.createdByName || '';
+      const byText = createdByName ? ` [By: ${createdByName}]` : '';
+
       await Promise.all(targetRoles.map(role =>
         query(
           'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             role,
-            `Order Status Moved`,
-            `Order for ${customerName || 'Client'} has been moved to ${newStatus.toUpperCase()}`,
+            `Order ${orderIdDisplay} (${clientName})`,
+            `Order ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) has been moved to ${statusUpper}${byText}`,
             id,
             0,
             Date.now()
@@ -967,13 +996,16 @@ const handleUpdateOrderFields = async (req, res) => {
     }
 
     if (updates.designSentToDigitizer) {
+      const clientName = updates.customerName || updates.customerInfo?.name || existing[0]?.customerName || 'Client';
+      const rawId = String(newId || id || '');
+      const orderIdDisplay = rawId.startsWith('#') ? rawId : `#${rawId.slice(-8)}`;
       await query(
         'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
           `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
           'digitizer',
-          `Design Ready for Digitizing`,
-          `Artwork for Order #${id.slice(-6)} is ready in the Digitizing queue.`,
+          `Design Ready: ${orderIdDisplay}`,
+          `Artwork for Order ${orderIdDisplay} (${clientName}) is ready in the Digitizing queue.`,
           id,
           0,
           Date.now()

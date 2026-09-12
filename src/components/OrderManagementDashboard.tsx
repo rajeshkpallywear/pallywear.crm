@@ -936,9 +936,12 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
                           {selectedOrder.sizeBreakdown.map((item, idx) => {
-                            const lineBase = (item.quantity || 0) * (item.price || 0);
-                            const lineGst = Math.round((lineBase * (item.gstRate || 0)) / 100);
-                            const lineTotal = lineBase + lineGst;
+                            const rawLine = (item.quantity || 0) * (item.price || 0);
+                            const isIncl = (item as any).gstType === 'inclusive' || (selectedOrder.financials as any)?.gstType === 'inclusive' || (selectedOrder.details as any)?.gstType === 'inclusive';
+                            const lineGst = isIncl
+                              ? ((item.gstRate || 0) > 0 ? Math.round((rawLine * (item.gstRate || 0)) / (100 + (item.gstRate || 0))) : 0)
+                              : Math.round((rawLine * (item.gstRate || 0)) / 100);
+                            const lineTotal = isIncl ? rawLine : (rawLine + lineGst);
                             return (
                               <tr key={idx} className="hover:bg-purple-50/30 transition-colors">
                                 <td className="px-3 py-2.5 font-black text-brand-primary uppercase text-[10px]">{item.category}</td>
@@ -949,7 +952,9 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                                 <td className="px-3 py-2.5 text-gray-600">{item.model || '-'}</td>
                                 <td className="px-3 py-2.5 font-black text-center text-gray-900">{item.quantity}</td>
                                 <td className="px-3 py-2.5 text-right font-semibold text-gray-700">₹{Math.round(item.price || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2.5 text-right text-gray-500 font-semibold">{item.gstRate ? `${item.gstRate}% (₹${lineGst.toLocaleString()})` : '0%'}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-500 font-semibold">
+                                  {item.gstRate ? `${item.gstRate}% (${isIncl ? `₹${lineGst.toLocaleString()} incl.` : `₹${lineGst.toLocaleString()}`})` : '0%'}
+                                </td>
                                 <td className="px-3 py-2.5 text-right font-black text-gray-900">₹{lineTotal.toLocaleString()}</td>
                                 <td className="px-3 py-2.5 text-[10px] text-gray-500 italic max-w-[200px] truncate" title={item.customDetails}>
                                   {item.customDetails || '-'}

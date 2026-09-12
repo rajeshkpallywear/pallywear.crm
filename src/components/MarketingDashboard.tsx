@@ -143,6 +143,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         }
         updates.designSentToMarketing = false;
         updates.designCompleted = false;
+        updates.designSentToDigitizer = false;
       }
       await onUpdateOrder(orderId, updates);
       showActionToast(`Order #${orderId.slice(-6)} forwarded to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);

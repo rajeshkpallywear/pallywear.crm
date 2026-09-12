@@ -37,6 +37,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGstModalOpen, setIsGstModalOpen] = useState(false);
   const [selectedGstRate, setSelectedGstRate] = useState<number>(0);
+  const [gstCalculationType, setGstCalculationType] = useState<'exclusive' | 'inclusive'>('exclusive');
   const [customGstInput, setCustomGstInput] = useState<string>('');
   const [isCustomGst, setIsCustomGst] = useState(false);
   const { loadOrderAttachments } = useLeads();
@@ -44,7 +45,9 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const openGstModal = () => {
     if (!selectedOrder) return;
     const currentRate = selectedOrder.sizeBreakdown?.[0]?.gstRate || 0;
+    const currentGstType = (selectedOrder.sizeBreakdown?.[0] as any)?.gstType || (selectedOrder.financials as any)?.gstType || (selectedOrder.details as any)?.gstType || 'exclusive';
     setSelectedGstRate(currentRate);
+    setGstCalculationType(currentGstType === 'inclusive' ? 'inclusive' : 'exclusive');
     if ([0, 5, 12, 18, 28].includes(currentRate)) {
       setIsCustomGst(false);
       setCustomGstInput('');
@@ -58,27 +61,60 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const handleApplyGst = async () => {
     if (!selectedOrder || isProcessing) return;
     const effectiveRate = isCustomGst ? (parseFloat(customGstInput) || 0) : selectedGstRate;
-
-    const updatedBreakdown = (selectedOrder.sizeBreakdown || []).map(item => ({
-      ...item,
-      gstRate: effectiveRate
-    }));
-
-    const baseTotal = Math.round(updatedBreakdown.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0));
-    const totalGst = Math.round(updatedBreakdown.reduce((sum, i) => sum + ((i.quantity * (i.price || 0) * (i.gstRate || 0)) / 100), 0));
+    const rawItemsTotal = Math.round((selectedOrder.sizeBreakdown || []).reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0));
     const delivery = Math.round(selectedOrder.financials?.deliveryAmount || 0);
-    const grandTotal = Math.round(baseTotal + totalGst + delivery);
     const advance = Math.round(selectedOrder.financials?.advancePay || 0);
+
+    let baseTotal: number;
+    let totalGst: number;
+    let grandTotal: number;
+
+    if (gstCalculationType === 'inclusive') {
+      // Included GST: Tax is already part of the total price
+      totalGst = effectiveRate > 0 ? Math.round((rawItemsTotal * effectiveRate) / (100 + effectiveRate)) : 0;
+      baseTotal = rawItemsTotal - totalGst;
+      grandTotal = Math.round(rawItemsTotal + delivery);
+    } else {
+      // External GST: Tax is added on top of the base items total
+      baseTotal = rawItemsTotal;
+      totalGst = Math.round((baseTotal * effectiveRate) / 100);
+      grandTotal = Math.round(baseTotal + totalGst + delivery);
+    }
+
     const balance = Math.max(0, grandTotal - advance);
+
+    const updatedBreakdown = (selectedOrder.sizeBreakdown || []).map(item => {
+      const lineTotal = item.quantity * (item.price || 0);
+      const lineGst = gstCalculationType === 'inclusive'
+        ? (effectiveRate > 0 ? Math.round((lineTotal * effectiveRate) / (100 + effectiveRate)) : 0)
+        : Math.round((lineTotal * effectiveRate) / 100);
+      return {
+        ...item,
+        gstRate: effectiveRate,
+        gstAmount: lineGst,
+        gstType: gstCalculationType
+      };
+    });
 
     const updatedFinancials = {
       ...selectedOrder.financials,
-      itemsTotal: baseTotal,
+      itemsTotal: gstCalculationType === 'inclusive' ? rawItemsTotal : baseTotal,
+      netTaxableAmount: baseTotal,
       gstAmount: totalGst,
       totalAmount: grandTotal,
       balanceAmount: balance,
       deliveryAmount: delivery,
-      advancePay: advance
+      advancePay: advance,
+      gstType: gstCalculationType,
+      gstIncluded: gstCalculationType === 'inclusive'
+    };
+
+    const updatedDetails = {
+      ...(selectedOrder.details || {}),
+      gstType: gstCalculationType,
+      gstIncluded: gstCalculationType === 'inclusive',
+      gstRate: effectiveRate,
+      gstAmount: totalGst
     };
 
     setIsProcessing(true);
@@ -86,16 +122,18 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       await onUpdateOrder(selectedOrder.id, {
         sizeBreakdown: updatedBreakdown,
         financials: updatedFinancials,
+        details: updatedDetails,
         updatedAt: Date.now()
       });
       setSelectedOrder(prev => prev ? {
         ...prev,
         sizeBreakdown: updatedBreakdown,
         financials: updatedFinancials,
+        details: updatedDetails,
         updatedAt: Date.now()
       } : null);
       setIsGstModalOpen(false);
-      alert(`Success: ${effectiveRate}% GST added! Grand Total is updated to ₹${grandTotal.toLocaleString()}.`);
+      alert(`Success: ${effectiveRate}% ${gstCalculationType === 'inclusive' ? 'Included' : 'External'} GST applied! Grand Total: ₹${grandTotal.toLocaleString()}.`);
     } catch (err: any) {
       console.error(err);
       alert("Failed to update GST: " + (err?.message || "Unknown error"));
@@ -161,12 +199,25 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
     setIsProcessing(true);
     try {
-      await onUpdateOrder(selectedOrder.id, {
+      const updates: Partial<Order> = {
         status: OrderStatus.DESIGN,
         accountsAttachments: billingFiles,
         sentByAccounts: true,
+        designCompleted: false,
+        designSentToMarketing: false,
+        designSentToDigitizer: false,
         updatedAt: Date.now()
-      });
+      };
+      if (selectedOrder.assignedDesigner && selectedOrder.assignedDesigner !== 'Unassigned' && selectedOrder.assignedDesigner !== 'Designer assigned') {
+        updates.assignedDesigner = selectedOrder.assignedDesigner;
+      }
+      if (selectedOrder.claimedBy) {
+        updates.claimedBy = selectedOrder.claimedBy;
+      }
+      if (selectedOrder.claimedByName) {
+        updates.claimedByName = selectedOrder.claimedByName;
+      }
+      await onUpdateOrder(selectedOrder.id, updates);
       setSelectedOrder(null);
       setBillingFiles([]);
       alert("Success: Order sent to Design.");
@@ -644,9 +695,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white font-semibold text-gray-800">
                           {selectedOrder.sizeBreakdown.map((item, idx) => {
-                            const base = item.quantity * (item.price || 0);
-                            const gst = Math.round((base * (item.gstRate || 0)) / 100);
-                            const total = base + gst;
+                            const rawLineTotal = item.quantity * (item.price || 0);
+                            const isIncl = (item as any).gstType === 'inclusive' || (selectedOrder.financials as any)?.gstType === 'inclusive' || (selectedOrder.details as any)?.gstType === 'inclusive';
+                            const gst = isIncl
+                              ? ((item.gstRate || 0) > 0 ? Math.round((rawLineTotal * (item.gstRate || 0)) / (100 + (item.gstRate || 0))) : 0)
+                              : Math.round((rawLineTotal * (item.gstRate || 0)) / 100);
+                            const total = isIncl ? rawLineTotal : (rawLineTotal + gst);
                             return (
                               <tr key={idx} className="hover:bg-purple-50/40 transition-colors">
                                 <td className="px-3 py-2 font-black text-brand-primary uppercase text-[11px]">{item.category}</td>
@@ -664,12 +718,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                                     className={cn(
                                       "px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
                                       (item.gstRate || 0) > 0
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                        ? (isIncl ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100")
                                         : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50 hover:text-emerald-700"
                                     )}
                                     title="Click to change GST"
                                   >
-                                    {item.gstRate ? `${item.gstRate}% (₹${gst.toLocaleString()})` : '0% +'}
+                                    {item.gstRate ? `${item.gstRate}% (${isIncl ? `₹${gst.toLocaleString()} incl.` : `+₹${gst.toLocaleString()}`})` : '0% +'}
                                   </button>
                                 </td>
                                 <td className="px-3 py-2 text-right font-black text-emerald-700 font-mono">₹{total.toLocaleString()}</td>
@@ -697,25 +751,50 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
                   <div className="p-5 bg-white border border-gray-200 rounded-2xl grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 shadow-xs text-center">
                     <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-100">
-                      <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">Items Total</p>
+                      <p className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider">
+                        {(selectedOrder.financials as any)?.gstType === 'inclusive' ? 'Items Total (Gross)' : 'Items Base'}
+                      </p>
                       <p className="text-sm font-black text-gray-900 mt-0.5">₹{(selectedOrder.financials?.itemsTotal || selectedOrder.financials?.totalAmount || 0).toLocaleString()}</p>
                     </div>
 
                     {/* Interactive GST Amount Card */}
                     <div
                       onClick={openGstModal}
-                      className="bg-emerald-50/80 hover:bg-emerald-100/90 p-2.5 rounded-xl border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group relative"
+                      className={cn(
+                        "p-2.5 rounded-xl border-2 hover:shadow-md transition-all cursor-pointer group relative",
+                        (selectedOrder.financials as any)?.gstType === 'inclusive'
+                          ? "bg-indigo-50/80 hover:bg-indigo-100/90 border-indigo-300 hover:border-indigo-500"
+                          : "bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-300 hover:border-emerald-500"
+                      )}
                       title="Click to Add or Change GST for this order"
                     >
                       <div className="flex items-center justify-center gap-1">
-                        <p className="text-[8.5px] font-black text-emerald-800 uppercase tracking-wider">GST Amount</p>
-                        <Edit size={10} className="text-emerald-600 group-hover:scale-125 transition-transform" />
+                        <p className={cn(
+                          "text-[8.5px] font-black uppercase tracking-wider",
+                          (selectedOrder.financials as any)?.gstType === 'inclusive' ? "text-indigo-800" : "text-emerald-800"
+                        )}>
+                          {(selectedOrder.financials as any)?.gstType === 'inclusive' ? 'Included GST' : 'GST Amount'}
+                        </p>
+                        <Edit size={10} className={cn(
+                          "group-hover:scale-125 transition-transform",
+                          (selectedOrder.financials as any)?.gstType === 'inclusive' ? "text-indigo-600" : "text-emerald-600"
+                        )} />
                       </div>
-                      <p className="text-sm font-black text-emerald-700 mt-0.5">
+                      <p className={cn(
+                        "text-sm font-black mt-0.5",
+                        (selectedOrder.financials as any)?.gstType === 'inclusive' ? "text-indigo-700" : "text-emerald-700"
+                      )}>
                         ₹{(selectedOrder.financials?.gstAmount || 0).toLocaleString()}
                       </p>
-                      <span className="inline-block mt-1 text-[7.5px] font-black uppercase px-1.5 py-0.2 bg-emerald-200 text-emerald-900 rounded-md group-hover:bg-emerald-700 group-hover:text-white transition-colors shadow-2xs">
-                        {(selectedOrder.financials?.gstAmount || 0) > 0 ? 'Edit GST' : '+ Add GST'}
+                      <span className={cn(
+                        "inline-block mt-1 text-[7.5px] font-black uppercase px-1.5 py-0.2 rounded-md transition-colors shadow-2xs",
+                        (selectedOrder.financials as any)?.gstType === 'inclusive'
+                          ? "bg-indigo-200 text-indigo-900 group-hover:bg-indigo-700 group-hover:text-white"
+                          : "bg-emerald-200 text-emerald-900 group-hover:bg-emerald-700 group-hover:text-white"
+                      )}>
+                        {(selectedOrder.financials?.gstAmount || 0) > 0
+                          ? ((selectedOrder.financials as any)?.gstType === 'inclusive' ? 'Edit (Included)' : 'Edit (External)')
+                          : '+ Add GST'}
                       </span>
                     </div>
 
@@ -956,16 +1035,31 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       {/* GST Management Modal for Accounts */}
       {isGstModalOpen && selectedOrder && (() => {
         const effectiveRate = isCustomGst ? (parseFloat(customGstInput) || 0) : selectedGstRate;
-        const itemsBase = Math.round((selectedOrder.sizeBreakdown || []).reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0));
-        const computedGst = Math.round((itemsBase * effectiveRate) / 100);
+        const rawItemsTotal = Math.round((selectedOrder.sizeBreakdown || []).reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0));
         const delivery = Math.round(selectedOrder.financials?.deliveryAmount || 0);
-        const newGrandTotal = Math.round(itemsBase + computedGst + delivery);
         const advancePaid = Math.round(selectedOrder.financials?.advancePay || 0);
+
+        let preTaxBase: number;
+        let computedGst: number;
+        let newGrandTotal: number;
+
+        if (gstCalculationType === 'inclusive') {
+          // Included GST: GST is already included inside the items price
+          computedGst = effectiveRate > 0 ? Math.round((rawItemsTotal * effectiveRate) / (100 + effectiveRate)) : 0;
+          preTaxBase = rawItemsTotal - computedGst;
+          newGrandTotal = Math.round(rawItemsTotal + delivery);
+        } else {
+          // External GST: GST is added on top of the items price
+          preTaxBase = rawItemsTotal;
+          computedGst = Math.round((rawItemsTotal * effectiveRate) / 100);
+          newGrandTotal = Math.round(rawItemsTotal + computedGst + delivery);
+        }
+
         const newBalance = Math.max(0, newGrandTotal - advancePaid);
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="bg-white rounded-3xl shadow-2xl border border-gray-150 max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150 text-left">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-150 max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95 duration-150 text-left">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -990,7 +1084,61 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 </button>
               </div>
 
-              {/* Rate Selection */}
+              {/* 1. GST Calculation Mode: External (+ Extra) vs Included (Inclusive) */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block">
+                  Select GST Calculation Mode
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setGstCalculationType('exclusive')}
+                    className={cn(
+                      "p-3 rounded-2xl border-2 transition-all cursor-pointer flex flex-col text-left gap-1",
+                      gstCalculationType === 'exclusive'
+                        ? "bg-emerald-50/90 border-emerald-500 text-emerald-950 shadow-sm"
+                        : "bg-gray-50/70 border-gray-200 text-gray-600 hover:bg-gray-100/70 hover:border-gray-300"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase flex items-center gap-1.5 text-emerald-800">
+                        <span>➕</span> External GST
+                      </span>
+                      {gstCalculationType === 'exclusive' && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      )}
+                    </div>
+                    <span className="text-[9.5px] font-bold text-gray-500 leading-tight">
+                      + Added on top of items price (Extra)
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGstCalculationType('inclusive')}
+                    className={cn(
+                      "p-3 rounded-2xl border-2 transition-all cursor-pointer flex flex-col text-left gap-1",
+                      gstCalculationType === 'inclusive'
+                        ? "bg-indigo-50/90 border-indigo-500 text-indigo-950 shadow-sm"
+                        : "bg-gray-50/70 border-gray-200 text-gray-600 hover:bg-gray-100/70 hover:border-gray-300"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase flex items-center gap-1.5 text-indigo-800">
+                        <span>🏷️</span> Included GST
+                      </span>
+                      {gstCalculationType === 'inclusive' && (
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                      )}
+                    </div>
+                    <span className="text-[9.5px] font-bold text-gray-500 leading-tight">
+                      GST is already inside items total
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Rate Selection */}
               <div className="space-y-2.5">
                 <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block">
                   Select GST Percentage Rate (%)
@@ -1013,12 +1161,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                       className={cn(
                         "py-2.5 px-1 rounded-xl text-xs font-black transition-all border cursor-pointer flex flex-col items-center justify-center gap-0.5",
                         !isCustomGst && selectedGstRate === item.rate
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-sm scale-102"
+                          ? (gstCalculationType === 'inclusive' ? "bg-indigo-600 text-white border-indigo-600 shadow-sm scale-102" : "bg-emerald-600 text-white border-emerald-600 shadow-sm scale-102")
                           : "bg-gray-50 text-gray-700 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/40"
                       )}
                     >
                       <span>{item.rate}%</span>
-                      <span className={cn("text-[7.5px] font-bold uppercase", !isCustomGst && selectedGstRate === item.rate ? "text-emerald-100" : "text-gray-400")}>
+                      <span className={cn("text-[7.5px] font-bold uppercase", !isCustomGst && selectedGstRate === item.rate ? "text-white/80" : "text-gray-400")}>
                         {item.rate === 0 ? 'Exempt' : 'GST'}
                       </span>
                     </button>
@@ -1058,16 +1206,40 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 </div>
               </div>
 
-              {/* Live Calculations Summary Box */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-600">
-                  <span>Items Base Total:</span>
-                  <strong className="font-mono text-gray-900">₹{itemsBase.toLocaleString()}</strong>
-                </div>
-                <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50/90 p-2.5 rounded-xl border border-emerald-200 font-bold">
-                  <span>+ GST ({effectiveRate}%):</span>
-                  <span className="font-mono font-black text-sm">₹{computedGst.toLocaleString()}</span>
-                </div>
+              {/* 3. Live Calculations Summary Box */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-2.5">
+                {gstCalculationType === 'exclusive' ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-gray-600">
+                      <span>Items Base Total (Pre-Tax):</span>
+                      <strong className="font-mono text-gray-900">₹{rawItemsTotal.toLocaleString()}</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50/90 p-2.5 rounded-xl border border-emerald-200 font-bold">
+                      <span className="flex items-center gap-1">
+                        <span>➕</span> External GST ({effectiveRate}%):
+                      </span>
+                      <span className="font-mono font-black text-sm">+₹{computedGst.toLocaleString()}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-gray-600">
+                      <span>Items Total (Gross Price):</span>
+                      <strong className="font-mono text-gray-900">₹{rawItemsTotal.toLocaleString()}</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Net Taxable Base (Excl. Tax):</span>
+                      <span className="font-mono text-gray-700 font-bold">₹{preTaxBase.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-indigo-700 bg-indigo-50/90 p-2.5 rounded-xl border border-indigo-200 font-bold">
+                      <span className="flex items-center gap-1">
+                        <span>🏷️</span> Included GST ({effectiveRate}%):
+                      </span>
+                      <span className="font-mono font-black text-sm">₹{computedGst.toLocaleString()} (Included)</span>
+                    </div>
+                  </>
+                )}
+
                 {delivery > 0 && (
                   <div className="flex items-center justify-between text-xs text-gray-600">
                     <span>Delivery Fee:</span>
@@ -1075,7 +1247,9 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   </div>
                 )}
                 <div className="border-t border-gray-200 pt-2 flex items-center justify-between text-xs">
-                  <span className="font-black text-gray-700 uppercase tracking-wider">New Grand Total:</span>
+                  <span className="font-black text-gray-700 uppercase tracking-wider">
+                    {gstCalculationType === 'inclusive' ? 'Grand Total (GST Included):' : 'New Grand Total:'}
+                  </span>
                   <span className="text-base font-black text-brand-primary font-mono">₹{newGrandTotal.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-gray-500 pt-0.5">
@@ -1084,7 +1258,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* 4. Action Buttons */}
               <div className="flex items-center gap-3 pt-1">
                 <button
                   type="button"
@@ -1097,9 +1271,14 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                   type="button"
                   onClick={handleApplyGst}
                   disabled={isProcessing}
-                  className="flex-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 border-none cursor-pointer active:scale-98 disabled:opacity-60"
+                  className={cn(
+                    "flex-2 py-3 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 border-none cursor-pointer active:scale-98 disabled:opacity-60",
+                    gstCalculationType === 'inclusive' ? "bg-indigo-600 hover:bg-indigo-700" : "bg-emerald-600 hover:bg-emerald-700"
+                  )}
                 >
-                  {isProcessing ? "Applying..." : `✓ Save & Apply ${effectiveRate}% GST`}
+                  {isProcessing
+                    ? "Applying..."
+                    : `✓ Save & Apply ${effectiveRate}% ${gstCalculationType === 'inclusive' ? 'Included' : 'External'} GST`}
                 </button>
               </div>
             </div>

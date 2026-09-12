@@ -186,12 +186,23 @@ export default function Dashboard() {
           const newNotifs = data.notifications || [];
           const currentList = notificationsRef.current;
           if (!isInitial) {
-            const hasNew = newNotifs.some((n: any) => n.isRead === 0 && !currentList.some(existing => existing.id === n.id));
-            if (hasNew) {
+            const unreadNew = newNotifs.filter((n: any) => n.isRead === 0 && !currentList.some((existing: any) => existing.id === n.id));
+            if (unreadNew.length > 0) {
               playNotificationSound();
-              const firstNew = newNotifs.find((n: any) => n.isRead === 0 && !currentList.some(existing => existing.id === n.id));
-              if (firstNew && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                new Notification(firstNew.title, { body: firstNew.message });
+              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                unreadNew.slice(0, 3).forEach((notif: any) => {
+                  try {
+                    const n = new Notification(notif.title, {
+                      body: notif.message,
+                      icon: '/icon.png'
+                    });
+                    n.onclick = () => {
+                      window.focus();
+                    };
+                  } catch (err) {
+                    console.warn(err);
+                  }
+                });
               }
             }
           }
