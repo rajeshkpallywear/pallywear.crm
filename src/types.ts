@@ -197,6 +197,9 @@ export interface Order {
   claimedBy?: string;
   claimedByName?: string;
   claimedAt?: number;
+  designClaimedAt?: number;
+  designDeadline?: number;
+  designSlaMinutes?: number;
   designCompleted?: boolean;
   designSentToMarketing?: boolean;
   designSentToDigitizer?: boolean;

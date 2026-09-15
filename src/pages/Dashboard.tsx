@@ -59,10 +59,20 @@ export default function Dashboard() {
       'production',
       'digitizer',
       'delivery',
-      'sales_head'
+      'sales_head',
+      'operations_head',
+      UserRole.ADMIN,
+      UserRole.ACCOUNTS,
+      UserRole.DESIGNER,
+      UserRole.ORDER_MANAGEMENT,
+      UserRole.PRODUCTION,
+      UserRole.DIGITIZER,
+      UserRole.DELIVERY,
+      UserRole.SALES_HEAD,
+      UserRole.OPERATIONS_HEAD
     ];
     
-    if (viewAllRoles.includes(user.role)) {
+    if (viewAllRoles.includes(user.role as any)) {
       return orders;
     }
     

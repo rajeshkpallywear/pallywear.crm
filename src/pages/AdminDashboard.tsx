@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { mockDataService } from '../service/mockDataService';
 import SidebarChat from '../components/SidebarChat';
+import DesignTaskTimer from '../components/DesignTaskTimer';
 import { getApiUrl } from '../lib/apiConfig';
 
 const COLORS = ['#3291B6', '#5CBFD4', '#EAF4F7', '#1F2937'];
@@ -1424,6 +1425,14 @@ export default function AdminDashboard() {
     return staffUploadStats.reduce((sum, s) => sum + s.todayTotalValue, 0);
   }, [staffUploadStats]);
 
+  // Active claimed design studio tasks with 1-hour SLA
+  const activeAdminDesignOrders = useMemo(() => {
+    return orders.filter(o =>
+      (o.assignedDesigner && o.assignedDesigner !== 'Unassigned' && !isOrderDesignCompleted(o)) ||
+      Boolean((o.claimedAt || o.designClaimedAt) && !isOrderDesignCompleted(o))
+    );
+  }, [orders]);
+
   const getEffectiveStatus = (o: Order) => {
     return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
   };
@@ -2317,6 +2326,76 @@ export default function AdminDashboard() {
                       );
                     })()}
                   </div>
+                </div>
+
+                {/* Design Studio Active Tasks — 1-Hour SLA Monitor */}
+                <div className="w-full bg-white p-6 sm:p-7 rounded-3xl border border-gray-100 shadow-sm text-left mb-8 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black shadow-xs">
+                        <Palette size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-black text-gray-900 text-base tracking-tight flex items-center gap-2">
+                          Design Studio Live 1-Hour SLA Tasks Monitor
+                          <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-black rounded-full">
+                            {activeAdminDesignOrders.length} In Progress
+                          </span>
+                        </h3>
+                        <p className="text-xs text-gray-400 font-medium mt-0.5">
+                          Real-time countdown tracking (60-minute target SLA) for active claimed design tasks across all designers
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-gray-400">
+                      Standard SLA: 60 mins / task
+                    </span>
+                  </div>
+
+                  {activeAdminDesignOrders.length === 0 ? (
+                    <div className="py-8 text-center text-gray-400 italic text-xs font-medium bg-gray-50/50 rounded-2xl border border-gray-100">
+                      No active claimed design tasks currently in the design studio queue.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {activeAdminDesignOrders.map(order => {
+                        const isCompleted = isOrderDesignCompleted(order);
+                        return (
+                          <div
+                            key={order.id}
+                            onClick={() => setSelectedAdminOrder(order)}
+                            className="p-4 bg-gray-50/80 hover:bg-purple-50/20 rounded-2xl border border-gray-150 space-y-2.5 transition-all cursor-pointer group"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-black text-xs text-brand-primary group-hover:text-purple-700 transition-colors">
+                                #{order.id.slice(-8)}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-500 uppercase">
+                                {order.category}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-gray-900 truncate max-w-[140px]">
+                                {order.customerInfo?.name || (order as any).clientName || 'Customer'}
+                              </span>
+                              <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md">
+                                🎨 {order.assignedDesigner || 'Designer'}
+                              </span>
+                            </div>
+                            <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between">
+                              <span className="text-[10px] text-gray-400 font-medium">1-Hour SLA:</span>
+                              <DesignTaskTimer
+                                claimedAt={order.claimedAt || order.designClaimedAt}
+                                completedAt={order.designCompletedAt}
+                                isCompleted={isCompleted}
+                                designerName={order.assignedDesigner}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Charts - Full Width Global Delivered Orders Revenue */}

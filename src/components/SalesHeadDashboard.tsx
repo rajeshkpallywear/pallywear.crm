@@ -10,6 +10,7 @@ import { useLeads } from '../context/LeadContext';
 import { Order, OrderStatus, Invoice } from '../types';
 import { cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
+import DesignTaskTimer from './DesignTaskTimer';
 
 interface SalesHeadDashboardProps {
   orders?: Order[];
@@ -263,6 +264,14 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return list;
   }, [activeExecutiveData, filteredOrders, statusFilter, searchTerm, selectedExecutive]);
 
+  // Active in-progress claimed design orders with 1-hour SLA
+  const activeDesignClaimedOrders = useMemo(() => {
+    return filteredOrders.filter(o =>
+      (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+      Boolean(o.claimedAt || o.designClaimedAt)
+    );
+  }, [filteredOrders]);
+
   // Export executive summary report as CSV
   const handleExportCSV = () => {
     const headers = [
@@ -420,6 +429,66 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Active Design Studio Tasks (1-Hour SLA Monitor) */}
+      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden space-y-4 p-6 text-left">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+              <Palette size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                Design Studio Live 1-Hour SLA Tasks Monitor
+                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded-full">
+                  {activeDesignClaimedOrders.length} In Studio
+                </span>
+              </h3>
+              <p className="text-xs text-gray-500 font-medium">
+                Live countdown tracking (1-hour completion target) for all claimed and in-progress design tasks
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-gray-400">
+            Target SLA: 60 minutes per design
+          </span>
+        </div>
+
+        {activeDesignClaimedOrders.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 italic text-xs font-medium bg-gray-50/50 rounded-2xl border border-gray-100">
+            No active design tasks claimed in the design studio at this moment.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {activeDesignClaimedOrders.map(order => {
+              const isCompleted = isReceivedDesignsFile(order);
+              return (
+                <div key={order.id} className="p-4 bg-gray-50/80 rounded-2xl border border-gray-150 space-y-2 hover:bg-gray-50 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-black text-xs text-brand-primary">#{order.id.slice(-8)}</span>
+                    <span className="text-[10px] font-bold text-gray-500 capitalize">{order.category}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-gray-900 truncate max-w-[140px]">{order.customerInfo?.name || 'Customer'}</span>
+                    <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md">
+                      🎨 {order.assignedDesigner || 'Designer'}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400 font-medium">Task SLA:</span>
+                    <DesignTaskTimer
+                      claimedAt={order.claimedAt || order.designClaimedAt}
+                      completedAt={order.designCompletedAt}
+                      isCompleted={isCompleted}
+                      designerName={order.assignedDesigner}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main Section: Marketing Individual Breakdown Table */}
@@ -707,12 +776,22 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                         )}
                       </td>
 
-                      {/* Design Sent */}
+                      {/* Design Sent & 1-Hour SLA */}
                       <td className="px-4 py-3.5 text-center">
                         {sentDes ? (
-                          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                            ✓ In Studio
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                              ✓ In Studio
+                            </span>
+                            {(o.claimedAt || o.designClaimedAt || o.assignedDesigner) && (
+                              <DesignTaskTimer
+                                claimedAt={o.claimedAt || o.designClaimedAt}
+                                completedAt={o.designCompletedAt}
+                                isCompleted={readyDes || Boolean(o.designCompleted)}
+                                designerName={o.assignedDesigner}
+                              />
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[10px] text-gray-400">-</span>
                         )}

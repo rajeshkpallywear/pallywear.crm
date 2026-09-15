@@ -11,6 +11,7 @@ import { useLeads } from '../context/LeadContext';
 import { Order, OrderStatus } from '../types';
 import { cn, getDisplayCategory } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
+import DesignTaskTimer from './DesignTaskTimer';
 import * as XLSX from 'xlsx';
 
 interface OperationsHeadDashboardProps {
@@ -138,6 +139,48 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const deliveryOrders = useMemo(() => baseFilteredOrders.filter(isInDelivery), [baseFilteredOrders]);
   const deliveredSuccessOrders = useMemo(() => baseFilteredOrders.filter(o => String(o.status || '').toLowerCase() === 'delivered' || o.status === OrderStatus.DELIVERED), [baseFilteredOrders]);
   const inTransitOrders = useMemo(() => baseFilteredOrders.filter(o => String(o.status || '').toLowerCase() === 'delivery' || o.status === OrderStatus.DELIVERY), [baseFilteredOrders]);
+  
+  // Marketing Created Orders Breakdown
+  const marketingStaffSummary = useMemo(() => {
+    const staffMap: Record<string, {
+      name: string;
+      totalOrders: number;
+      totalValue: number;
+      designsCompleted: number;
+      reworks: number;
+      inOrderManagement: number;
+      digitizerCompleted: number;
+      productionCompleted: number;
+      delivered: number;
+    }> = {};
+
+    baseFilteredOrders.forEach(o => {
+      const creatorName = o.createdByName || o.createdBy || 'Marketing Team';
+      if (!staffMap[creatorName]) {
+        staffMap[creatorName] = {
+          name: creatorName,
+          totalOrders: 0,
+          totalValue: 0,
+          designsCompleted: 0,
+          reworks: 0,
+          inOrderManagement: 0,
+          digitizerCompleted: 0,
+          productionCompleted: 0,
+          delivered: 0
+        };
+      }
+      staffMap[creatorName].totalOrders += 1;
+      staffMap[creatorName].totalValue += Number(o.financials?.totalAmount || o.netTotal || 0);
+      if (isDesignCompleted(o)) staffMap[creatorName].designsCompleted += 1;
+      if (isOrderRework(o)) staffMap[creatorName].reworks += 1;
+      if (isInOrderManagement(o)) staffMap[creatorName].inOrderManagement += 1;
+      if (isDigitizerCompleted(o)) staffMap[creatorName].digitizerCompleted += 1;
+      if (isProductionCompleted(o)) staffMap[creatorName].productionCompleted += 1;
+      if (isInDelivery(o)) staffMap[creatorName].delivered += 1;
+    });
+
+    return Object.values(staffMap).sort((a, b) => b.totalOrders - a.totalOrders);
+  }, [baseFilteredOrders]);
 
   // Current active table orders depending on tab & search
   const tableOrders = useMemo(() => {
@@ -173,7 +216,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       'Order Number': o.orderNumber || o.id,
       'Client Name': o.clientName || o.customerInfo?.name || 'N/A',
       'Category': getDisplayCategory(o.category),
-      'Created By': o.createdByName || o.createdBy || 'N/A',
+      'Marketing Creator': o.createdByName || o.createdBy || 'N/A',
       'Current Status': o.status,
       'Design Completed': isDesignCompleted(o) ? 'YES' : 'NO',
       'Rework Flag': isOrderRework(o) ? 'YES (Correction)' : 'NO',
@@ -203,17 +246,17 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
           <div>
             <div className="flex items-center gap-2.5 mb-2">
               <span className="px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Operations & Production Head Control
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Operations Head Control
               </span>
-              <span className="px-2.5 py-0.5 bg-white/10 text-white/80 rounded-full text-[10px] font-bold">
-                Live Factory & Studio Sync
+              <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-full text-[10px] font-bold">
+                Live Marketing Orders Sync
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              Workflow & Production Operations
+              Operations & Production Workflow
             </h1>
             <p className="text-xs sm:text-sm text-gray-300 font-medium mt-1 max-w-2xl leading-relaxed">
-              Real-time monitoring across Design Studio, Reworks, Order Management, Digitizing Embroidery, Factory Production, and Final Delivery dispatch.
+              Monitoring all orders created by Marketing team across Graphic Design Studio, Reworks, Order Management, Digitizing Embroidery, Factory Production, and Delivery.
             </p>
           </div>
 
@@ -251,9 +294,9 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
         </div>
 
         {/* Live Status Strip */}
-        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-white/5 backdrop-blur-xs p-3 rounded-2xl border border-white/5">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Pipeline</p>
+        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15">
+            <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">📦 Marketing Created</p>
             <p className="text-xl font-black text-white mt-0.5">{baseFilteredOrders.length}</p>
           </div>
           <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20">
@@ -261,7 +304,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             <p className="text-xl font-black text-purple-200 mt-0.5">{designCompletedOrders.length}</p>
           </div>
           <div className="bg-amber-500/10 backdrop-blur-xs p-3 rounded-2xl border border-amber-500/20">
-            <p className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">🔄 Rework Orders</p>
+            <p className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">🔄 Reworks</p>
             <p className="text-xl font-black text-amber-200 mt-0.5">{reworkOrders.length}</p>
           </div>
           <div className="bg-cyan-500/10 backdrop-blur-xs p-3 rounded-2xl border border-cyan-500/20">
@@ -269,8 +312,12 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             <p className="text-xl font-black text-cyan-200 mt-0.5">{orderManagementOrders.length}</p>
           </div>
           <div className="bg-pink-500/10 backdrop-blur-xs p-3 rounded-2xl border border-pink-500/20">
-            <p className="text-[10px] text-pink-300 font-bold uppercase tracking-wider">✂️ Digitizing Done</p>
+            <p className="text-[10px] text-pink-300 font-bold uppercase tracking-wider">✂️ Digitizer Done</p>
             <p className="text-xl font-black text-pink-200 mt-0.5">{digitizerCompletedOrders.length}</p>
+          </div>
+          <div className="bg-orange-500/10 backdrop-blur-xs p-3 rounded-2xl border border-orange-500/20">
+            <p className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">🏭 Production Done</p>
+            <p className="text-xl font-black text-orange-200 mt-0.5">{productionCompletedOrders.length}</p>
           </div>
           <div className="bg-emerald-500/10 backdrop-blur-xs p-3 rounded-2xl border border-emerald-500/20">
             <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">🚚 Delivery Total</p>
@@ -279,7 +326,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
         </div>
       </div>
 
-      {/* ─── 6 Core KPI Cards (Requested Metrics) ────────────────────────── */}
+      {/* ─── 6 Core KPI Cards (Requested Workflow Metrics) ─────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* CARD 1: How many order designs completed */}
         <div
@@ -300,11 +347,11 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Designs Completed</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DESIGNS COMPLETED</p>
             <div className="flex items-baseline gap-2 mt-1">
               <p className="text-3xl font-black text-gray-900 tracking-tight">{designCompletedOrders.length}</p>
               <span className="text-xs font-bold text-purple-600">
-                {baseFilteredOrders.length > 0 ? `${Math.round((designCompletedOrders.length / baseFilteredOrders.length) * 100)}% of orders` : '0%'}
+                {baseFilteredOrders.length > 0 ? `${Math.round((designCompletedOrders.length / baseFilteredOrders.length) * 100)}%` : '0%'}
               </span>
             </div>
             <p className="text-[11px] text-gray-400 font-medium mt-1">
@@ -339,7 +386,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Order Reworks</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">ORDER REWORKS</p>
             <div className="flex items-baseline gap-2 mt-1">
               <p className="text-3xl font-black text-gray-900 tracking-tight">{reworkOrders.length}</p>
               <span className="text-xs font-bold text-amber-600">
@@ -375,7 +422,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">In Order Management</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">IN ORDER MANAGEMENT</p>
             <div className="flex items-baseline gap-2 mt-1">
               <p className="text-3xl font-black text-gray-900 tracking-tight">{orderManagementOrders.length}</p>
               <span className="text-xs font-bold text-cyan-600">
@@ -411,7 +458,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Digitizer Work Completed</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DIGITIZER WORK COMPLETED</p>
             <div className="flex items-baseline gap-2 mt-1">
               <p className="text-3xl font-black text-gray-900 tracking-tight">{digitizerCompletedOrders.length}</p>
               <span className="text-xs font-bold text-pink-600">
@@ -447,7 +494,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Production Completed</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">PRODUCTION COMPLETED</p>
             <div className="flex items-baseline gap-2 mt-1">
               <p className="text-3xl font-black text-gray-900 tracking-tight">{productionCompletedOrders.length}</p>
               <span className="text-xs font-bold text-orange-600">
@@ -483,7 +530,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Delivery Orders</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DELIVERY ORDERS</p>
             <div className="flex items-baseline gap-2 mt-1">
               <p className="text-3xl font-black text-gray-900 tracking-tight">{deliveryOrders.length}</p>
               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -498,6 +545,74 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             <span>View Logistics Tracking</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
+        </div>
+      </div>
+
+      {/* ─── Marketing Staff Orders & Workflow Performance Breakdown ───────── */}
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Marketing Staff Order Creation & Pipeline Summary</h3>
+              <p className="text-xs text-gray-400 font-medium">Breakdown of orders created by each marketing team member & their production stage</p>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-brand-primary/5 text-brand-primary text-xs font-bold rounded-xl border border-brand-primary/10">
+            {marketingStaffSummary.length} Active Marketing Staff
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-wider border-b border-gray-100">
+              <tr>
+                <th className="px-4 py-3 rounded-l-xl">Marketing Staff / Creator</th>
+                <th className="px-3 py-3 text-center">Total Created</th>
+                <th className="px-3 py-3 text-center">🎨 Designs Done</th>
+                <th className="px-3 py-3 text-center">🔄 Reworks</th>
+                <th className="px-3 py-3 text-center">📋 In OM</th>
+                <th className="px-3 py-3 text-center">✂️ Digitizer</th>
+                <th className="px-3 py-3 text-center">🏭 Production</th>
+                <th className="px-3 py-3 text-center">🚚 Delivered</th>
+                <th className="px-4 py-3 text-right rounded-r-xl">Total Pipeline Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 font-medium">
+              {marketingStaffSummary.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400 italic">
+                    No marketing created orders recorded for this time filter.
+                  </td>
+                </tr>
+              ) : (
+                marketingStaffSummary.map((staff, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-4 py-3 font-bold text-gray-900 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center text-[10px] font-black">
+                        {staff.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span>{staff.name}</span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full font-black text-[11px] border border-blue-200">
+                        {staff.totalOrders}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-center font-bold text-purple-700">{staff.designsCompleted}</td>
+                    <td className="px-3 py-3 text-center font-bold text-amber-700">{staff.reworks}</td>
+                    <td className="px-3 py-3 text-center font-bold text-cyan-700">{staff.inOrderManagement}</td>
+                    <td className="px-3 py-3 text-center font-bold text-pink-700">{staff.digitizerCompleted}</td>
+                    <td className="px-3 py-3 text-center font-bold text-orange-700">{staff.productionCompleted}</td>
+                    <td className="px-3 py-3 text-center font-bold text-emerald-700">{staff.delivered}</td>
+                    <td className="px-4 py-3 text-right font-black text-gray-900">₹{staff.totalValue.toLocaleString('en-IN')}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -658,17 +773,47 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                       {/* Design Stage */}
                       <td className="px-4 py-3.5 text-center">
                         {isRework ? (
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
-                            <RefreshCw className="w-2.5 h-2.5 animate-spin-slow" /> Rework
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                              <RefreshCw className="w-2.5 h-2.5 animate-spin-slow" /> Rework
+                            </span>
+                            {(o.claimedAt || o.designClaimedAt || o.assignedDesigner) && (
+                              <DesignTaskTimer
+                                claimedAt={o.claimedAt || o.designClaimedAt}
+                                completedAt={o.designCompletedAt}
+                                isCompleted={false}
+                                designerName={o.assignedDesigner}
+                              />
+                            )}
+                          </div>
                         ) : designDone ? (
-                          <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
-                            <CheckCheck className="w-2.5 h-2.5" /> Done
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                              <CheckCheck className="w-2.5 h-2.5" /> Done
+                            </span>
+                            {o.designCompletedAt && (o.claimedAt || o.designClaimedAt) && (
+                              <DesignTaskTimer
+                                claimedAt={o.claimedAt || o.designClaimedAt}
+                                completedAt={o.designCompletedAt}
+                                isCompleted={true}
+                                designerName={o.assignedDesigner}
+                              />
+                            )}
+                          </div>
                         ) : (
-                          <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-md text-[10px] font-bold">
-                            In Studio
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="px-2 py-0.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-md text-[10px] font-bold">
+                              In Studio
+                            </span>
+                            {(o.claimedAt || o.designClaimedAt || (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')) && (
+                              <DesignTaskTimer
+                                claimedAt={o.claimedAt || o.designClaimedAt}
+                                completedAt={o.designCompletedAt}
+                                isCompleted={false}
+                                designerName={o.assignedDesigner}
+                              />
+                            )}
+                          </div>
                         )}
                       </td>
 

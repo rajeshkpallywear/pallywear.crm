@@ -37,6 +37,7 @@ import { useLeads } from '../context/LeadContext';
 import { cn, getDisplayCategory, isOrderSizeValid, downloadFile } from '../lib/utils';
 import ConversationDashboard, { Conversation } from './ConversationDashboard';
 import OrdersChart from './OrdersChart';
+import DesignTaskTimer from './DesignTaskTimer';
 
 interface DesignDashboardProps {
   orders: Order[];
@@ -487,17 +488,30 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     setIsProcessing(true);
     try {
       if (item.isOrder) {
+        const claimTime = Date.now();
         await onUpdateOrder(item.id, {
           assignedDesigner: designerName,
           claimedBy: user?.id || user?.uid,
           claimedByName: designerName,
-          claimedAt: Date.now(),
+          claimedAt: claimTime,
+          designClaimedAt: claimTime,
+          designDeadline: claimTime + 60 * 60 * 1000,
+          designSlaMinutes: 60,
           updatedAt: Date.now()
         });
-        alert(`Success: Order #${item.id.slice(-8)} is now claimed by you! Opening Workspace...`);
+        alert(`Success: Order #${item.id.slice(-8)} is now claimed by you! A 1-Hour SLA task timer has started. Opening Workspace...`);
         const fullOrder = orders.find(o => o.id === item.id);
         if (fullOrder) {
-          setSelectedOrder({ ...fullOrder, assignedDesigner: designerName, claimedBy: user?.id || user?.uid, claimedByName: designerName });
+          setSelectedOrder({
+            ...fullOrder,
+            assignedDesigner: designerName,
+            claimedBy: user?.id || user?.uid,
+            claimedByName: designerName,
+            claimedAt: claimTime,
+            designClaimedAt: claimTime,
+            designDeadline: claimTime + 60 * 60 * 1000,
+            designSlaMinutes: 60
+          });
           // Initialize file arrays
           setDesignFiles(fullOrder.designAttachments || []);
           setMachineFiles(fullOrder.machineFiles || []);
@@ -517,7 +531,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
         const updated = currentConvs.map(c => {
           if (c.id === item.id) {
-            return { ...c, staffName: designerName };
+            return { ...c, staffName: designerName, claimedAt: Date.now() };
           }
           return c;
         });
@@ -525,7 +539,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         localStorage.setItem('pallywear_conversations', JSON.stringify(updated));
         loadStaffConversations();
         setSelectedItemIdForStaffChat(item.id);
-        alert(`Success: Consultation claimed by you! Opening Staff dialogue panel...`);
+        alert(`Success: Consultation claimed by you! A 1-Hour SLA task timer has started. Opening Staff dialogue panel...`);
         setIsStaffChatOpen(true);
       }
     } catch (e) {
@@ -547,6 +561,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           claimedBy: undefined,
           claimedByName: undefined,
           claimedAt: undefined,
+          designClaimedAt: undefined,
+          designDeadline: undefined,
+          designSlaMinutes: undefined,
           updatedAt: Date.now()
         });
         if (selectedOrder?.id === item.id) {
@@ -1293,13 +1310,29 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             ⚡ Open in Queue
                           </span>
                         ) : claimedByMe ? (
-                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1 w-fit mx-auto">
-                            ⭐ Assigned to You
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1 w-fit mx-auto">
+                              ⭐ Assigned to You
+                            </span>
+                            <DesignTaskTimer
+                              claimedAt={item.claimedAt || item.designClaimedAt}
+                              completedAt={item.designCompletedAt}
+                              isCompleted={item.isCompleted}
+                              designerName={item.assignedDesigner}
+                            />
+                          </div>
                         ) : (
-                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-250 flex items-center justify-center gap-1 w-fit mx-auto" title={`Claimed by ${item.assignedDesigner}`}>
-                            🔒 {item.assignedDesigner}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-250 flex items-center justify-center gap-1 w-fit mx-auto" title={`Claimed by ${item.assignedDesigner}`}>
+                              🔒 {item.assignedDesigner}
+                            </span>
+                            <DesignTaskTimer
+                              claimedAt={item.claimedAt || item.designClaimedAt}
+                              completedAt={item.designCompletedAt}
+                              isCompleted={item.isCompleted}
+                              designerName={item.assignedDesigner}
+                            />
+                          </div>
                         )}
                       </td>
 
@@ -1477,13 +1510,29 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           ⚡ Open in Queue
                         </span>
                       ) : claimedByMe ? (
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[9px] font-black uppercase">
-                          ⭐ Assigned to You
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[9px] font-black uppercase">
+                            ⭐ Assigned to You
+                          </span>
+                          <DesignTaskTimer
+                            claimedAt={item.claimedAt || item.designClaimedAt}
+                            completedAt={item.designCompletedAt}
+                            isCompleted={item.isCompleted}
+                            designerName={item.assignedDesigner}
+                          />
+                        </div>
                       ) : (
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-250 rounded text-[9px] font-bold uppercase">
-                          🔒 {item.assignedDesigner}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-250 rounded text-[9px] font-bold uppercase">
+                            🔒 {item.assignedDesigner}
+                          </span>
+                          <DesignTaskTimer
+                            claimedAt={item.claimedAt || item.designClaimedAt}
+                            completedAt={item.designCompletedAt}
+                            isCompleted={item.isCompleted}
+                            designerName={item.assignedDesigner}
+                          />
+                        </div>
                       )}
                     </div>
 
@@ -1593,7 +1642,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             </div>
 
             {/* Modal body */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {/* 1-Hour SLA Task Timer Header Bar */}
+              <DesignTaskTimer
+                claimedAt={selectedOrder.claimedAt || selectedOrder.designClaimedAt}
+                completedAt={selectedOrder.designCompletedAt}
+                isCompleted={Boolean(selectedOrder.designCompleted)}
+                variant="bar"
+                designerName={selectedOrder.assignedDesigner}
+              />
+
               {/* Hold Alert Notification Banner */}
               {selectedOrder.status === OrderStatus.HOLD && (
                 <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start gap-4 text-left">
