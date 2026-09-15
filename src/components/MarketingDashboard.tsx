@@ -141,12 +141,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           updates.isRework = true;
           updates.reworkNotes = `Correction requested by Marketing on ${new Date().toLocaleDateString()}`;
         }
+        // Always ensure sentByAccounts is false when dispatched from Marketing
+        updates.sentByAccounts = false;
         updates.designSentToMarketing = false;
         updates.designCompleted = false;
         updates.designSentToDigitizer = false;
       }
       await onUpdateOrder(orderId, updates);
-      showActionToast(`Order #${orderId.slice(-6)} forwarded to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'}!`);
+      showActionToast(`✓ Order #${orderId.slice(-6)} sent to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'} immediately!`);
     } catch (err) {
       showActionToast("Action failed. Please try again.");
     } finally {
@@ -495,7 +497,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     setShowSubmitReviewModal(true);
   };
 
-  const handleFinalSubmit = async () => {
+  const handleFinalSubmit = async (targetDestination?: 'design' | 'accounts') => {
     if (isProcessing) return;
 
     const totalQuantity = formData.sizeBreakdown.reduce((sum, item) => sum + item.quantity, 0) || 1;
@@ -510,8 +512,38 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       }
     }
 
+    let targetStatus = existingOrder ? existingOrder.status : OrderStatus.PENDING;
+    if (targetDestination === 'design') {
+      targetStatus = OrderStatus.DESIGN;
+    } else if (targetDestination === 'accounts') {
+      targetStatus = OrderStatus.ACCOUNTS;
+    }
+
+    const destinationUpdates: Partial<Order> = {};
+    if (targetDestination === 'design') {
+      destinationUpdates.status = OrderStatus.DESIGN;
+      destinationUpdates.sentByAccounts = false;
+      destinationUpdates.designSentToMarketing = false;
+      destinationUpdates.designCompleted = false;
+      destinationUpdates.designSentToDigitizer = false;
+      const hadPriorDesign = Boolean(
+        existingOrder?.designCompleted ||
+        existingOrder?.designSentToMarketing ||
+        (existingOrder?.original_design_file && existingOrder.original_design_file.length > 0) ||
+        (existingOrder?.designAttachments && existingOrder.designAttachments.length > 0) ||
+        (existingOrder?.machineFiles && existingOrder.machineFiles.length > 0)
+      );
+      if (hadPriorDesign) {
+        destinationUpdates.isRework = true;
+        destinationUpdates.reworkNotes = `Correction/update requested by Marketing on ${new Date().toLocaleDateString()}`;
+      }
+    } else if (targetDestination === 'accounts') {
+      destinationUpdates.status = OrderStatus.ACCOUNTS;
+      destinationUpdates.movedToAccountsAt = Date.now();
+    }
+
     const finalOrderData = {
-      status: existingOrder ? existingOrder.status : OrderStatus.PENDING,
+      status: targetStatus,
       category: computedCategory,
       createdBy: existingOrder ? existingOrder.createdBy : (user?.id || user?.uid || 'unknown'),
       createdByName: existingOrder ? existingOrder.createdByName : (user?.name || 'Unknown'),
@@ -544,6 +576,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       marketing_image: formData.imageAttachments[0] || '',
       marketing_notes: formData.notes.trim(),
       voiceNote: formData.voiceNote || undefined,
+      ...destinationUpdates,
       updatedAt: Date.now(),
     };
 
@@ -557,11 +590,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     try {
       if (editingOrderId) {
         await onUpdateOrder(editingOrderId, finalOrderData);
-        alert("Success: Order updated in portal.");
+        if (targetDestination === 'design') {
+          showActionToast(`✓ Order updated & sent to Designs Queue immediately!`);
+        } else if (targetDestination === 'accounts') {
+          showActionToast(`✓ Order updated & sent to Accounts Queue immediately!`);
+        } else {
+          showActionToast(`✓ Order updated in portal successfully.`);
+        }
       } else {
         await onCreateOrder({
           ...finalOrderData,
-          status: OrderStatus.PENDING,
+          status: targetStatus,
           designSentToMarketing: false,
           designCompleted: false,
           original_design_file: '',
@@ -570,7 +609,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           original_design_zip_filename: '',
           createdAt: Date.now(),
         });
-        alert("Success: Order created successfully and added to your queue.");
+        if (targetDestination === 'design') {
+          showActionToast(`✓ Order placed & sent to Designs Queue immediately!`);
+        } else if (targetDestination === 'accounts') {
+          showActionToast(`✓ Order placed & sent to Accounts Queue immediately!`);
+        } else {
+          showActionToast(`✓ Order created successfully.`);
+        }
       }
       setShowSubmitReviewModal(false);
       setIsCreating(false);
@@ -1022,28 +1067,38 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   🎨 Unassigned
                                 </span>
                               )}
-                              {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
-                                <div className="flex gap-1.5 mt-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDirectForward(order.id, 'design');
-                                    }}
-                                    className="text-[9px] font-black text-purple-700 bg-purple-50 hover:bg-purple-650 hover:text-white border border-purple-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
-                                  >
-                                    Designs
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDirectForward(order.id, 'accounts');
-                                    }}
-                                    className="text-[9px] font-black text-amber-700 bg-amber-50 hover:bg-amber-650 hover:text-white border border-amber-200 rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider"
-                                  >
-                                    Accounts
-                                  </button>
-                                </div>
-                              )}
+                              <div className="flex gap-1.5 mt-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDirectForward(order.id, 'design');
+                                  }}
+                                  className={cn(
+                                    "text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider",
+                                    order.status === OrderStatus.DESIGN
+                                      ? "text-white bg-purple-600 shadow-xs"
+                                      : "text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white border border-purple-200"
+                                  )}
+                                  title="Send or re-send this order to Designs Queue immediately"
+                                >
+                                  {order.status === OrderStatus.DESIGN ? '🎨 Designs' : 'Designs'}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDirectForward(order.id, 'accounts');
+                                  }}
+                                  className={cn(
+                                    "text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider",
+                                    order.status === OrderStatus.ACCOUNTS
+                                      ? "text-white bg-amber-600 shadow-xs"
+                                      : "text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200"
+                                  )}
+                                  title="Send or re-send this order to Accounts Queue immediately"
+                                >
+                                  {order.status === OrderStatus.ACCOUNTS ? '💳 Accounts' : 'Accounts'}
+                                </button>
+                              </div>
                             </>
                           )}
                         </div>
@@ -1191,29 +1246,36 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           )}
 
                           <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                            {order.status === OrderStatus.PENDING ? (
-                              <>
-                                <button
-                                  onClick={() => handleDirectForward(order.id, 'design')}
-                                  className="py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-black text-[9px] border border-purple-200 transition-colors uppercase cursor-pointer"
-                                >
-                                  Designs
-                                </button>
-                                <button
-                                  onClick={() => handleDirectForward(order.id, 'accounts')}
-                                  className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-black text-[9px] border border-amber-200 transition-colors uppercase cursor-pointer"
-                                >
-                                  Accounts
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setSelectedHubOrder(order)}
-                                className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none"
-                              >
-                                View & Edit
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDirectForward(order.id, 'design')}
+                              className={cn(
+                                "py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center",
+                                order.status === OrderStatus.DESIGN
+                                  ? "bg-purple-600 text-white shadow-xs border-none"
+                                  : "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
+                              )}
+                              title="Send or re-send to Designs queue immediately"
+                            >
+                              {order.status === OrderStatus.DESIGN ? '🎨 Designs (Active)' : '🎨 To Designs'}
+                            </button>
+                            <button
+                              onClick={() => handleDirectForward(order.id, 'accounts')}
+                              className={cn(
+                                "py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center",
+                                order.status === OrderStatus.ACCOUNTS
+                                  ? "bg-amber-600 text-white shadow-xs border-none"
+                                  : "bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
+                              )}
+                              title="Send or re-send to Accounts queue immediately"
+                            >
+                              {order.status === OrderStatus.ACCOUNTS ? '💳 Accounts (Active)' : '💳 To Accounts'}
+                            </button>
+                            <button
+                              onClick={() => setSelectedHubOrder(order)}
+                              className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                            >
+                              View & Edit Details
+                            </button>
                           </div>
                         </>
                       )}
@@ -2222,32 +2284,43 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="sticky bottom-0 bg-white px-5 sm:px-8 py-4 border-t border-gray-150 flex flex-wrap gap-3 z-10">
+            <div className="sticky bottom-0 bg-white px-5 sm:px-8 py-4 border-t border-gray-150 flex flex-wrap items-center gap-2.5 z-10">
               <button
                 type="button"
                 disabled={isProcessing}
                 onClick={() => setShowSubmitReviewModal(false)}
-                className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer transition-all text-center"
+                className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-xs uppercase border-none cursor-pointer transition-all text-center"
               >
-                ✏️ Back to Edit Details
+                ✏️ Back
               </button>
               <button
                 type="button"
                 disabled={isProcessing}
-                onClick={handleFinalSubmit}
-                className="flex-1 px-6 py-3.5 bg-brand-primary hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2 text-center"
+                onClick={() => handleFinalSubmit()}
+                className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
               >
-                {isProcessing ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Processing Submission...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck size={16} />
-                    <span>✓ Confirm & Place Order</span>
-                  </>
-                )}
+                <ShieldCheck size={14} />
+                <span>{editingOrderId ? 'Save Details' : 'Save Order'}</span>
+              </button>
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => handleFinalSubmit('design')}
+                className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                title="Save and dispatch immediately to Designs Team"
+              >
+                <Sparkles size={14} />
+                <span>Save & Send to Designs</span>
+              </button>
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => handleFinalSubmit('accounts')}
+                className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                title="Save and dispatch immediately to Accounts Team"
+              >
+                <CheckCircle2 size={14} />
+                <span>Save & Send to Accounts</span>
               </button>
             </div>
           </motion.div>
@@ -2258,10 +2331,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       {/* Global detailed view modal */}
       {selectedHubOrder && (
         <OrderDetailModal
-          order={selectedHubOrder}
+          order={orders.find(o => o.id === selectedHubOrder.id) || selectedHubOrder}
           onClose={() => setSelectedHubOrder(null)}
           isAdmin={isAdmin}
           onUpdateOrder={onUpdateOrder}
+          onUpdateStatus={(newStatus) => onUpdateOrder(selectedHubOrder.id, { status: newStatus, updatedAt: Date.now() })}
           onEdit={(ord) => {
             setSelectedHubOrder(null);
             startEdit(ord);

@@ -48,12 +48,14 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         );
         if (hadPriorDesign) {
           updates.isRework = true;
-          updates.reworkNotes = `Correction/rework requested on ${new Date().toLocaleDateString()}`;
+          updates.reworkNotes = `Correction/update requested by Marketing on ${new Date().toLocaleDateString()}`;
         }
         if (isAdmin) {
           updates.isAdminOrder = true;
           updates.sentByAdmin = true;
         }
+        // Always ensure sentByAccounts is false when dispatched from Marketing/CRM
+        updates.sentByAccounts = false;
         updates.designSentToMarketing = false;
         updates.designCompleted = false;
         updates.designSentToDigitizer = false;
@@ -66,9 +68,6 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         if (order.claimedByName) {
           updates.claimedByName = order.claimedByName;
         }
-        if (order.status === OrderStatus.ACCOUNTS) {
-          updates.sentByAccounts = true;
-        }
       }
 
       if (onUpdateOrder) {
@@ -77,7 +76,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         onUpdateStatus(updates.status);
       }
 
-      onClose();
+      alert(`✓ Order successfully sent to ${target === 'design' ? 'Designs Team' : 'Accounts Team'} immediately!`);
     } catch (err) {
       alert("Failed to update order.");
     } finally {
@@ -96,7 +95,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
     }
   }, [initialOrder?.id]);
 
-  const handleSave = async () => {
+  const handleSave = async (targetDestination?: 'design' | 'accounts') => {
     if (!onUpdateOrder) return;
     setIsSaving(true);
     try {
@@ -109,11 +108,43 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
           computedCategory = 'Mixed Order';
         }
       }
-      await onUpdateOrder(order.id, { ...editedOrder, category: computedCategory, updatedAt: Date.now() });
+      const updates: Partial<Order> = {
+        ...editedOrder,
+        category: computedCategory,
+        updatedAt: Date.now()
+      };
+
+      if (targetDestination === 'design') {
+        updates.status = OrderStatus.DESIGN;
+        updates.sentByAccounts = false;
+        updates.designSentToMarketing = false;
+        updates.designCompleted = false;
+        updates.designSentToDigitizer = false;
+        const hadPriorDesign = Boolean(
+          order.designCompleted ||
+          order.designSentToMarketing ||
+          (order.original_design_file && order.original_design_file.length > 0) ||
+          (order.designAttachments && order.designAttachments.length > 0) ||
+          (order.machineFiles && order.machineFiles.length > 0)
+        );
+        if (hadPriorDesign) {
+          updates.isRework = true;
+          updates.reworkNotes = `Updated & forwarded to Design on ${new Date().toLocaleDateString()}`;
+        }
+      } else if (targetDestination === 'accounts') {
+        updates.status = OrderStatus.ACCOUNTS;
+        updates.movedToAccountsAt = Date.now();
+      }
+
+      await onUpdateOrder(order.id, updates);
       setIsEditing(false);
+      if (targetDestination) {
+        alert(`✓ Order details updated and sent to ${targetDestination === 'design' ? 'Designs Team' : 'Accounts Team'} immediately!`);
+      } else {
+        alert("✓ Order details updated successfully.");
+      }
       if (editedOrder.id !== order.id) {
         onClose();
-        alert(`Order ID updated successfully to ${editedOrder.id}!`);
       }
     } catch (error) {
       alert("Failed to save changes.");
@@ -182,51 +213,97 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               <span className="text-xs font-mono text-gray-400 mt-1 uppercase tracking-widest">Access Protocol - ID: #{order.id}</span>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {!isEditing && (
-              <button
-                onClick={() => shareOrderToWhatsApp(order)}
-                className="px-5 py-3 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-700 transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none"
-                title="Share Order to WhatsApp"
-              >
-                <MessageSquare size={14} /> WhatsApp
-              </button>
-            )}
-            {onUpdateOrder && !isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-6 py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md cursor-pointer border-none"
-              >
-                Edit Details
-              </button>
-            )}
-            {onEdit && !isEditing && (
-              <button
-                onClick={() => {
-                  onClose();
-                  onEdit(order);
-                }}
-                className="px-6 py-3 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-800 transition-all shadow-md cursor-pointer border-none"
-              >
-                Edit Order Form
-              </button>
+              <>
+                <button
+                  onClick={() => shareOrderToWhatsApp(order)}
+                  className="px-4 sm:px-5 py-2.5 sm:py-3 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-700 transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none"
+                  title="Share Order to WhatsApp"
+                >
+                  <MessageSquare size={14} /> WhatsApp
+                </button>
+                {onUpdateOrder && (
+                  <>
+                    <button
+                      disabled={isProcessingAction}
+                      onClick={() => handleDirectForward('design')}
+                      className={cn(
+                        "px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50",
+                        order.status === OrderStatus.DESIGN
+                          ? "bg-purple-700 hover:bg-purple-800 ring-2 ring-purple-300"
+                          : "bg-purple-600 hover:bg-purple-700"
+                      )}
+                      title="Send or re-send this order immediately to the Designs team"
+                    >
+                      <Sparkles size={14} /> {order.status === OrderStatus.DESIGN ? 'Re-send to Designs' : 'Send to Designs'}
+                    </button>
+                    <button
+                      disabled={isProcessingAction}
+                      onClick={() => handleDirectForward('accounts')}
+                      className={cn(
+                        "px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50",
+                        order.status === OrderStatus.ACCOUNTS
+                          ? "bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-300"
+                          : "bg-amber-500 hover:bg-amber-600"
+                      )}
+                      title="Send or re-send this order immediately to the Accounts team"
+                    >
+                      <CheckCircle size={14} /> {order.status === OrderStatus.ACCOUNTS ? 'Re-send to Accounts' : 'Send to Accounts'}
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-4 sm:px-6 py-2.5 sm:py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md cursor-pointer border-none"
+                    >
+                      Edit Details
+                    </button>
+                  </>
+                )}
+                {onEdit && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onEdit(order);
+                    }}
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-800 transition-all shadow-md cursor-pointer border-none"
+                  >
+                    Edit Order Form
+                  </button>
+                )}
+              </>
             )}
             {isEditing && (
-              <button
-                disabled={isSaving}
-                onClick={handleSave}
-                className="px-6 py-3 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-green-700 transition-all shadow-md flex items-center gap-2 border-none cursor-pointer"
-              >
-                {isSaving ? 'Saving...' : 'Confirm Update'}
-              </button>
-            )}
-            {isEditing && (
-              <button
-                onClick={() => { setIsEditing(false); setEditedOrder(order); }}
-                className="px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-300 transition-all border-none cursor-pointer"
-              >
-                Cancel
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  disabled={isSaving}
+                  onClick={() => handleSave()}
+                  className="px-4 py-2.5 bg-green-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-green-700 transition-all shadow-md flex items-center gap-1.5 border-none cursor-pointer disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : '✓ Save Only'}
+                </button>
+                <button
+                  disabled={isSaving}
+                  onClick={() => handleSave('design')}
+                  className="px-4 py-2.5 bg-purple-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-purple-700 transition-all shadow-md flex items-center gap-1.5 border-none cursor-pointer disabled:opacity-50"
+                  title="Save all changes and immediately forward to Designs Queue"
+                >
+                  <Sparkles size={13} /> Save & Send to Designs
+                </button>
+                <button
+                  disabled={isSaving}
+                  onClick={() => handleSave('accounts')}
+                  className="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-600 transition-all shadow-md flex items-center gap-1.5 border-none cursor-pointer disabled:opacity-50"
+                  title="Save all changes and immediately forward to Accounts Queue"
+                >
+                  <CheckCircle size={13} /> Save & Send to Accounts
+                </button>
+                <button
+                  onClick={() => { setIsEditing(false); setEditedOrder(order); }}
+                  className="px-3.5 py-2.5 bg-gray-200 text-gray-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-300 transition-all border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             )}
             <button
               onClick={onClose}
@@ -975,7 +1052,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 </div>
               </div>
 
-              {onUpdateStatus && (
+              {(onUpdateStatus || onUpdateOrder) && (
                 <div className="bg-gray-900 p-6 rounded-[32px] shadow-xl text-white space-y-4">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Management Actions</p>
                   <div className="grid grid-cols-1 gap-2">
@@ -1016,26 +1093,32 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT || order.status === OrderStatus.ACCOUNTS) && (
-                          <div className="flex flex-col gap-2">
-                            <button
-                              disabled={isProcessingAction}
-                              onClick={() => handleDirectForward('design')}
-                              className="w-full py-3 bg-purple-600 hover:bg-purple-750 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
-                            >
-                              <CheckCircle size={14} /> Send to Designs
-                            </button>
-                            {(order.status === OrderStatus.PENDING || order.status === OrderStatus.DRAFT) && (
-                              <button
-                                disabled={isProcessingAction}
-                                onClick={() => handleDirectForward('accounts')}
-                                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer"
-                              >
-                                <CheckCircle size={14} /> Send to Accounts
-                              </button>
+                        <div className="flex flex-col gap-2">
+                          <button
+                            disabled={isProcessingAction}
+                            onClick={() => handleDirectForward('design')}
+                            className={cn(
+                              "w-full py-3 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer",
+                              order.status === OrderStatus.DESIGN
+                                ? "bg-purple-700 hover:bg-purple-800 ring-2 ring-purple-400"
+                                : "bg-purple-600 hover:bg-purple-700"
                             )}
-                          </div>
-                        )}
+                          >
+                            <Sparkles size={14} /> {order.status === OrderStatus.DESIGN ? 'Re-send to Designs' : 'Send to Designs'}
+                          </button>
+                          <button
+                            disabled={isProcessingAction}
+                            onClick={() => handleDirectForward('accounts')}
+                            className={cn(
+                              "w-full py-3 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer",
+                              order.status === OrderStatus.ACCOUNTS
+                                ? "bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-400"
+                                : "bg-amber-500 hover:bg-amber-600"
+                            )}
+                          >
+                            <CheckCircle size={14} /> {order.status === OrderStatus.ACCOUNTS ? 'Re-send to Accounts' : 'Send to Accounts'}
+                          </button>
+                        </div>
                         <button
                           disabled={isProcessingAction}
                           onClick={async () => {
