@@ -1506,6 +1506,15 @@ export default function AdminDashboard() {
 
     const isOrderDigitizerCompleted = (o: Order) => {
       const eff = getEffectiveStatus(o);
+      if (o.digitizerCompleted === true || o.details?.digitizerCompleted === true || o.details?.digitizerCompleted === 'true') {
+        return true;
+      }
+      if (o.digitizerSentToOM === true || o.details?.digitizerSentToOM === true || o.details?.digitizerSentToOM === 'true') {
+        return true;
+      }
+      if (o.details?.hasMachineFiles === true || o.details?.hasMachineFiles === 'true') {
+        return true;
+      }
       const hasMachineFiles = Boolean(o.machineFiles && o.machineFiles.length > 0);
       const hasDigitizerFile = Boolean((o as any).digitizer_file || o.details?.digitizer_file);
       const hasDstEmb = Boolean(
@@ -1514,8 +1523,8 @@ export default function AdminDashboard() {
           return name.includes('.dst') || name.includes('.emb');
         })
       );
-      const isDelivered = eff === OrderStatus.DELIVERED;
-      return hasMachineFiles || hasDigitizerFile || hasDstEmb || isDelivered;
+      const isPastDigitizer = [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+      return hasMachineFiles || hasDigitizerFile || hasDstEmb || isPastDigitizer;
     };
 
     const isOrderForInventory = (o: Order) => {

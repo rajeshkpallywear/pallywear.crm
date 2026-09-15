@@ -199,6 +199,9 @@ export interface Order {
   designSentToMarketing?: boolean;
   designSentToDigitizer?: boolean;
   designCompletedAt?: number;
+  digitizerCompleted?: boolean;
+  digitizerSentToOM?: boolean;
+  digitizerCompletedAt?: number;
   isRework?: boolean;
   isAdminOrder?: boolean;
   reworkNotes?: string;

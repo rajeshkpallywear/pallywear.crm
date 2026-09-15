@@ -69,6 +69,33 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
     );
   };
 
+  // Helper to check if an order has been completed by Digitizer and sent to Order Management
+  const isDigitizerDone = (o: Order) => {
+    // 1. Explicit completion flags in root order or details
+    if (o.digitizerCompleted === true || o.details?.digitizerCompleted === true || o.details?.digitizerCompleted === 'true') {
+      return true;
+    }
+    if (o.digitizerSentToOM === true || o.details?.digitizerSentToOM === true || o.details?.digitizerSentToOM === 'true') {
+      return true;
+    }
+    if (o.details?.hasMachineFiles === true || o.details?.hasMachineFiles === 'true') {
+      return true;
+    }
+    if (o.machineFiles && o.machineFiles.length > 0) {
+      return true;
+    }
+
+    // 2. Status progression: Once an order has moved to order_management, production, delivery, or delivered,
+    // the digitizing stage is completely done!
+    const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
+    const normStatus = String(effStatus || '').toLowerCase();
+    if (['order_management', 'production', 'delivery', 'delivered'].includes(normStatus)) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Filter orders with debounced search
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
@@ -78,18 +105,20 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
         o.id.toLowerCase().includes(term) ||
         (o.category || '').toLowerCase().includes(term);
 
+      if (!matchesSearch) return false;
+
       // ONLY show orders that Design explicitly sent to Digitizer
       const sentToDigitizer = isOrderForDigitizer(o);
       if (!sentToDigitizer) return false;
 
-      const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-      const normStatus = String(effStatus || '').toLowerCase();
-      const relevantStatus = ['design', 'order_management', 'production'].includes(normStatus);
+      const done = isDigitizerDone(o);
 
       if (viewMode === 'pending') {
-        return matchesSearch && relevantStatus && !o.machineFiles?.length;
+        // Pending only shows orders waiting for digitizing (not yet sent to OM)
+        return !done;
       } else {
-        return matchesSearch && ((o.machineFiles && o.machineFiles.length > 0) || normStatus === 'delivered');
+        // Done list only shows orders sent to OM or completed
+        return done;
       }
     });
   }, [orders, debouncedSearchTerm, viewMode]);
@@ -108,7 +137,12 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
   }, [viewMode, filteredOrders]);
 
   const handleUploadSpecs = async () => {
-    if (!selectedOrder || uploadFiles.length === 0) return;
+    if (!selectedOrder) return;
+    if (uploadFiles.length === 0 && (!selectedOrder.machineFiles || selectedOrder.machineFiles.length === 0)) {
+      if (!window.confirm("Send to Order Management without attaching new machine files?")) {
+        return;
+      }
+    }
 
     const nextOrderState = {
       ...selectedOrder,
@@ -122,18 +156,30 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
 
     setIsProcessing(true);
     try {
-      await onUpdateOrder(selectedOrder.id, {
+      const updates: Partial<Order> = {
         machineFiles: [...(selectedOrder.machineFiles || []), ...uploadFiles],
         status: OrderStatus.ORDER_MANAGEMENT,
+        digitizerCompleted: true,
+        digitizerSentToOM: true,
+        digitizerCompletedAt: Date.now(),
+        details: {
+          ...(selectedOrder.details || {}),
+          digitizerCompleted: true,
+          digitizerSentToOM: true,
+          digitizerCompletedAt: Date.now(),
+          hasMachineFiles: Boolean(uploadFiles.length > 0 || (selectedOrder.machineFiles && selectedOrder.machineFiles.length > 0))
+        },
         updatedAt: Date.now()
-      });
+      };
+
+      await onUpdateOrder(selectedOrder.id, updates);
 
       setUploadFiles([]);
       setSelectedOrder(null);
-      alert("Garage ZIP file uploaded successfully and order sent to Order Management!");
+      alert("✓ Order successfully sent to Order Management and moved to Done list!");
     } catch (error) {
       console.error(error);
-      alert("Failed to upload files.");
+      alert("Failed to send order to Order Management.");
     } finally {
       setIsProcessing(false);
     }
@@ -219,11 +265,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ⏳ Pending ({orders.filter(o => {
-              const effStatus = o.status === OrderStatus.HOLD ? o.previousStatus : o.status;
-              const normStatus = String(effStatus || '').toLowerCase();
-              return isOrderForDigitizer(o) && ['design', 'order_management', 'production'].includes(normStatus) && !o.machineFiles?.length;
-            }).length})
+            ⏳ Pending ({orders.filter(o => isOrderForDigitizer(o) && !isDigitizerDone(o)).length})
           </button>
           <button
             onClick={() => { setViewMode('completed'); setSelectedOrder(null); }}
@@ -234,7 +276,7 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
                 : "text-gray-400 hover:text-gray-600"
             )}
           >
-            ✓ Done ({orders.filter(o => isOrderForDigitizer(o) && ((o.machineFiles && o.machineFiles.length > 0) || String(o.status || '').toLowerCase() === 'delivered')).length})
+            ✓ Done ({orders.filter(o => isOrderForDigitizer(o) && isDigitizerDone(o)).length})
           </button>
         </div>
 
@@ -597,9 +639,9 @@ export default function DigitizingDashboard({ orders, onUpdateOrder, isAdmin }: 
               {viewMode === 'pending' && (
                 <div className="p-6 border-t border-gray-50 bg-gray-50/20 flex justify-end gap-3">
                   <button
-                    disabled={isProcessing || uploadFiles.length === 0}
+                    disabled={isProcessing}
                     onClick={handleUploadSpecs}
-                    className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                    className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer border-none"
                   >
                     {isProcessing ? 'Processing...' : 'Send to Order Management'}
                     <ChevronRight size={14} />
