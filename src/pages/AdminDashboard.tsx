@@ -142,7 +142,10 @@ export default function AdminDashboard() {
   const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
   const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sla-tasks' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
+  const [slaTaskSearch, setSlaTaskSearch] = useState('');
+  const [slaDesignerFilter, setSlaDesignerFilter] = useState('all');
+  const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'overdue'>('all');
   const [userLogs, setUserLogs] = useState<any[]>([]);
   const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
   const [userSummaries, setUserSummaries] = useState<any[]>([]);
@@ -767,13 +770,61 @@ export default function AdminDashboard() {
     return staffUploadStats.reduce((sum, s) => sum + s.todayTotalValue, 0);
   }, [staffUploadStats]);
 
-  // Active claimed design studio tasks with 1-hour SLA
+  // Active claimed design studio tasks with 2-hour SLA
   const activeAdminDesignOrders = useMemo(() => {
     return orders.filter(o =>
       (o.assignedDesigner && o.assignedDesigner !== 'Unassigned' && !isOrderDesignCompleted(o)) ||
       Boolean((o.claimedAt || o.designClaimedAt) && !isOrderDesignCompleted(o))
     );
   }, [orders]);
+
+  const allDesignStudioOrders = useMemo(() => {
+    return orders.filter(o =>
+      Boolean(o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+      Boolean(o.claimedAt || o.designClaimedAt)
+    );
+  }, [orders]);
+
+  const uniqueDesignersList = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach(o => {
+      if (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') {
+        set.add(o.assignedDesigner);
+      }
+    });
+    return Array.from(set);
+  }, [orders]);
+
+  const filteredSlaTasks = useMemo(() => {
+    return allDesignStudioOrders.filter(o => {
+      const isCompleted = isOrderDesignCompleted(o);
+      const claimedTime = Number(o.claimedAt || o.designClaimedAt || 0);
+      const deadline = claimedTime + 120 * 60 * 1000;
+      const isOverdue = !isCompleted && claimedTime > 0 && (deadline < Date.now());
+
+      if (slaStatusFilter === 'in_progress' && isCompleted) return false;
+      if (slaStatusFilter === 'completed' && !isCompleted) return false;
+      if (slaStatusFilter === 'overdue' && (!isOverdue || isCompleted)) return false;
+
+      if (slaDesignerFilter !== 'all' && o.assignedDesigner !== slaDesignerFilter) {
+        return false;
+      }
+
+      if (slaTaskSearch.trim()) {
+        const q = slaTaskSearch.toLowerCase().trim();
+        const id = String(o.id || '').toLowerCase();
+        const num = String(o.orderNumber || '').toLowerCase();
+        const cust = String(o.customerInfo?.name || (o as any).clientName || '').toLowerCase();
+        const des = String(o.assignedDesigner || '').toLowerCase();
+        const cat = String(o.category || '').toLowerCase();
+        if (!id.includes(q) && !num.includes(q) && !cust.includes(q) && !des.includes(q) && !cat.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [allDesignStudioOrders, slaStatusFilter, slaDesignerFilter, slaTaskSearch]);
 
   const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory') => {
     let totalCount = 0;
@@ -1094,6 +1145,27 @@ export default function AdminDashboard() {
               title={isSidebarCollapsed ? "Global Orders" : ""}
             >
               <Zap className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Global Orders</span>}
+            </button>
+            <button
+              onClick={() => selectTab('sla-tasks')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'sla-tasks' ? "bg-white text-purple-700 border-2 border-purple-300 shadow-lg shadow-purple-500/10" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-purple-600"
+              )}
+              title={isSidebarCollapsed ? "SLA Task Monitor" : ""}
+            >
+              <Clock className="w-4 h-4 flex-shrink-0 text-purple-600" />
+              {(!isSidebarCollapsed || isMobileOpen) && (
+                <div className="flex items-center justify-between w-full">
+                  <span>SLA Tasks</span>
+                  {activeAdminDesignOrders.length > 0 && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black bg-purple-100 text-purple-700 rounded-full">
+                      {activeAdminDesignOrders.length}
+                    </span>
+                  )}
+                </div>
+              )}
             </button>
             <button
               onClick={() => selectTab('invoices')}
@@ -1579,7 +1651,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Design Studio Active Tasks — 1-Hour SLA Monitor */}
+                {/* Design Studio Active Tasks — 2-Hour SLA Monitor */}
                 <div className="w-full bg-white p-6 sm:p-7 rounded-3xl border border-gray-100 shadow-sm text-left mb-8 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
                     <div className="flex items-center gap-3">
@@ -1588,19 +1660,28 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <h3 className="font-black text-gray-900 text-base tracking-tight flex items-center gap-2">
-                          Design Studio Live 1-Hour SLA Tasks Monitor
+                          Design Studio Live 2-Hour SLA Tasks Monitor
                           <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-black rounded-full">
                             {activeAdminDesignOrders.length} In Progress
                           </span>
                         </h3>
                         <p className="text-xs text-gray-400 font-medium mt-0.5">
-                          Real-time countdown tracking (60-minute target SLA) for active claimed design tasks across all designers
+                          Real-time countdown tracking (120-minute target SLA) for active claimed design tasks across all designers
                         </p>
                       </div>
                     </div>
-                    <span className="text-[11px] font-bold text-gray-400">
-                      Standard SLA: 60 mins / task
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] font-bold text-gray-400">
+                        Standard SLA: 120 mins / task
+                      </span>
+                      <button
+                        onClick={() => selectTab('sla-tasks')}
+                        className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-sm shadow-purple-500/20 border-none cursor-pointer"
+                      >
+                        <span>Open Full SLA Monitor</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
                   </div>
 
                   {activeAdminDesignOrders.length === 0 ? (
@@ -1609,7 +1690,7 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {activeAdminDesignOrders.map(order => {
+                      {activeAdminDesignOrders.slice(0, 6).map(order => {
                         const isCompleted = isOrderDesignCompleted(order);
                         return (
                           <div
@@ -1634,7 +1715,7 @@ export default function AdminDashboard() {
                               </span>
                             </div>
                             <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between">
-                              <span className="text-[10px] text-gray-400 font-medium">1-Hour SLA:</span>
+                              <span className="text-[10px] text-gray-400 font-medium">2-Hour SLA:</span>
                               <DesignTaskTimer
                                 claimedAt={order.claimedAt || order.designClaimedAt}
                                 completedAt={order.designCompletedAt}
@@ -1645,6 +1726,16 @@ export default function AdminDashboard() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {activeAdminDesignOrders.length > 6 && (
+                    <div className="pt-2 text-center">
+                      <button
+                        onClick={() => selectTab('sla-tasks')}
+                        className="text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline bg-transparent border-none cursor-pointer"
+                      >
+                        View all {activeAdminDesignOrders.length} active SLA tasks →
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1658,32 +1749,23 @@ export default function AdminDashboard() {
                         Cumulative revenue trend from delivered global orders over time
                       </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3.5 py-1.5 rounded-xl border border-brand-primary/20">
-                        {orders.length} Global Orders
-                      </span>
-                      <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl">
-                        ₹{Math.round(totalDeliveredOrdersRevenue || aggregateTotal).toLocaleString('en-IN')} Delivered Revenue
-                      </span>
-                    </div>
+                    <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3 py-1.5 rounded-xl">
+                      Total Delivered: ₹{Math.round(totalDeliveredOrdersRevenue).toLocaleString('en-IN')}
+                    </span>
                   </div>
-                  <div className="h-[380px] sm:h-[420px] w-full">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <AreaChart data={globalDeliveredOrdersChartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+
+                  <div className="h-96 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={globalDeliveredOrdersChartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorDeliveredOrdersRev" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3291B6" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#3291B6" stopOpacity={0.02} />
+                            <stop offset="95%" stopColor="#3291B6" stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700, fill: '#9ca3af' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
-                        <YAxis
-                          tick={{ fontSize: 11, fontWeight: 700, fill: '#3291B6' }}
-                          tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
-                          tickLine={false}
-                          axisLine={{ stroke: '#e5e7eb' }}
-                        />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <XAxis dataKey="name" stroke="#9ca3af" tick={{ fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
+                        <YAxis stroke="#9ca3af" tick={{ fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={val => `₹${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`} />
                         <Tooltip
                           formatter={(val: any, name: any) => [
                             `₹${Number(val || 0).toLocaleString('en-IN')}`,
@@ -1698,6 +1780,139 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </>
+            ) : activeTab === 'sla-tasks' ? (
+              <div className="space-y-6 text-left">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                      <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
+                      🎨 Design Studio Live 2-Hour SLA Tasks Monitor
+                    </h2>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">
+                      Real-time SLA countdown (120 minutes per claimed task) for Graphic Designers & Artworks
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-black rounded-full">
+                      {activeAdminDesignOrders.length} In Progress
+                    </span>
+                    <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black rounded-full">
+                      {allDesignStudioOrders.filter(o => isOrderDesignCompleted(o)).length} Completed
+                    </span>
+                  </div>
+                </div>
+
+                {/* Search & Filter Bar */}
+                <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    {/* Status filter tabs */}
+                    {[
+                      { id: 'all', label: `All Tasks (${allDesignStudioOrders.length})` },
+                      { id: 'in_progress', label: `⚡ In Progress (${activeAdminDesignOrders.length})` },
+                      { id: 'overdue', label: `🚨 Overdue` },
+                      { id: 'completed', label: `✓ Completed` }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setSlaStatusFilter(f.id as any)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-black transition-all border-none cursor-pointer",
+                          slaStatusFilter === f.id
+                            ? "bg-purple-600 text-white shadow-sm shadow-purple-500/20"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    {/* Designer dropdown */}
+                    <select
+                      value={slaDesignerFilter}
+                      onChange={(e) => setSlaDesignerFilter(e.target.value)}
+                      className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none cursor-pointer text-gray-700"
+                    >
+                      <option value="all">All Designers</option>
+                      {uniqueDesignersList.map(d => (
+                        <option key={d} value={d}>🎨 {d}</option>
+                      ))}
+                    </select>
+
+                    {/* Search box */}
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search order #, client, designer..."
+                        value={slaTaskSearch}
+                        onChange={(e) => setSlaTaskSearch(e.target.value)}
+                        className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SLA Cards Grid */}
+                {filteredSlaTasks.length === 0 ? (
+                  <div className="bg-white p-12 rounded-3xl border border-gray-150 text-center text-gray-400 font-medium text-xs">
+                    No SLA tasks found matching your filter criteria.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredSlaTasks.map(order => {
+                      const isCompleted = isOrderDesignCompleted(order);
+                      return (
+                        <div
+                          key={order.id}
+                          onClick={() => setSelectedOrderDetail(order)}
+                          className="bg-white p-5 rounded-3xl border border-gray-150 hover:border-purple-300 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-black text-sm text-brand-primary group-hover:text-purple-700 transition-colors">
+                              #{order.orderNumber || order.id.slice(-8)}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200">
+                              {order.category}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <p className="text-sm font-black text-gray-900 truncate">
+                              {order.customerInfo?.name || (order as any).clientName || 'Customer'}
+                            </p>
+                            <p className="text-[11px] text-gray-500 font-medium truncate">
+                              Created by: <span className="font-bold text-gray-700">{order.createdByName || order.createdBy || 'Staff'}</span>
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                            <span className="text-[10px] font-black px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg flex items-center gap-1">
+                              🎨 {order.assignedDesigner || 'Designer'}
+                            </span>
+                            <span className="font-mono font-black text-gray-900">
+                              ₹{(Number(order.financials?.totalAmount) || 0).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+
+                          <div className="pt-2 border-t border-gray-100">
+                            <DesignTaskTimer
+                              claimedAt={order.claimedAt || order.designClaimedAt}
+                              completedAt={order.designCompletedAt}
+                              isCompleted={isCompleted}
+                              variant="bar"
+                              designerName={order.assignedDesigner}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             ) : activeTab === 'invoices' ? (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">

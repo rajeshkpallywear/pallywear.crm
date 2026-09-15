@@ -6,7 +6,7 @@ interface DesignTaskTimerProps {
   claimedAt?: number;
   completedAt?: number;
   isCompleted?: boolean;
-  slaMinutes?: number; // default 60 (1 hour)
+  slaMinutes?: number; // default 120 (2 hours)
   variant?: 'badge' | 'compact' | 'bar';
   className?: string;
   designerName?: string;
@@ -16,7 +16,7 @@ export default function DesignTaskTimer({
   claimedAt,
   completedAt,
   isCompleted = false,
-  slaMinutes = 60,
+  slaMinutes = 120,
   variant = 'badge',
   className,
   designerName
@@ -34,7 +34,7 @@ export default function DesignTaskTimer({
   if (!claimedAt) {
     return (
       <span className={cn("text-[9px] font-bold text-gray-400 inline-flex items-center gap-1", className)}>
-        <Clock className="w-3 h-3 opacity-60" /> 1h SLA ready
+        <Clock className="w-3 h-3 opacity-60" /> 2h SLA ready
       </span>
     );
   }
@@ -55,7 +55,7 @@ export default function DesignTaskTimer({
         className
       )}>
         <CheckCircle2 className="w-2.5 h-2.5" />
-        {wasOnTime ? `Done in ${elapsedMins}m ${elapsedSecs}s (Within 1h)` : `Done in ${elapsedMins}m (+${elapsedMins - slaMinutes}m over 1h SLA)`}
+        {wasOnTime ? `Done in ${elapsedMins}m ${elapsedSecs}s (Within 2h)` : `Done in ${elapsedMins}m (+${elapsedMins - slaMinutes}m over 2h SLA)`}
       </span>
     );
   }
@@ -65,7 +65,12 @@ export default function DesignTaskTimer({
   const absDiff = Math.abs(diffMs);
   const minutes = Math.floor(absDiff / 60000);
   const seconds = Math.floor((absDiff % 60000) / 1000);
-  const formattedTime = `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  
+  const formattedTime = hours > 0 
+    ? `${hours}h ${remainingMins}m ${seconds.toString().padStart(2, '0')}s`
+    : `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 
   if (variant === 'bar') {
     const elapsed = Math.max(0, now - claimedAt);
@@ -75,7 +80,7 @@ export default function DesignTaskTimer({
         "p-3 rounded-2xl border transition-all shadow-xs",
         isOverdue 
           ? "bg-red-50/90 border-red-300 text-red-900" 
-          : diffMs < 15 * 60000 
+          : diffMs < 30 * 60000 
             ? "bg-amber-50/90 border-amber-300 text-amber-900" 
             : "bg-purple-50/90 border-purple-200 text-purple-900",
         className
@@ -83,7 +88,7 @@ export default function DesignTaskTimer({
         <div className="flex items-center justify-between text-xs font-black">
           <div className="flex items-center gap-1.5">
             <Timer className={cn("w-4 h-4", isOverdue ? "text-red-600 animate-pulse" : "text-purple-600 animate-spin-slow")} />
-            <span>1-Hour Task SLA Timer</span>
+            <span>2-Hour Task SLA Timer</span>
             {designerName && (
               <span className="text-[10px] font-bold opacity-75">({designerName})</span>
             )}
@@ -96,7 +101,7 @@ export default function DesignTaskTimer({
             ) : (
               <span className={cn(
                 "font-black px-2 py-0.5 rounded-lg border bg-white/90 flex items-center gap-1",
-                diffMs < 15 * 60000 ? "text-amber-700 border-amber-200" : "text-purple-700 border-purple-200"
+                diffMs < 30 * 60000 ? "text-amber-700 border-amber-200" : "text-purple-700 border-purple-200"
               )}>
                 <Clock className="w-3 h-3" /> {formattedTime} remaining
               </span>
@@ -108,7 +113,7 @@ export default function DesignTaskTimer({
           <div
             className={cn(
               "h-full transition-all duration-1000",
-              isOverdue ? "bg-red-600" : diffMs < 15 * 60000 ? "bg-amber-500" : "bg-gradient-to-r from-purple-500 to-indigo-600"
+              isOverdue ? "bg-red-600" : diffMs < 30 * 60000 ? "bg-amber-500" : "bg-gradient-to-r from-purple-500 to-indigo-600"
             )}
             style={{ width: `${progressPct}%` }}
           />
@@ -129,8 +134,8 @@ export default function DesignTaskTimer({
     );
   }
 
-  if (diffMs < 15 * 60000) {
-    // Less than 15 mins left
+  if (diffMs < 30 * 60000) {
+    // Less than 30 mins left
     return (
       <span className={cn(
         "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 animate-pulse",

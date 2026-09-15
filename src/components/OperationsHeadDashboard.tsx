@@ -27,9 +27,11 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const orders = propOrders || contextOrders || [];
 
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedWorkflowTab, setSelectedWorkflowTab] = useState<'all' | 'design_completed' | 'rework' | 'order_management' | 'digitizer_completed' | 'production_completed' | 'delivery'>('all');
+  const [selectedWorkflowTab, setSelectedWorkflowTab] = useState<'all' | 'sla_tasks' | 'design_completed' | 'rework' | 'order_management' | 'digitizer_completed' | 'production_completed' | 'delivery'>('all');
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
+  const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
+  const [slaDesignerFilter, setSlaDesignerFilter] = useState<string>('all');
+  const [slaSearchTerm, setSlaSearchTerm] = useState('');
 
   // Helper to determine if an order matches date filter
   const filterByDate = (timestamp?: number) => {
@@ -139,7 +141,70 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const deliveryOrders = useMemo(() => baseFilteredOrders.filter(isInDelivery), [baseFilteredOrders]);
   const deliveredSuccessOrders = useMemo(() => baseFilteredOrders.filter(o => String(o.status || '').toLowerCase() === 'delivered' || o.status === OrderStatus.DELIVERED), [baseFilteredOrders]);
   const inTransitOrders = useMemo(() => baseFilteredOrders.filter(o => String(o.status || '').toLowerCase() === 'delivery' || o.status === OrderStatus.DELIVERY), [baseFilteredOrders]);
-  
+
+  // All design studio related orders
+  const allDesignStudioOrders = useMemo(() => {
+    return baseFilteredOrders.filter(o =>
+      Boolean(o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+      Boolean(o.claimedAt || o.designClaimedAt) ||
+      isDesignCompleted(o) ||
+      o.status === OrderStatus.DESIGN
+    );
+  }, [baseFilteredOrders]);
+
+  // Active claimed in-progress design orders for 2-hour SLA monitor
+  const activeDesignClaimedOrders = useMemo(() => {
+    return baseFilteredOrders.filter(o => {
+      const isClaimed = Boolean(
+        (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+        o.claimedAt ||
+        o.designClaimedAt
+      );
+      const isCompleted = isDesignCompleted(o);
+      return isClaimed && !isCompleted;
+    });
+  }, [baseFilteredOrders]);
+
+  // Unique designers
+  const uniqueDesignersList = useMemo(() => {
+    const set = new Set<string>();
+    allDesignStudioOrders.forEach(o => {
+      if (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') {
+        set.add(o.assignedDesigner);
+      }
+    });
+    return Array.from(set);
+  }, [allDesignStudioOrders]);
+
+  // Filtered SLA tasks for dedicated monitor
+  const filteredSlaTasks = useMemo(() => {
+    const now = Date.now();
+    return allDesignStudioOrders.filter(o => {
+      const isCompleted = isDesignCompleted(o);
+      const claimTime = o.claimedAt ? new Date(o.claimedAt).getTime() : (o.designClaimedAt ? new Date(o.designClaimedAt).getTime() : 0);
+      const isOverdue = claimTime > 0 && !isCompleted && (now - claimTime > 120 * 60 * 1000);
+
+      if (slaStatusFilter === 'in_progress' && isCompleted) return false;
+      if (slaStatusFilter === 'completed' && !isCompleted) return false;
+      if (slaStatusFilter === 'overdue' && !isOverdue) return false;
+
+      if (slaDesignerFilter !== 'all' && o.assignedDesigner !== slaDesignerFilter) {
+        return false;
+      }
+
+      if (slaSearchTerm.trim()) {
+        const term = slaSearchTerm.toLowerCase();
+        const num = (o.orderNumber || o.id || '').toLowerCase();
+        const cust = (o.customerInfo?.name || (o as any).clientName || '').toLowerCase();
+        const des = (o.assignedDesigner || '').toLowerCase();
+        const cat = (o.category || '').toLowerCase();
+        return num.includes(term) || cust.includes(term) || des.includes(term) || cat.includes(term);
+      }
+
+      return true;
+    });
+  }, [allDesignStudioOrders, slaStatusFilter, slaDesignerFilter, slaSearchTerm]);
+
   // Marketing Created Orders Breakdown
   const marketingStaffSummary = useMemo(() => {
     const staffMap: Record<string, {
@@ -294,32 +359,36 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
         </div>
 
         {/* Live Status Strip */}
-        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15">
+        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15 cursor-pointer hover:bg-white/20 transition-all" onClick={() => setSelectedWorkflowTab('all')}>
             <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">📦 Marketing Created</p>
             <p className="text-xl font-black text-white mt-0.5">{baseFilteredOrders.length}</p>
           </div>
-          <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20">
+          <div className="bg-purple-500/20 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/30 cursor-pointer hover:bg-purple-500/30 transition-all ring-1 ring-purple-400/40" onClick={() => setSelectedWorkflowTab('sla_tasks')}>
+            <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider flex items-center gap-1">⏱️ 2h SLA Tasks</p>
+            <p className="text-xl font-black text-purple-100 mt-0.5">{activeDesignClaimedOrders.length}</p>
+          </div>
+          <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-all" onClick={() => setSelectedWorkflowTab('design_completed')}>
             <p className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">🎨 Designs Done</p>
             <p className="text-xl font-black text-purple-200 mt-0.5">{designCompletedOrders.length}</p>
           </div>
-          <div className="bg-amber-500/10 backdrop-blur-xs p-3 rounded-2xl border border-amber-500/20">
+          <div className="bg-amber-500/10 backdrop-blur-xs p-3 rounded-2xl border border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-all" onClick={() => setSelectedWorkflowTab('rework')}>
             <p className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">🔄 Reworks</p>
             <p className="text-xl font-black text-amber-200 mt-0.5">{reworkOrders.length}</p>
           </div>
-          <div className="bg-cyan-500/10 backdrop-blur-xs p-3 rounded-2xl border border-cyan-500/20">
+          <div className="bg-cyan-500/10 backdrop-blur-xs p-3 rounded-2xl border border-cyan-500/20 cursor-pointer hover:bg-cyan-500/20 transition-all" onClick={() => setSelectedWorkflowTab('order_management')}>
             <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">📋 In Order Mgmt</p>
             <p className="text-xl font-black text-cyan-200 mt-0.5">{orderManagementOrders.length}</p>
           </div>
-          <div className="bg-pink-500/10 backdrop-blur-xs p-3 rounded-2xl border border-pink-500/20">
+          <div className="bg-pink-500/10 backdrop-blur-xs p-3 rounded-2xl border border-pink-500/20 cursor-pointer hover:bg-pink-500/20 transition-all" onClick={() => setSelectedWorkflowTab('digitizer_completed')}>
             <p className="text-[10px] text-pink-300 font-bold uppercase tracking-wider">✂️ Digitizer Done</p>
             <p className="text-xl font-black text-pink-200 mt-0.5">{digitizerCompletedOrders.length}</p>
           </div>
-          <div className="bg-orange-500/10 backdrop-blur-xs p-3 rounded-2xl border border-orange-500/20">
+          <div className="bg-orange-500/10 backdrop-blur-xs p-3 rounded-2xl border border-orange-500/20 cursor-pointer hover:bg-orange-500/20 transition-all" onClick={() => setSelectedWorkflowTab('production_completed')}>
             <p className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">🏭 Production Done</p>
             <p className="text-xl font-black text-orange-200 mt-0.5">{productionCompletedOrders.length}</p>
           </div>
-          <div className="bg-emerald-500/10 backdrop-blur-xs p-3 rounded-2xl border border-emerald-500/20">
+          <div className="bg-emerald-500/10 backdrop-blur-xs p-3 rounded-2xl border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all" onClick={() => setSelectedWorkflowTab('delivery')}>
             <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">🚚 Delivery Total</p>
             <p className="text-xl font-black text-emerald-200 mt-0.5">{deliveryOrders.length}</p>
           </div>
@@ -659,6 +728,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
           <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/50">
             {[
               { id: 'all', label: 'All Orders', count: baseFilteredOrders.length },
+              { id: 'sla_tasks', label: '⏱️ 2-Hour SLA Monitor', count: activeDesignClaimedOrders.length },
               { id: 'design_completed', label: '🎨 Design Done', count: designCompletedOrders.length },
               { id: 'rework', label: '🔄 Reworks', count: reworkOrders.length },
               { id: 'order_management', label: '📋 Order Mgmt', count: orderManagementOrders.length },
@@ -672,14 +742,20 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                 className={cn(
                   "px-3.5 py-2 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5",
                   selectedWorkflowTab === tab.id
-                    ? "bg-white text-brand-primary shadow-xs font-black"
+                    ? tab.id === 'sla_tasks'
+                      ? "bg-purple-600 text-white shadow-xs font-black"
+                      : "bg-white text-brand-primary shadow-xs font-black"
                     : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 )}
               >
                 <span>{tab.label}</span>
                 <span className={cn(
                   "text-[10px] px-1.5 py-0.2 rounded-full font-black",
-                  selectedWorkflowTab === tab.id ? "bg-brand-primary/10 text-brand-primary" : "bg-gray-200/70 text-gray-600"
+                  selectedWorkflowTab === tab.id
+                    ? tab.id === 'sla_tasks'
+                      ? "bg-white text-purple-700"
+                      : "bg-brand-primary/10 text-brand-primary"
+                    : "bg-gray-200/70 text-gray-600"
                 )}>
                   {tab.count}
                 </span>
@@ -687,21 +763,163 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             ))}
           </div>
 
-          {/* Search Box */}
-          <div className="relative min-w-[260px]">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by order #, client, category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:bg-white transition-all"
-            />
-          </div>
+          {/* Search Box for Table */}
+          {selectedWorkflowTab !== 'sla_tasks' && (
+            <div className="relative min-w-[260px]">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by order #, client, category..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:bg-white transition-all"
+              />
+            </div>
+          )}
         </div>
 
-        {/* Orders Table */}
-        <div className="overflow-x-auto">
+        {selectedWorkflowTab === 'sla_tasks' ? (
+          /* DEDICATED 2-HOUR SLA MONITOR VIEW */
+          <div className="space-y-6 text-left">
+            {/* Header & Controls */}
+            <div className="bg-gray-50/70 rounded-3xl border border-gray-200/70 p-6 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                    <Palette size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+                      Operations Live 2-Hour SLA Tasks Monitor
+                      <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-black rounded-full">
+                        {activeDesignClaimedOrders.length} Active in Studio
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Real-time countdown tracking (120-minute SLA target) for claimed and in-progress design tasks
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+                    Standard SLA: 120 mins / task
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-gray-200/60">
+                {/* Search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search order #, client, designer..."
+                    value={slaSearchTerm}
+                    onChange={(e) => setSlaSearchTerm(e.target.value)}
+                    className="w-full text-xs bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 font-medium"
+                  />
+                </div>
+
+                {/* Designer Filter */}
+                <div className="relative">
+                  <select
+                    value={slaDesignerFilter}
+                    onChange={(e) => setSlaDesignerFilter(e.target.value)}
+                    className="w-full text-xs bg-white border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 font-medium text-gray-700"
+                  >
+                    <option value="all">All Designers ({uniqueDesignersList.length})</option>
+                    {uniqueDesignersList.map(d => (
+                      <option key={d} value={d}>🎨 {d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Filter Buttons */}
+                <div className="sm:col-span-2 flex items-center gap-1.5 bg-white p-1 rounded-xl border border-gray-200 overflow-x-auto">
+                  {[
+                    { id: 'all', label: 'All Tasks' },
+                    { id: 'in_progress', label: `In Progress (${activeDesignClaimedOrders.length})` },
+                    { id: 'completed', label: 'Completed' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSlaStatusFilter(tab.id as any)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer whitespace-nowrap",
+                        slaStatusFilter === tab.id
+                          ? "bg-purple-600 text-white shadow-xs font-black"
+                          : "text-gray-500 hover:text-gray-900 bg-transparent"
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* SLA Cards Grid */}
+            {filteredSlaTasks.length === 0 ? (
+              <div className="bg-gray-50 p-12 rounded-3xl border border-gray-150 text-center text-gray-400 font-medium text-xs">
+                No SLA tasks found matching your filter criteria.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredSlaTasks.map(order => {
+                  const isCompleted = isDesignCompleted(order);
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => setSelectedOrderForModal(order)}
+                      className="bg-white p-5 rounded-3xl border border-gray-150 hover:border-purple-300 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-black text-sm text-brand-primary group-hover:text-purple-700 transition-colors">
+                          #{order.orderNumber || order.id.slice(-8)}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200">
+                          {order.category}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-sm font-black text-gray-900 truncate">
+                          {order.customerInfo?.name || (order as any).clientName || 'Customer'}
+                        </p>
+                        <p className="text-[11px] text-gray-500 font-medium truncate">
+                          Marketing: <span className="font-bold text-gray-700">{order.createdByName || order.createdBy || 'Staff'}</span>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                        <span className="text-[10px] font-black px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg flex items-center gap-1">
+                          🎨 {order.assignedDesigner || 'Designer'}
+                        </span>
+                        <span className="font-mono font-black text-gray-900">
+                          ₹{(Number(order.financials?.totalAmount) || 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100">
+                        <DesignTaskTimer
+                          claimedAt={order.claimedAt || order.designClaimedAt}
+                          completedAt={order.designCompletedAt}
+                          isCompleted={isCompleted}
+                          variant="bar"
+                          designerName={order.assignedDesigner}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* REGULAR WORKFLOW ORDERS TABLE */
+          <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-gray-50/80 text-[10px] font-black text-gray-400 uppercase tracking-wider border-b border-gray-100">
               <tr>
@@ -885,6 +1103,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             </tbody>
           </table>
         </div>
+      )}
       </div>
 
       {/* ─── Order Detail Modal Integration ─────────────────────────────────── */}

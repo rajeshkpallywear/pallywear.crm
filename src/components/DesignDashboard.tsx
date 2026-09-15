@@ -499,7 +499,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           designSlaMinutes: 60,
           updatedAt: Date.now()
         });
-        alert(`Success: Order #${item.id.slice(-8)} is now claimed by you! A 1-Hour SLA task timer has started. Opening Workspace...`);
+        alert(`Success: Order #${item.id.slice(-8)} is now claimed by you! A 2-Hour SLA task timer has started. Opening Workspace...`);
         const fullOrder = orders.find(o => o.id === item.id);
         if (fullOrder) {
           setSelectedOrder({
@@ -509,8 +509,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             claimedByName: designerName,
             claimedAt: claimTime,
             designClaimedAt: claimTime,
-            designDeadline: claimTime + 60 * 60 * 1000,
-            designSlaMinutes: 60
+            designDeadline: claimTime + 120 * 60 * 1000,
+            designSlaMinutes: 120
           });
           // Initialize file arrays
           setDesignFiles(fullOrder.designAttachments || []);
@@ -539,7 +539,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         localStorage.setItem('pallywear_conversations', JSON.stringify(updated));
         loadStaffConversations();
         setSelectedItemIdForStaffChat(item.id);
-        alert(`Success: Consultation claimed by you! A 1-Hour SLA task timer has started. Opening Staff dialogue panel...`);
+        alert(`Success: Consultation claimed by you! A 2-Hour SLA task timer has started. Opening Staff dialogue panel...`);
         setIsStaffChatOpen(true);
       }
     } catch (e) {

@@ -12,6 +12,59 @@ import { cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import DesignTaskTimer from './DesignTaskTimer';
 
+// Helper to check if order was sent to Accounts
+const isSentToAccounts = (o: Order) => {
+  return Boolean(
+    o.status === OrderStatus.ACCOUNTS ||
+    String(o.status || '').toLowerCase() === 'accounts' ||
+    o.movedToAccountsAt ||
+    o.details?.movedToAccountsAt ||
+    o.sentByAccounts
+  );
+};
+
+// Helper to check if order was sent to Design Studio
+const isSentToDesigns = (o: Order) => {
+  return Boolean(
+    o.status === OrderStatus.DESIGN ||
+    String(o.status || '').toLowerCase() === 'design' ||
+    o.designSentToMarketing ||
+    o.details?.designSentToMarketing ||
+    o.designCompleted ||
+    o.details?.designCompleted ||
+    o.original_design_file ||
+    o.original_design_zip ||
+    (o.designAttachments && o.designAttachments.length > 0) ||
+    (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')
+  );
+};
+
+// Helper to check if order has received completed design files from Design Studio
+const isReceivedDesignsFile = (o: Order) => {
+  return Boolean(
+    o.designCompleted === true ||
+    o.details?.designCompleted === true ||
+    o.details?.designCompleted === 'true' ||
+    o.designSentToMarketing === true ||
+    o.details?.designSentToMarketing === true ||
+    Boolean(o.original_design_file) ||
+    Boolean(o.original_design_zip) ||
+    (o.designAttachments && o.designAttachments.length > 0)
+  );
+};
+
+// Helper to extract Order Value
+const getOrderAmount = (o: Order) => {
+  const val = Number(o.financials?.totalAmount || o.netTotal || o.totalOrderValue || 0);
+  return isNaN(val) ? 0 : val;
+};
+
+// Helper to extract Advance Paid
+const getAdvanceAmount = (o: Order) => {
+  const val = Number(o.financials?.advancePay || o.advanceAmount || 0);
+  return isNaN(val) ? 0 : val;
+};
+
 interface SalesHeadDashboardProps {
   orders?: Order[];
   invoices?: Invoice[];
@@ -31,6 +84,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const [selectedExecutive, setSelectedExecutive] = useState<string | null>(null);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeViewTab, setActiveViewTab] = useState<'overview' | 'sla_monitor'>('overview');
+  const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
+  const [slaDesignerFilter, setSlaDesignerFilter] = useState<string>('all');
+  const [slaSearchTerm, setSlaSearchTerm] = useState('');
 
   // Helper to determine if an order matches date filter
   const filterByDate = (timestamp?: number) => {
@@ -54,59 +111,6 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const filteredOrders = useMemo(() => {
     return orders.filter(o => filterByDate(o.createdAt));
   }, [orders, dateFilter]);
-
-  // Helper to check if order was sent to Accounts
-  const isSentToAccounts = (o: Order) => {
-    return Boolean(
-      o.status === OrderStatus.ACCOUNTS ||
-      String(o.status || '').toLowerCase() === 'accounts' ||
-      o.movedToAccountsAt ||
-      o.details?.movedToAccountsAt ||
-      o.sentByAccounts
-    );
-  };
-
-  // Helper to check if order was sent to Design Studio
-  const isSentToDesigns = (o: Order) => {
-    return Boolean(
-      o.status === OrderStatus.DESIGN ||
-      String(o.status || '').toLowerCase() === 'design' ||
-      o.designSentToMarketing ||
-      o.details?.designSentToMarketing ||
-      o.designCompleted ||
-      o.details?.designCompleted ||
-      o.original_design_file ||
-      o.original_design_zip ||
-      (o.designAttachments && o.designAttachments.length > 0) ||
-      (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')
-    );
-  };
-
-  // Helper to check if order has received completed design files from Design Studio
-  const isReceivedDesignsFile = (o: Order) => {
-    return Boolean(
-      o.designCompleted === true ||
-      o.details?.designCompleted === true ||
-      o.details?.designCompleted === 'true' ||
-      o.designSentToMarketing === true ||
-      o.details?.designSentToMarketing === true ||
-      Boolean(o.original_design_file) ||
-      Boolean(o.original_design_zip) ||
-      (o.designAttachments && o.designAttachments.length > 0)
-    );
-  };
-
-  // Helper to extract Order Value
-  const getOrderAmount = (o: Order) => {
-    const val = Number(o.financials?.totalAmount || o.netTotal || o.totalOrderValue || 0);
-    return isNaN(val) ? 0 : val;
-  };
-
-  // Helper to extract Advance Paid
-  const getAdvanceAmount = (o: Order) => {
-    const val = Number(o.financials?.advancePay || o.advanceAmount || 0);
-    return isNaN(val) ? 0 : val;
-  };
 
   // Group performance metrics by Marketing Executive
   const executiveMetrics = useMemo(() => {
@@ -264,13 +268,68 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return list;
   }, [activeExecutiveData, filteredOrders, statusFilter, searchTerm, selectedExecutive]);
 
-  // Active in-progress claimed design orders with 1-hour SLA
-  const activeDesignClaimedOrders = useMemo(() => {
+  // All orders with design studio activity
+  const allDesignStudioOrders = useMemo(() => {
     return filteredOrders.filter(o =>
-      (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
-      Boolean(o.claimedAt || o.designClaimedAt)
+      Boolean(o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+      Boolean(o.claimedAt || o.designClaimedAt) ||
+      Boolean(o.designCompleted || o.designSentToMarketing || o.original_design_file) ||
+      o.status === OrderStatus.DESIGN
     );
   }, [filteredOrders]);
+
+  // Active in-progress claimed design orders with 2-hour SLA
+  const activeDesignClaimedOrders = useMemo(() => {
+    return filteredOrders.filter(o => {
+      const isClaimed = Boolean(
+        (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+        o.claimedAt ||
+        o.designClaimedAt
+      );
+      const isCompleted = isReceivedDesignsFile(o);
+      return isClaimed && !isCompleted;
+    });
+  }, [filteredOrders]);
+
+  // Unique designers
+  const uniqueDesignersList = useMemo(() => {
+    const set = new Set<string>();
+    allDesignStudioOrders.forEach(o => {
+      if (o.assignedDesigner && o.assignedDesigner !== 'Unassigned') {
+        set.add(o.assignedDesigner);
+      }
+    });
+    return Array.from(set);
+  }, [allDesignStudioOrders]);
+
+  // Filtered SLA tasks for dedicated monitor
+  const filteredSlaTasks = useMemo(() => {
+    const now = Date.now();
+    return allDesignStudioOrders.filter(o => {
+      const isCompleted = isReceivedDesignsFile(o);
+      const claimTime = o.claimedAt ? new Date(o.claimedAt).getTime() : (o.designClaimedAt ? new Date(o.designClaimedAt).getTime() : 0);
+      const isOverdue = claimTime > 0 && !isCompleted && (now - claimTime > 120 * 60 * 1000);
+
+      if (slaStatusFilter === 'in_progress' && isCompleted) return false;
+      if (slaStatusFilter === 'completed' && !isCompleted) return false;
+      if (slaStatusFilter === 'overdue' && !isOverdue) return false;
+
+      if (slaDesignerFilter !== 'all' && o.assignedDesigner !== slaDesignerFilter) {
+        return false;
+      }
+
+      if (slaSearchTerm.trim()) {
+        const term = slaSearchTerm.toLowerCase();
+        const num = (o.orderNumber || o.id || '').toLowerCase();
+        const cust = (o.customerInfo?.name || (o as any).clientName || '').toLowerCase();
+        const des = (o.assignedDesigner || '').toLowerCase();
+        const cat = (o.category || '').toLowerCase();
+        return num.includes(term) || cust.includes(term) || des.includes(term) || cat.includes(term);
+      }
+
+      return true;
+    });
+  }, [allDesignStudioOrders, slaStatusFilter, slaDesignerFilter, slaSearchTerm]);
 
   // Export executive summary report as CSV
   const handleExportCSV = () => {
@@ -358,138 +417,336 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         </div>
       </div>
 
-      {/* High-Level Team KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-left">
-        {[
-          {
-            title: 'Orders Created',
-            val: teamTotals.totalOrders,
-            sub: `${executiveMetrics.length} Executives`,
-            icon: Package,
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-50',
-            border: 'border-indigo-100'
-          },
-          {
-            title: 'Sent to Accounts',
-            val: teamTotals.sentToAccounts,
-            sub: `${teamTotals.totalOrders > 0 ? Math.round((teamTotals.sentToAccounts / teamTotals.totalOrders) * 100) : 0}% Routed`,
-            icon: CreditCard,
-            color: 'text-amber-600',
-            bg: 'bg-amber-50',
-            border: 'border-amber-100'
-          },
-          {
-            title: 'Sent to Designs',
-            val: teamTotals.sentToDesigns,
-            sub: `${teamTotals.totalOrders > 0 ? Math.round((teamTotals.sentToDesigns / teamTotals.totalOrders) * 100) : 0}% In Studio`,
-            icon: Palette,
-            color: 'text-purple-600',
-            bg: 'bg-purple-50',
-            border: 'border-purple-100'
-          },
-          {
-            title: 'Designs Received',
-            val: teamTotals.receivedDesigns,
-            sub: `${teamTotals.sentToDesigns > 0 ? Math.round((teamTotals.receivedDesigns / teamTotals.sentToDesigns) * 100) : 0}% Art Ready`,
-            icon: FileCheck,
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50',
-            border: 'border-emerald-100'
-          },
-          {
-            title: 'Total Order Value',
-            val: `₹${teamTotals.totalOrderValue.toLocaleString()}`,
-            sub: `Adv: ₹${teamTotals.totalAdvance.toLocaleString()}`,
-            icon: DollarSign,
-            color: 'text-blue-600',
-            bg: 'bg-blue-50',
-            border: 'border-blue-100'
-          },
-          {
-            title: 'Invoices Created',
-            val: teamTotals.invoicesCount,
-            sub: `₹${teamTotals.totalInvoicedAmount.toLocaleString()}`,
-            icon: FileText,
-            color: 'text-teal-600',
-            bg: 'bg-teal-50',
-            border: 'border-teal-100'
-          }
-        ].map((kpi, idx) => (
-          <div key={idx} className={cn("p-5 rounded-3xl bg-white border shadow-xs flex flex-col justify-between space-y-3", kpi.border)}>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">{kpi.title}</span>
-              <div className={cn("p-2 rounded-xl", kpi.bg, kpi.color)}>
-                <kpi.icon size={16} />
+      {/* Navigation Tabs: Performance Overview vs Dedicated SLA Monitor */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setActiveViewTab('overview')}
+          className={cn(
+            "px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer",
+            activeViewTab === 'overview'
+              ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25 scale-[1.02]"
+              : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
+          )}
+        >
+          <BarChart2 size={16} /> Sales Performance Overview
+        </button>
+
+        <button
+          onClick={() => setActiveViewTab('sla_monitor')}
+          className={cn(
+            "px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer relative",
+            activeViewTab === 'sla_monitor'
+              ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 scale-[1.02]"
+              : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
+          )}
+        >
+          <Clock size={16} />
+          2-Hour SLA Tasks Monitor
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[10px] font-black",
+            activeViewTab === 'sla_monitor' ? "bg-white text-purple-700" : "bg-purple-100 text-purple-700"
+          )}>
+            {activeDesignClaimedOrders.length}
+          </span>
+        </button>
+      </div>
+
+      {activeViewTab === 'sla_monitor' ? (
+        /* DEDICATED 2-HOUR SLA MONITOR VIEW */
+        <div className="space-y-6 text-left">
+          {/* Header & Controls */}
+          <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                  <Palette size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                    Design Studio Live 2-Hour SLA Tasks Monitor
+                    <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-black rounded-full">
+                      {activeDesignClaimedOrders.length} In Progress
+                    </span>
+                  </h2>
+                  <p className="text-xs text-gray-500 font-medium">
+                    Real-time countdown tracking (120-minute target SLA) for active claimed design tasks across all designers
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                  Standard SLA: 120 mins / task
+                </span>
               </div>
             </div>
-            <div>
-              <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{kpi.val}</div>
-              <div className="text-[10px] font-bold text-gray-400 mt-0.5 truncate">{kpi.sub}</div>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Active Design Studio Tasks (1-Hour SLA Monitor) */}
-      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden space-y-4 p-6 text-left">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
-              <Palette size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                Design Studio Live 1-Hour SLA Tasks Monitor
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded-full">
-                  {activeDesignClaimedOrders.length} In Studio
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 font-medium">
-                Live countdown tracking (1-hour completion target) for all claimed and in-progress design tasks
-              </p>
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-gray-100">
+              {/* Search */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search order #, client, designer..."
+                  value={slaSearchTerm}
+                  onChange={(e) => setSlaSearchTerm(e.target.value)}
+                  className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 font-medium"
+                />
+              </div>
+
+              {/* Designer Filter */}
+              <div className="relative">
+                <select
+                  value={slaDesignerFilter}
+                  onChange={(e) => setSlaDesignerFilter(e.target.value)}
+                  className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 font-medium text-gray-700"
+                >
+                  <option value="all">All Designers ({uniqueDesignersList.length})</option>
+                  {uniqueDesignersList.map(d => (
+                    <option key={d} value={d}>🎨 {d}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter Buttons */}
+              <div className="sm:col-span-2 flex items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-200 overflow-x-auto">
+                {[
+                  { id: 'all', label: 'All Tasks' },
+                  { id: 'in_progress', label: `In Progress (${activeDesignClaimedOrders.length})` },
+                  { id: 'completed', label: 'Completed' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSlaStatusFilter(tab.id as any)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer whitespace-nowrap",
+                      slaStatusFilter === tab.id
+                        ? "bg-white text-purple-800 shadow-xs font-black"
+                        : "text-gray-500 hover:text-gray-900 bg-transparent"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <span className="text-[11px] font-bold text-gray-400">
-            Target SLA: 60 minutes per design
-          </span>
+
+          {/* Cards Grid */}
+          {filteredSlaTasks.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-gray-150 text-center text-gray-400 font-medium text-xs">
+              No SLA tasks found matching your filter criteria.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredSlaTasks.map(order => {
+                const isCompleted = isReceivedDesignsFile(order);
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => setSelectedOrderForModal(order)}
+                    className="bg-white p-5 rounded-3xl border border-gray-150 hover:border-purple-300 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-black text-sm text-brand-primary group-hover:text-purple-700 transition-colors">
+                        #{order.orderNumber || (order.id ? String(order.id).slice(-8) : 'N/A')}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200">
+                        {order.category}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-gray-900 truncate">
+                        {order.customerInfo?.name || (order as any).clientName || 'Customer'}
+                      </p>
+                      <p className="text-[11px] text-gray-500 font-medium truncate">
+                        Executive: <span className="font-bold text-gray-700">{order.createdByName || order.createdBy || 'Staff'}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                      <span className="text-[10px] font-black px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg flex items-center gap-1">
+                        🎨 {order.assignedDesigner || 'Designer'}
+                      </span>
+                      <span className="font-mono font-black text-gray-900">
+                        ₹{getOrderAmount(order).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <DesignTaskTimer
+                        claimedAt={order.claimedAt || order.designClaimedAt}
+                        completedAt={order.designCompletedAt}
+                        isCompleted={isCompleted}
+                        variant="bar"
+                        designerName={order.assignedDesigner}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-
-        {activeDesignClaimedOrders.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 italic text-xs font-medium bg-gray-50/50 rounded-2xl border border-gray-100">
-            No active design tasks claimed in the design studio at this moment.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {activeDesignClaimedOrders.map(order => {
-              const isCompleted = isReceivedDesignsFile(order);
-              return (
-                <div key={order.id} className="p-4 bg-gray-50/80 rounded-2xl border border-gray-150 space-y-2 hover:bg-gray-50 transition-all">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-black text-xs text-brand-primary">#{order.id.slice(-8)}</span>
-                    <span className="text-[10px] font-bold text-gray-500 capitalize">{order.category}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-gray-900 truncate max-w-[140px]">{order.customerInfo?.name || 'Customer'}</span>
-                    <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md">
-                      🎨 {order.assignedDesigner || 'Designer'}
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400 font-medium">Task SLA:</span>
-                    <DesignTaskTimer
-                      claimedAt={order.claimedAt || order.designClaimedAt}
-                      completedAt={order.designCompletedAt}
-                      isCompleted={isCompleted}
-                      designerName={order.assignedDesigner}
-                    />
+      ) : (
+        /* STANDARD SALES PERFORMANCE OVERVIEW */
+        <>
+          {/* High-Level Team KPI Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-left">
+            {[
+              {
+                title: 'Orders Created',
+                val: teamTotals.totalOrders,
+                sub: `${executiveMetrics.length} Executives`,
+                icon: Package,
+                color: 'text-indigo-600',
+                bg: 'bg-indigo-50',
+                border: 'border-indigo-100'
+              },
+              {
+                title: 'Sent to Accounts',
+                val: teamTotals.sentToAccounts,
+                sub: `${teamTotals.totalOrders > 0 ? Math.round((teamTotals.sentToAccounts / teamTotals.totalOrders) * 100) : 0}% Routed`,
+                icon: CreditCard,
+                color: 'text-amber-600',
+                bg: 'bg-amber-50',
+                border: 'border-amber-100'
+              },
+              {
+                title: 'Sent to Designs',
+                val: teamTotals.sentToDesigns,
+                sub: `${teamTotals.totalOrders > 0 ? Math.round((teamTotals.sentToDesigns / teamTotals.totalOrders) * 100) : 0}% In Studio`,
+                icon: Palette,
+                color: 'text-purple-600',
+                bg: 'bg-purple-50',
+                border: 'border-purple-100'
+              },
+              {
+                title: 'Designs Received',
+                val: teamTotals.receivedDesigns,
+                sub: `${teamTotals.sentToDesigns > 0 ? Math.round((teamTotals.receivedDesigns / teamTotals.sentToDesigns) * 100) : 0}% Art Ready`,
+                icon: FileCheck,
+                color: 'text-emerald-600',
+                bg: 'bg-emerald-50',
+                border: 'border-emerald-100'
+              },
+              {
+                title: 'Total Order Value',
+                val: `₹${teamTotals.totalOrderValue.toLocaleString()}`,
+                sub: `Adv: ₹${teamTotals.totalAdvance.toLocaleString()}`,
+                icon: DollarSign,
+                color: 'text-blue-600',
+                bg: 'bg-blue-50',
+                border: 'border-blue-100'
+              },
+              {
+                title: 'Invoices Created',
+                val: teamTotals.invoicesCount,
+                sub: `₹${teamTotals.totalInvoicedAmount.toLocaleString()}`,
+                icon: FileText,
+                color: 'text-teal-600',
+                bg: 'bg-teal-50',
+                border: 'border-teal-100'
+              }
+            ].map((kpi, idx) => (
+              <div key={idx} className={cn("p-5 rounded-3xl bg-white border shadow-xs flex flex-col justify-between space-y-3", kpi.border)}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">{kpi.title}</span>
+                  <div className={cn("p-2 rounded-xl", kpi.bg, kpi.color)}>
+                    <kpi.icon size={16} />
                   </div>
                 </div>
-              );
-            })}
+                <div>
+                  <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{kpi.val}</div>
+                  <div className="text-[10px] font-bold text-gray-400 mt-0.5 truncate">{kpi.sub}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* Active Design Studio Tasks (2-Hour SLA Monitor Preview) */}
+          <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden space-y-4 p-6 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                  <Palette size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                    Design Studio Live 2-Hour SLA Tasks Monitor
+                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded-full">
+                      {activeDesignClaimedOrders.length} In Studio
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-500 font-medium">
+                    Live countdown tracking (2-hour completion target) for all claimed and in-progress design tasks
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-bold text-gray-400">
+                  Standard SLA: 120 mins / task
+                </span>
+                <button
+                  onClick={() => setActiveViewTab('sla_monitor')}
+                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-black transition-all border border-purple-200 cursor-pointer"
+                >
+                  Open Full SLA Monitor →
+                </button>
+              </div>
+            </div>
+
+            {activeDesignClaimedOrders.length === 0 ? (
+              <div className="py-8 text-center text-gray-400 italic text-xs font-medium bg-gray-50/50 rounded-2xl border border-gray-100">
+                No active design tasks claimed in the design studio at this moment.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {activeDesignClaimedOrders.slice(0, 6).map(order => {
+                  const isCompleted = isReceivedDesignsFile(order);
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => setSelectedOrderForModal(order)}
+                      className="p-4 bg-gray-50/80 rounded-2xl border border-gray-150 space-y-2 hover:bg-gray-50 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-black text-xs text-brand-primary">#{order.orderNumber || (order.id ? String(order.id).slice(-8) : 'N/A')}</span>
+                        <span className="text-[10px] font-bold text-gray-500 capitalize">{order.category}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-gray-900 truncate max-w-[140px]">{order.customerInfo?.name || 'Customer'}</span>
+                        <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md">
+                          🎨 {order.assignedDesigner || 'Designer'}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 font-medium">2-Hour SLA:</span>
+                        <DesignTaskTimer
+                          claimedAt={order.claimedAt || order.designClaimedAt}
+                          completedAt={order.designCompletedAt}
+                          isCompleted={isCompleted}
+                          designerName={order.assignedDesigner}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {activeDesignClaimedOrders.length > 6 && (
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setActiveViewTab('sla_monitor')}
+                  className="text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline bg-transparent border-none cursor-pointer"
+                >
+                  View all {activeDesignClaimedOrders.length} active SLA tasks →
+                </button>
+              </div>
+            )}
+          </div>
 
       {/* Main Section: Marketing Individual Breakdown Table */}
       <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden space-y-4 p-6 text-left">
@@ -735,7 +992,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     <tr key={o.id} className="hover:bg-gray-50/60 transition-all">
                       {/* Order ID */}
                       <td className="px-4 py-3.5">
-                        <span className="font-mono font-black text-brand-primary">#{o.id.slice(-8)}</span>
+                        <span className="font-mono font-black text-brand-primary">#{o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A')}</span>
                       </td>
 
                       {/* Customer */}
@@ -838,6 +1095,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {/* Order Inspect Modal */}
       {selectedOrderForModal && (
