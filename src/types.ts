@@ -198,6 +198,7 @@ export interface Order {
   designCompleted?: boolean;
   designSentToMarketing?: boolean;
   designSentToDigitizer?: boolean;
+  designSentToOM?: boolean;
   designCompletedAt?: number;
   digitizerCompleted?: boolean;
   digitizerSentToOM?: boolean;

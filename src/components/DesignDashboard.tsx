@@ -57,8 +57,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
   const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('marketing_queue');
 
-  // Subsection filters: 'unclaimed', 'my_tasks', 'hold', 'completed', 'rework', 'admin_order'
-  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'hold' | 'completed' | 'rework' | 'admin_order'>('unclaimed');
+  // Subsection filters: 'unclaimed', 'my_tasks', 'hold', 'completed', 'completed_om', 'completed_digitizer', 'rework', 'admin_order'
+  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'hold' | 'completed' | 'completed_om' | 'completed_digitizer' | 'rework' | 'admin_order'>('unclaimed');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,6 +216,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     // Explicit completion flags for design stage:
     if (o.designSentToDigitizer || o.details?.designSentToDigitizer) return true;
     if (o.designSentToMarketing || o.details?.designSentToMarketing) return true;
+    if (o.designSentToOM || o.details?.designSentToOM) return true;
     if (o.designCompleted || o.details?.designCompleted) return true;
 
     // Later stages in the pipeline
@@ -275,7 +276,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         sizeBreakdown: o.sizeBreakdown || [],
         designSentToMarketing: o.designSentToMarketing || o.details?.designSentToMarketing,
         designSentToDigitizer: o.designSentToDigitizer || o.details?.designSentToDigitizer,
+        designSentToOM: o.designSentToOM || o.details?.designSentToOM,
         designCompleted: o.designCompleted || o.details?.designCompleted,
+        details: o.details,
         original_design_file: o.original_design_file,
         original_design_filename: o.original_design_filename,
         original_design_zip: o.original_design_zip,
@@ -373,7 +376,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         sizeBreakdown: o.sizeBreakdown || [],
         designSentToMarketing: o.designSentToMarketing || o.details?.designSentToMarketing,
         designSentToDigitizer: o.designSentToDigitizer || o.details?.designSentToDigitizer,
+        designSentToOM: o.designSentToOM || o.details?.designSentToOM || o.status === OrderStatus.ORDER_MANAGEMENT || String(o.status || '').toLowerCase() === 'order_management',
         designCompleted: o.designCompleted || o.details?.designCompleted,
+        details: o.details,
         original_design_file: o.original_design_file,
         original_design_filename: o.original_design_filename,
         original_design_zip: o.original_design_zip,
@@ -385,6 +390,28 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       };
     });
 
+  // Destination classification helpers for completed design orders
+  const isItemSentToDigitizer = (item: any) => {
+    return Boolean(
+      item?.designSentToDigitizer === true ||
+      item?.details?.designSentToDigitizer === true ||
+      item?.details?.designSentToDigitizer === 'true'
+    );
+  };
+
+  const isItemSentToOrderManagement = (item: any) => {
+    if (isItemSentToDigitizer(item)) return false;
+    return Boolean(
+      item?.designSentToOM === true ||
+      item?.details?.designSentToOM === true ||
+      item?.details?.designSentToOM === 'true' ||
+      item?.status === OrderStatus.ORDER_MANAGEMENT ||
+      String(item?.status || '').toLowerCase() === 'order_management' ||
+      ['production', 'delivery', 'delivered'].includes(String(item?.status || '').toLowerCase()) ||
+      (item?.isCompleted && !isItemSentToDigitizer(item))
+    );
+  };
+
   // Filter lists based on primary tab and subsection
   const getFilteredItems = () => {
     let baseList = activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
@@ -394,6 +421,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => item.isHold);
     } else if (selectedSection === 'completed') {
       baseList = baseList.filter(item => item.isCompleted);
+    } else if (selectedSection === 'completed_om') {
+      baseList = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item));
+    } else if (selectedSection === 'completed_digitizer') {
+      baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item));
     } else if (selectedSection === 'unclaimed') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'my_tasks') {
@@ -434,9 +465,21 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     const completedCount = baseList.filter(item => item.isCompleted).length;
     const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold).length;
     const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold).length;
+    const digitizerSentCount = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item)).length;
+    const omSentCount = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item)).length;
     const totalCount = baseList.length;
 
-    return { unclaimedCount, myTasksCount, holdCount, completedCount, reworkCount, adminOrderCount, totalCount };
+    return { 
+      unclaimedCount, 
+      myTasksCount, 
+      holdCount, 
+      completedCount, 
+      reworkCount, 
+      adminOrderCount, 
+      digitizerSentCount, 
+      omSentCount, 
+      totalCount 
+    };
   };
 
   const handleClaimItem = async (item: any, e?: React.MouseEvent) => {
@@ -705,12 +748,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.ORDER_MANAGEMENT,
         designCompleted: true,
+        designSentToOM: true,
         designCompletedAt: Date.now(),
         isRework: false,
         reworkNotes: '',
         details: {
           ...(selectedOrder.details || {}),
           designCompleted: true,
+          designSentToOM: true,
           designCompletedAt: Date.now(),
           isRework: false
         },
@@ -937,7 +982,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       {/* Design Project Queue — Live Orders */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-150 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <Palette className="text-brand-primary" size={18} />
             <h4 className="text-xs font-black uppercase text-gray-900 tracking-wider">
               {activeChannel === 'marketing_queue' ? '📢 Marketing Forwarded Queue' : '💳 Accounts Forwarded Queue'}
@@ -945,6 +990,53 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             <span className="text-[10px] font-black text-brand-primary bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-xl">
               {getFilteredItems().length} Order{getFilteredItems().length !== 1 ? 's' : ''}
             </span>
+
+            {/* Quick Destination Summary Badges for Accounts Forwarded Queue */}
+            {activeChannel === 'accounts_queue' && (
+              <div className="flex items-center gap-2 flex-wrap sm:ml-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSection('completed_om')}
+                  className={cn(
+                    "cursor-pointer px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wide border transition-all flex items-center gap-1.5 shadow-2xs",
+                    selectedSection === 'completed_om'
+                      ? "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300"
+                      : "bg-blue-50/90 text-blue-800 border-blue-200 hover:bg-blue-100"
+                  )}
+                  title="Filter orders sent to Order Management"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  <span>📋 Sent to Order Mgmt:</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded font-mono font-black text-[9.5px]",
+                    selectedSection === 'completed_om' ? "bg-white/25 text-white" : "bg-blue-200/80 text-blue-900"
+                  )}>
+                    {activeStats.omSentCount}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedSection('completed_digitizer')}
+                  className={cn(
+                    "cursor-pointer px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wide border transition-all flex items-center gap-1.5 shadow-2xs",
+                    selectedSection === 'completed_digitizer'
+                      ? "bg-purple-700 text-white border-purple-700 ring-2 ring-purple-300"
+                      : "bg-purple-50/90 text-purple-800 border-purple-200 hover:bg-purple-100"
+                  )}
+                  title="Filter orders sent to Digitizer"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                  <span>🧵 Sent to Digitizer:</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded font-mono font-black text-[9.5px]",
+                    selectedSection === 'completed_digitizer' ? "bg-white/25 text-white" : "bg-purple-200/80 text-purple-900"
+                  )}>
+                    {activeStats.digitizerSentCount}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Search bar inside queue */}
@@ -966,13 +1058,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount, color: 'bg-brand-primary' },
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
-            { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
+            { key: 'completed', label: activeChannel === 'accounts_queue' ? '✓ All Done' : '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
+            ...(activeChannel === 'accounts_queue' ? [
+              { key: 'completed_om', label: '📋 Sent to Order Mgmt', count: activeStats.omSentCount, color: 'bg-blue-600' },
+              { key: 'completed_digitizer', label: '🧵 Sent to Digitizer', count: activeStats.digitizerSentCount, color: 'bg-purple-700' },
+            ] : []),
             { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
             { key: 'admin_order', label: '👑 Admin Order', count: activeStats.adminOrderCount, color: 'bg-indigo-600' },
           ] as const).map(({ key, label, count, color }) => (
             <button
               key={key}
-              onClick={() => setSelectedSection(key)}
+              onClick={() => setSelectedSection(key as any)}
               className={cn(
                 "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer flex items-center gap-1.5",
                 selectedSection === key
@@ -990,6 +1086,48 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             </button>
           ))}
         </div>
+
+        {/* Dedicated Dispatched Destination Sub-filter Bar when viewing Completed orders in Accounts Queue */}
+        {(selectedSection === 'completed' || selectedSection === 'completed_om' || selectedSection === 'completed_digitizer') && activeChannel === 'accounts_queue' && (
+          <div className="flex flex-wrap items-center gap-2 bg-gradient-to-r from-gray-50 via-purple-50/20 to-blue-50/20 p-2.5 rounded-2xl border border-gray-200">
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider flex items-center gap-1">
+              <span>🎯 Dispatched Destination:</span>
+            </span>
+            <button
+              onClick={() => setSelectedSection('completed')}
+              className={cn(
+                "px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider cursor-pointer border transition-all",
+                selectedSection === 'completed'
+                  ? "bg-brand-primary text-white border-transparent shadow-xs"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100"
+              )}
+            >
+              All Done ({activeStats.completedCount})
+            </button>
+            <button
+              onClick={() => setSelectedSection('completed_om')}
+              className={cn(
+                "px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-1.5",
+                selectedSection === 'completed_om'
+                  ? "bg-blue-600 text-white border-transparent shadow-xs"
+                  : "bg-white text-blue-800 border-blue-200 hover:bg-blue-50"
+              )}
+            >
+              <span>📋 Order Management ({activeStats.omSentCount})</span>
+            </button>
+            <button
+              onClick={() => setSelectedSection('completed_digitizer')}
+              className={cn(
+                "px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-1.5",
+                selectedSection === 'completed_digitizer'
+                  ? "bg-purple-700 text-white border-transparent shadow-xs"
+                  : "bg-white text-purple-800 border-purple-200 hover:bg-purple-50"
+              )}
+            >
+              <span>🧵 Digitizer ({activeStats.digitizerSentCount})</span>
+            </button>
+          </div>
+        )}
 
         {/* Desktop Table View */}
         <div className="overflow-x-auto">
@@ -1050,6 +1188,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               <span className="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
                                 👑 ADMIN ORDER
                               </span>
+                            )}
+                            {item.isCompleted && activeChannel === 'accounts_queue' && (
+                              isItemSentToDigitizer(item) ? (
+                                <span className="bg-purple-100 text-purple-900 border border-purple-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-2xs">
+                                  🧵 DIGITIZER
+                                </span>
+                              ) : (
+                                <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-2xs">
+                                  📋 ORDER MGMT
+                                </span>
+                              )
                             )}
                             {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && !item.isRework && (
                               <span className="bg-purple-100 text-purple-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-purple-300 tracking-wide uppercase flex items-center gap-0.5">
@@ -1116,9 +1265,27 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
                       <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                         {item.isCompleted ? (
-                          <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-700 border border-green-200">
-                            ✓ Completed
-                          </span>
+                          activeChannel === 'accounts_queue' ? (
+                            isItemSentToDigitizer(item) ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs flex items-center justify-center gap-1">
+                                  <span>🧵 Sent to Digitizer</span>
+                                </span>
+                                <span className="text-[8px] font-bold text-purple-600">✓ In Digitizer Queue</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300 shadow-2xs flex items-center justify-center gap-1">
+                                  <span>📋 Sent to Order Mgmt</span>
+                                </span>
+                                <span className="text-[8px] font-bold text-blue-600">✓ In OM Pipeline</span>
+                              </div>
+                            )
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-700 border border-green-200">
+                              ✓ Completed
+                            </span>
+                          )
                         ) : item.isHold ? (
                           <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200">
                             ⏸ On Hold
@@ -1230,6 +1397,17 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             👑 ADMIN ORDER
                           </span>
                         )}
+                        {item.isCompleted && activeChannel === 'accounts_queue' && (
+                          isItemSentToDigitizer(item) ? (
+                            <span className="bg-purple-100 text-purple-900 border border-purple-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-2xs">
+                              🧵 DIGITIZER
+                            </span>
+                          ) : (
+                            <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-2xs">
+                              📋 ORDER MGMT
+                            </span>
+                          )
+                        )}
                         {item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0)) && !item.isRework && (
                           <span className="bg-purple-100 text-purple-800 text-[8px] font-black px-1.5 py-0.5 rounded border border-purple-300 tracking-wide uppercase flex items-center gap-0.5">
                             🔄 Revise
@@ -1250,9 +1428,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           <img src={item.staffImages?.[0] || item.marketing_image} className="w-full h-full object-cover" />
                         </div>
                       )}
-                      <div className="space-y-1">
-                        <div className="font-black text-gray-900 text-sm uppercase italic">{item.customerName}</div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-black text-gray-900 text-sm uppercase italic truncate">{item.customerName}</h4>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[9px] font-bold uppercase tracking-wider text-brand-primary">
                             By: {item.createdByName || 'Marketing'}
                           </span>
@@ -1278,7 +1458,23 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-150 rounded text-[9px] font-black uppercase">
                         {getDisplayCategory(item as any)}
                       </span>
-                      {isUnclaimed ? (
+                      {item.isCompleted ? (
+                        activeChannel === 'accounts_queue' ? (
+                          isItemSentToDigitizer(item) ? (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-900 border border-purple-300 rounded text-[9px] font-black uppercase flex items-center gap-1 shadow-2xs">
+                              🧵 Sent to Digitizer
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-900 border border-blue-300 rounded text-[9px] font-black uppercase flex items-center gap-1 shadow-2xs">
+                              📋 Sent to Order Mgmt
+                            </span>
+                          )
+                        ) : (
+                          <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-[9px] font-black uppercase">
+                            ✓ Completed
+                          </span>
+                        )
+                      ) : isUnclaimed ? (
                         <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[9px] font-black uppercase">
                           ⚡ Open in Queue
                         </span>
