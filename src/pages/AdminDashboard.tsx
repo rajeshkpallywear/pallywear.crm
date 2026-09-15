@@ -455,9 +455,9 @@ export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredO
                         className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
                       >
                         {deletingOrderId === o.id ? (
-                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
                         ) : (
-                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" /></svg>
                         )}
                       </button>
                     </td>
@@ -582,9 +582,9 @@ export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredO
                           className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
                         >
                           {deletingLeadId === l.id ? (
-                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
                           ) : (
-                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" /></svg>
                           )}
                         </button>
                       </div>
@@ -789,1230 +789,1196 @@ export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredO
 }
 
 export default function AdminDashboard() {
-    const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
-    const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
-    const navigate = useNavigate();
-    const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
-    const [userLogs, setUserLogs] = useState<any[]>([]);
-    const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
-    const [userSummaries, setUserSummaries] = useState<any[]>([]);
-    const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
-    const [attendanceLoading, setAttendanceLoading] = useState(false);
-    const [attendanceDateFilter, setAttendanceDateFilter] = useState('');
-    const [editingAttendance, setEditingAttendance] = useState<any | null>(null);
-    const [attendanceEditForm, setAttendanceEditForm] = useState({ loginTime: '', logoutTime: '', notes: '' });
-    const [savingAttendance, setSavingAttendance] = useState(false);
-    
-    const userRoleMap = React.useMemo(() => {
-      const map: Record<string, string> = {};
-      registeredUsers.forEach((u: any) => {
-        map[u.id] = u.role;
-      });
-      return map;
-    }, [registeredUsers]);
+  const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
+  const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
+  const navigate = useNavigate();
+  const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
+  const [userLogs, setUserLogs] = useState<any[]>([]);
+  const [userLoginCounts, setUserLoginCounts] = useState<any[]>([]);
+  const [userSummaries, setUserSummaries] = useState<any[]>([]);
+  const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceDateFilter, setAttendanceDateFilter] = useState('');
+  const [editingAttendance, setEditingAttendance] = useState<any | null>(null);
+  const [attendanceEditForm, setAttendanceEditForm] = useState({ loginTime: '', logoutTime: '', notes: '' });
+  const [savingAttendance, setSavingAttendance] = useState(false);
 
-    const isOnlineTeam = React.useCallback((createdBy: string) => {
-      const role = userRoleMap[createdBy];
-      return role === 'onlineteam' || role === 'UserRole.ONLINETEAM';
-    }, [userRoleMap]);
-
-    const [adminLeadSearch, setAdminLeadSearch] = useState('');
-    const [showAdminLogsModal, setShowAdminLogsModal] = useState(false);
-    const [selectedAdminLeadForLogs, setSelectedAdminLeadForLogs] = useState<Lead | null>(null);
-    const [userLogsLoading, setUserLogsLoading] = useState(false);
-    const [selectedUserForActivity, setSelectedUserForActivity] = useState<any | null>(null);
-    const [showUserActivityModal, setShowUserActivityModal] = useState(false);
-    const [selectedActivityMonth, setSelectedActivityMonth] = useState<string>('all');
-
-    const [showEditUserModal, setShowEditUserModal] = useState(false);
-    const [userToEdit, setUserToEdit] = useState<any | null>(null);
-    const [isScanningFaceForEdit, setIsScanningFaceForEdit] = useState(false);
-    const [faceScanEditProgress, setFaceScanEditProgress] = useState(0);
-    const [faceScanEditStatus, setFaceScanEditStatus] = useState('');
-
-    const fetchUserLogs = async () => {
-      setUserLogsLoading(true);
-      try {
-        const data = await mockDataService.getActivityLogs();
-        if (data && data.success) {
-          setUserLogs(data.logs || []);
-          setUserLoginCounts(data.counts || []);
-          setUserSummaries(data.userSummaries || []);
-        }
-      } catch (e) {
-        console.error('Failed to fetch activity logs:', e);
-      } finally {
-        setUserLogsLoading(false);
-      }
-    };
-
-    const calculatedSummaries = React.useMemo(() => {
-      if (userSummaries && userSummaries.length > 0) return userSummaries;
-      const map: Record<string, { userId: string; userName: string; userEmail: string; firstLogin: number; lastLogout: number | null; loginCount: number }> = {};
-      userLogs.forEach(log => {
-        const key = log.userId || log.userEmail;
-        if (!key) return;
-        if (!map[key]) {
-          map[key] = {
-            userId: log.userId,
-            userName: log.userName,
-            userEmail: log.userEmail,
-            firstLogin: Number(log.loginTime),
-            lastLogout: log.logoutTime ? Number(log.logoutTime) : null,
-            loginCount: 1
-          };
-        } else {
-          map[key].loginCount += 1;
-          if (Number(log.loginTime) < map[key].firstLogin) map[key].firstLogin = Number(log.loginTime);
-          if (log.logoutTime && (!map[key].lastLogout || Number(log.logoutTime) > map[key].lastLogout)) {
-            map[key].lastLogout = Number(log.logoutTime);
-          }
-        }
-      });
-      return Object.values(map);
-    }, [userSummaries, userLogs]);
-
-    React.useEffect(() => {
-      if (activeTab === 'user-logs' || activeTab === 'attendance') {
-        fetchUserLogs();
-      }
-    }, [activeTab]);
-
-    const fetchAttendanceLogs = async () => {
-      setAttendanceLoading(true);
-      try {
-        const data = await mockDataService.getActivityLogs();
-        if (data && data.success) {
-          setAttendanceLogs(data.logs || []);
-        }
-      } catch (e) {
-        console.error('Failed to fetch attendance logs:', e);
-      } finally {
-        setAttendanceLoading(false);
-      }
-    };
-
-    const handleToggleBlockUser = async (targetUser: any) => {
-      try {
-        const isCurrentlyBlocked = Boolean(targetUser.isBlocked || targetUser.status === 'Blocked');
-        const newStatus = isCurrentlyBlocked ? 'Active' : 'Blocked';
-        const newBlockedState = !isCurrentlyBlocked;
-
-        await mockDataService.updateUser({
-          ...targetUser,
-          uid: targetUser.id || targetUser.uid,
-          status: newStatus,
-          isBlocked: newBlockedState
-        });
-
-        alert(`User ${targetUser.name} has been ${newBlockedState ? 'Blocked 🚫' : 'Unblocked 🟢'}`);
-        window.location.reload();
-      } catch (err: any) {
-        alert(err.message || 'Failed to update user block status');
-      }
-    };
-
-    const handleStartFaceScanForUser = () => {
-      setIsScanningFaceForEdit(true);
-      setFaceScanEditProgress(15);
-      setFaceScanEditStatus('Position face in scanner frame...');
-
-      setTimeout(() => {
-        setFaceScanEditProgress(50);
-        setFaceScanEditStatus('Scanning 3D facial landmarks & mesh...');
-      }, 1000);
-
-      setTimeout(() => {
-        setFaceScanEditProgress(85);
-        setFaceScanEditStatus('Generating biometric hash vector...');
-      }, 2000);
-
-      setTimeout(() => {
-        setFaceScanEditProgress(100);
-        setFaceScanEditStatus('Face Scan Registered & Saved!');
-
-        setTimeout(() => {
-          setUserToEdit((prev: any) => ({
-            ...prev,
-            faceRegistered: true,
-            faceData: `FACE_DESCRIPTOR_${Date.now()}`
-          }));
-          setIsScanningFaceForEdit(false);
-          alert('Face ID scan registered for user!');
-        }, 600);
-      }, 2800);
-    };
-
-    const handleSaveUserEdit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!userToEdit) return;
-
-      try {
-        await mockDataService.updateUser({
-          ...userToEdit,
-          uid: userToEdit.id || userToEdit.uid,
-          status: userToEdit.status || (userToEdit.isBlocked ? 'Blocked' : 'Active'),
-          isBlocked: Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked'),
-          faceRegistered: Boolean(userToEdit.faceRegistered || userToEdit.faceData),
-          faceData: userToEdit.faceData || ''
-        });
-
-        alert(`User ${userToEdit.name} updated successfully!`);
-        setShowEditUserModal(false);
-        setUserToEdit(null);
-        window.location.reload();
-      } catch (err: any) {
-        alert(err.message || 'Failed to update user');
-      }
-    };
-
-    const handleSaveAttendanceEdit = async () => {
-      if (!editingAttendance) return;
-      setSavingAttendance(true);
-      try {
-        await fetch(getApiUrl(`/api/auth/activity-logs/${editingAttendance.id}`), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            loginTime: attendanceEditForm.loginTime,
-            logoutTime: attendanceEditForm.logoutTime,
-            notes: attendanceEditForm.notes
-          })
-        });
-        setEditingAttendance(null);
-        fetchAttendanceLogs();
-      } catch (e) {
-        console.error('Failed to save attendance edit:', e);
-        // Update locally if API fails
-        setAttendanceLogs(prev => prev.map(log =>
-          log.id === editingAttendance.id
-            ? { ...log, loginTime: attendanceEditForm.loginTime, logoutTime: attendanceEditForm.logoutTime, notes: attendanceEditForm.notes }
-            : log
-        ));
-        setEditingAttendance(null);
-      } finally {
-        setSavingAttendance(false);
-      }
-    };
-
-    const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-    const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = useState(false);
-
-    // Admin Create Order Form State
-    const [isAdminOrderModalOpen, setIsAdminOrderModalOpen] = useState(false);
-    const [adminOrderForm, setAdminOrderForm] = useState({
-      customerName: '',
-      phone: '',
-      address: '',
-      category: 'Jersey',
-      totalAmount: '',
-      advancePay: '',
-      notes: '',
-      isUrgent: false,
-      status: OrderStatus.PENDING,
-      staffImages: [] as string[]
+  const userRoleMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    registeredUsers.forEach((u: any) => {
+      map[u.id] = u.role;
     });
+    return map;
+  }, [registeredUsers]);
 
-    const handleCreateAdminOrder = async (e: React.FormEvent) => {
-      e.preventDefault();
-      try {
-        const amt = Number(adminOrderForm.totalAmount) || 0;
-        const adv = Number(adminOrderForm.advancePay) || 0;
-        const newOrder = {
-          customerInfo: {
-            name: adminOrderForm.customerName,
-            phone: adminOrderForm.phone,
-            address: adminOrderForm.address
-          },
-          category: adminOrderForm.category,
-          quantity: 1,
-          financials: {
-            totalAmount: amt,
-            advancePay: adv,
-            balanceAmount: amt - adv
-          },
-          status: adminOrderForm.status,
-          isUrgent: adminOrderForm.isUrgent,
-          notes: adminOrderForm.notes,
-          designNotes: adminOrderForm.notes,
-          staffImages: adminOrderForm.staffImages,
-          staffPdfs: [] as string[],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          createdBy: user?.id || user?.uid || '',
-          createdByName: user?.name || 'Admin',
-          isAdminOrder: true,
-          sentByAdmin: true
-        };
-        await addOrder(newOrder);
-        alert('Order created successfully!');
-        setIsAdminOrderModalOpen(false);
-        setAdminOrderForm({
-          customerName: '',
-          phone: '',
-          address: '',
-          category: 'Jersey',
-          totalAmount: '',
-          advancePay: '',
-          notes: '',
-          isUrgent: false,
-          status: OrderStatus.PENDING,
-          staffImages: [] as string[]
-        });
-      } catch (err: any) {
-        alert('Failed to create order: ' + (err?.message || 'Error'));
+  const isOnlineTeam = React.useCallback((createdBy: string) => {
+    const role = userRoleMap[createdBy];
+    return role === 'onlineteam' || role === 'UserRole.ONLINETEAM';
+  }, [userRoleMap]);
+
+  const [adminLeadSearch, setAdminLeadSearch] = useState('');
+  const [showAdminLogsModal, setShowAdminLogsModal] = useState(false);
+  const [selectedAdminLeadForLogs, setSelectedAdminLeadForLogs] = useState<Lead | null>(null);
+  const [userLogsLoading, setUserLogsLoading] = useState(false);
+  const [selectedUserForActivity, setSelectedUserForActivity] = useState<any | null>(null);
+  const [showUserActivityModal, setShowUserActivityModal] = useState(false);
+  const [selectedActivityMonth, setSelectedActivityMonth] = useState<string>('all');
+
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<any | null>(null);
+
+  const fetchUserLogs = async () => {
+    setUserLogsLoading(true);
+    try {
+      const data = await mockDataService.getActivityLogs();
+      if (data && data.success) {
+        setUserLogs(data.logs || []);
+        setUserLoginCounts(data.counts || []);
+        setUserSummaries(data.userSummaries || []);
       }
-    };
+    } catch (e) {
+      console.error('Failed to fetch activity logs:', e);
+    } finally {
+      setUserLogsLoading(false);
+    }
+  };
 
-    const handleEditInvoice = (invoice: Invoice) => {
-      setEditingInvoice(invoice);
-      setIsInvoiceFormModalOpen(true);
-    };
-
-    const handleEditInvoiceSubmit = async (invoiceData: any) => {
-      if (editingInvoice) {
-        try {
-          await updateInvoice(editingInvoice.id, invoiceData);
-          alert("Invoice updated successfully!");
-          setIsInvoiceFormModalOpen(false);
-          setEditingInvoice(null);
-        } catch (err: any) {
-          console.error("Failed to update invoice:", err);
-          alert("Failed to update invoice.");
+  const calculatedSummaries = React.useMemo(() => {
+    if (userSummaries && userSummaries.length > 0) return userSummaries;
+    const map: Record<string, { userId: string; userName: string; userEmail: string; firstLogin: number; lastLogout: number | null; loginCount: number }> = {};
+    userLogs.forEach(log => {
+      const key = log.userId || log.userEmail;
+      if (!key) return;
+      if (!map[key]) {
+        map[key] = {
+          userId: log.userId,
+          userName: log.userName,
+          userEmail: log.userEmail,
+          firstLogin: Number(log.loginTime),
+          lastLogout: log.logoutTime ? Number(log.logoutTime) : null,
+          loginCount: 1
+        };
+      } else {
+        map[key].loginCount += 1;
+        if (Number(log.loginTime) < map[key].firstLogin) map[key].firstLogin = Number(log.loginTime);
+        if (log.logoutTime && (!map[key].lastLogout || Number(log.logoutTime) > map[key].lastLogout)) {
+          map[key].lastLogout = Number(log.logoutTime);
         }
       }
-    };
-    const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory'>('all');
-    const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
-    const [orderStaffSearch, setOrderStaffSearch] = useState('');
-    const [orderStaffFilter, setOrderStaffFilter] = useState('all');
-    const [orderDateRangeFilter, setOrderDateRangeFilter] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('all');
-    const [orderCustomDate, setOrderCustomDate] = useState('');
-    const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
-    const [showInviteModal, setShowInviteModal] = useState(false);
-    const [invitations, setInvitations] = useState<any[]>([]);
-    const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState('marketing');
-    const [inviteGeneratedLink, setInviteGeneratedLink] = useState('');
-    const [invitesLoading, setInvitesLoading] = useState(false);
+    });
+    return Object.values(map);
+  }, [userSummaries, userLogs]);
 
-    const fetchInvitations = async () => {
-      try {
-        const data = await mockDataService.getInvitations();
-        setInvitations(data);
-      } catch (e) {
-        console.error('Failed to load invitations:', e);
+  React.useEffect(() => {
+    if (activeTab === 'user-logs' || activeTab === 'attendance') {
+      fetchUserLogs();
+    }
+  }, [activeTab]);
+
+  const fetchAttendanceLogs = async () => {
+    setAttendanceLoading(true);
+    try {
+      const data = await mockDataService.getActivityLogs();
+      if (data && data.success) {
+        setAttendanceLogs(data.logs || []);
       }
-    };
+    } catch (e) {
+      console.error('Failed to fetch attendance logs:', e);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
 
-    React.useEffect(() => {
-      fetchInvitations();
-    }, []);
+  const handleToggleBlockUser = async (targetUser: any) => {
+    try {
+      const isCurrentlyBlocked = Boolean(targetUser.isBlocked || targetUser.status === 'Blocked');
+      const newStatus = isCurrentlyBlocked ? 'Active' : 'Blocked';
+      const newBlockedState = !isCurrentlyBlocked;
 
-    const [showLogsModal, setShowLogsModal] = useState(false);
-    const [showProfileModal, setShowProfileModal] = useState(false);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [isMobileOpen, setIsMobileOpen] = useState(false);
+      await mockDataService.updateUser({
+        ...targetUser,
+        uid: targetUser.id || targetUser.uid,
+        status: newStatus,
+        isBlocked: newBlockedState
+      });
 
-    const [layoutMode, setLayoutMode] = React.useState<'mobile' | 'system'>(
-      window.innerWidth < 768 ? 'mobile' : 'system'
-    );
+      alert(`User ${targetUser.name} has been ${newBlockedState ? 'Blocked 🚫' : 'Unblocked 🟢'}`);
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update user block status');
+    }
+  };
 
-    React.useEffect(() => {
-      const handleResize = () => {
-        setLayoutMode(window.innerWidth < 768 ? 'mobile' : 'system');
+  const handleSaveUserEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToEdit) return;
+
+    try {
+      await mockDataService.updateUser({
+        ...userToEdit,
+        uid: userToEdit.id || userToEdit.uid,
+        status: userToEdit.status || (userToEdit.isBlocked ? 'Blocked' : 'Active'),
+        isBlocked: Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked'),
+        faceRegistered: Boolean(userToEdit.faceRegistered || userToEdit.faceData),
+        faceData: userToEdit.faceData || ''
+      });
+
+      alert(`User ${userToEdit.name} updated successfully!`);
+      setShowEditUserModal(false);
+      setUserToEdit(null);
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update user');
+    }
+  };
+
+  const handleSaveAttendanceEdit = async () => {
+    if (!editingAttendance) return;
+    setSavingAttendance(true);
+    try {
+      await fetch(getApiUrl(`/api/auth/activity-logs/${editingAttendance.id}`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loginTime: attendanceEditForm.loginTime,
+          logoutTime: attendanceEditForm.logoutTime,
+          notes: attendanceEditForm.notes
+        })
+      });
+      setEditingAttendance(null);
+      fetchAttendanceLogs();
+    } catch (e) {
+      console.error('Failed to save attendance edit:', e);
+      // Update locally if API fails
+      setAttendanceLogs(prev => prev.map(log =>
+        log.id === editingAttendance.id
+          ? { ...log, loginTime: attendanceEditForm.loginTime, logoutTime: attendanceEditForm.logoutTime, notes: attendanceEditForm.notes }
+          : log
+      ));
+      setEditingAttendance(null);
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = useState(false);
+
+  // Admin Create Order Form State
+  const [isAdminOrderModalOpen, setIsAdminOrderModalOpen] = useState(false);
+  const [adminOrderForm, setAdminOrderForm] = useState({
+    customerName: '',
+    phone: '',
+    address: '',
+    category: 'Jersey',
+    totalAmount: '',
+    advancePay: '',
+    notes: '',
+    isUrgent: false,
+    status: OrderStatus.PENDING,
+    staffImages: [] as string[]
+  });
+
+  const handleCreateAdminOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const amt = Number(adminOrderForm.totalAmount) || 0;
+      const adv = Number(adminOrderForm.advancePay) || 0;
+      const newOrder = {
+        customerInfo: {
+          name: adminOrderForm.customerName,
+          phone: adminOrderForm.phone,
+          address: adminOrderForm.address
+        },
+        category: adminOrderForm.category,
+        quantity: 1,
+        financials: {
+          totalAmount: amt,
+          advancePay: adv,
+          balanceAmount: amt - adv
+        },
+        status: adminOrderForm.status,
+        isUrgent: adminOrderForm.isUrgent,
+        notes: adminOrderForm.notes,
+        designNotes: adminOrderForm.notes,
+        staffImages: adminOrderForm.staffImages,
+        staffPdfs: [] as string[],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        createdBy: user?.id || user?.uid || '',
+        createdByName: user?.name || 'Admin',
+        isAdminOrder: true,
+        sentByAdmin: true
       };
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }, []);
+      await addOrder(newOrder);
+      alert('Order created successfully!');
+      setIsAdminOrderModalOpen(false);
+      setAdminOrderForm({
+        customerName: '',
+        phone: '',
+        address: '',
+        category: 'Jersey',
+        totalAmount: '',
+        advancePay: '',
+        notes: '',
+        isUrgent: false,
+        status: OrderStatus.PENDING,
+        staffImages: [] as string[]
+      });
+    } catch (err: any) {
+      alert('Failed to create order: ' + (err?.message || 'Error'));
+    }
+  };
 
-    const [notifications, setNotifications] = React.useState<any[]>([]);
-    const [showNotifications, setShowNotifications] = React.useState(false);
-    const notificationsRef = React.useRef(notifications);
-    notificationsRef.current = notifications;
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setIsInvoiceFormModalOpen(true);
+  };
 
-    const playNotificationSound = () => {
+  const handleEditInvoiceSubmit = async (invoiceData: any) => {
+    if (editingInvoice) {
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-        gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.15);
-
-        const osc2 = audioContext.createOscillator();
-        const gain2 = audioContext.createGain();
-        osc2.connect(gain2);
-        gain2.connect(audioContext.destination);
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.15); // E5
-        gain2.gain.setValueAtTime(0.15, audioContext.currentTime + 0.15);
-        gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
-        osc2.start(audioContext.currentTime + 0.15);
-        osc2.stop(audioContext.currentTime + 0.3);
-      } catch (e) {
-        console.warn('AudioContext failed:', e);
+        await updateInvoice(editingInvoice.id, invoiceData);
+        alert("Invoice updated successfully!");
+        setIsInvoiceFormModalOpen(false);
+        setEditingInvoice(null);
+      } catch (err: any) {
+        console.error("Failed to update invoice:", err);
+        alert("Failed to update invoice.");
       }
+    }
+  };
+  const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory'>('all');
+  const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
+  const [orderStaffSearch, setOrderStaffSearch] = useState('');
+  const [orderStaffFilter, setOrderStaffFilter] = useState('all');
+  const [orderDateRangeFilter, setOrderDateRangeFilter] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('all');
+  const [orderCustomDate, setOrderCustomDate] = useState('');
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('marketing');
+  const [inviteGeneratedLink, setInviteGeneratedLink] = useState('');
+  const [invitesLoading, setInvitesLoading] = useState(false);
+
+  const fetchInvitations = async () => {
+    try {
+      const data = await mockDataService.getInvitations();
+      setInvitations(data);
+    } catch (e) {
+      console.error('Failed to load invitations:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchInvitations();
+  }, []);
+
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const [layoutMode, setLayoutMode] = React.useState<'mobile' | 'system'>(
+    window.innerWidth < 768 ? 'mobile' : 'system'
+  );
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setLayoutMode(window.innerWidth < 768 ? 'mobile' : 'system');
     };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-    React.useEffect(() => {
-      if (!user) return;
+  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = React.useState(false);
+  const notificationsRef = React.useRef(notifications);
+  notificationsRef.current = notifications;
 
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.15);
 
-      const fetchNotifications = async (isInitial = false) => {
-        try {
-          const res = await fetch(getApiUrl(`/api/notifications?role=${user.role}`));
-          const data = await res.json();
-          if (data.success) {
-            const newNotifs = data.notifications || [];
-            const currentList = notificationsRef.current;
-            if (!isInitial) {
-              const unreadNew = newNotifs.filter((n: any) => n.isRead === 0 && !currentList.some((existing: any) => existing.id === n.id));
-              if (unreadNew.length > 0) {
-                playNotificationSound();
-                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                  unreadNew.slice(0, 3).forEach((notif: any) => {
-                    try {
-                      const n = new Notification(notif.title, {
-                        body: notif.message,
-                        icon: '/icon.png'
-                      });
-                      n.onclick = () => {
-                        window.focus();
-                      };
-                    } catch (err) {
-                      console.warn(err);
-                    }
-                  });
-                }
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.15); // E5
+      gain2.gain.setValueAtTime(0.15, audioContext.currentTime + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      osc2.start(audioContext.currentTime + 0.15);
+      osc2.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      console.warn('AudioContext failed:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!user) return;
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const fetchNotifications = async (isInitial = false) => {
+      try {
+        const res = await fetch(getApiUrl(`/api/notifications?role=${user.role}`));
+        const data = await res.json();
+        if (data.success) {
+          const newNotifs = data.notifications || [];
+          const currentList = notificationsRef.current;
+          if (!isInitial) {
+            const unreadNew = newNotifs.filter((n: any) => n.isRead === 0 && !currentList.some((existing: any) => existing.id === n.id));
+            if (unreadNew.length > 0) {
+              playNotificationSound();
+              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                unreadNew.slice(0, 3).forEach((notif: any) => {
+                  try {
+                    const n = new Notification(notif.title, {
+                      body: notif.message,
+                      icon: '/icon.png'
+                    });
+                    n.onclick = () => {
+                      window.focus();
+                    };
+                  } catch (err) {
+                    console.warn(err);
+                  }
+                });
               }
             }
-            setNotifications(newNotifs);
           }
-        } catch (e) {
-          console.error(e);
+          setNotifications(newNotifs);
         }
-      };
-
-      fetchNotifications(true);
-      const interval = setInterval(() => fetchNotifications(false), 12000);
-      return () => clearInterval(interval);
-    }, [user?.role]);
-
-    const handleToggleNotifications = async () => {
-      const nextShow = !showNotifications;
-      setShowNotifications(nextShow);
-      if (nextShow) {
-        try {
-          await fetch(getApiUrl('/api/notifications/read'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: user?.role })
-          });
-          setNotifications(prev => prev.map(n => ({ ...n, isRead: 1 })));
-        } catch (e) {
-          console.error('Failed to mark notifications as read:', e);
-        }
+      } catch (e) {
+        console.error(e);
       }
     };
 
-    const selectTab = (tab: typeof activeTab) => {
-      setActiveTab(tab);
-      setIsMobileOpen(false);
-    };
-    const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
-    const [cleaningUp, setCleaningUp] = useState(false);
+    fetchNotifications(true);
+    const interval = setInterval(() => fetchNotifications(false), 12000);
+    return () => clearInterval(interval);
+  }, [user?.role]);
 
-    const handleToggleRegistration = () => {
-      setAdminOnlyRegistration(!adminOnlyRegistration);
-    };
-
-    const isStaff = user?.role === 'staff';
-
-    const handleRemoveUser = async (id: string) => {
-      if (isStaff) {
-        alert('Only administrators can remove users.');
-        return;
+  const handleToggleNotifications = async () => {
+    const nextShow = !showNotifications;
+    setShowNotifications(nextShow);
+    if (nextShow) {
+      try {
+        await fetch(getApiUrl('/api/notifications/read'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: user?.role })
+        });
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: 1 })));
+      } catch (e) {
+        console.error('Failed to mark notifications as read:', e);
       }
-      if (confirm('Are you sure you want to remove this user? Their profile data will be deleted.')) {
-        await deleteUser(id);
-      }
-    };
+    }
+  };
 
-    const handleToggleUserRole = async (userId: string, currentRole: string) => {
-      if (isStaff) {
-        alert('Only administrators can change roles.');
-        return;
-      }
-      const newRole = currentRole === 'admin' ? 'user' : 'admin';
-      if (confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
-        try {
-          await updateUserRole(userId, newRole as any);
-        } catch (error) {
-          console.error('Error updating user role:', error);
-          alert('Failed to update user role.');
-        }
-      }
-    };
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setIsMobileOpen(false);
+  };
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [cleaningUp, setCleaningUp] = useState(false);
 
-    const handleClearAllLeads = async () => {
-      if (isStaff) {
-        alert('Only administrators can clear all leads.');
-        return;
-      }
-      if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS? This cannot be undone.')) {
-        setCleaningUp(true);
-        try {
-          await mockDataService.clearLeads();
-          alert('All leads have been cleared successfully.');
-        } catch (error) {
-          console.error('Error clearing leads: ', error);
-          alert('Failed to clear leads. Check console for details.');
-        } finally {
-          setCleaningUp(false);
-        }
-      }
-    };
+  const handleToggleRegistration = () => {
+    setAdminOnlyRegistration(!adminOnlyRegistration);
+  };
 
-    const handleDeleteOrder = async (id: string) => {
-      if (user?.role !== 'admin') {
-        alert('Only administrators can delete orders.');
-        return;
+  const isStaff = user?.role === 'staff';
+
+  const handleRemoveUser = async (id: string) => {
+    if (isStaff) {
+      alert('Only administrators can remove users.');
+      return;
+    }
+    if (confirm('Are you sure you want to remove this user? Their profile data will be deleted.')) {
+      await deleteUser(id);
+    }
+  };
+
+  const handleToggleUserRole = async (userId: string, currentRole: string) => {
+    if (isStaff) {
+      alert('Only administrators can change roles.');
+      return;
+    }
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    if (confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
+      try {
+        await updateUserRole(userId, newRole as any);
+      } catch (error) {
+        console.error('Error updating user role:', error);
+        alert('Failed to update user role.');
       }
-      if (confirm('Are you sure you want to delete this order? This action is irreversible.')) {
-        try {
-          await deleteOrder(id);
-        } catch (error) {
-          console.error('Error deleting order:', error);
-          alert('Failed to delete order.');
-        }
+    }
+  };
+
+  const handleClearAllLeads = async () => {
+    if (isStaff) {
+      alert('Only administrators can clear all leads.');
+      return;
+    }
+    if (confirm('Are you sure you want to PERMANENTLY DELETE ALL LEADS? This cannot be undone.')) {
+      setCleaningUp(true);
+      try {
+        await mockDataService.clearLeads();
+        alert('All leads have been cleared successfully.');
+      } catch (error) {
+        console.error('Error clearing leads: ', error);
+        alert('Failed to clear leads. Check console for details.');
+      } finally {
+        setCleaningUp(false);
       }
-    };
+    }
+  };
 
-    const handleDeleteInvoice = async (id: string) => {
-      if (user?.role !== 'admin') {
-        alert('Only administrators can delete invoices.');
-        return;
+  const handleDeleteOrder = async (id: string) => {
+    if (user?.role !== 'admin') {
+      alert('Only administrators can delete orders.');
+      return;
+    }
+    if (confirm('Are you sure you want to delete this order? This action is irreversible.')) {
+      try {
+        await deleteOrder(id);
+      } catch (error) {
+        console.error('Error deleting order:', error);
+        alert('Failed to delete order.');
       }
-      if (confirm('Are you sure you want to delete this invoice? This action is irreversible.')) {
-        try {
-          await deleteInvoice(id);
-        } catch (error) {
-          console.error('Error deleting invoice:', error);
-          alert('Failed to delete invoice.');
-        }
+    }
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (user?.role !== 'admin') {
+      alert('Only administrators can delete invoices.');
+      return;
+    }
+    if (confirm('Are you sure you want to delete this invoice? This action is irreversible.')) {
+      try {
+        await deleteInvoice(id);
+      } catch (error) {
+        console.error('Error deleting invoice:', error);
+        alert('Failed to delete invoice.');
       }
-    };
+    }
+  };
 
-    const handleLogout = () => {
-      logout();
-      navigate('/login');
-    };
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
-    // Redirect if not admin or staff (after loading)
-    React.useEffect(() => {
-      if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'staff'))) {
-        navigate('/dashboard');
-      }
-    }, [user, authLoading]);
+  // Redirect if not admin or staff (after loading)
+  React.useEffect(() => {
+    if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'staff'))) {
+      navigate('/dashboard');
+    }
+  }, [user, authLoading]);
 
-    const isDeliveredStatus = (status?: string) => {
-      if (!status) return false;
-      const s = String(status).toLowerCase().trim();
-      return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
-    };
+  const isDeliveredStatus = (status?: string) => {
+    if (!status) return false;
+    const s = String(status).toLowerCase().trim();
+    return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
+  };
 
-    const totalDeliveredOrdersRevenue = useMemo(() => {
-      return orders
-        .filter(o => isDeliveredStatus(o.status))
-        .reduce((sum, o) => {
-          const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
-          return sum + (isNaN(amt) ? 0 : amt);
-        }, 0);
-    }, [orders]);
-
-    const totalAllOrdersValue = useMemo(() => {
-      return orders.reduce((sum, o) => {
+  const totalDeliveredOrdersRevenue = useMemo(() => {
+    return orders
+      .filter(o => isDeliveredStatus(o.status))
+      .reduce((sum, o) => {
         const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
         return sum + (isNaN(amt) ? 0 : amt);
       }, 0);
-    }, [orders]);
+  }, [orders]);
 
-    const totalConvertedLeadsValue = useMemo(() => {
-      return leads.reduce((sum, l) => {
-        const val = Number(l.convertedValue ?? l.totalOrderValue ?? 0);
-        return sum + (isNaN(val) ? 0 : val);
-      }, 0);
-    }, [leads]);
+  const totalAllOrdersValue = useMemo(() => {
+    return orders.reduce((sum, o) => {
+      const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
+  }, [orders]);
 
-    const aggregateTotal = useMemo(() => {
-      if (totalDeliveredOrdersRevenue > 0) return totalDeliveredOrdersRevenue;
-      return totalAllOrdersValue + totalConvertedLeadsValue;
-    }, [totalDeliveredOrdersRevenue, totalAllOrdersValue, totalConvertedLeadsValue]);
+  const totalConvertedLeadsValue = useMemo(() => {
+    return leads.reduce((sum, l) => {
+      const val = Number(l.convertedValue ?? l.totalOrderValue ?? 0);
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  }, [leads]);
 
-    const globalDeliveredOrdersChartData = useMemo(() => {
-      if (!orders || orders.length === 0) {
-        return [{ name: 'No Orders', deliveredRevenue: 0, totalOrders: 0 }];
+  const aggregateTotal = useMemo(() => {
+    if (totalDeliveredOrdersRevenue > 0) return totalDeliveredOrdersRevenue;
+    return totalAllOrdersValue + totalConvertedLeadsValue;
+  }, [totalDeliveredOrdersRevenue, totalAllOrdersValue, totalConvertedLeadsValue]);
+
+  const globalDeliveredOrdersChartData = useMemo(() => {
+    if (!orders || orders.length === 0) {
+      return [{ name: 'No Orders', deliveredRevenue: 0, totalOrders: 0 }];
+    }
+
+    const sorted = [...orders].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+
+    let cumDeliveredRevenue = 0;
+    let cumTotalOrders = 0;
+
+    const chartPoints = sorted.reduce((acc: any[], o, idx) => {
+      cumTotalOrders += 1;
+      const isDelivered = isDeliveredStatus(o.status);
+      const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+      const validAmt = isNaN(amt) ? 0 : amt;
+
+      if (isDelivered) {
+        cumDeliveredRevenue += validAmt;
       }
 
-      const sorted = [...orders].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+      const dateStr = o.createdAt
+        ? new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        : `Ord #${idx + 1}`;
 
-      let cumDeliveredRevenue = 0;
-      let cumTotalOrders = 0;
+      acc.push({
+        name: dateStr,
+        deliveredRevenue: cumDeliveredRevenue > 0 ? cumDeliveredRevenue : (cumTotalOrders * 1000),
+        totalOrders: cumTotalOrders,
+        orderId: `#${o.id.slice(-6)}`,
+        client: o.customerInfo?.name || (o as any).clientName || 'Client',
+        amount: validAmt,
+        status: o.status
+      });
+      return acc;
+    }, []);
 
-      const chartPoints = sorted.reduce((acc: any[], o, idx) => {
-        cumTotalOrders += 1;
-        const isDelivered = isDeliveredStatus(o.status);
-        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
-        const validAmt = isNaN(amt) ? 0 : amt;
+    return chartPoints;
+  }, [orders]);
 
-        if (isDelivered) {
-          cumDeliveredRevenue += validAmt;
-        }
+  // Today & Staff Upload Analytics
+  const staffUploadStats = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 86400000;
+    const yesterdayStart = todayStart - 86400000;
 
-        const dateStr = o.createdAt
-          ? new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
-          : `Ord #${idx + 1}`;
+    const userMap: Record<string, string> = {};
+    registeredUsers.forEach((u: any) => {
+      if (u.id) userMap[u.id] = u.name || u.email;
+      if (u.email) userMap[u.email] = u.name || u.email;
+    });
 
-        acc.push({
-          name: dateStr,
-          deliveredRevenue: cumDeliveredRevenue > 0 ? cumDeliveredRevenue : (cumTotalOrders * 1000),
-          totalOrders: cumTotalOrders,
-          orderId: `#${o.id.slice(-6)}`,
-          client: o.customerInfo?.name || (o as any).clientName || 'Client',
-          amount: validAmt,
-          status: o.status
-        });
-        return acc;
-      }, []);
+    const staffMap: Record<string, {
+      name: string;
+      todayOrdersCount: number;
+      todayTotalValue: number;
+      yesterdayOrdersCount: number;
+      allOrdersCount: number;
+      allTotalValue: number;
+    }> = {};
 
-      return chartPoints;
-    }, [orders]);
+    orders.forEach(o => {
+      const creatorName = (o.createdByName || userMap[o.createdBy] || o.createdBy || 'Unknown Staff').trim();
+      if (!staffMap[creatorName]) {
+        staffMap[creatorName] = {
+          name: creatorName,
+          todayOrdersCount: 0,
+          todayTotalValue: 0,
+          yesterdayOrdersCount: 0,
+          allOrdersCount: 0,
+          allTotalValue: 0,
+        };
+      }
 
-    // Today & Staff Upload Analytics
-    const staffUploadStats = useMemo(() => {
+      const orderTime = Number(o.createdAt || 0);
+      const amount = Number(o.financials?.totalAmount || 0);
+
+      staffMap[creatorName].allOrdersCount += 1;
+      staffMap[creatorName].allTotalValue += amount;
+
+      if (orderTime >= todayStart && orderTime < todayEnd) {
+        staffMap[creatorName].todayOrdersCount += 1;
+        staffMap[creatorName].todayTotalValue += amount;
+      } else if (orderTime >= yesterdayStart && orderTime < todayStart) {
+        staffMap[creatorName].yesterdayOrdersCount += 1;
+      }
+    });
+
+    return Object.values(staffMap).sort((a, b) => b.todayOrdersCount - a.todayOrdersCount || b.allOrdersCount - a.allOrdersCount);
+  }, [orders, registeredUsers]);
+
+  const totalTodayUploadedOrders = useMemo(() => {
+    return staffUploadStats.reduce((sum, s) => sum + s.todayOrdersCount, 0);
+  }, [staffUploadStats]);
+
+  const totalTodayUploadedValue = useMemo(() => {
+    return staffUploadStats.reduce((sum, s) => sum + s.todayTotalValue, 0);
+  }, [staffUploadStats]);
+
+  const getEffectiveStatus = (o: Order) => {
+    return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
+  };
+
+  const isOrderDesignCompleted = (o: Order) => {
+    const eff = getEffectiveStatus(o);
+    return (
+      [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+      Boolean((o as any).designCompleted) ||
+      Boolean((o as any).details?.designCompleted) ||
+      Boolean((o as any).designSentToDigitizer) ||
+      Boolean((o as any).details?.designSentToDigitizer) ||
+      Boolean(o.designAttachments && o.designAttachments.length > 0) ||
+      Boolean(o.machineFiles && o.machineFiles.length > 0) ||
+      Boolean((o as any).original_design_file)
+    );
+  };
+
+  const isOrderAccountsCompleted = (o: Order) => {
+    const eff = getEffectiveStatus(o);
+    return (
+      [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+      Boolean(o.sentByAccounts) ||
+      Boolean(o.accountsAttachments && o.accountsAttachments.length > 0)
+    );
+  };
+
+  const isOrderOmCompleted = (o: Order) => {
+    const eff = getEffectiveStatus(o);
+    return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+  };
+
+  const isOrderProductionCompleted = (o: Order) => {
+    const eff = getEffectiveStatus(o);
+    return [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+  };
+
+  const isOrderDeliveryCompleted = (o: Order) => {
+    return o.status === OrderStatus.DELIVERED;
+  };
+
+  const isOrderForDigitizer = (o: Order) => {
+    return Boolean(
+      o.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === 'true'
+    );
+  };
+
+  const isOrderDigitizerCompleted = (o: Order) => {
+    const eff = getEffectiveStatus(o);
+    if (o.digitizerCompleted === true || o.details?.digitizerCompleted === true || o.details?.digitizerCompleted === 'true') {
+      return true;
+    }
+    if (o.digitizerSentToOM === true || o.details?.digitizerSentToOM === true || o.details?.digitizerSentToOM === 'true') {
+      return true;
+    }
+    if (o.details?.hasMachineFiles === true || o.details?.hasMachineFiles === 'true') {
+      return true;
+    }
+    const hasMachineFiles = Boolean(o.machineFiles && o.machineFiles.length > 0);
+    const hasDigitizerFile = Boolean((o as any).digitizer_file || o.details?.digitizer_file);
+    const hasDstEmb = Boolean(
+      o.designAttachments && o.designAttachments.some(file => {
+        const name = typeof file === 'string' ? file.toLowerCase() : '';
+        return name.includes('.dst') || name.includes('.emb');
+      })
+    );
+    const isPastDigitizer = [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+    return hasMachineFiles || hasDigitizerFile || hasDstEmb || isPastDigitizer;
+  };
+
+  const isOrderForInventory = (o: Order) => {
+    const eff = getEffectiveStatus(o);
+    return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+      Boolean(o.details?.dispatchType) ||
+      Boolean(o.details?.sentToDeliveryDashboard) ||
+      Boolean(o.details?.inventoryDispatched);
+  };
+
+  const isOrderInventoryCompleted = (o: Order) => {
+    return (
+      o.status === OrderStatus.DELIVERED ||
+      o.details?.sentToDeliveryDashboard === true ||
+      o.details?.dispatchType === 'in_house' ||
+      o.details?.dispatchType === 'courier' ||
+      o.details?.inventoryDispatched === true ||
+      Boolean(o.details?.courierName)
+    );
+  };
+
+  const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory') => {
+    let totalCount = 0;
+    let queueCount = 0;
+    let holdCount = 0;
+    let completedCount = 0;
+
+    switch (dept) {
+      case 'all':
+        totalCount = orders.length;
+        completedCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
+        queueCount = Math.max(0, totalCount - completedCount - holdCount);
+        break;
+
+      case 'staff':
+        totalCount = orders.length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
+        queueCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
+        completedCount = orders.filter(o => {
+          const eff = getEffectiveStatus(o);
+          return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
+        }).length;
+        break;
+
+      case 'accounts':
+        queueCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
+        completedCount = orders.filter(o => isOrderAccountsCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+
+      case 'designers':
+        queueCount = orders.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o)).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned'))).length;
+        completedCount = orders.filter(o => isOrderDesignCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+
+      case 'digitizer':
+        queueCount = orders.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD).length;
+        holdCount = orders.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD).length;
+        completedCount = orders.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+
+      case 'order_management':
+        queueCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
+        completedCount = orders.filter(o => isOrderOmCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+
+      case 'production':
+        queueCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
+        completedCount = orders.filter(o => isOrderProductionCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+
+      case 'inventory':
+        queueCount = orders.filter(o => {
+          if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
+          if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
+          return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
+        }).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY)).length;
+        completedCount = orders.filter(o => isOrderInventoryCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+
+      case 'delivery':
+        queueCount = orders.filter(o => o.status === OrderStatus.DELIVERY).length;
+        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
+        completedCount = orders.filter(o => isOrderDeliveryCompleted(o)).length;
+        totalCount = queueCount + holdCount + completedCount;
+        break;
+    }
+
+    const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    return { totalCount, queueCount, holdCount, completedCount, completionRate };
+  };
+
+  const getFilteredDeptOrders = () => {
+    let baseList = orders;
+
+    // Filter by selected department & section
+    if (selectedDept !== 'all') {
+      switch (selectedDept) {
+        case 'staff':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => {
+              const eff = getEffectiveStatus(o);
+              return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
+            });
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT);
+          }
+          break;
+
+        case 'accounts':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderAccountsCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => o.status === OrderStatus.ACCOUNTS);
+          } else {
+            baseList = baseList.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS) || isOrderAccountsCompleted(o));
+          }
+          break;
+
+        case 'designers':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderDesignCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned')));
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o));
+          } else {
+            baseList = baseList.filter(o => o.status === OrderStatus.DESIGN || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN) || isOrderDesignCompleted(o));
+          }
+          break;
+
+        case 'digitizer':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD);
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD);
+          } else {
+            baseList = baseList.filter(o => isOrderForDigitizer(o));
+          }
+          break;
+
+        case 'order_management':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderOmCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT);
+          } else {
+            baseList = baseList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT) || isOrderOmCompleted(o));
+          }
+          break;
+
+        case 'production':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderProductionCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION);
+          } else {
+            baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION) || isOrderProductionCompleted(o));
+          }
+          break;
+
+        case 'inventory':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderInventoryCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY));
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => {
+              if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
+              if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
+              return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
+            });
+          } else {
+            baseList = baseList.filter(o => isOrderForInventory(o));
+          }
+          break;
+
+        case 'delivery':
+          if (selectedSection === 'completed') {
+            baseList = baseList.filter(o => isOrderDeliveryCompleted(o));
+          } else if (selectedSection === 'hold') {
+            baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
+          } else if (selectedSection === 'queue') {
+            baseList = baseList.filter(o => o.status === OrderStatus.DELIVERY);
+          } else {
+            baseList = baseList.filter(o => o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY) || isOrderDeliveryCompleted(o));
+          }
+          break;
+      }
+    } else {
+      if (selectedSection === 'completed') {
+        baseList = baseList.filter(o => o.status === OrderStatus.DELIVERED);
+      } else if (selectedSection === 'hold') {
+        baseList = baseList.filter(o => o.status === OrderStatus.HOLD);
+      } else if (selectedSection === 'queue') {
+        baseList = baseList.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD);
+      }
+    }
+
+    // Filter by Staff Name / Search Query
+    if (orderStaffSearch.trim()) {
+      const q = orderStaffSearch.toLowerCase().trim();
+      baseList = baseList.filter(o => {
+        const creator = (o.createdByName || '').toLowerCase();
+        const cust = (o.customerInfo?.name || '').toLowerCase();
+        const phone = (o.customerInfo?.phone || '').toLowerCase();
+        const id = (o.id || '').toLowerCase();
+        const designer = (o.assignedDesigner || '').toLowerCase();
+        const cat = (o.category || '').toLowerCase();
+        return creator.includes(q) || cust.includes(q) || phone.includes(q) || id.includes(q) || designer.includes(q) || cat.includes(q);
+      });
+    }
+
+    // Filter by Specific Staff Filter
+    if (orderStaffFilter && orderStaffFilter !== 'all') {
+      baseList = baseList.filter(o => {
+        const creator = (o.createdByName || '').trim().toLowerCase();
+        return creator === orderStaffFilter.trim().toLowerCase();
+      });
+    }
+
+    // Filter by Date Range (Today, Yesterday, This Week, This Month, Custom)
+    if (orderDateRangeFilter !== 'all') {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
       const todayEnd = todayStart + 86400000;
       const yesterdayStart = todayStart - 86400000;
+      const weekStart = todayStart - (now.getDay() * 86400000);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-      const userMap: Record<string, string> = {};
-      registeredUsers.forEach((u: any) => {
-        if (u.id) userMap[u.id] = u.name || u.email;
-        if (u.email) userMap[u.email] = u.name || u.email;
+      baseList = baseList.filter(o => {
+        const t = Number(o.createdAt || 0);
+        if (!t) return false;
+        if (orderDateRangeFilter === 'today') return t >= todayStart && t < todayEnd;
+        if (orderDateRangeFilter === 'yesterday') return t >= yesterdayStart && t < todayStart;
+        if (orderDateRangeFilter === 'this_week') return t >= weekStart && t < todayEnd;
+        if (orderDateRangeFilter === 'this_month') return t >= monthStart && t < todayEnd;
+        if (orderDateRangeFilter === 'custom' && orderCustomDate) {
+          const cDate = new Date(orderCustomDate);
+          const cStart = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate()).getTime();
+          const cEnd = cStart + 86400000;
+          return t >= cStart && t < cEnd;
+        }
+        return true;
       });
+    }
 
-      const staffMap: Record<string, {
-        name: string;
-        todayOrdersCount: number;
-        todayTotalValue: number;
-        yesterdayOrdersCount: number;
-        allOrdersCount: number;
-        allTotalValue: number;
-      }> = {};
+    return baseList;
+  };
 
-      orders.forEach(o => {
-        const creatorName = (o.createdByName || userMap[o.createdBy] || o.createdBy || 'Unknown Staff').trim();
-        if (!staffMap[creatorName]) {
-          staffMap[creatorName] = {
-            name: creatorName,
-            todayOrdersCount: 0,
-            todayTotalValue: 0,
-            yesterdayOrdersCount: 0,
-            allOrdersCount: 0,
-            allTotalValue: 0,
-          };
-        }
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center dashboard-page-bg">Loading security context...</div>;
 
-        const orderTime = Number(o.createdAt || 0);
-        const amount = Number(o.financials?.totalAmount || 0);
+  return (
+    <div className="flex dashboard-page-bg h-screen overflow-hidden">
+      {/* Mobile Sidebar Backdrop */}
+      {layoutMode === 'system' && isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
 
-        staffMap[creatorName].allOrdersCount += 1;
-        staffMap[creatorName].allTotalValue += amount;
+      {/* Sidebar */}
+      {layoutMode === 'system' && (
+        <aside className={cn(
+          "bg-white/75 backdrop-blur-2xl border border-white/60 flex flex-col fixed top-3 bottom-3 left-3 md:left-4 z-40 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl transition-all duration-300 overflow-hidden",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          isSidebarCollapsed ? "md:w-20" : "md:w-64",
+          "w-64"
+        )}>
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+            {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
+            <button
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  setIsMobileOpen(false);
+                } else {
+                  setIsSidebarCollapsed(!isSidebarCollapsed);
+                }
+              }}
+              className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-brand-primary transition-all flex-shrink-0"
+            >
+              {isSidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
+          </div>
 
-        if (orderTime >= todayStart && orderTime < todayEnd) {
-          staffMap[creatorName].todayOrdersCount += 1;
-          staffMap[creatorName].todayTotalValue += amount;
-        } else if (orderTime >= yesterdayStart && orderTime < todayStart) {
-          staffMap[creatorName].yesterdayOrdersCount += 1;
-        }
-      });
+          <nav className="p-4 space-y-1 overflow-y-auto custom-scrollbar flex-1">
+            <button
+              onClick={() => selectTab('overview')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'overview' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Overview" : ""}
+            >
+              <TrendingUp className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Overview</span>}
+            </button>
+            <button
+              onClick={() => selectTab('users')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'users' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Users" : ""}
+            >
+              <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Users</span>}
+            </button>
+            <button
+              onClick={() => selectTab('orders')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Global Orders" : ""}
+            >
+              <Zap className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Global Orders</span>}
+            </button>
+            <button
+              onClick={() => selectTab('invoices')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Invoices" : ""}
+            >
+              <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
+            </button>
+            <button
+              onClick={() => selectTab('logs')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'logs' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Audit Logs" : ""}
+            >
+              <FileText className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Audit Logs</span>}
+            </button>
 
-      return Object.values(staffMap).sort((a, b) => b.todayOrdersCount - a.todayOrdersCount || b.allOrdersCount - a.allOrdersCount);
-    }, [orders, registeredUsers]);
+            <button
+              onClick={() => selectTab('security')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'security' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
+              )}
+              title={isSidebarCollapsed ? "Security" : ""}
+            >
+              <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
+            </button>
 
-    const totalTodayUploadedOrders = useMemo(() => {
-      return staffUploadStats.reduce((sum, s) => sum + s.todayOrdersCount, 0);
-    }, [staffUploadStats]);
-
-    const totalTodayUploadedValue = useMemo(() => {
-      return staffUploadStats.reduce((sum, s) => sum + s.todayTotalValue, 0);
-    }, [staffUploadStats]);
-
-    const getEffectiveStatus = (o: Order) => {
-      return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
-    };
-
-    const isOrderDesignCompleted = (o: Order) => {
-      const eff = getEffectiveStatus(o);
-      return (
-        [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
-        Boolean((o as any).designCompleted) ||
-        Boolean((o as any).details?.designCompleted) ||
-        Boolean((o as any).designSentToDigitizer) ||
-        Boolean((o as any).details?.designSentToDigitizer) ||
-        Boolean(o.designAttachments && o.designAttachments.length > 0) ||
-        Boolean(o.machineFiles && o.machineFiles.length > 0) ||
-        Boolean((o as any).original_design_file)
-      );
-    };
-
-    const isOrderAccountsCompleted = (o: Order) => {
-      const eff = getEffectiveStatus(o);
-      return (
-        [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
-        Boolean(o.sentByAccounts) ||
-        Boolean(o.accountsAttachments && o.accountsAttachments.length > 0)
-      );
-    };
-
-    const isOrderOmCompleted = (o: Order) => {
-      const eff = getEffectiveStatus(o);
-      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
-    };
-
-    const isOrderProductionCompleted = (o: Order) => {
-      const eff = getEffectiveStatus(o);
-      return [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
-    };
-
-    const isOrderDeliveryCompleted = (o: Order) => {
-      return o.status === OrderStatus.DELIVERED;
-    };
-
-    const isOrderForDigitizer = (o: Order) => {
-      return Boolean(
-        o.designSentToDigitizer === true ||
-        o.details?.designSentToDigitizer === true ||
-        o.details?.designSentToDigitizer === 'true'
-      );
-    };
-
-    const isOrderDigitizerCompleted = (o: Order) => {
-      const eff = getEffectiveStatus(o);
-      if (o.digitizerCompleted === true || o.details?.digitizerCompleted === true || o.details?.digitizerCompleted === 'true') {
-        return true;
-      }
-      if (o.digitizerSentToOM === true || o.details?.digitizerSentToOM === true || o.details?.digitizerSentToOM === 'true') {
-        return true;
-      }
-      if (o.details?.hasMachineFiles === true || o.details?.hasMachineFiles === 'true') {
-        return true;
-      }
-      const hasMachineFiles = Boolean(o.machineFiles && o.machineFiles.length > 0);
-      const hasDigitizerFile = Boolean((o as any).digitizer_file || o.details?.digitizer_file);
-      const hasDstEmb = Boolean(
-        o.designAttachments && o.designAttachments.some(file => {
-          const name = typeof file === 'string' ? file.toLowerCase() : '';
-          return name.includes('.dst') || name.includes('.emb');
-        })
-      );
-      const isPastDigitizer = [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
-      return hasMachineFiles || hasDigitizerFile || hasDstEmb || isPastDigitizer;
-    };
-
-    const isOrderForInventory = (o: Order) => {
-      const eff = getEffectiveStatus(o);
-      return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
-        Boolean(o.details?.dispatchType) ||
-        Boolean(o.details?.sentToDeliveryDashboard) ||
-        Boolean(o.details?.inventoryDispatched);
-    };
-
-    const isOrderInventoryCompleted = (o: Order) => {
-      return (
-        o.status === OrderStatus.DELIVERED ||
-        o.details?.sentToDeliveryDashboard === true ||
-        o.details?.dispatchType === 'in_house' ||
-        o.details?.dispatchType === 'courier' ||
-        o.details?.inventoryDispatched === true ||
-        Boolean(o.details?.courierName)
-      );
-    };
-
-    const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory') => {
-      let totalCount = 0;
-      let queueCount = 0;
-      let holdCount = 0;
-      let completedCount = 0;
-
-      switch (dept) {
-        case 'all':
-          totalCount = orders.length;
-          completedCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
-          queueCount = Math.max(0, totalCount - completedCount - holdCount);
-          break;
-
-        case 'staff':
-          totalCount = orders.length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
-          queueCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
-          completedCount = orders.filter(o => {
-            const eff = getEffectiveStatus(o);
-            return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
-          }).length;
-          break;
-
-        case 'accounts':
-          queueCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-          completedCount = orders.filter(o => isOrderAccountsCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-
-        case 'designers':
-          queueCount = orders.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o)).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned'))).length;
-          completedCount = orders.filter(o => isOrderDesignCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-
-        case 'digitizer':
-          queueCount = orders.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD).length;
-          holdCount = orders.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD).length;
-          completedCount = orders.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-
-        case 'order_management':
-          queueCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
-          completedCount = orders.filter(o => isOrderOmCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-
-        case 'production':
-          queueCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
-          completedCount = orders.filter(o => isOrderProductionCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-
-        case 'inventory':
-          queueCount = orders.filter(o => {
-            if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
-            if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
-            return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
-          }).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY)).length;
-          completedCount = orders.filter(o => isOrderInventoryCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-
-        case 'delivery':
-          queueCount = orders.filter(o => o.status === OrderStatus.DELIVERY).length;
-          holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
-          completedCount = orders.filter(o => isOrderDeliveryCompleted(o)).length;
-          totalCount = queueCount + holdCount + completedCount;
-          break;
-      }
-
-      const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-      return { totalCount, queueCount, holdCount, completedCount, completionRate };
-    };
-
-    const getFilteredDeptOrders = () => {
-      let baseList = orders;
-
-      // Filter by selected department & section
-      if (selectedDept !== 'all') {
-        switch (selectedDept) {
-          case 'staff':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => {
-                const eff = getEffectiveStatus(o);
-                return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
-              });
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT));
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT);
-            }
-            break;
-
-          case 'accounts':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderAccountsCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS);
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.ACCOUNTS);
-            } else {
-              baseList = baseList.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS) || isOrderAccountsCompleted(o));
-            }
-            break;
-
-          case 'designers':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderDesignCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned')));
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o));
-            } else {
-              baseList = baseList.filter(o => o.status === OrderStatus.DESIGN || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN) || isOrderDesignCompleted(o));
-            }
-            break;
-
-          case 'digitizer':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD);
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD);
-            } else {
-              baseList = baseList.filter(o => isOrderForDigitizer(o));
-            }
-            break;
-
-          case 'order_management':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderOmCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT);
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT);
-            } else {
-              baseList = baseList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT) || isOrderOmCompleted(o));
-            }
-            break;
-
-          case 'production':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderProductionCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION);
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION);
-            } else {
-              baseList = baseList.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION) || isOrderProductionCompleted(o));
-            }
-            break;
-
-          case 'inventory':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderInventoryCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY));
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => {
-                if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
-                if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
-                return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
-              });
-            } else {
-              baseList = baseList.filter(o => isOrderForInventory(o));
-            }
-            break;
-
-          case 'delivery':
-            if (selectedSection === 'completed') {
-              baseList = baseList.filter(o => isOrderDeliveryCompleted(o));
-            } else if (selectedSection === 'hold') {
-              baseList = baseList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY);
-            } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.DELIVERY);
-            } else {
-              baseList = baseList.filter(o => o.status === OrderStatus.DELIVERY || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY) || isOrderDeliveryCompleted(o));
-            }
-            break;
-        }
-      } else {
-        if (selectedSection === 'completed') {
-          baseList = baseList.filter(o => o.status === OrderStatus.DELIVERED);
-        } else if (selectedSection === 'hold') {
-          baseList = baseList.filter(o => o.status === OrderStatus.HOLD);
-        } else if (selectedSection === 'queue') {
-          baseList = baseList.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD);
-        }
-      }
-
-      // Filter by Staff Name / Search Query
-      if (orderStaffSearch.trim()) {
-        const q = orderStaffSearch.toLowerCase().trim();
-        baseList = baseList.filter(o => {
-          const creator = (o.createdByName || '').toLowerCase();
-          const cust = (o.customerInfo?.name || '').toLowerCase();
-          const phone = (o.customerInfo?.phone || '').toLowerCase();
-          const id = (o.id || '').toLowerCase();
-          const designer = (o.assignedDesigner || '').toLowerCase();
-          const cat = (o.category || '').toLowerCase();
-          return creator.includes(q) || cust.includes(q) || phone.includes(q) || id.includes(q) || designer.includes(q) || cat.includes(q);
-        });
-      }
-
-      // Filter by Specific Staff Filter
-      if (orderStaffFilter && orderStaffFilter !== 'all') {
-        baseList = baseList.filter(o => {
-          const creator = (o.createdByName || '').trim().toLowerCase();
-          return creator === orderStaffFilter.trim().toLowerCase();
-        });
-      }
-
-      // Filter by Date Range (Today, Yesterday, This Week, This Month, Custom)
-      if (orderDateRangeFilter !== 'all') {
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const todayEnd = todayStart + 86400000;
-        const yesterdayStart = todayStart - 86400000;
-        const weekStart = todayStart - (now.getDay() * 86400000);
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-
-        baseList = baseList.filter(o => {
-          const t = Number(o.createdAt || 0);
-          if (!t) return false;
-          if (orderDateRangeFilter === 'today') return t >= todayStart && t < todayEnd;
-          if (orderDateRangeFilter === 'yesterday') return t >= yesterdayStart && t < todayStart;
-          if (orderDateRangeFilter === 'this_week') return t >= weekStart && t < todayEnd;
-          if (orderDateRangeFilter === 'this_month') return t >= monthStart && t < todayEnd;
-          if (orderDateRangeFilter === 'custom' && orderCustomDate) {
-            const cDate = new Date(orderCustomDate);
-            const cStart = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate()).getTime();
-            const cEnd = cStart + 86400000;
-            return t >= cStart && t < cEnd;
-          }
-          return true;
-        });
-      }
-
-      return baseList;
-    };
-
-    if (authLoading) return <div className="min-h-screen flex items-center justify-center dashboard-page-bg">Loading security context...</div>;
-
-    return (
-      <div className="flex dashboard-page-bg h-screen overflow-hidden">
-        {/* Mobile Sidebar Backdrop */}
-        {layoutMode === 'system' && isMobileOpen && (
-          <div
-            className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
-            onClick={() => setIsMobileOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        {layoutMode === 'system' && (
-          <aside className={cn(
-            "bg-white/75 backdrop-blur-2xl border border-white/60 flex flex-col fixed top-3 bottom-3 left-3 md:left-4 z-40 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl transition-all duration-300 overflow-hidden",
-            isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-            isSidebarCollapsed ? "md:w-20" : "md:w-64",
-            "w-64"
-          )}>
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
-              {(!isSidebarCollapsed || isMobileOpen) && <Logo />}
+            <div className="pt-4 mt-2 border-t border-gray-100 space-y-2">
+              <button
+                onClick={() => setIsAdminOrderModalOpen(true)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-primary/95 transition-all shadow-md shadow-brand-primary/15 border-none cursor-pointer",
+                  isSidebarCollapsed && "md:justify-center md:px-0"
+                )}
+                title={isSidebarCollapsed ? "Create Order" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+              </button>
               <button
                 onClick={() => {
-                  if (window.innerWidth < 768) {
-                    setIsMobileOpen(false);
-                  } else {
-                    setIsSidebarCollapsed(!isSidebarCollapsed);
-                  }
+                  setEditingInvoice(null);
+                  setIsInvoiceFormModalOpen(true);
                 }}
-                className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-brand-primary transition-all flex-shrink-0"
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-650 transition-all shadow-md shadow-emerald-500/15 border-none cursor-pointer",
+                  isSidebarCollapsed && "md:justify-center md:px-0"
+                )}
+                title={isSidebarCollapsed ? "Create Invoice" : ""}
               >
-                {isSidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+                <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Invoice</span>}
               </button>
             </div>
 
-            <nav className="p-4 space-y-1 overflow-y-auto custom-scrollbar flex-1">
-              <button
-                onClick={() => selectTab('overview')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'overview' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Overview" : ""}
-              >
-                <TrendingUp className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Overview</span>}
-              </button>
-              <button
-                onClick={() => selectTab('users')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'users' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Users" : ""}
-              >
-                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Users</span>}
-              </button>
-              <button
-                onClick={() => selectTab('orders')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Global Orders" : ""}
-              >
-                <Zap className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Global Orders</span>}
-              </button>
-              <button
-                onClick={() => selectTab('invoices')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'invoices' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Invoices" : ""}
-              >
-                <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
-              </button>
-              <button
-                onClick={() => selectTab('logs')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'logs' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Audit Logs" : ""}
-              >
-                <FileText className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Audit Logs</span>}
-              </button>
+          </nav>
 
+          <div className="mt-auto p-4 border-t border-gray-100 shrink-0">
+            <button onClick={handleLogout} className={cn(
+              "text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm",
+              isSidebarCollapsed && "md:justify-center md:px-0"
+            )} title={isSidebarCollapsed ? "Logout" : ""}>
+              <LogOut className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Logout</span>}
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Main Content */}
+      <main className={cn(
+        "flex-1 h-screen flex flex-col min-w-0 overflow-hidden pb-2 md:pb-4 transition-all duration-300",
+        isSidebarCollapsed ? "md:ml-28" : "md:ml-72"
+      )}>
+        {/* Top Header */}
+        <header className="h-16 shrink-0 bg-white/70 backdrop-blur-2xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] flex items-center justify-between px-4 md:px-8 shadow-lg z-30">
+          <div className="flex items-center gap-3 text-gray-400">
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 hidden flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-700 flex items-center gap-2">
+              Admin Control Panel
+            </span>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => navigate('/hr-dashboard')}
+              className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="HR & Payroll Dashboard"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">HR & Payroll</span>
+            </button>
+            <div className="relative">
               <button
-                onClick={() => selectTab('security')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'security' ? "bg-white text-brand-primary border border-brand-primary/10 shadow-sm" : "text-gray-500 hover:text-brand-primary hover:bg-gray-50"
+                onClick={handleToggleNotifications}
+                className="p-2 hover:bg-gray-50 rounded-lg text-gray-500 relative cursor-pointer flex items-center justify-center"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some(n => n.isRead === 0) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
                 )}
-                title={isSidebarCollapsed ? "Security" : ""}
-              >
-                <Shield className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Security</span>}
               </button>
-
-              <div className="pt-4 mt-2 border-t border-gray-100 space-y-2">
-                <button
-                  onClick={() => setIsAdminOrderModalOpen(true)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-primary/95 transition-all shadow-md shadow-brand-primary/15 border-none cursor-pointer",
-                    isSidebarCollapsed && "md:justify-center md:px-0"
-                  )}
-                  title={isSidebarCollapsed ? "Create Order" : ""}
-                >
-                  <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingInvoice(null);
-                    setIsInvoiceFormModalOpen(true);
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-650 transition-all shadow-md shadow-emerald-500/15 border-none cursor-pointer",
-                    isSidebarCollapsed && "md:justify-center md:px-0"
-                  )}
-                  title={isSidebarCollapsed ? "Create Invoice" : ""}
-                >
-                  <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Invoice</span>}
-                </button>
-              </div>
-
-            </nav>
-
-            <div className="mt-auto p-4 border-t border-gray-100 shrink-0">
-              <button onClick={handleLogout} className={cn(
-                "text-gray-500 hover:text-red-400 font-bold w-full px-3 py-2 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-all text-sm",
-                isSidebarCollapsed && "md:justify-center md:px-0"
-              )} title={isSidebarCollapsed ? "Logout" : ""}>
-                <LogOut className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Logout</span>}
-              </button>
-            </div>
-          </aside>
-        )}
-
-        {/* Main Content */}
-        <main className={cn(
-          "flex-1 h-screen flex flex-col min-w-0 overflow-hidden pb-2 md:pb-4 transition-all duration-300",
-          isSidebarCollapsed ? "md:ml-28" : "md:ml-72"
-        )}>
-          {/* Top Header */}
-          <header className="h-16 shrink-0 bg-white/70 backdrop-blur-2xl border border-white/60 mx-3 sm:mx-6 md:mx-8 mt-3 sm:mt-4 rounded-2xl md:rounded-[1.75rem] flex items-center justify-between px-4 md:px-8 shadow-lg z-30">
-            <div className="flex items-center gap-3 text-gray-400">
-              <button
-                onClick={() => setIsMobileOpen(true)}
-                className="p-2 -ml-1 hover:bg-gray-50 rounded-xl text-gray-500 hidden flex-shrink-0"
-                aria-label="Toggle menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <span className="text-xs font-bold uppercase tracking-widest text-gray-700 flex items-center gap-2">
-                Admin Control Panel
-              </span>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button
-                onClick={() => navigate('/hr-dashboard')}
-                className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="HR & Payroll Dashboard"
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">HR & Payroll</span>
-              </button>
-              <div className="relative">
-                <button
-                  onClick={handleToggleNotifications}
-                  className="p-2 hover:bg-gray-50 rounded-lg text-gray-500 relative cursor-pointer flex items-center justify-center"
-                >
-                  <Bell className="w-5 h-5" />
-                  {notifications.some(n => n.isRead === 0) && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
-                  )}
-                </button>
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-gray-100 shadow-xl z-50 overflow-hidden text-left">
-                    <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-                      <span className="text-xs font-black uppercase text-gray-500 tracking-wider">Notifications</span>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
-                      {notifications.length > 0 ? (
-                        notifications.map(n => (
-                          <div key={n.id} className={cn("p-4 transition-colors", n.isRead === 0 ? "bg-purple-50/10" : "")}>
-                            <p className="text-xs font-bold text-gray-900">{n.title}</p>
-                            <p className="text-[10px] text-gray-500 font-semibold mt-1 leading-relaxed">{n.message}</p>
-                            <span className="text-[9px] text-gray-400 font-bold block mt-2">{new Date(n.createdAt).toLocaleTimeString()}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-6 text-center text-xs text-gray-400">No notifications yet.</div>
-                      )}
-                    </div>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-gray-100 shadow-xl z-50 overflow-hidden text-left">
+                  <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-gray-500 tracking-wider">Notifications</span>
                   </div>
-                )}
-              </div>
-              <button
-                className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"
-                onClick={() => setShowProfileModal(true)}
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                    {notifications.length > 0 ? (
+                      notifications.map(n => (
+                        <div key={n.id} className={cn("p-4 transition-colors", n.isRead === 0 ? "bg-purple-50/10" : "")}>
+                          <p className="text-xs font-bold text-gray-900">{n.title}</p>
+                          <p className="text-[10px] text-gray-500 font-semibold mt-1 leading-relaxed">{n.message}</p>
+                          <span className="text-[9px] text-gray-400 font-bold block mt-2">{new Date(n.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-6 text-center text-xs text-gray-400">No notifications yet.</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          </header>
+            <button
+              className="p-2 hover:bg-gray-50 rounded-lg text-gray-500"
+              onClick={() => setShowProfileModal(true)}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 md:p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 md:p-8">
+          <div className="max-w-7xl mx-auto">
             {/* Header Action Row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
               <div>
@@ -2395,10 +2361,6 @@ export default function AdminDashboard() {
 
                   const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
-                  if (user?.email !== 'daniel.smpallywear@gmail.com') {
-                    return null;
-                  }
-
                   return (
                     <RoleBreakdown
                       mktOrdersRevenue={mktOrdersRevenue}
@@ -2426,53 +2388,52 @@ export default function AdminDashboard() {
                 })()}
 
 
-                {/* Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-                  {/* Global Delivered Orders Revenue Graph */}
-                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
-                      <div>
-                        <h3 className="font-bold text-gray-800 text-base">Global Delivered Orders Revenue</h3>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
-                          Cumulative revenue trend from delivered global orders over time
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3 py-1 rounded-full">
-                          {orders.length} Global Orders
-                        </span>
-                        <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                          ₹{Math.round(totalDeliveredOrdersRevenue || aggregateTotal).toLocaleString('en-IN')} Delivered Revenue
-                        </span>
-                      </div>
+                {/* Charts - Full Width Global Delivered Orders Revenue */}
+                <div className="w-full bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm text-left mb-12">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100">
+                    <div>
+                      <h3 className="font-black text-gray-900 text-lg sm:text-xl tracking-tight">Global Delivered Orders Revenue</h3>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                        Cumulative revenue trend from delivered global orders over time
+                      </p>
                     </div>
-                    <div className="h-[320px]">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                        <AreaChart data={globalDeliveredOrdersChartData}>
-                          <defs>
-                            <linearGradient id="colorDeliveredOrdersRev" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3291B6" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="#3291B6" stopOpacity={0.02} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }} />
-                          <YAxis
-                            tick={{ fontSize: 10, fontWeight: 700, fill: '#3291B6' }}
-                            tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
-                          />
-                          <Tooltip
-                            formatter={(val: any, name: any) => [
-                              `₹${Number(val || 0).toLocaleString('en-IN')}`,
-                              name === 'deliveredRevenue' ? 'Cumulative Delivered Revenue' : 'Amount'
-                            ]}
-                            contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '11px', fontWeight: '700' }}
-                            cursor={{ stroke: '#3291B6', strokeWidth: 1.5, strokeDasharray: '3 3' }}
-                          />
-                          <Area type="monotone" dataKey="deliveredRevenue" stroke="#3291B6" strokeWidth={3.5} fillOpacity={1} fill="url(#colorDeliveredOrdersRev)" name="deliveredRevenue" />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-black text-brand-primary bg-brand-primary/10 px-3.5 py-1.5 rounded-xl border border-brand-primary/20">
+                        {orders.length} Global Orders
+                      </span>
+                      <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl">
+                        ₹{Math.round(totalDeliveredOrdersRevenue || aggregateTotal).toLocaleString('en-IN')} Delivered Revenue
+                      </span>
                     </div>
+                  </div>
+                  <div className="h-[380px] sm:h-[420px] w-full">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <AreaChart data={globalDeliveredOrdersChartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                        <defs>
+                          <linearGradient id="colorDeliveredOrdersRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3291B6" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#3291B6" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700, fill: '#9ca3af' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
+                        <YAxis
+                          tick={{ fontSize: 11, fontWeight: 700, fill: '#3291B6' }}
+                          tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e5e7eb' }}
+                        />
+                        <Tooltip
+                          formatter={(val: any, name: any) => [
+                            `₹${Number(val || 0).toLocaleString('en-IN')}`,
+                            name === 'deliveredRevenue' ? 'Cumulative Delivered Revenue' : 'Amount'
+                          ]}
+                          contentStyle={{ borderRadius: '16px', border: '1px solid #e5e7eb', fontSize: '12px', fontWeight: '700', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
+                          cursor={{ stroke: '#3291B6', strokeWidth: 2, strokeDasharray: '4 4' }}
+                        />
+                        <Area type="monotone" dataKey="deliveredRevenue" stroke="#3291B6" strokeWidth={3.5} fillOpacity={1} fill="url(#colorDeliveredOrdersRev)" name="deliveredRevenue" />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </>
@@ -3097,96 +3058,96 @@ export default function AdminDashboard() {
                         })();
 
                         return (
-                        <tr key={o.id} className="hover:bg-gray-50/50 group transition-colors">
-                          <td className="px-6 py-4 font-mono font-black text-brand-primary text-xs">
-                            #{o.id.slice(-8)}
-                            {isOrderCreatedToday && (
-                              <span className="block mt-1 text-[8px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
-                                ⚡ Today
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              {((o.staffImages && o.staffImages[0]) || o.marketing_image) && (
-                                <div className="w-10 h-10 rounded-xl border border-gray-200 overflow-hidden shrink-0 bg-gray-50">
-                                  <img src={o.staffImages?.[0] || o.marketing_image} className="w-full h-full object-cover" />
-                                </div>
+                          <tr key={o.id} className="hover:bg-gray-50/50 group transition-colors">
+                            <td className="px-6 py-4 font-mono font-black text-brand-primary text-xs">
+                              #{o.id.slice(-8)}
+                              {isOrderCreatedToday && (
+                                <span className="block mt-1 text-[8px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
+                                  ⚡ Today
+                                </span>
                               )}
-                              <div>
-                                <p className="font-bold text-gray-800">{o.customerInfo.name}</p>
-                                <p className="text-[10px] text-gray-400 font-medium">{o.customerInfo.phone || 'No phone'}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider">
-                                    Created by: {o.createdByName || 'System'}
-                                  </p>
-                                  {isOrderCreatedToday && (
-                                    <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-500 text-white">
-                                      Today
-                                    </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                {((o.staffImages && o.staffImages[0]) || o.marketing_image) && (
+                                  <div className="w-10 h-10 rounded-xl border border-gray-200 overflow-hidden shrink-0 bg-gray-50">
+                                    <img src={o.staffImages?.[0] || o.marketing_image} className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="font-bold text-gray-800">{o.customerInfo.name}</p>
+                                  <p className="text-[10px] text-gray-400 font-medium">{o.customerInfo.phone || 'No phone'}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <p className="text-[9px] text-brand-primary font-black uppercase tracking-wider">
+                                      Created by: {o.createdByName || 'System'}
+                                    </p>
+                                    {isOrderCreatedToday && (
+                                      <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-500 text-white">
+                                        Today
+                                      </span>
+                                    )}
+                                  </div>
+                                  {o.createdAt && (
+                                    <p className="text-[8px] text-gray-400 font-mono mt-0.5">
+                                      {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </p>
                                   )}
                                 </div>
-                                {o.createdAt && (
-                                  <p className="text-[8px] text-gray-400 font-mono mt-0.5">
-                                    {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                  </p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium text-gray-700 capitalize">
+                                {o.category}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 font-bold text-gray-600">{o.quantity}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border",
+                                  o.status === OrderStatus.HOLD ? "bg-red-50 text-red-700 border-red-200" :
+                                    o.status === OrderStatus.DELIVERED ? "bg-green-50 text-green-700 border-green-200" :
+                                      "bg-brand-secondary text-brand-primary border-brand-primary/10"
+                                )}>
+                                  {o.status.replace('_', ' ')}
+                                </span>
+                                {o.assignedDesigner && o.assignedDesigner !== 'Unassigned' && o.assignedDesigner !== 'Designer assigned' ? (
+                                  <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+                                    🎨 {o.assignedDesigner}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
+                                    🎨 Unassigned
+                                  </span>
+                                )}
+                                {o.status === OrderStatus.HOLD && o.holdReason && (
+                                  <span className="text-[10px] text-red-500 italic block font-semibold">
+                                    Reason: {o.holdReason}
+                                  </span>
                                 )}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium text-gray-700 capitalize">
-                              {o.category}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 font-bold text-gray-600">{o.quantity}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col gap-1">
-                              <span className={cn(
-                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border",
-                                o.status === OrderStatus.HOLD ? "bg-red-50 text-red-700 border-red-200" :
-                                  o.status === OrderStatus.DELIVERED ? "bg-green-50 text-green-700 border-green-200" :
-                                    "bg-brand-secondary text-brand-primary border-brand-primary/10"
-                              )}>
-                                {o.status.replace('_', ' ')}
-                              </span>
-                              {o.assignedDesigner && o.assignedDesigner !== 'Unassigned' && o.assignedDesigner !== 'Designer assigned' ? (
-                                <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
-                                  🎨 {o.assignedDesigner}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
-                                  🎨 Unassigned
-                                </span>
-                              )}
-                              {o.status === OrderStatus.HOLD && o.holdReason && (
-                                <span className="text-[10px] text-red-500 italic block font-semibold">
-                                  Reason: {o.holdReason}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right font-black text-gray-900">₹{(o.financials?.totalAmount || 0).toLocaleString()}</td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => setSelectedOrderDetail(o)}
-                                className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer border-none"
-                              >
-                                Edit / Update
-                              </button>
-                              <button
-                                onClick={() => handleDeleteOrder(o.id)}
-                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border-none"
-                                title="Delete Order"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="px-6 py-4 text-right font-black text-gray-900">₹{(o.financials?.totalAmount || 0).toLocaleString()}</td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => setSelectedOrderDetail(o)}
+                                  className="px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer border-none"
+                                >
+                                  Edit / Update
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteOrder(o.id)}
+                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border-none"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {getFilteredDeptOrders().length === 0 && (
                         <tr>
                           <td colSpan={7} className="px-6 py-24 text-center">
@@ -4311,688 +4272,649 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             )}
-            </div>
           </div>
-        </main>
+        </div>
+      </main>
 
-        {layoutMode === 'mobile' && (
-          <nav className="fixed bottom-0 inset-x-0 h-14 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1 py-1 flex items-center justify-around z-40 shadow-lg pb-safe">
-            <button
-              onClick={() => selectTab('overview')}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
-                activeTab === 'overview' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <Layout className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Overview</span>
-            </button>
-            <button
-              onClick={() => selectTab('users')}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
-                activeTab === 'users' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <Users className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Users</span>
-            </button>
-            <button
-              onClick={() => selectTab('invoices')}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
-                activeTab === 'invoices' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <BarChart3 className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Invoices</span>
-            </button>
-            <button
-              onClick={() => selectTab('orders')}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
-                activeTab === 'orders' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <Shield className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Workflow</span>
-            </button>
-            <button
-              onClick={() => setShowProfileModal(true)}
-              className="flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 text-gray-400 hover:text-gray-600 font-medium transition-colors cursor-pointer border-none bg-transparent select-none"
-            >
-              <Settings className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Profile</span>
-            </button>
-          </nav>
-        )}
+      {layoutMode === 'mobile' && (
+        <nav className="fixed bottom-0 inset-x-0 h-14 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1 py-1 flex items-center justify-around z-40 shadow-lg pb-safe">
+          <button
+            onClick={() => selectTab('overview')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+              activeTab === 'overview' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Layout className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Overview</span>
+          </button>
+          <button
+            onClick={() => selectTab('users')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+              activeTab === 'users' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Users className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Users</span>
+          </button>
+          <button
+            onClick={() => selectTab('invoices')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+              activeTab === 'invoices' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <BarChart3 className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Invoices</span>
+          </button>
+          <button
+            onClick={() => selectTab('orders')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+              activeTab === 'orders' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Shield className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Workflow</span>
+          </button>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 text-gray-400 hover:text-gray-600 font-medium transition-colors cursor-pointer border-none bg-transparent select-none"
+          >
+            <Settings className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Profile</span>
+          </button>
+        </nav>
+      )}
 
-        {/* Invite Modal */}
-        <AnimatePresence>
-          {showInviteModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowInviteModal(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-md rounded-2xl shadow-2xl relative z-10 p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">Invite Team Member</h3>
-                  <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
-                </div>
-                <p className="text-sm text-gray-500 mb-6">Send an invitation to join your workspace as a user or moderator.</p>
-                {inviteGeneratedLink ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-green-50 text-green-700 rounded-xl text-xs font-semibold leading-relaxed border border-green-100">
-                      Invitation generated successfully! You can share the link below with your colleague:
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={inviteGeneratedLink}
-                        className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none font-mono"
-                      />
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(inviteGeneratedLink);
-                          alert('Copied to clipboard!');
-                        }}
-                        className="px-3 py-2 bg-black text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-colors cursor-pointer border-none"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                    <Button className="w-full mt-4" onClick={() => {
-                      setInviteGeneratedLink('');
-                      setShowInviteModal(false);
-                    }}>
-                      Close
-                    </Button>
+      {/* Invite Modal */}
+      <AnimatePresence>
+        {showInviteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowInviteModal(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-md rounded-2xl shadow-2xl relative z-10 p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Invite Team Member</h3>
+                <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">Send an invitation to join your workspace as a user or moderator.</p>
+              {inviteGeneratedLink ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 text-green-700 rounded-xl text-xs font-semibold leading-relaxed border border-green-100">
+                    Invitation generated successfully! You can share the link below with your colleague:
                   </div>
-                ) : (
-                  <div className="space-y-4 text-left">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteGeneratedLink}
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none font-mono"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteGeneratedLink);
+                        alert('Copied to clipboard!');
+                      }}
+                      className="px-3 py-2 bg-black text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-colors cursor-pointer border-none"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <Button className="w-full mt-4" onClick={() => {
+                    setInviteGeneratedLink('');
+                    setShowInviteModal(false);
+                  }}>
+                    Close
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</label>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="colleague@company.com"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all focus:outline-none text-sm font-semibold"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">System Role</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all focus:outline-none text-sm font-semibold bg-white"
+                    >
+                      <option value="marketing">Marketing</option>
+                      <option value="designer">Designer (Art Studio)</option>
+                      <option value="accounts">Accounts</option>
+                      <option value="order_management">Order Management</option>
+                      <option value="production">Production (Factory)</option>
+                      <option value="digitizer">Digitizing & Embroidery</option>
+                      <option value="delivery">Delivery</option>
+                      <option value="onlineteam">Online Team</option>
+                      <option value="vendor">Vendor</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                  <Button
+                    className="w-full mt-4"
+                    disabled={invitesLoading || !inviteEmail.trim()}
+                    onClick={async () => {
+                      if (!inviteEmail.trim()) return;
+                      setInvitesLoading(true);
+                      try {
+                        const res = await mockDataService.createInvitation(inviteEmail.trim(), inviteRole);
+                        if (res.success) {
+                          const registerUrl = `${window.location.origin}/register?invite=${res.inviteId}`;
+                          setInviteGeneratedLink(registerUrl);
+                          await fetchInvitations();
+                          alert('Invitation successfully created!');
+                        } else {
+                          alert('Failed to create invitation.');
+                        }
+                      } catch (err: any) {
+                        alert(err.message || 'Error creating invitation.');
+                      } finally {
+                        setInvitesLoading(false);
+                      }
+                    }}
+                  >
+                    {invitesLoading ? 'Creating invite...' : 'Send Invitation'}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Logs Modal */}
+      <AnimatePresence>
+        {showLogsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowLogsModal(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl relative z-10 p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Audit Logs</h3>
+                  <p className="text-sm text-gray-500">History of all critical system actions</p>
+                </div>
+                <button onClick={() => setShowLogsModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
+              </div>
+              <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
+                {MOCK_LOGS.map(log => (
+                  <div key={log.id} className="flex gap-4 p-4 border border-gray-50 rounded-xl hover:bg-gray-50/50">
+                    <div className="w-10 h-10 bg-white border border-brand-secondary/30 rounded-full flex items-center justify-center text-brand-primary flex-shrink-0 shadow-sm">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-gray-800 text-sm">{log.action}</p>
+                        <span className="text-[10px] text-gray-400">{log.time}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{log.details}</p>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Executed by {log.user}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+                <Button variant="ghost" className="text-xs" onClick={() => setShowLogsModal(false)}>Close Activity Log</Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <InvoiceModal
+        invoice={selectedInvoice}
+        isOpen={!!selectedInvoice}
+        onClose={() => setSelectedInvoice(null)}
+      />
+      <InvoiceFormModal
+        isOpen={isInvoiceFormModalOpen}
+        onClose={() => {
+          setIsInvoiceFormModalOpen(false);
+          setEditingInvoice(null);
+        }}
+        invoice={editingInvoice}
+        onSubmit={handleEditInvoiceSubmit}
+      />
+      <AnimatePresence>
+        {isAdminOrderModalOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAdminOrderModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-xs cursor-pointer"
+            />
+            {/* Slide-over Drawer Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+              className="relative bg-white h-screen w-full max-w-md shadow-2xl flex flex-col z-10 overflow-hidden"
+            >
+              <div className="bg-brand-primary px-4 py-3.5 flex items-center justify-between text-white shadow-sm shrink-0">
+                <div>
+                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest">Admin Control</p>
+                  <h3 className="text-sm font-black mt-0.5">Create New Order</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminOrderModalOpen(false)}
+                  className="w-6 h-6 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleCreateAdminOrder} className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4 text-left pb-24">
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div className="col-span-2">
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Customer Name *</label>
                       <input
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="colleague@company.com"
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all focus:outline-none text-sm font-semibold"
+                        required
+                        type="text"
+                        placeholder="e.g. John Doe"
+                        value={adminOrderForm.customerName}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, customerName: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">System Role</label>
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Phone *</label>
+                      <input
+                        required
+                        type="text"
+                        placeholder="Phone number"
+                        value={adminOrderForm.phone}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, phone: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Category *</label>
                       <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-primary/10 transition-all focus:outline-none text-sm font-semibold bg-white"
+                        required
+                        value={adminOrderForm.category}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, category: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all cursor-pointer"
                       >
-                        <option value="marketing">Marketing</option>
-                        <option value="designer">Designer (Art Studio)</option>
-                        <option value="accounts">Accounts</option>
-                        <option value="order_management">Order Management</option>
-                        <option value="production">Production (Factory)</option>
-                        <option value="digitizer">Digitizing & Embroidery</option>
-                        <option value="delivery">Delivery</option>
-                        <option value="onlineteam">Online Team</option>
-                        <option value="vendor">Vendor</option>
-                        <option value="admin">Administrator</option>
+                        <option value="Jersey">Jersey</option>
+                        <option value="T-Shirt">T-Shirt</option>
+                        <option value="Shirt">Shirt</option>
+                        <option value="Pant">Pant</option>
+                        <option value="Hoodie">Hoodie</option>
+                        <option value="Sweatshirt">Sweatshirt</option>
+                        <option value="Corporate Gift">Corporate Gift</option>
                       </select>
                     </div>
-                    <Button
-                      className="w-full mt-4"
-                      disabled={invitesLoading || !inviteEmail.trim()}
-                      onClick={async () => {
-                        if (!inviteEmail.trim()) return;
-                        setInvitesLoading(true);
-                        try {
-                          const res = await mockDataService.createInvitation(inviteEmail.trim(), inviteRole);
-                          if (res.success) {
-                            const registerUrl = `${window.location.origin}/register?invite=${res.inviteId}`;
-                            setInviteGeneratedLink(registerUrl);
-                            await fetchInvitations();
-                            alert('Invitation successfully created!');
-                          } else {
-                            alert('Failed to create invitation.');
-                          }
-                        } catch (err: any) {
-                          alert(err.message || 'Error creating invitation.');
-                        } finally {
-                          setInvitesLoading(false);
-                        }
-                      }}
-                    >
-                      {invitesLoading ? 'Creating invite...' : 'Send Invitation'}
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Logs Modal */}
-        <AnimatePresence>
-          {showLogsModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowLogsModal(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl relative z-10 p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Audit Logs</h3>
-                    <p className="text-sm text-gray-500">History of all critical system actions</p>
-                  </div>
-                  <button onClick={() => setShowLogsModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
-                </div>
-                <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
-                  {MOCK_LOGS.map(log => (
-                    <div key={log.id} className="flex gap-4 p-4 border border-gray-50 rounded-xl hover:bg-gray-50/50">
-                      <div className="w-10 h-10 bg-white border border-brand-secondary/30 rounded-full flex items-center justify-center text-brand-primary flex-shrink-0 shadow-sm">
-                        <Clock className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-gray-800 text-sm">{log.action}</p>
-                          <span className="text-[10px] text-gray-400">{log.time}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">{log.details}</p>
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Executed by {log.user}</span>
-                        </div>
+                    <div className="col-span-2">
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Address *</label>
+                      <textarea
+                        required
+                        rows={2}
+                        placeholder="Delivery address"
+                        value={adminOrderForm.address}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, address: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Total Amount (₹) *</label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={adminOrderForm.totalAmount}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, totalAmount: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Advance Pay (₹) *</label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={adminOrderForm.advancePay}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, advancePay: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Send Order To *</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Pending', status: OrderStatus.PENDING, desc: 'Stay in staff list' },
+                          { label: 'Designs', status: OrderStatus.DESIGN, desc: 'Send to designers' },
+                          { label: 'Accounts', status: OrderStatus.ACCOUNTS, desc: 'Send to billing' }
+                        ].map((item) => (
+                          <label
+                            key={item.status}
+                            className={cn(
+                              "border rounded-xl p-2.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-gray-50/50 select-none",
+                              adminOrderForm.status === item.status ? "border-brand-primary bg-brand-primary/5 text-brand-primary ring-2 ring-brand-primary/5" : "border-gray-200 text-gray-600"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="adminOrderDestination"
+                              value={item.status}
+                              checked={adminOrderForm.status === item.status}
+                              onChange={() => setAdminOrderForm({ ...adminOrderForm, status: item.status })}
+                              className="hidden"
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-wider">{item.label}</span>
+                            <span className="text-[7px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">{item.desc}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
-                  <Button variant="ghost" className="text-xs" onClick={() => setShowLogsModal(false)}>Close Activity Log</Button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        <ProfileSettings isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
-        <InvoiceModal
-          invoice={selectedInvoice}
-          isOpen={!!selectedInvoice}
-          onClose={() => setSelectedInvoice(null)}
-        />
-        <InvoiceFormModal
-          isOpen={isInvoiceFormModalOpen}
-          onClose={() => {
-            setIsInvoiceFormModalOpen(false);
-            setEditingInvoice(null);
-          }}
-          invoice={editingInvoice}
-          onSubmit={handleEditInvoiceSubmit}
-        />
-        <AnimatePresence>
-          {isAdminOrderModalOpen && (
-            <div className="fixed inset-0 z-50 flex justify-end">
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsAdminOrderModalOpen(false)}
-                className="absolute inset-0 bg-black/40 backdrop-blur-xs cursor-pointer"
-              />
-              {/* Slide-over Drawer Panel */}
-              <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                className="relative bg-white h-screen w-full max-w-md shadow-2xl flex flex-col z-10 overflow-hidden"
-              >
-                <div className="bg-brand-primary px-4 py-3.5 flex items-center justify-between text-white shadow-sm shrink-0">
-                  <div>
-                    <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest">Admin Control</p>
-                    <h3 className="text-sm font-black mt-0.5">Create New Order</h3>
+                    <div className="col-span-2">
+                      <FileUpload
+                        label="Upload Order Pictures / Designs"
+                        accept="image/*"
+                        maxFiles={5}
+                        initialFiles={adminOrderForm.staffImages}
+                        onFilesSelected={files => setAdminOrderForm({ ...adminOrderForm, staffImages: files })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Notes</label>
+                      <textarea
+                        rows={2}
+                        placeholder="Special instructions..."
+                        value={adminOrderForm.notes}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, notes: e.target.value })}
+                        className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
+                      />
+                    </div>
+                    <div className="col-span-2 flex items-center gap-1.5 py-0.5">
+                      <input
+                        type="checkbox"
+                        id="adminIsUrgent"
+                        checked={adminOrderForm.isUrgent}
+                        onChange={e => setAdminOrderForm({ ...adminOrderForm, isUrgent: e.target.checked })}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary/10 cursor-pointer"
+                      />
+                      <label htmlFor="adminIsUrgent" className="text-[10px] font-bold text-red-500 uppercase cursor-pointer select-none">Mark order as Urgent ⚡</label>
+                    </div>
                   </div>
+                </div>
+                {/* Fixed Footer */}
+                <div className="absolute bottom-0 inset-x-0 p-4 bg-gray-50 border-t border-gray-100 flex gap-3 z-20 shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsAdminOrderModalOpen(false)}
-                    className="w-6 h-6 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white text-xs"
+                    className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-100 transition-all cursor-pointer bg-white"
                   >
-                    ✕
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-brand-primary hover:opacity-90 text-white text-xs font-black rounded-xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/15 uppercase tracking-wider"
+                  >
+                    Submit Order
                   </button>
                 </div>
-                <form onSubmit={handleCreateAdminOrder} className="flex-1 flex flex-col h-full overflow-hidden">
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4 text-left pb-24">
-                    <div className="grid grid-cols-2 gap-3.5">
-                      <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Customer Name *</label>
-                        <input
-                          required
-                          type="text"
-                          placeholder="e.g. John Doe"
-                          value={adminOrderForm.customerName}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, customerName: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Phone *</label>
-                        <input
-                          required
-                          type="text"
-                          placeholder="Phone number"
-                          value={adminOrderForm.phone}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, phone: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Category *</label>
-                        <select
-                          required
-                          value={adminOrderForm.category}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, category: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all cursor-pointer"
-                        >
-                          <option value="Jersey">Jersey</option>
-                          <option value="T-Shirt">T-Shirt</option>
-                          <option value="Shirt">Shirt</option>
-                          <option value="Pant">Pant</option>
-                          <option value="Hoodie">Hoodie</option>
-                          <option value="Sweatshirt">Sweatshirt</option>
-                          <option value="Corporate Gift">Corporate Gift</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Address *</label>
-                        <textarea
-                          required
-                          rows={2}
-                          placeholder="Delivery address"
-                          value={adminOrderForm.address}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, address: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Total Amount (₹) *</label>
-                        <input
-                          required
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={adminOrderForm.totalAmount}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, totalAmount: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Advance Pay (₹) *</label>
-                        <input
-                          required
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={adminOrderForm.advancePay}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, advancePay: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Send Order To *</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { label: 'Pending', status: OrderStatus.PENDING, desc: 'Stay in staff list' },
-                            { label: 'Designs', status: OrderStatus.DESIGN, desc: 'Send to designers' },
-                            { label: 'Accounts', status: OrderStatus.ACCOUNTS, desc: 'Send to billing' }
-                          ].map((item) => (
-                            <label
-                              key={item.status}
-                              className={cn(
-                                "border rounded-xl p-2.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-gray-50/50 select-none",
-                                adminOrderForm.status === item.status ? "border-brand-primary bg-brand-primary/5 text-brand-primary ring-2 ring-brand-primary/5" : "border-gray-200 text-gray-600"
-                              )}
-                            >
-                              <input
-                                type="radio"
-                                name="adminOrderDestination"
-                                value={item.status}
-                                checked={adminOrderForm.status === item.status}
-                                onChange={() => setAdminOrderForm({ ...adminOrderForm, status: item.status })}
-                                className="hidden"
-                              />
-                              <span className="text-[10px] font-black uppercase tracking-wider">{item.label}</span>
-                              <span className="text-[7px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">{item.desc}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="col-span-2">
-                        <FileUpload
-                          label="Upload Order Pictures / Designs"
-                          accept="image/*"
-                          maxFiles={5}
-                          initialFiles={adminOrderForm.staffImages}
-                          onFilesSelected={files => setAdminOrderForm({ ...adminOrderForm, staffImages: files })}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Notes</label>
-                        <textarea
-                          rows={2}
-                          placeholder="Special instructions..."
-                          value={adminOrderForm.notes}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, notes: e.target.value })}
-                          className="w-full text-xs border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
-                        />
-                      </div>
-                      <div className="col-span-2 flex items-center gap-1.5 py-0.5">
-                        <input
-                          type="checkbox"
-                          id="adminIsUrgent"
-                          checked={adminOrderForm.isUrgent}
-                          onChange={e => setAdminOrderForm({ ...adminOrderForm, isUrgent: e.target.checked })}
-                          className="w-3.5 h-3.5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary/10 cursor-pointer"
-                        />
-                        <label htmlFor="adminIsUrgent" className="text-[10px] font-bold text-red-500 uppercase cursor-pointer select-none">Mark order as Urgent ⚡</label>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Fixed Footer */}
-                  <div className="absolute bottom-0 inset-x-0 p-4 bg-gray-50 border-t border-gray-100 flex gap-3 z-20 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsAdminOrderModalOpen(false)}
-                      className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-100 transition-all cursor-pointer bg-white"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-2.5 bg-brand-primary hover:opacity-90 text-white text-xs font-black rounded-xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/15 uppercase tracking-wider"
-                    >
-                      Submit Order
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-        {selectedOrderDetail && (
-          <OrderDetailModal
-            order={selectedOrderDetail}
-            onClose={() => setSelectedOrderDetail(null)}
-            onUpdateOrder={async (id, updates) => {
-              try {
-                await updateOrder(id, updates);
-                setSelectedOrderDetail(prev => prev ? { ...prev, ...updates } : null);
-                alert("Order updated successfully.");
-              } catch (e) {
-                console.error(e);
-                alert("Failed to save changes.");
-              }
-            }}
-            isAdmin={true}
-          />
-        )}
-        {/* Fixed Bottom Quick Navigation Bar for Mobile */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-1 py-1 flex items-center justify-around shadow-lg pb-safe">
-          {[
-            { id: 'overview', label: 'Overview', icon: TrendingUp },
-            { id: 'orders', label: 'Orders', icon: Zap },
-            { id: 'invoices', label: 'Invoices', icon: BarChart3 },
-            { id: 'online-leads', label: 'Leads', icon: Users },
-            { id: 'users', label: 'Users', icon: UserPlus },
-            { id: 'logs', label: 'Logs', icon: FileText },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                if (item.id === 'logs') {
-                  setShowLogsModal(true);
-                } else {
-                  setActiveTab(item.id as any);
-                }
-              }}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
-                activeTab === item.id && item.id !== 'logs'
-                  ? "text-brand-primary font-black"
-                  : "text-gray-400 hover:text-gray-600 font-medium"
-              )}
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        {/* Admin Call Logs Detail Modal */}
-        {showAdminLogsModal && selectedAdminLeadForLogs && (
-          <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 text-left">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Call Log History</span>
-                  <h3 className="text-lg font-black text-gray-900">{selectedAdminLeadForLogs.name}</h3>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedAdminLeadForLogs.number}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowAdminLogsModal(false);
-                    setSelectedAdminLeadForLogs(null);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border-none cursor-pointer bg-transparent"
-                >
-                  <Plus className="w-5 h-5 rotate-45 text-gray-400" />
-                </button>
-              </div>
-              
-              <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
-                {selectedAdminLeadForLogs.description ? (
-                  <div className="space-y-4">
-                    {selectedAdminLeadForLogs.description.split('\n\n').map((entry, idx) => (
-                      <div key={idx} className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-semibold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-xs">
-                        {entry}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic text-center py-6">No call logs recorded yet.</p>
-                )}
-              </div>
-
-              <div className="p-6 bg-gray-50 flex justify-end">
-                <button
-                  onClick={() => {
-                    setShowAdminLogsModal(false);
-                    setSelectedAdminLeadForLogs(null);
-                  }}
-                  className="px-6 py-2.5 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-primary/95 transition-all cursor-pointer border-none shadow-md"
-                >
-                  Close Logs
-                </button>
-              </div>
-            </div>
+              </form>
+            </motion.div>
           </div>
         )}
+      </AnimatePresence>
+      {selectedOrderDetail && (
+        <OrderDetailModal
+          order={selectedOrderDetail}
+          onClose={() => setSelectedOrderDetail(null)}
+          onUpdateOrder={async (id, updates) => {
+            try {
+              await updateOrder(id, updates);
+              setSelectedOrderDetail(prev => prev ? { ...prev, ...updates } : null);
+              alert("Order updated successfully.");
+            } catch (e) {
+              console.error(e);
+              alert("Failed to save changes.");
+            }
+          }}
+          isAdmin={true}
+        />
+      )}
+      {/* Fixed Bottom Quick Navigation Bar for Mobile */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 px-1 py-1 flex items-center justify-around shadow-lg pb-safe">
+        {[
+          { id: 'overview', label: 'Overview', icon: TrendingUp },
+          { id: 'orders', label: 'Orders', icon: Zap },
+          { id: 'invoices', label: 'Invoices', icon: BarChart3 },
+          { id: 'online-leads', label: 'Leads', icon: Users },
+          { id: 'users', label: 'Users', icon: UserPlus },
+          { id: 'logs', label: 'Logs', icon: FileText },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => {
+              if (item.id === 'logs') {
+                setShowLogsModal(true);
+              } else {
+                setActiveTab(item.id as any);
+              }
+            }}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+              activeTab === item.id && item.id !== 'logs'
+                ? "text-brand-primary font-black"
+                : "text-gray-400 hover:text-gray-600 font-medium"
+            )}
+          >
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
-        {/* EDIT USER & FACE ID REGISTRATION MODAL */}
-        <AnimatePresence>
-          {showEditUserModal && userToEdit && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white p-6 rounded-3xl w-full max-w-md border border-gray-100 shadow-2xl relative text-left space-y-5"
+      {/* Admin Call Logs Detail Modal */}
+      {showAdminLogsModal && selectedAdminLeadForLogs && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 text-left">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Call Log History</span>
+                <h3 className="text-lg font-black text-gray-900">{selectedAdminLeadForLogs.name}</h3>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedAdminLeadForLogs.number}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAdminLogsModal(false);
+                  setSelectedAdminLeadForLogs(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border-none cursor-pointer bg-transparent"
               >
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-                    <Edit className="w-5 h-5 text-brand-primary" />
-                    Edit User & Face ID Settings
-                  </h3>
+                <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+              {selectedAdminLeadForLogs.description ? (
+                <div className="space-y-4">
+                  {selectedAdminLeadForLogs.description.split('\n\n').map((entry, idx) => (
+                    <div key={idx} className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-semibold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-xs">
+                      {entry}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic text-center py-6">No call logs recorded yet.</p>
+              )}
+            </div>
+
+            <div className="p-6 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowAdminLogsModal(false);
+                  setSelectedAdminLeadForLogs(null);
+                }}
+                className="px-6 py-2.5 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-primary/95 transition-all cursor-pointer border-none shadow-md"
+              >
+                Close Logs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT USER & FACE ID REGISTRATION MODAL */}
+      <AnimatePresence>
+        {showEditUserModal && userToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white p-6 rounded-3xl w-full max-w-md border border-gray-100 shadow-2xl relative text-left space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                  <Edit className="w-5 h-5 text-brand-primary" />
+                  Edit User & Face ID Settings
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditUserModal(false);
+                    setUserToEdit(null);
+                  }}
+                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center border-none cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveUserEdit} className="space-y-4">
+                {/* Name */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">User Name</label>
+                  <input
+                    type="text"
+                    value={userToEdit.name || ''}
+                    onChange={(e) => setUserToEdit({ ...userToEdit, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
+                    required
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">Email Address</label>
+                  <input
+                    type="email"
+                    value={userToEdit.email || ''}
+                    onChange={(e) => setUserToEdit({ ...userToEdit, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
+                    required
+                  />
+                </div>
+
+                {/* Role */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">System Role</label>
+                  <select
+                    value={userToEdit.role || 'marketing'}
+                    onChange={(e) => setUserToEdit({ ...userToEdit, role: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary cursor-pointer"
+                  >
+                    <option value="admin">Admin / CEO</option>
+                    <option value="hr">HR & Payroll Manager</option>
+                    <option value="staff">Staff</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="accounts">Accounts</option>
+                    <option value="order_management">Order Management</option>
+                    <option value="production">Production</option>
+                    <option value="delivery">Delivery</option>
+                    <option value="designer">Designer</option>
+                  </select>
+                </div>
+
+                {/* Account Access Status (Active vs Blocked) */}
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-gray-800">Account Access Status</p>
+                    <p className="text-[10px] text-gray-400">Block user to revoke dashboard login access</p>
+                  </div>
                   <button
                     type="button"
+                    onClick={() => {
+                      const nextBlocked = !Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked');
+                      setUserToEdit({
+                        ...userToEdit,
+                        isBlocked: nextBlocked,
+                        status: nextBlocked ? 'Blocked' : 'Active'
+                      });
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer border-none",
+                      userToEdit.isBlocked || userToEdit.status === 'Blocked'
+                        ? "bg-red-500 text-white shadow-sm"
+                        : "bg-emerald-500 text-white shadow-sm"
+                    )}
+                  >
+                    {userToEdit.isBlocked || userToEdit.status === 'Blocked' ? '🚫 Blocked' : '🟢 Active'}
+                  </button>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-xs text-gray-500 flex-1"
                     onClick={() => {
                       setShowEditUserModal(false);
                       setUserToEdit(null);
                     }}
-                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center border-none cursor-pointer"
                   >
-                    ✕
-                  </button>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="text-xs flex-1 bg-brand-primary text-white font-black"
+                  >
+                    Save Changes
+                  </Button>
                 </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-                <form onSubmit={handleSaveUserEdit} className="space-y-4">
-                  {/* Name */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700 block">User Name</label>
-                    <input
-                      type="text"
-                      value={userToEdit.name || ''}
-                      onChange={(e) => setUserToEdit({ ...userToEdit, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
-                      required
-                    />
-                  </div>
+      <SidebarChat />
+    </div>
+  );
+}
 
-                  {/* Email */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700 block">Email Address</label>
-                    <input
-                      type="email"
-                      value={userToEdit.email || ''}
-                      onChange={(e) => setUserToEdit({ ...userToEdit, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
-                      required
-                    />
-                  </div>
-
-                  {/* Role */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700 block">System Role</label>
-                    <select
-                      value={userToEdit.role || 'marketing'}
-                      onChange={(e) => setUserToEdit({ ...userToEdit, role: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary cursor-pointer"
-                    >
-                      <option value="admin">Admin / CEO</option>
-                      <option value="hr">HR & Payroll Manager</option>
-                      <option value="staff">Staff</option>
-                      <option value="marketing">Marketing</option>
-                      <option value="accounts">Accounts</option>
-                      <option value="order_management">Order Management</option>
-                      <option value="production">Production</option>
-                      <option value="delivery">Delivery</option>
-                      <option value="designer">Designer</option>
-                    </select>
-                  </div>
-
-                  {/* Account Access Status (Active vs Blocked) */}
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/60 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-gray-800">Account Access Status</p>
-                      <p className="text-[10px] text-gray-400">Block user to revoke dashboard login access</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextBlocked = !Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked');
-                        setUserToEdit({
-                          ...userToEdit,
-                          isBlocked: nextBlocked,
-                          status: nextBlocked ? 'Blocked' : 'Active'
-                        });
-                      }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer border-none",
-                        userToEdit.isBlocked || userToEdit.status === 'Blocked'
-                          ? "bg-red-500 text-white shadow-sm"
-                          : "bg-emerald-500 text-white shadow-sm"
-                      )}
-                    >
-                      {userToEdit.isBlocked || userToEdit.status === 'Blocked' ? '🚫 Blocked' : '🟢 Active'}
-                    </button>
-                  </div>
-
-                  {/* Face ID Biometric Registration Box */}
-                  <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ScanFace className="w-5 h-5 text-emerald-600" />
-                        <div>
-                          <p className="text-xs font-bold text-emerald-950">3D Face ID Registration</p>
-                          <p className="text-[10px] text-emerald-700">Scan & save facial biometric data into database</p>
-                        </div>
-                      </div>
-                      <span className={cn(
-                        "px-2 py-0.5 rounded text-[9px] font-black uppercase border",
-                        userToEdit.faceRegistered || userToEdit.faceData
-                          ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                          : "bg-gray-100 text-gray-500 border-gray-200"
-                      )}>
-                        {userToEdit.faceRegistered || userToEdit.faceData ? '✓ Registered' : 'Not Registered'}
-                      </span>
-                    </div>
-
-                    {isScanningFaceForEdit ? (
-                      <div className="p-3 bg-gray-950 rounded-xl text-center space-y-2 text-white">
-                        <ScanFace className="w-8 h-8 text-emerald-400 animate-pulse mx-auto" />
-                        <p className="text-xs font-bold text-emerald-400">{faceScanEditStatus}</p>
-                        <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: `${faceScanEditProgress}%` }} />
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        onClick={handleStartFaceScanForUser}
-                        className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-sm border-none"
-                      >
-                        <ScanFace className="w-4 h-4" /> {userToEdit.faceRegistered || userToEdit.faceData ? 'Re-scan & Update Face ID' : 'Scan & Register Face ID'}
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="text-xs text-gray-500 flex-1"
-                      onClick={() => {
-                        setShowEditUserModal(false);
-                        setUserToEdit(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="text-xs flex-1 bg-brand-primary text-white font-black"
-                    >
-                      Save Changes
-                    </Button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        <SidebarChat />
-      </div>
-    );
+const getStatusStyles = (status: string) => {
+  switch (status) {
+    case 'draft': return 'bg-gray-100 text-gray-600';
+    case 'accounts': return 'bg-amber-100 text-amber-700';
+    case 'design': return 'bg-purple-100 text-purple-700';
+    case 'order_management': return 'bg-blue-100 text-blue-700';
+    case 'production': return 'bg-purple-100 text-purple-700';
+    case 'delivery': return 'bg-orange-100 text-orange-700';
+    case 'delivered': return 'bg-green-100 text-green-700';
+    default: return 'bg-gray-100 text-gray-600';
   }
-
-  const getStatusStyles = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-600';
-      case 'accounts': return 'bg-amber-100 text-amber-700';
-      case 'design': return 'bg-purple-100 text-purple-700';
-      case 'order_management': return 'bg-blue-100 text-blue-700';
-      case 'production': return 'bg-purple-100 text-purple-700';
-      case 'delivery': return 'bg-orange-100 text-orange-700';
-      case 'delivered': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-600';
-    }
-  };
+};
 

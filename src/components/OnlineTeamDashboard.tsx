@@ -61,19 +61,6 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     if (isJim) return onlineTeamAgents;
 
     const list = [...marketingAgents, ...onlineTeamAgents];
-    const isDaniel = user?.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
-    if (isDaniel && user) {
-      const exists = list.some((u: any) => u.email?.toLowerCase() === 'daniel.smpallywear@gmail.com' || u.id === user.id || u.uid === user.uid);
-      if (!exists) {
-        list.unshift({
-          id: user.id || user.uid || 'admin-daniel',
-          uid: user.uid || user.id || 'admin-daniel',
-          email: 'daniel.smpallywear@gmail.com',
-          name: user.name || 'Daniel',
-          role: user.role || 'onlineteam'
-        });
-      }
-    }
     const uniqueMap = new Map();
     list.forEach(agent => {
       const key = agent.id || agent.uid || agent.email;

@@ -95,22 +95,21 @@ const ProtectedRoute = ({
   const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
   const isStaff = user.role === UserRole.STAFF || user.role === 'staff';
   const isHR = user.role === UserRole.HR || user.role === 'hr';
-  const isDaniel = user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
   const isMarketing = user.role === UserRole.MARKETING || user.role === 'marketing';
   const isOnlineTeam = user.role === UserRole.ONLINETEAM || user.role === 'onlineteam';
 
-  // Admin, Staff, and Daniel can access admin panel
-  if (adminOnly && !isAdmin && !isStaff && !isDaniel) {
+  // Admin and Staff can access admin panel
+  if (adminOnly && !isAdmin && !isStaff) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Only Admin, Daniel, and HR role can access HR Dashboard
-  if (hrOrAdminOnly && !isAdmin && !isHR && !isDaniel) {
+  // Only Admin and HR role can access HR Dashboard
+  if (hrOrAdminOnly && !isAdmin && !isHR) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Only Admin, Online Team, and Daniel can access Lead Dashboard (Marketing role permanently excluded)
-  if (leadDashboardOnly && !isAdmin && !isDaniel && !isOnlineTeam) {
+  // Only Admin and Online Team can access Lead Dashboard (Marketing role permanently excluded)
+  if (leadDashboardOnly && !isAdmin && !isOnlineTeam) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -121,7 +120,7 @@ const RootRedirect = () => {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (user) {
-    const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin' || user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
+    const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
     const isHR = user.role === UserRole.HR || user.role === 'hr';
     const isSalesHead = user.role === UserRole.SALES_HEAD || user.role === 'sales_head';
     if (isAdmin) return <Navigate to="/admin" replace />;

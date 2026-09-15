@@ -22,7 +22,6 @@ interface AuthContextType {
   registeredUsers: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; user?: User | null }>;
   googleLogin: () => Promise<{ success: boolean; message?: string; user?: User | null }>;
-  biometricLogin: (loginType: 'FACE_ID' | 'FINGERPRINT', targetEmail?: string) => Promise<{ success: boolean; message?: string; user?: User | null }>;
   register: (name: string, email: string, password: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
@@ -107,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user.role !== UserRole.ADMIN &&
         user.role !== UserRole.STAFF &&
         user.role !== UserRole.ONLINETEAM &&
-        user.role !== 'onlineteam' &&
+        user.role !== 'sealshead' &&
         user.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com'
       )) {
         setRegisteredUsers([]);
@@ -150,39 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Failed to log login:', e);
     });
     return { success: true, user: nextUser };
-  };
-
-  const biometricLogin = async (loginType: 'FACE_ID' | 'FINGERPRINT', targetEmail?: string) => {
-    const rawUsers = await mockDataService.getUsers();
-    const users = rawUsers.map(profileToUser);
-
-    let matchedUser: User | undefined;
-    if (targetEmail && targetEmail.trim()) {
-      matchedUser = users.find((u) => u.email.toLowerCase().trim() === targetEmail.trim().toLowerCase());
-    }
-
-    if (!matchedUser && loginType === 'FACE_ID') {
-      matchedUser = users.find((u) => u.faceRegistered || u.faceData);
-    }
-
-    if (!matchedUser) {
-      matchedUser = users.find((user) => (user.role as any) === UserRole.ADMIN || (user.role as any) === 'admin') || users[0];
-    }
-
-    if (!matchedUser) {
-      return { success: false, message: 'No registered user found for biometric authentication.' };
-    }
-
-    if (matchedUser.isBlocked || matchedUser.status === 'Blocked') {
-      return { success: false, message: '❌ Account Access Blocked by Administrator. Please contact support.' };
-    }
-
-    persistUser(matchedUser);
-    // Fire-and-forget to avoid blocking the login completion if database/network is slow
-    mockDataService.logLogin(matchedUser.id, matchedUser.name, matchedUser.email, loginType).catch((e) => {
-      console.error(`Failed to log ${loginType} login:`, e);
-    });
-    return { success: true, user: matchedUser };
   };
 
   const googleLogin = async () => {
@@ -293,7 +259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registeredUsers,
       login,
       googleLogin,
-      biometricLogin,
       register,
       logout,
       updateProfile,

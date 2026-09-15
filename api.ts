@@ -40,11 +40,10 @@ router.post('/auth/login', async (req, res) => {
   try {
     // Explicit check for default accounts
     const defaultAccounts = [
-      { id: 'admin-1', uid: 'admin-1', email: 'admin', role: 'admin', name: 'Main Admin' },
-      { id: 'admin-ceo', uid: 'admin-ceo', email: 'ceo@pallywear.com', role: 'admin', name: 'CEO Admin' },
-      { id: 'admin-rajesh', uid: 'admin-rajesh', email: 'rajeshkpallywear@gmail.com', role: 'admin', name: 'Rajesh Admin' },
-      { id: 'admin-daniel', uid: 'admin-daniel', email: 'daniel.smpallywear@gmail.com', role: 'onlineteam', name: 'Daniel' }
-    ];
+       { id: 'admin-1', uid: 'admin-1', email: 'admin', role: 'admin', name: 'Main Admin' },
+       { id: 'admin-ceo', uid: 'admin-ceo', email: 'ceo@pallywear.com', role: 'admin', name: 'CEO Admin' },
+       { id: 'admin-rajesh', uid: 'admin-rajesh', email: 'rajeshkpallywear@gmail.com', role: 'admin', name: 'Rajesh Admin' }
+     ];
 
     const matchedAccount = defaultAccounts.find(a => a.email === normalizedEmail);
     if (matchedAccount && password === 'pally@123') {

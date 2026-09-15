@@ -25,7 +25,6 @@ const DEFAULT_USERS: UserProfile[] = [
   { uid: 'u3', name: 'Godwin', email: 'godwin.pallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
   { uid: 'u4', name: 'Jimla', email: 'jimla@pallywear.com', role: UserRole.MARKETING, status: 'Active' },
   { uid: 'u5', name: 'Vivek', email: 'vivekpallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
-  { uid: 'u6', name: 'Daniel', email: 'daniel.smpallywear@gmail.com', role: UserRole.ONLINETEAM, status: 'Active' },
   { uid: 'u7', name: 'Vasudev', email: 'vasudevpallywear@gmail.com', role: UserRole.STAFF, status: 'Active' },
 ];
 
@@ -34,7 +33,9 @@ function loadLocalUsers(): UserProfile[] {
     const raw = localStorage.getItem('pallywear_users_v2');
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((u: any) => u.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com');
+      }
     }
   } catch (_) {}
   return DEFAULT_USERS;
@@ -460,13 +461,16 @@ export const mockDataService = {
     if (!forceFresh) {
       const cached = getCached<UserProfile[]>('users', 30000);
       if (cached && cached.length > 0) {
+        const filteredCached = cached.filter(u => u.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com');
         fetch(getApiUrl('/api/users'))
           .then(res => res.ok ? res.json() : null)
           .then(data => {
-            if (data && Array.isArray(data) && data.length > 0) setCache('users', data);
+            if (data && Array.isArray(data) && data.length > 0) {
+              setCache('users', data.filter((u: any) => u.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com'));
+            }
           })
           .catch(() => {});
-        return cached;
+        return filteredCached;
       }
     }
     try {
@@ -474,8 +478,9 @@ export const mockDataService = {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setCache('users', data);
-          return data;
+          const filtered = data.filter((u: any) => u.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com');
+          setCache('users', filtered);
+          return filtered;
         }
       }
     } catch (e) {
