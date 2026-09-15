@@ -57,7 +57,6 @@ const isAdminEmail = (email: string) => {
   const lowerEmail = email.toLowerCase();
   return lowerEmail === 'ceo@pallywear.com' ||
     lowerEmail === 'rajeshkpallywear@gmail.com' ||
-    lowerEmail === 'daniel.smpallywear@gmail.com' ||
     lowerEmail === 'admin' ||
     lowerEmail.startsWith('admin') ||
     lowerEmail.startsWith('ceo');
@@ -105,9 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchUsers = async () => {
       if (!user || (
-        user.role !== UserRole.ADMIN && 
-        user.role !== UserRole.STAFF && 
-        user.role !== UserRole.ONLINETEAM && 
+        user.role !== UserRole.ADMIN &&
+        user.role !== UserRole.STAFF &&
+        user.role !== UserRole.ONLINETEAM &&
         user.role !== 'onlineteam' &&
         user.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com'
       )) {

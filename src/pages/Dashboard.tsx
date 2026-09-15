@@ -329,13 +329,13 @@ export default function Dashboard() {
         </div>
 
         <nav className="p-4 space-y-1 overflow-y-auto custom-scrollbar flex-1">
-          {/* Admin Lead Management Tabs */}
+          {/* Admin Navigation Tabs */}
           {(user?.role === UserRole.ADMIN || user?.role === 'admin') && (
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
                 isSidebarCollapsed && "md:hidden"
-              )}>Lead Management</p>
+              )}>Admin Menu</p>
               <button
                 onClick={() => selectTab('dashboard')}
                 className={cn(

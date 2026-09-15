@@ -1881,17 +1881,6 @@ export default function AdminDashboard() {
                 <BarChart3 className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
               </button>
               <button
-                onClick={() => selectTab('online-leads')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'online-leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Online Leads" : ""}
-              >
-                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Online Leads</span>}
-              </button>
-              <button
                 onClick={() => selectTab('logs')}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
@@ -1975,14 +1964,6 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               <button
-                onClick={() => navigate('/lead-dashboard')}
-                className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-brand-primary/30 bg-brand-primary/5 hover:bg-brand-primary/10 text-brand-primary flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Lead Dashboard"
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Lead Dashboard</span>
-              </button>
-              <button
                 onClick={() => navigate('/hr-dashboard')}
                 className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="HR & Payroll Dashboard"
@@ -2061,10 +2042,9 @@ export default function AdminDashboard() {
             {activeTab === 'overview' ? (
               <>
                 {/* Overview Stats - Ultra-Compact Mobile Responsive Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
                   {[
                     { label: 'Aggregate Value', val: `₹${Math.round(Number(aggregateTotal) || 0).toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500', fullRowOnMobile: true },
-                    { label: 'Total Leads', val: leads.length, icon: Users, color: 'text-white', bg: 'bg-brand-secondary' },
                     { label: 'Global Orders', val: orders.length, icon: Zap, color: 'text-white', bg: 'bg-orange-500' },
                     { label: 'Registered Team', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
                     { label: 'Invoices', val: invoices.length, icon: BarChart3, color: 'text-white', bg: 'bg-brand-primary' },
@@ -2466,7 +2446,7 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                     </div>
-                    <div className="h-[300px]">
+                    <div className="h-[320px]">
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <AreaChart data={globalDeliveredOrdersChartData}>
                           <defs>
@@ -2494,46 +2474,6 @@ export default function AdminDashboard() {
                       </ResponsiveContainer>
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-6">Segments</h3>
-                    <div className="h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                        <PieChart>
-                          <Pie
-                            data={[
-                              { name: 'Hot', value: leads.filter(l => !l.isOnlineLead && l.leadType === 'Hot').length },
-                              { name: 'Warm', value: leads.filter(l => !l.isOnlineLead && l.leadType === 'Warm').length },
-                              { name: 'Cold', value: leads.filter(l => !l.isOnlineLead && l.leadType === 'Cold').length },
-                            ]}
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                          >
-                            {COLORS.map((color, index) => <Cell key={`cell-${index}`} fill={color} />)}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center gap-4 mt-4">
-                      {['Hot', 'Warm', 'Cold'].map((type, i) => (
-                        <div key={i} className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                          <span className="text-[10px] text-gray-500 font-bold uppercase">{type}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lead Management */}
-                <div className="space-y-6">
-                  <h2 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                    <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
-                    Global Lead Administration
-                  </h2>
-                  <LeadManager />
                 </div>
               </>
             ) : activeTab === 'invoices' ? (
@@ -4091,120 +4031,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
-              </div>
-            ) : activeTab === 'online-leads' ? (
-              <div className="space-y-6 animate-fadeIn">
-                {(() => {
-                  const otLeads = leads.filter(l => isOnlineTeam(l.createdBy));
-                  return (
-                    <>
-                      {/* Table of Leads */}
-                      <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm text-left space-y-4 animate-fadeIn">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-3">
-                          <h3 className="text-lg font-bold text-gray-900">Leads Registry & Call Logs</h3>
-                          <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <button
-                              onClick={() => setShowAddLeadConvert(true)}
-                              className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border-none cursor-pointer shadow-md transition-all active:scale-95 animate-pulse-subtle"
-                            >
-                              <Plus size={14} /> Add Lead / Client
-                            </button>
-                            <div className="relative w-full sm:w-64">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                              <input
-                                type="text"
-                                placeholder="Search leads..."
-                                value={adminLeadSearch}
-                                onChange={(e) => setAdminLeadSearch(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs text-left">
-                            <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
-                              <tr>
-                                <th className="px-4 py-3">Agent</th>
-                                <th className="px-4 py-3">Client Name</th>
-                                <th className="px-4 py-3">Phone</th>
-                                <th className="px-4 py-3">Company</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                                <th className="px-4 py-3">Latest Call Log</th>
-                                <th className="px-4 py-3 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                              {otLeads
-                                .filter(l => 
-                                  l.name.toLowerCase().includes(adminLeadSearch.toLowerCase()) ||
-                                  (l.companyName || '').toLowerCase().includes(adminLeadSearch.toLowerCase()) ||
-                                  l.number.includes(adminLeadSearch) ||
-                                  (l.createdByName || '').toLowerCase().includes(adminLeadSearch.toLowerCase())
-                                )
-                                .map((lead) => {
-                                  const logs = lead.description ? lead.description.split('\n\n') : [];
-                                  const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
-
-                                  return (
-                                    <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-gray-700">
-                                        {lead.createdByName || 'System'}
-                                      </td>
-                                      <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
-                                      <td className="px-4 py-3 font-mono text-gray-600">{lead.number}</td>
-                                      <td className="px-4 py-3 text-gray-500 font-semibold">{lead.companyName || '—'}</td>
-                                      <td className="px-6 py-4 text-center">
-                                        <span className={cn(
-                                          "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
-                                          lead.status === 'Converted' ? "bg-emerald-50 text-emerald-700 border-emerald-150" :
-                                          lead.status === 'Interested' ? "bg-red-50 text-red-700 border-red-150" :
-                                          lead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-150" :
-                                          "bg-amber-50 text-amber-700 border-amber-150"
-                                        )}>
-                                          {lead.status || 'New'}
-                                        </span>
-                                      </td>
-                                      <td className="px-4 py-3 max-w-xs truncate text-gray-500 font-medium italic animate-pulse-slow" title={lead.description}>
-                                        {latestLog}
-                                      </td>
-                                      <td className="px-4 py-3 text-right flex justify-end gap-1.5">
-                                        {lead.description && (
-                                          <button
-                                            onClick={() => {
-                                              setSelectedAdminLeadForLogs(lead);
-                                              setShowAdminLogsModal(true);
-                                            }}
-                                            title="View All Call Logs"
-                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
-                                          >
-                                            <FileText size={13} />
-                                          </button>
-                                        )}
-                                        <button
-                                          onClick={() => deleteLead(lead.id)}
-                                          title="Delete Lead"
-                                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 transition-all cursor-pointer animate-in fade-in"
-                                        >
-                                          <Trash2 size={13} />
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              {otLeads.length === 0 && (
-                                <tr>
-                                  <td colSpan={7} className="py-12 text-center text-gray-400 italic">No leads found in the system.</td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
               </div>
             ) : activeTab === 'attendance' ? (
               <div className="space-y-6 animate-fadeIn">
