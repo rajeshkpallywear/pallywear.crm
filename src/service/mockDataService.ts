@@ -25,7 +25,7 @@ const DEFAULT_USERS: UserProfile[] = [
   { uid: 'u3', name: 'Godwin', email: 'godwin.pallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
   { uid: 'u4', name: 'Jimla', email: 'jimla@pallywear.com', role: UserRole.MARKETING, status: 'Active' },
   { uid: 'u5', name: 'Vivek', email: 'vivekpallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
-  { uid: 'u6', name: 'Daniel', email: 'daniel.smpallywear@gmail.com', role: UserRole.MARKETING, status: 'Active' },
+  { uid: 'u6', name: 'Daniel', email: 'daniel.smpallywear@gmail.com', role: UserRole.ONLINETEAM, status: 'Active' },
   { uid: 'u7', name: 'Vasudev', email: 'vasudevpallywear@gmail.com', role: UserRole.STAFF, status: 'Active' },
 ];
 

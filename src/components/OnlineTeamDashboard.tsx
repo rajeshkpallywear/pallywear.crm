@@ -53,7 +53,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
     return registeredUsers?.filter((u: any) => u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM') || [];
   }, [registeredUsers]);
   const marketingAgents = React.useMemo(() => {
-    return registeredUsers?.filter((u: any) => u.role === 'marketing' || u.role === 'UserRole.MARKETING') || [];
+    return registeredUsers?.filter((u: any) => (u.role === 'marketing' || u.role === 'UserRole.MARKETING') && u.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com') || [];
   }, [registeredUsers]);
 
   const assignableAgents = React.useMemo(() => {
@@ -69,8 +69,8 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
           id: user.id || user.uid || 'admin-daniel',
           uid: user.uid || user.id || 'admin-daniel',
           email: 'daniel.smpallywear@gmail.com',
-          name: user.name || 'Daniel Staff',
-          role: user.role || 'marketing'
+          name: user.name || 'Daniel',
+          role: user.role || 'onlineteam'
         });
       }
     }

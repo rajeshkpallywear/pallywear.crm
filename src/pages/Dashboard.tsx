@@ -124,10 +124,7 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     if (user && (user.role === 'marketing' || user.role === 'staff' || user.role === UserRole.MARKETING || user.role === UserRole.STAFF)) {
-      if (user.email === 'daniel.smpallywear@gmail.com' && activeTab === 'dashboard') {
-        setActiveTab('marketing_orders');
-        localStorage.setItem('pallywear_active_tab', 'marketing_orders');
-      } else if (!localStorage.getItem('pallywear_active_tab')) {
+      if (!localStorage.getItem('pallywear_active_tab')) {
         setActiveTab('marketing_orders');
       }
     }
@@ -1100,11 +1097,7 @@ export default function Dashboard() {
               {user?.role === UserRole.SALES_HEAD || user?.role === 'sales_head' ? (
                 <SalesHeadDashboard orders={filteredOrders} invoices={invoices} user={user} />
               ) : [UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
-                user?.email === 'daniel.smpallywear@gmail.com' ? (
-                  <OnlineTeamDashboard user={user} />
-                ) : (
-                  <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} leadManagerComponent={<LeadManager />} />
-                )
+                <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} leadManagerComponent={<LeadManager />} />
               ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (
                 <AccountsDashboard orders={filteredOrders} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} sidebarView={accountsSidebarView} />
               ) : user?.role === UserRole.DESIGNER || user?.role === 'designer' ? (

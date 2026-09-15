@@ -122,9 +122,13 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       orders: Order[];
     }>();
 
-    // Group all orders by creator name
+    // Group all orders by creator name (excluding Daniel/online team/admin)
     filteredOrders.forEach(o => {
       const execName = (o.createdByName || o.createdBy || 'Unknown Executive').trim();
+      const lowerName = execName.toLowerCase();
+      if (lowerName.includes('daniel') || (o.createdBy && String(o.createdBy).toLowerCase().includes('daniel'))) {
+        return;
+      }
       if (!map.has(execName)) {
         map.set(execName, {
           name: execName,
@@ -155,6 +159,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     // Match Invoices created by or associated with each executive
     invoices.forEach(inv => {
       const invCreator = (inv.createdByName || inv.createdBy || '').trim();
+      if (invCreator.toLowerCase().includes('daniel')) return;
       let matchedExec = invCreator;
 
       // If creator isn't direct, check if invoice leadId matches any order of an executive
@@ -171,7 +176,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         const item = map.get(matchedExec)!;
         item.invoicesCount += 1;
         item.totalInvoicedAmount += Number(inv.total || inv.netTotal || 0);
-      } else if (invCreator) {
+      } else if (invCreator && !invCreator.toLowerCase().includes('daniel')) {
         // Individual with invoices but no orders in selected period
         map.set(invCreator, {
           name: invCreator,
