@@ -192,6 +192,7 @@ export default function Register() {
             >
               <option value={UserRole.MARKETING}>Marketing</option>
               <option value={UserRole.SALES_HEAD}>Sales Head (Head of Sales & Marketing)</option>
+              <option value={UserRole.OPERATIONS_HEAD}>Operations Head (Workflow & Production Operations)</option>
               <option value={UserRole.HR}>HR & Payroll (Human Resources)</option>
               <option value={UserRole.DESIGNER}>Designer (Art Studio)</option>
               <option value={UserRole.ACCOUNTS}>Accounts</option>

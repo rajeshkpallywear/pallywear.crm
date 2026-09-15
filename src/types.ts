@@ -93,7 +93,8 @@ export enum UserRole {
   VENDOR = 'vendor',
   INVENTORY_MANAGEMENT = 'inventory_management',
   HR = 'hr',
-  SALES_HEAD = 'sales_head'
+  SALES_HEAD = 'sales_head',
+  OPERATIONS_HEAD = 'operations_head'
 }
 
 export interface UserProfile {

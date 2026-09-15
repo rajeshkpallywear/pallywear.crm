@@ -43,9 +43,11 @@ export default function Login() {
     const isAdmin = u?.role === UserRole.ADMIN || u?.role === 'admin' || normalizedEmail === 'ceo@pallywear.com' || normalizedEmail === 'rajeshkpallywear@gmail.com' || normalizedEmail.startsWith('admin') || normalizedEmail.startsWith('ceo') || normalizedEmail === 'admin';
     const isHR = u?.role === UserRole.HR || u?.role === 'hr';
     const isSalesHead = u?.role === UserRole.SALES_HEAD || u?.role === 'sales_head';
+    const isOperationsHead = u?.role === UserRole.OPERATIONS_HEAD || u?.role === 'operations_head';
     if (isAdmin) return '/admin';
     if (isHR) return '/hr-dashboard';
     if (isSalesHead) return '/sales-head';
+    if (isOperationsHead) return '/operations-head';
     return '/dashboard';
   };
 

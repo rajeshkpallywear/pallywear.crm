@@ -4768,6 +4768,8 @@ export default function AdminDashboard() {
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-brand-primary cursor-pointer"
                   >
                     <option value="admin">Admin / CEO</option>
+                    <option value="sales_head">Sales Head (Head of Sales & Marketing)</option>
+                    <option value="operations_head">Operations Head (Workflow & Production)</option>
                     <option value="hr">HR & Payroll Manager</option>
                     <option value="staff">Staff</option>
                     <option value="marketing">Marketing</option>
@@ -4776,6 +4778,9 @@ export default function AdminDashboard() {
                     <option value="production">Production</option>
                     <option value="delivery">Delivery</option>
                     <option value="designer">Designer</option>
+                    <option value="digitizer">Digitizing & Embroidery</option>
+                    <option value="onlineteam">Online Team</option>
+                    <option value="vendor">Vendor</option>
                   </select>
                 </div>
 

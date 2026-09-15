@@ -39,6 +39,7 @@ import VendorDashboard from '../components/VendorDashboard';
 import OrdersChart from '../components/OrdersChart';
 import SidebarChat from '../components/SidebarChat';
 import SalesHeadDashboard from '../components/SalesHeadDashboard';
+import OperationsHeadDashboard from '../components/OperationsHeadDashboard';
 import { OrderStatus } from '../types';
 
 export default function Dashboard() {
@@ -1012,6 +1013,8 @@ export default function Dashboard() {
             <div className="space-y-8 animate-fadeIn">
               {user?.role === UserRole.SALES_HEAD || user?.role === 'sales_head' ? (
                 <SalesHeadDashboard orders={filteredOrders} invoices={invoices} user={user} />
+              ) : user?.role === UserRole.OPERATIONS_HEAD || user?.role === 'operations_head' ? (
+                <OperationsHeadDashboard orders={filteredOrders} user={user} />
               ) : [UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
                 <MarketingDashboard orders={filteredOrders} inventory={inventory} onCreateOrder={handleCreateOrder} onUpdateOrder={handleUpdateOrder} onDeleteOrder={handleDeleteOrder} isAdmin={user?.role === 'admin'} user={user} leadManagerComponent={<LeadManager />} />
               ) : user?.role === UserRole.ACCOUNTS || user?.role === 'accounts' ? (

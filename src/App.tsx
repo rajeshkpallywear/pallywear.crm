@@ -123,9 +123,11 @@ const RootRedirect = () => {
     const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin';
     const isHR = user.role === UserRole.HR || user.role === 'hr';
     const isSalesHead = user.role === UserRole.SALES_HEAD || user.role === 'sales_head';
+    const isOperationsHead = user.role === UserRole.OPERATIONS_HEAD || user.role === 'operations_head';
     if (isAdmin) return <Navigate to="/admin" replace />;
     if (isHR) return <Navigate to="/hr-dashboard" replace />;
     if (isSalesHead) return <Navigate to="/dashboard" replace />;
+    if (isOperationsHead) return <Navigate to="/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
   return <Navigate to="/Pallywear" replace />;
@@ -171,6 +173,15 @@ function AppRoutes() {
 
           <Route
             path="/sales-head"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/operations-head"
             element={
               <ProtectedRoute>
                 <Dashboard />
