@@ -1058,12 +1058,10 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount, color: 'bg-brand-primary' },
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
-            { key: 'completed', label: activeChannel === 'accounts_queue' ? '✓ All Done' : '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
-            ...(activeChannel === 'accounts_queue' ? [
-              { key: 'completed_om', label: '📋 Sent to Order Mgmt', count: activeStats.omSentCount, color: 'bg-blue-600' },
-              { key: 'completed_digitizer', label: '🧵 Sent to Digitizer', count: activeStats.digitizerSentCount, color: 'bg-purple-700' },
+            { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
+            ...(activeChannel === 'marketing_queue' ? [
+              { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
             ] : []),
-            { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
             { key: 'admin_order', label: '👑 Admin Order', count: activeStats.adminOrderCount, color: 'bg-indigo-600' },
           ] as const).map(({ key, label, count, color }) => (
             <button
