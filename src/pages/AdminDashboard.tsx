@@ -38,756 +38,104 @@ const MOCK_LOGS = [
   { id: 3, action: 'New user joined', user: 'System', time: '1 hour ago', details: 'Jonathan V. registered' },
   { id: 4, action: 'Exported leads', user: 'Mike L.', time: '3 hours ago', details: 'Exported Leads_Report.xlsx' },
 ];
+// ─── Top-level Order Status & Completion Helpers ─────────────────────────────
+const isDeliveredStatus = (status?: string) => {
+  if (!status) return false;
+  const s = String(status).toLowerCase().trim();
+  return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
+};
 
-// ─── Role Revenue Breakdown Sub-component ───────────────────────────────────
-export function RoleBreakdown({ mktOrdersRevenue, otOrdersRevenue, mktDeliveredOrders, otDeliveredOrders, mktLeadsForecast, otLeadsForecast, mktLeadsConverted, otLeadsConverted, mktConvertedLeads, otConvertedLeads, mktLeadsCount, otLeadsCount, fmt, userNameMap, addOrder, deleteOrder, addLead, deleteLead, setSelectedAdminLeadForLogs, setShowAdminLogsModal }: any) {
-  const [drillMode, setDrillMode] = React.useState<null | 'orders' | 'leads'>(null);
-  const [orderSearch, setOrderSearch] = React.useState('');
-  const [leadSearch, setLeadSearch] = React.useState('');
-  const [monthFilter, setMonthFilter] = React.useState('');
-  const [dateFilter, setDateFilter] = React.useState('');
+const getEffectiveStatus = (o: Order) => {
+  return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
+};
 
-  // Add Revenue modal state
-  const [showAddRevenue, setShowAddRevenue] = React.useState(false);
-  const [savingRevenue, setSavingRevenue] = React.useState(false);
-  const [deletingOrderId, setDeletingOrderId] = React.useState<string | null>(null);
-  const [manualRevenues, setManualRevenues] = React.useState<any[]>([]);
-
-  // Add Lead Convert modal state
-  const [showAddLeadConvert, setShowAddLeadConvert] = React.useState(false);
-  const [savingLeadConvert, setSavingLeadConvert] = React.useState(false);
-  const [deletingLeadId, setDeletingLeadId] = React.useState<string | null>(null);
-  const [manualLeads, setManualLeads] = React.useState<any[]>([]);
-  const [leadConvertForm, setLeadConvertForm] = React.useState({
-    createdBy: '',
-    leadName: '',
-    companyName: '',
-    leadType: 'Hot',
-    convertedValue: '',
-    date: new Date().toISOString().split('T')[0],
-  });
-
-  const handleAddLeadConvert = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadConvertForm.createdBy || !leadConvertForm.convertedValue) {
-      alert('Please fill in at least Created By and Converted Value.');
-      return;
-    }
-    setSavingLeadConvert(true);
-    try {
-      const valAmount = Number(leadConvertForm.convertedValue) || 0;
-      const dateTimestamp = leadConvertForm.date ? new Date(leadConvertForm.date).getTime() : Date.now();
-      const newLeadData = {
-        createdByName: leadConvertForm.createdBy,
-        name: leadConvertForm.leadName || 'Manual Lead',
-        number: 'N/A',
-        companyName: leadConvertForm.companyName || '',
-        leadType: leadConvertForm.leadType,
-        totalOrderValue: valAmount,
-        forecastedValue: valAmount,
-        convertedValue: valAmount,
-        status: 'Converted',
-        entryDate: leadConvertForm.date,
-        createdAt: dateTimestamp,
-        updatedAt: Date.now(),
-        phone: '',
-        email: '',
-        address: '',
-        notes: 'Admin manual lead convert entry',
-        createdBy: '',
-      } as any;
-      if (addLead) {
-        await addLead(newLeadData);
-      } else {
-        await (window as any).mockDataService?.saveLead(newLeadData);
-      }
-      const entry = {
-        id: `manual-lead-${Date.now()}`,
-        createdByName: leadConvertForm.createdBy,
-        createdBy: '',
-        name: leadConvertForm.leadName || 'Manual Lead',
-        companyName: leadConvertForm.companyName,
-        leadType: leadConvertForm.leadType,
-        totalOrderValue: valAmount,
-        entryDate: leadConvertForm.date,
-        createdAt: dateTimestamp,
-        isManual: true,
-      };
-      setManualLeads(prev => [entry, ...prev]);
-      setLeadConvertForm({ createdBy: '', leadName: '', companyName: '', leadType: 'Hot', convertedValue: '', date: new Date().toISOString().split('T')[0] });
-      setShowAddLeadConvert(false);
-      setDrillMode('leads');
-      alert('Lead Convert Revenue saved to Database!');
-    } catch (err: any) {
-      console.error('Error saving lead convert to DB:', err);
-      alert('Failed to save: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setSavingLeadConvert(false);
-    }
-  };
-
-  const handleDeleteLead = async (leadId: string) => {
-    if (!leadId || !deleteLead) return;
-    if (!window.confirm('Delete this lead convert entry? This cannot be undone.')) return;
-    setDeletingLeadId(leadId);
-    try {
-      await deleteLead(leadId);
-      setManualLeads(prev => prev.filter(l => l.id !== leadId));
-    } catch (err: any) {
-      alert('Failed to delete: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setDeletingLeadId(null);
-    }
-  };
-  const [revenueForm, setRevenueForm] = React.useState({
-    createdBy: '',
-    client: '',
-    category: '',
-    status: 'delivery',
-    amount: '',
-    date: new Date().toISOString().split('T')[0],
-  });
-
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!orderId || !deleteOrder) return;
-    if (!window.confirm('Delete this revenue entry? This cannot be undone.')) return;
-    setDeletingOrderId(orderId);
-    try {
-      await deleteOrder(orderId);
-      // Also remove from local manual list if it was manual
-      setManualRevenues(prev => prev.filter(r => r.id !== orderId));
-    } catch (err: any) {
-      alert('Failed to delete: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setDeletingOrderId(null);
-    }
-  };
-
-  const handleAddRevenue = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!revenueForm.createdBy || !revenueForm.amount) {
-      alert('Please fill in at least Created By and Amount.');
-      return;
-    }
-
-    setSavingRevenue(true);
-    try {
-      const amountVal = Number(revenueForm.amount) || 0;
-      const dateTimestamp = revenueForm.date ? new Date(revenueForm.date).getTime() : Date.now();
-
-      // Construct Order object to save to Database / API
-      const newOrderData: Partial<Order> = {
-        createdByName: revenueForm.createdBy,
-        clientName: revenueForm.client,
-        customerInfo: { name: revenueForm.client || 'Client', phone: '', address: '' },
-        category: revenueForm.category || 'General',
-        status: (revenueForm.status === 'delivery' ? OrderStatus.DELIVERY : revenueForm.status === 'delivered' ? OrderStatus.DELIVERED : OrderStatus.PENDING) as any,
-        financials: {
-          totalAmount: amountVal,
-          advancePay: 0,
-          balanceAmount: amountVal
-        },
-        createdAt: dateTimestamp,
-        updatedAt: Date.now()
-      };
-
-      if (addOrder) {
-        await addOrder(newOrderData);
-      } else {
-        await mockDataService.createOrder(newOrderData);
-      }
-
-      // Also append to local list for immediate visual confirmation
-      const entry = {
-        id: `manual-${Date.now()}`,
-        createdByName: revenueForm.createdBy,
-        createdBy: '',
-        clientName: revenueForm.client,
-        category: revenueForm.category,
-        status: revenueForm.status,
-        date: revenueForm.date,
-        financials: { totalAmount: amountVal },
-        isManual: true,
-      };
-      setManualRevenues(prev => [entry, ...prev]);
-
-      setRevenueForm({ createdBy: '', client: '', category: '', status: 'delivery', amount: '', date: new Date().toISOString().split('T')[0] });
-      setShowAddRevenue(false);
-      setDrillMode('orders');
-      alert('Revenue successfully saved to Database!');
-    } catch (err: any) {
-      console.error('Error saving revenue to DB:', err);
-      alert('Failed to save to Database: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setSavingRevenue(false);
-    }
-  };
-
-  const allDeliveredOrders = [...manualRevenues, ...mktDeliveredOrders, ...otDeliveredOrders];
-  const allConvertedLeads = [...manualLeads, ...mktConvertedLeads, ...otConvertedLeads];
-
-  // Month / Date Filtering logic
-  const matchesMonthAndDate = (itemDateStr?: string, itemCreatedAt?: number) => {
-    let dateObj: Date | null = null;
-    if (itemDateStr) {
-      dateObj = new Date(itemDateStr);
-    } else if (itemCreatedAt) {
-      dateObj = new Date(itemCreatedAt);
-    }
-
-    if (!dateObj || isNaN(dateObj.getTime())) {
-      if (monthFilter || dateFilter) return false;
-      return true;
-    }
-
-    const yyyy = dateObj.getFullYear();
-    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const dd = String(dateObj.getDate()).padStart(2, '0');
-    const itemMonth = `${yyyy}-${mm}`;
-    const itemDate = `${yyyy}-${mm}-${dd}`;
-
-    if (monthFilter && itemMonth !== monthFilter && mm !== monthFilter) {
-      return false;
-    }
-    if (dateFilter && itemDate !== dateFilter) {
-      return false;
-    }
-    return true;
-  };
-
-  const filteredOrders = allDeliveredOrders.filter(o => {
-    const name = (o.createdByName || userNameMap[o.createdBy] || '').toLowerCase();
-    const matchesSearch = !orderSearch || name.includes(orderSearch.toLowerCase()) || (o.clientName || '').toLowerCase().includes(orderSearch.toLowerCase());
-    const matchesDate = matchesMonthAndDate(o.date, o.createdAt);
-    return matchesSearch && matchesDate;
-  });
-
-  const filteredLeads = allConvertedLeads.filter(l => {
-    const name = (l.createdByName || userNameMap[l.createdBy] || '').toLowerCase();
-    const matchesSearch = !leadSearch || name.includes(leadSearch.toLowerCase()) || l.name?.toLowerCase().includes(leadSearch.toLowerCase());
-    const matchesDate = matchesMonthAndDate(l.entryDate || l.date, l.createdAt);
-    return matchesSearch && matchesDate;
-  });
-
-  const inputCls = "w-full text-xs border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all";
-  const labelCls = "block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5";
-
+const isOrderDesignCompleted = (o: Order) => {
+  const eff = getEffectiveStatus(o);
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-1 h-5 bg-brand-primary rounded-full" />
-        <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Role Revenue Breakdown</h3>
-        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider ml-1">Marketing vs Online Team</span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* Orders Revenue Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="border-b border-gray-50 pb-3 flex items-start justify-between">
-            <div>
-              <p className="text-xs font-black text-gray-800">Orders Revenue</p>
-              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Delivered orders only</p>
-            </div>
-            <button onClick={() => setDrillMode(drillMode === 'orders' ? null : 'orders')} className="text-[9px] font-black text-brand-primary uppercase tracking-wider border border-brand-primary/20 px-2 py-0.5 rounded-lg hover:bg-brand-primary/5 transition-all cursor-pointer bg-transparent">
-              {drillMode === 'orders' ? 'Close' : 'View'}
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border bg-blue-50 text-blue-700 border-blue-100 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
-              <p className="text-base font-black">{fmt(mktOrdersRevenue)}</p>
-              <p className="text-[9px] font-bold opacity-60 mt-0.5">{mktDeliveredOrders.length} delivered</p>
-            </div>
-            <div className="rounded-xl border bg-emerald-50 text-emerald-700 border-emerald-100 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
-              <p className="text-base font-black">{fmt(otOrdersRevenue)}</p>
-              <p className="text-[9px] font-bold opacity-60 mt-0.5">{otDeliveredOrders.length} delivered</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Leads Forecasted Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="border-b border-gray-50 pb-3">
-            <p className="text-xs font-black text-gray-800">Leads Forecasted Value</p>
-            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Pipeline forecast from each department</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-100 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
-              <p className="text-base font-black">{fmt(mktLeadsForecast)}</p>
-              <p className="text-[9px] font-bold opacity-60 mt-0.5">{mktLeadsCount} leads</p>
-            </div>
-            <div className="rounded-xl border bg-teal-50 text-teal-700 border-teal-100 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
-              <p className="text-base font-black">{fmt(otLeadsForecast)}</p>
-              <p className="text-[9px] font-bold opacity-60 mt-0.5">{otLeadsCount} leads</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Leads Converted Value Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="border-b border-gray-50 pb-3 flex items-start justify-between">
-            <div>
-              <p className="text-xs font-black text-gray-800">Leads Converted Value</p>
-              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Actual converted revenue from leads</p>
-            </div>
-            <button onClick={() => setDrillMode(drillMode === 'leads' ? null : 'leads')} className="text-[9px] font-black text-brand-primary uppercase tracking-wider border border-brand-primary/20 px-2 py-0.5 rounded-lg hover:bg-brand-primary/5 transition-all cursor-pointer bg-transparent">
-              {drillMode === 'leads' ? 'Close' : 'View'}
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border bg-violet-50 text-violet-700 border-violet-100 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Marketing</p>
-              <p className="text-base font-black">{fmt(mktLeadsConverted)}</p>
-              <p className="text-[9px] font-bold opacity-60 mt-0.5">{mktConvertedLeads.length} converted</p>
-            </div>
-            <div className="rounded-xl border bg-cyan-50 text-cyan-700 border-cyan-100 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1.5">Online Team</p>
-              <p className="text-base font-black">{fmt(otLeadsConverted)}</p>
-              <p className="text-[9px] font-bold opacity-60 mt-0.5">{otConvertedLeads.length} converted</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Drill-down: Delivered Orders */}
-      {drillMode === 'orders' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Delivered Orders — All Staff</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{filteredOrders.length} of {allDeliveredOrders.length} entries shown</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Month Filter */}
-              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Month:</span>
-                <input
-                  type="month"
-                  value={monthFilter}
-                  onChange={e => setMonthFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
-                />
-                {monthFilter && (
-                  <button onClick={() => setMonthFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
-                )}
-              </div>
-
-              {/* Date Filter */}
-              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Date:</span>
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={e => setDateFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
-                />
-                {dateFilter && (
-                  <button onClick={() => setDateFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
-                )}
-              </div>
-
-              {/* Add Revenue Button */}
-              <button
-                onClick={() => setShowAddRevenue(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white text-[10px] font-black uppercase tracking-wider rounded-xl border-none cursor-pointer transition-all shadow-sm shadow-brand-primary/20"
-              >
-                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                Add Revenue
-              </button>
-
-              {/* Search Staff */}
-              <div className="relative w-44">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
-                <input type="text" placeholder="Filter by staff name..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
-              </div>
-
-              {(monthFilter || dateFilter || orderSearch) && (
-                <button
-                  onClick={() => { setMonthFilter(''); setDateFilter(''); setOrderSearch(''); }}
-                  className="text-[10px] font-bold text-red-500 hover:text-red-700 underline bg-transparent border-none cursor-pointer"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
-                <tr>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredOrders.length === 0 ? (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-400 italic">No delivery orders match the selected filters.</td></tr>
-                ) : filteredOrders.map((o: any) => (
-                  <tr key={o.id} className={`hover:bg-gray-50/50 transition-colors ${o.isManual ? 'bg-brand-primary/3' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${o.isManual ? 'bg-brand-primary text-white' : 'bg-brand-primary/10 text-brand-primary'}`}>
-                          {(o.createdByName || userNameMap[o.createdBy] || 'U').charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-bold text-gray-800">{o.createdByName || userNameMap[o.createdBy] || 'Unknown'}</span>
-                        {o.isManual && <span className="text-[8px] font-black text-brand-primary/70 uppercase bg-brand-primary/10 px-1.5 py-0.5 rounded-md">Manual</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-gray-700">{o.clientName || o.customerInfo?.name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{o.category || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border bg-emerald-50 text-emerald-700 border-emerald-100">{o.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 font-mono">{o.date ? new Date(o.date).toLocaleDateString('en-IN') : (o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—')}</td>
-                    <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(o.financials?.totalAmount) || 0).toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleDeleteOrder(o.id)}
-                        disabled={deletingOrderId === o.id}
-                        title="Delete this revenue entry"
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
-                      >
-                        {deletingOrderId === o.id ? (
-                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-                        ) : (
-                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" /></svg>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Drill-down: Converted Leads */}
-      {drillMode === 'leads' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Converted Leads — All Staff</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{filteredLeads.length} of {allConvertedLeads.length} leads shown</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Month Filter */}
-              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Month:</span>
-                <input
-                  type="month"
-                  value={monthFilter}
-                  onChange={e => setMonthFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
-                />
-                {monthFilter && (
-                  <button onClick={() => setMonthFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
-                )}
-              </div>
-
-              {/* Date Filter */}
-              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Date:</span>
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={e => setDateFilter(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none cursor-pointer border-none"
-                />
-                {dateFilter && (
-                  <button onClick={() => setDateFilter('')} className="text-gray-400 hover:text-gray-600 text-xs font-bold border-none bg-transparent cursor-pointer ml-1">✕</button>
-                )}
-              </div>
-
-              {/* Add Lead Convert Button */}
-              <button
-                onClick={() => setShowAddLeadConvert(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl border-none cursor-pointer transition-all shadow-sm shadow-violet-400/20"
-              >
-                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                Add Lead Convert
-              </button>
-
-              {/* Search Staff */}
-              <div className="relative w-44">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
-                <input type="text" placeholder="Filter by staff name..." value={leadSearch} onChange={e => setLeadSearch(e.target.value)} className="w-full text-xs border border-gray-200 bg-gray-50 rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
-              </div>
-
-              {(monthFilter || dateFilter || leadSearch) && (
-                <button
-                  onClick={() => { setMonthFilter(''); setDateFilter(''); setLeadSearch(''); }}
-                  className="text-[10px] font-bold text-red-500 hover:text-red-700 underline bg-transparent border-none cursor-pointer"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
-                <tr>
-                  <th className="px-4 py-3">Added By</th>
-                  <th className="px-4 py-3">Lead Name</th>
-                  <th className="px-4 py-3">Company</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3 text-right">Converted Value</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredLeads.length === 0 ? (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-400 italic">No converted leads match the selected filters.</td></tr>
-                ) : filteredLeads.map((l: any) => (
-                  <tr key={l.id} className={`hover:bg-gray-50/50 transition-colors ${l.isManual ? 'bg-violet-50/30' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[9px] font-bold">
-                          {(l.createdByName || userNameMap[l.createdBy] || 'U').charAt(0)}
-                        </div>
-                        <span className="font-bold text-gray-800">{l.createdByName || userNameMap[l.createdBy] || 'Unknown'}</span>
-                        {l.isManual && <span className="text-[8px] font-black text-violet-600/70 uppercase bg-violet-100 px-1.5 py-0.5 rounded-md">Manual</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-gray-700">{l.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{l.companyName || '—'}</td>
-                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${l.leadType === 'Hot' ? 'bg-red-50 text-red-700 border-red-100' : l.leadType === 'Warm' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>{l.leadType}</span></td>
-                    <td className="px-4 py-3 text-right font-black text-gray-900">₹{(Number(l.totalOrderValue) || 0).toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex justify-center items-center gap-1.5">
-                        {l.description && (
-                          <button
-                            onClick={() => {
-                              setSelectedAdminLeadForLogs(l);
-                              setShowAdminLogsModal(true);
-                            }}
-                            title="View Call Logs"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
-                          >
-                            <FileText size={13} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteLead(l.id)}
-                          disabled={deletingLeadId === l.id}
-                          title="Delete this lead convert entry"
-                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 border border-red-100 transition-all cursor-pointer disabled:opacity-40"
-                        >
-                          {deletingLeadId === l.id ? (
-                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-                          ) : (
-                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" /></svg>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Add Lead Convert Modal ─────────────────────────────────────────── */}
-      {showAddLeadConvert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="bg-violet-600 px-6 py-5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Admin Lead Entry</p>
-                <h3 className="text-lg font-black text-white mt-0.5">Add Lead Convert Revenue (Saves to DB)</h3>
-              </div>
-              <button
-                onClick={() => setShowAddLeadConvert(false)}
-                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer"
-              >
-                <svg width="14" height="14" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <form onSubmit={handleAddLeadConvert} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className={labelCls}>Created By <span className="text-red-400">*</span></label>
-                  <input required type="text" placeholder="Staff / Person name" value={leadConvertForm.createdBy}
-                    onChange={e => setLeadConvertForm({ ...leadConvertForm, createdBy: e.target.value })} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Lead Name</label>
-                  <input type="text" placeholder="Client / Lead name" value={leadConvertForm.leadName}
-                    onChange={e => setLeadConvertForm({ ...leadConvertForm, leadName: e.target.value })} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Company Name</label>
-                  <input type="text" placeholder="Company" value={leadConvertForm.companyName}
-                    onChange={e => setLeadConvertForm({ ...leadConvertForm, companyName: e.target.value })} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Lead Type</label>
-                  <select value={leadConvertForm.leadType}
-                    onChange={e => setLeadConvertForm({ ...leadConvertForm, leadType: e.target.value })} className={inputCls}>
-                    <option value="Hot">Hot</option>
-                    <option value="Warm">Warm</option>
-                    <option value="Cold">Cold</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Converted Value (₹) <span className="text-red-400">*</span></label>
-                  <input required type="number" min="0" placeholder="0" value={leadConvertForm.convertedValue}
-                    onChange={e => setLeadConvertForm({ ...leadConvertForm, convertedValue: e.target.value })} className={inputCls} />
-                </div>
-                <div className="col-span-2">
-                  <label className={labelCls}>Date (Day / Month / Year)</label>
-                  <input type="date" value={leadConvertForm.date}
-                    onChange={e => setLeadConvertForm({ ...leadConvertForm, date: e.target.value })} className={inputCls} />
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2 border-t border-gray-50">
-                <button type="button" onClick={() => setShowAddLeadConvert(false)} disabled={savingLeadConvert}
-                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent disabled:opacity-50">
-                  Cancel
-                </button>
-                <button type="submit" disabled={savingLeadConvert}
-                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-violet-400/20 uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2">
-                  {savingLeadConvert ? 'Saving to DB...' : 'Add Lead Convert'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Add Revenue Modal ───────────────────────────────────────────────── */}
-      {showAddRevenue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-            {/* Modal Header */}
-            <div className="bg-brand-primary px-6 py-5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Admin Revenue Entry</p>
-                <h3 className="text-lg font-black text-white mt-0.5">Add Revenue Record (Saves to DB)</h3>
-              </div>
-              <button
-                onClick={() => setShowAddRevenue(false)}
-                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer"
-              >
-                <svg width="14" height="14" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            {/* Modal Form */}
-            <form onSubmit={handleAddRevenue} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Created By */}
-                <div className="col-span-2">
-                  <label className={labelCls}>Created By <span className="text-red-400">*</span></label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="Staff / Person name"
-                    value={revenueForm.createdBy}
-                    onChange={e => setRevenueForm({ ...revenueForm, createdBy: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
-
-                {/* Client */}
-                <div>
-                  <label className={labelCls}>Client Name</label>
-                  <input
-                    type="text"
-                    placeholder="Client / Company"
-                    value={revenueForm.client}
-                    onChange={e => setRevenueForm({ ...revenueForm, client: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className={labelCls}>Category</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Jersey, T-Shirt..."
-                    value={revenueForm.category}
-                    onChange={e => setRevenueForm({ ...revenueForm, category: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className={labelCls}>Status <span className="text-red-400">*</span></label>
-                  <select
-                    required
-                    value={revenueForm.status}
-                    onChange={e => setRevenueForm({ ...revenueForm, status: e.target.value })}
-                    className={inputCls}
-                  >
-                    <option value="delivery">Delivery</option>
-                  </select>
-                </div>
-
-                {/* Amount */}
-                <div>
-                  <label className={labelCls}>Amount (₹) <span className="text-red-400">*</span></label>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={revenueForm.amount}
-                    onChange={e => setRevenueForm({ ...revenueForm, amount: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
-
-                {/* Date */}
-                <div className="col-span-2">
-                  <label className={labelCls}>Date (Day / Month / Year)</label>
-                  <input
-                    type="date"
-                    value={revenueForm.date}
-                    onChange={e => setRevenueForm({ ...revenueForm, date: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-2 border-t border-gray-50">
-                <button
-                  type="button"
-                  onClick={() => setShowAddRevenue(false)}
-                  disabled={savingRevenue}
-                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-bold rounded-2xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingRevenue}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-black rounded-2xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/20 uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {savingRevenue ? 'Saving to DB...' : 'Add Revenue'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+    [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+    Boolean((o as any).designCompleted) ||
+    Boolean((o as any).details?.designCompleted) ||
+    Boolean((o as any).designSentToDigitizer) ||
+    Boolean((o as any).details?.designSentToDigitizer) ||
+    Boolean(o.designAttachments && o.designAttachments.length > 0) ||
+    Boolean(o.machineFiles && o.machineFiles.length > 0) ||
+    Boolean((o as any).original_design_file)
   );
-}
+};
+
+const isOrderAccountsCompleted = (o: Order) => {
+  const eff = getEffectiveStatus(o);
+  return (
+    [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+    Boolean(o.sentByAccounts) ||
+    Boolean(o.accountsAttachments && o.accountsAttachments.length > 0)
+  );
+};
+
+const isOrderOmCompleted = (o: Order) => {
+  const eff = getEffectiveStatus(o);
+  return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+};
+
+const isOrderProductionCompleted = (o: Order) => {
+  const eff = getEffectiveStatus(o);
+  return [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+};
+
+const isOrderDeliveryCompleted = (o: Order) => {
+  return o.status === OrderStatus.DELIVERED;
+};
+
+const isOrderForDigitizer = (o: Order) => {
+  return Boolean(
+    o.designSentToDigitizer === true ||
+    o.details?.designSentToDigitizer === true ||
+    o.details?.designSentToDigitizer === 'true'
+  );
+};
+
+const isOrderDigitizerCompleted = (o: Order) => {
+  const eff = getEffectiveStatus(o);
+  if (o.digitizerCompleted === true || o.details?.digitizerCompleted === true || o.details?.digitizerCompleted === 'true') {
+    return true;
+  }
+  if (o.digitizerSentToOM === true || o.details?.digitizerSentToOM === true || o.details?.digitizerSentToOM === 'true') {
+    return true;
+  }
+  if (o.details?.hasMachineFiles === true || o.details?.hasMachineFiles === 'true') {
+    return true;
+  }
+  const hasMachineFiles = Boolean(o.machineFiles && o.machineFiles.length > 0);
+  const hasDigitizerFile = Boolean((o as any).digitizer_file || o.details?.digitizer_file);
+  const hasDstEmb = Boolean(
+    o.designAttachments && o.designAttachments.some(file => {
+      const name = typeof file === 'string' ? file.toLowerCase() : '';
+      return name.includes('.dst') || name.includes('.emb');
+    })
+  );
+  const isPastDigitizer = [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
+  return hasMachineFiles || hasDigitizerFile || hasDstEmb || isPastDigitizer;
+};
+
+const isOrderForInventory = (o: Order) => {
+  const eff = getEffectiveStatus(o);
+  return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
+    Boolean(o.details?.dispatchType) ||
+    Boolean(o.details?.sentToDeliveryDashboard) ||
+    Boolean(o.details?.inventoryDispatched);
+};
+
+const isOrderInventoryCompleted = (o: Order) => {
+  return (
+    o.status === OrderStatus.DELIVERED ||
+    o.details?.sentToDeliveryDashboard === true ||
+    o.details?.dispatchType === 'in_house' ||
+    o.details?.dispatchType === 'courier' ||
+    o.details?.inventoryDispatched === true ||
+    Boolean(o.details?.courierName)
+  );
+};
+
 
 export default function AdminDashboard() {
   const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
@@ -1292,12 +640,6 @@ export default function AdminDashboard() {
     }
   }, [user, authLoading]);
 
-  const isDeliveredStatus = (status?: string) => {
-    if (!status) return false;
-    const s = String(status).toLowerCase().trim();
-    return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
-  };
-
   const totalDeliveredOrdersRevenue = useMemo(() => {
     return orders
       .filter(o => isDeliveredStatus(o.status))
@@ -1432,97 +774,6 @@ export default function AdminDashboard() {
       Boolean((o.claimedAt || o.designClaimedAt) && !isOrderDesignCompleted(o))
     );
   }, [orders]);
-
-  const getEffectiveStatus = (o: Order) => {
-    return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
-  };
-
-  const isOrderDesignCompleted = (o: Order) => {
-    const eff = getEffectiveStatus(o);
-    return (
-      [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
-      Boolean((o as any).designCompleted) ||
-      Boolean((o as any).details?.designCompleted) ||
-      Boolean((o as any).designSentToDigitizer) ||
-      Boolean((o as any).details?.designSentToDigitizer) ||
-      Boolean(o.designAttachments && o.designAttachments.length > 0) ||
-      Boolean(o.machineFiles && o.machineFiles.length > 0) ||
-      Boolean((o as any).original_design_file)
-    );
-  };
-
-  const isOrderAccountsCompleted = (o: Order) => {
-    const eff = getEffectiveStatus(o);
-    return (
-      [OrderStatus.DESIGN, OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
-      Boolean(o.sentByAccounts) ||
-      Boolean(o.accountsAttachments && o.accountsAttachments.length > 0)
-    );
-  };
-
-  const isOrderOmCompleted = (o: Order) => {
-    const eff = getEffectiveStatus(o);
-    return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
-  };
-
-  const isOrderProductionCompleted = (o: Order) => {
-    const eff = getEffectiveStatus(o);
-    return [OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
-  };
-
-  const isOrderDeliveryCompleted = (o: Order) => {
-    return o.status === OrderStatus.DELIVERED;
-  };
-
-  const isOrderForDigitizer = (o: Order) => {
-    return Boolean(
-      o.designSentToDigitizer === true ||
-      o.details?.designSentToDigitizer === true ||
-      o.details?.designSentToDigitizer === 'true'
-    );
-  };
-
-  const isOrderDigitizerCompleted = (o: Order) => {
-    const eff = getEffectiveStatus(o);
-    if (o.digitizerCompleted === true || o.details?.digitizerCompleted === true || o.details?.digitizerCompleted === 'true') {
-      return true;
-    }
-    if (o.digitizerSentToOM === true || o.details?.digitizerSentToOM === true || o.details?.digitizerSentToOM === 'true') {
-      return true;
-    }
-    if (o.details?.hasMachineFiles === true || o.details?.hasMachineFiles === 'true') {
-      return true;
-    }
-    const hasMachineFiles = Boolean(o.machineFiles && o.machineFiles.length > 0);
-    const hasDigitizerFile = Boolean((o as any).digitizer_file || o.details?.digitizer_file);
-    const hasDstEmb = Boolean(
-      o.designAttachments && o.designAttachments.some(file => {
-        const name = typeof file === 'string' ? file.toLowerCase() : '';
-        return name.includes('.dst') || name.includes('.emb');
-      })
-    );
-    const isPastDigitizer = [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any);
-    return hasMachineFiles || hasDigitizerFile || hasDstEmb || isPastDigitizer;
-  };
-
-  const isOrderForInventory = (o: Order) => {
-    const eff = getEffectiveStatus(o);
-    return [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
-      Boolean(o.details?.dispatchType) ||
-      Boolean(o.details?.sentToDeliveryDashboard) ||
-      Boolean(o.details?.inventoryDispatched);
-  };
-
-  const isOrderInventoryCompleted = (o: Order) => {
-    return (
-      o.status === OrderStatus.DELIVERED ||
-      o.details?.sentToDeliveryDashboard === true ||
-      o.details?.dispatchType === 'in_house' ||
-      o.details?.dispatchType === 'courier' ||
-      o.details?.inventoryDispatched === true ||
-      Boolean(o.details?.courierName)
-    );
-  };
 
   const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory') => {
     let totalCount = 0;
@@ -2363,7 +1614,7 @@ export default function AdminDashboard() {
                         return (
                           <div
                             key={order.id}
-                            onClick={() => setSelectedAdminOrder(order)}
+                            onClick={() => setSelectedOrderDetail(order)}
                             className="p-4 bg-gray-50/80 hover:bg-purple-50/20 rounded-2xl border border-gray-150 space-y-2.5 transition-all cursor-pointer group"
                           >
                             <div className="flex items-center justify-between">
