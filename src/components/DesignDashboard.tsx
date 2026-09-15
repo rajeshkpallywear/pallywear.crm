@@ -426,13 +426,13 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } else if (selectedSection === 'completed_digitizer') {
       baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item));
     } else if (selectedSection === 'unclaimed') {
-      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold);
+      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework);
     } else if (selectedSection === 'my_tasks') {
-      baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
+      baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold && !item.isRework);
     } else if (selectedSection === 'rework') {
       baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'admin_order') {
-      baseList = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold);
+      baseList = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework);
     }
 
     // Search term matching
@@ -459,12 +459,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
-    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold).length;
-    const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
+    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework).length;
+    const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold && !item.isRework).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
     const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold).length;
-    const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold).length;
+    const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework).length;
     const digitizerSentCount = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item)).length;
     const omSentCount = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item)).length;
     const totalCount = baseList.length;
@@ -956,7 +956,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          📢 Marketing Sent ({getChannelStats('marketing_queue').totalCount})
+          📢 Marketing Sent ({getChannelStats('marketing_queue').unclaimedCount})
         </button>
         <button
           onClick={() => {
@@ -975,7 +975,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          💳 Accounts Sent ({getChannelStats('accounts_queue').totalCount})
+          💳 Accounts Sent ({getChannelStats('accounts_queue').unclaimedCount})
         </button>
       </div>
 
