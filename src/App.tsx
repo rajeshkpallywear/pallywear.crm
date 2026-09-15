@@ -17,7 +17,6 @@ const Store = lazy(() => import('./pages/Store'));
 const LeadDashboard = lazy(() => import('./pages/LeadDashboard'));
 const FlagshipUpper = lazy(() => import('./pages/FlagshipUpper'));
 const HRDashboard = lazy(() => import('./pages/HRDashboard'));
-const SalesHeadDashboard = lazy(() => import('./components/SalesHeadDashboard'));
 
 import { UserRole } from './types';
 
