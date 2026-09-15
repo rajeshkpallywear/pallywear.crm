@@ -186,10 +186,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Helper to detect rework / corrections
   const isItemRework = (o: any) => {
-    if (o?.isRework) return true;
-    if (o?.reworkNotes) return true;
+    if (o?.isRework === false) return false;
+    if (o?.isRework === true) return true;
+    if (o?.reworkNotes && String(o.reworkNotes).trim().length > 0) return true;
     const notesStr = String(o?.notes || o?.designNotes || '').toLowerCase();
-    if (notesStr.includes('[rework') || notesStr.includes('rework') || notesStr.includes('correction requested') || notesStr.includes('sent back from marketing')) return true;
+    if (notesStr.includes('[rework') || notesStr.includes('correction requested') || notesStr.includes('sent back from marketing')) return true;
     return false;
   };
 
@@ -206,16 +207,23 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   const isOrderDesignDone = (o: any) => {
     const statusLower = String(o.status || '').toLowerCase();
-    // Orders in active DESIGN status are NEVER done in Design dashboard
-    if (statusLower === 'design') return false;
     // Orders on HOLD from design are on hold, not done
     if (statusLower === 'hold' && String(o.previousStatus || '').toLowerCase() === 'design') return false;
 
-    if (statusLower === 'delivered') return true;
-    if (['order_management', 'production', 'delivery', 'delivered'].includes(statusLower)) return true;
+    // If order is flagged as rework, it is NOT done (needs attention in rework tab)
+    if (isItemRework(o)) return false;
+
+    // Explicit completion flags for design stage:
     if (o.designSentToDigitizer || o.details?.designSentToDigitizer) return true;
     if (o.designSentToMarketing || o.details?.designSentToMarketing) return true;
     if (o.designCompleted || o.details?.designCompleted) return true;
+
+    // Later stages in the pipeline
+    if (['order_management', 'production', 'delivery', 'delivered'].includes(statusLower)) return true;
+
+    // Orders in active DESIGN status without completion flags are not done
+    if (statusLower === 'design') return false;
+
     return false;
   };
 

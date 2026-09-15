@@ -1467,6 +1467,9 @@ export default function AdminDashboard() {
       return (
         [OrderStatus.ORDER_MANAGEMENT, OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(eff as any) ||
         Boolean((o as any).designCompleted) ||
+        Boolean((o as any).details?.designCompleted) ||
+        Boolean((o as any).designSentToDigitizer) ||
+        Boolean((o as any).details?.designSentToDigitizer) ||
         Boolean(o.designAttachments && o.designAttachments.length > 0) ||
         Boolean(o.machineFiles && o.machineFiles.length > 0) ||
         Boolean((o as any).original_design_file)
@@ -1578,7 +1581,7 @@ export default function AdminDashboard() {
           break;
 
         case 'designers':
-          queueCount = orders.filter(o => o.status === OrderStatus.DESIGN).length;
+          queueCount = orders.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o)).length;
           holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned'))).length;
           completedCount = orders.filter(o => isOrderDesignCompleted(o)).length;
           totalCount = queueCount + holdCount + completedCount;
@@ -1665,7 +1668,7 @@ export default function AdminDashboard() {
             } else if (selectedSection === 'hold') {
               baseList = baseList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned')));
             } else if (selectedSection === 'queue') {
-              baseList = baseList.filter(o => o.status === OrderStatus.DESIGN);
+              baseList = baseList.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o));
             } else {
               baseList = baseList.filter(o => o.status === OrderStatus.DESIGN || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN) || isOrderDesignCompleted(o));
             }
