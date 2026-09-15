@@ -394,25 +394,24 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Marketing/Staff Lead Management Tabs (No Dashboard/Reports) */}
+          {/* Marketing/Staff Navigation (No Lead Dashboard / No Assign Leads) */}
           {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.role === 'user') && (
             <div className="space-y-1">
               <p className={cn(
                 "text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-3",
                 isSidebarCollapsed && "md:hidden"
-              )}>Lead Management</p>
-              {(user?.role === UserRole.MARKETING || user?.role === 'marketing' || user?.role === UserRole.STAFF || user?.role === 'staff' || user?.email === 'daniel.smpallywear@gmail.com') && (
-                <button
-                  onClick={() => navigate('/lead-dashboard')}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-brand-primary/5 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary/10 mb-2 cursor-pointer",
-                    isSidebarCollapsed && "md:justify-center md:px-0"
-                  )}
-                  title={isSidebarCollapsed ? "Lead Dashboard" : ""}
-                >
-                  <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Lead Dashboard</span>}
-                </button>
-              )}
+              )}>Marketing Menu</p>
+              <button
+                onClick={() => selectTab('marketing_orders')}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                  isSidebarCollapsed && "md:justify-center md:px-0",
+                  activeTab === 'marketing_orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+                )}
+                title={isSidebarCollapsed ? "Create Order" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+              </button>
               <button
                 onClick={() => selectTab('clients')}
                 className={cn(
@@ -434,29 +433,6 @@ export default function Dashboard() {
                 title={isSidebarCollapsed ? "Invoices" : ""}
               >
                 <Activity className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Invoices</span>}
-              </button>
-              <button
-                onClick={() => selectTab('marketing_orders')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'marketing_orders' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Create Order" : ""}
-              >
-                <Plus className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab('online_leads')}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                  isSidebarCollapsed && "md:justify-center md:px-0",
-                  activeTab === 'online_leads' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
-                )}
-                title={isSidebarCollapsed ? "Assign Leads" : ""}
-              >
-                <Users className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Assign Leads</span>}
               </button>
             </div>
           )}
@@ -1223,7 +1199,7 @@ export default function Dashboard() {
                 <BarChart3 className="w-4 h-4 flex-shrink-0" />
                 <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Invoices</span>
               </button>
-              {['admin', 'marketing', 'staff', 'user', 'onlineteam', UserRole.ADMIN, UserRole.MARKETING, UserRole.STAFF, UserRole.ONLINETEAM].includes(user?.role || '') && (
+              {['admin', 'onlineteam', UserRole.ADMIN, UserRole.ONLINETEAM].includes(user?.role || '') && (
                 <button
                   onClick={() => selectTab('online_leads')}
                   className={cn(

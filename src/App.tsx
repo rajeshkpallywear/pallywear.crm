@@ -109,8 +109,8 @@ const ProtectedRoute = ({
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Admin, Marketing, Online Team, Staff, and Daniel can access Lead Dashboard
-  if (leadDashboardOnly && !isAdmin && !isStaff && !isDaniel && !isMarketing && !isOnlineTeam) {
+  // Only Admin, Online Team, and Daniel can access Lead Dashboard (Marketing role permanently excluded)
+  if (leadDashboardOnly && !isAdmin && !isDaniel && !isOnlineTeam) {
     return <Navigate to="/dashboard" replace />;
   }
 
