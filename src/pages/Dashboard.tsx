@@ -38,12 +38,13 @@ import OnlineTeamDashboard from '../components/OnlineTeamDashboard';
 import VendorDashboard from '../components/VendorDashboard';
 import OrdersChart from '../components/OrdersChart';
 import SidebarChat from '../components/SidebarChat';
+import SalesHeadDashboard from '../components/SalesHeadDashboard';
 import { RoleBreakdown } from './AdminDashboard';
 import { OrderStatus } from '../types';
 
 export default function Dashboard() {
   const { user, logout, registeredUsers } = useAuth();
-  const { leads, orders, inventory, addOrder, updateOrder, deleteOrder, addLead, deleteLead } = useLeads();
+  const { leads, orders, inventory, invoices, addOrder, updateOrder, deleteOrder, addLead, deleteLead } = useLeads();
   const navigate = useNavigate();
 
   const filteredOrders = React.useMemo(() => {
@@ -57,7 +58,8 @@ export default function Dashboard() {
       'order_management',
       'production',
       'digitizer',
-      'delivery'
+      'delivery',
+      'sales_head'
     ];
     
     if (viewAllRoles.includes(user.role)) {
@@ -1095,7 +1097,9 @@ export default function Dashboard() {
                 );
               })()}
 
-              {[UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
+              {user?.role === UserRole.SALES_HEAD || user?.role === 'sales_head' ? (
+                <SalesHeadDashboard orders={filteredOrders} invoices={invoices} user={user} />
+              ) : [UserRole.STAFF, 'staff', UserRole.MARKETING, 'marketing'].includes(user?.role as any) ? (
                 user?.email === 'daniel.smpallywear@gmail.com' ? (
                   <OnlineTeamDashboard user={user} />
                 ) : (

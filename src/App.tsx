@@ -17,6 +17,7 @@ const Store = lazy(() => import('./pages/Store'));
 const LeadDashboard = lazy(() => import('./pages/LeadDashboard'));
 const FlagshipUpper = lazy(() => import('./pages/FlagshipUpper'));
 const HRDashboard = lazy(() => import('./pages/HRDashboard'));
+const SalesHeadDashboard = lazy(() => import('./components/SalesHeadDashboard'));
 
 import { UserRole } from './types';
 
@@ -122,8 +123,10 @@ const RootRedirect = () => {
   if (user) {
     const isAdmin = user.role === UserRole.ADMIN || user.role === 'admin' || user.email?.toLowerCase() === 'daniel.smpallywear@gmail.com';
     const isHR = user.role === UserRole.HR || user.role === 'hr';
+    const isSalesHead = user.role === UserRole.SALES_HEAD || user.role === 'sales_head';
     if (isAdmin) return <Navigate to="/admin" replace />;
     if (isHR) return <Navigate to="/hr-dashboard" replace />;
+    if (isSalesHead) return <Navigate to="/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
   return <Navigate to="/Pallywear" replace />;
@@ -160,6 +163,15 @@ function AppRoutes() {
           {/* Dashboards */}
           <Route
             path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/sales-head"
             element={
               <ProtectedRoute>
                 <Dashboard />

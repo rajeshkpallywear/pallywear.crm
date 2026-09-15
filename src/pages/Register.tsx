@@ -191,6 +191,7 @@ export default function Register() {
               disabled={isInviteLocked}
             >
               <option value={UserRole.MARKETING}>Marketing</option>
+              <option value={UserRole.SALES_HEAD}>Sales Head (Head of Sales & Marketing)</option>
               <option value={UserRole.HR}>HR & Payroll (Human Resources)</option>
               <option value={UserRole.DESIGNER}>Designer (Art Studio)</option>
               <option value={UserRole.ACCOUNTS}>Accounts</option>
