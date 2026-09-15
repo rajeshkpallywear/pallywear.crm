@@ -39,7 +39,6 @@ import VendorDashboard from '../components/VendorDashboard';
 import OrdersChart from '../components/OrdersChart';
 import SidebarChat from '../components/SidebarChat';
 import SalesHeadDashboard from '../components/SalesHeadDashboard';
-import { RoleBreakdown } from './AdminDashboard';
 import { OrderStatus } from '../types';
 
 export default function Dashboard() {
