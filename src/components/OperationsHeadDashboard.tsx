@@ -27,6 +27,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const orders = propOrders || contextOrders || [];
 
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorkflowTab, setSelectedWorkflowTab] = useState<'all' | 'sla_tasks' | 'design_completed' | 'rework' | 'order_management' | 'digitizer_completed' | 'production_completed' | 'delivery'>('all');
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
