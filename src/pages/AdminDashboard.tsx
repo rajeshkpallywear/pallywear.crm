@@ -23,6 +23,7 @@ import ProfileSettings from '../components/ProfileSettings';
 import Logo from '../components/Logo';
 import InvoiceModal from '../components/InvoiceModal';
 import OrderDetailModal from '../components/OrderDetailModal';
+import CalendarView from '../components/CalendarView';
 import { Order, OrderStatus, Invoice, Lead } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -143,7 +144,7 @@ export default function AdminDashboard() {
   const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
   const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'sla-tasks' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sla-tasks' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance' | 'calendar'>('overview');
   const [slaTaskSearch, setSlaTaskSearch] = useState('');
   const [slaDesignerFilter, setSlaDesignerFilter] = useState('all');
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'overdue'>('all');
@@ -1129,6 +1130,18 @@ export default function AdminDashboard() {
             </button>
 
             <button
+              onClick={() => selectTab('calendar')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                isSidebarCollapsed && "md:justify-center md:px-0",
+                activeTab === 'calendar' ? "bg-white text-brand-primary border-2 border-brand-primary/20 shadow-lg shadow-brand-primary/5" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-gray-600"
+              )}
+              title={isSidebarCollapsed ? "Leave Calendar" : ""}
+            >
+              <CalendarDays className="w-4 h-4 flex-shrink-0 text-brand-primary" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Leave Calendar</span>}
+            </button>
+
+            <button
               onClick={() => selectTab('security')}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2 rounded-xl font-bold text-sm transition-all",
@@ -1213,6 +1226,19 @@ export default function AdminDashboard() {
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 border-none cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Create Invoice</span>
+            </button>
+            <button
+              onClick={() => selectTab('calendar')}
+              className={cn(
+                "px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-xl border flex items-center gap-1.5 transition-colors cursor-pointer",
+                activeTab === 'calendar'
+                  ? "bg-brand-primary text-white border-brand-primary shadow-xs"
+                  : "border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700"
+              )}
+              title="Team Leave Calendar & Approvals"
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Leave Calendar</span>
             </button>
             <button
               onClick={() => navigate('/hr-dashboard')}
@@ -3687,6 +3713,8 @@ export default function AdminDashboard() {
                   );
                 })()}
               </div>
+            ) : activeTab === 'calendar' ? (
+              <CalendarView user={user} />
             ) : (
               <div className="bg-white p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
                 <div className="w-16 h-16 bg-brand-secondary rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-md">
@@ -3746,6 +3774,16 @@ export default function AdminDashboard() {
           >
             <Shield className="w-4 h-4 flex-shrink-0" />
             <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Workflow</span>
+          </button>
+          <button
+            onClick={() => selectTab('calendar')}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-w-0 transition-colors cursor-pointer border-none bg-transparent select-none",
+              activeTab === 'calendar' ? "text-indigo-600 font-bold" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <CalendarDays className="w-4 h-4 flex-shrink-0" />
+            <span className="text-[9px] leading-none tracking-tight truncate max-w-full block mt-0.5">Calendar</span>
           </button>
           <button
             onClick={() => setShowProfileModal(true)}
@@ -3945,6 +3983,7 @@ export default function AdminDashboard() {
           { id: 'invoices', label: 'Invoices', icon: BarChart3 },
           { id: 'online-leads', label: 'Leads', icon: Users },
           { id: 'users', label: 'Users', icon: UserPlus },
+          { id: 'calendar', label: 'Calendar', icon: CalendarDays },
           { id: 'logs', label: 'Logs', icon: FileText },
         ].map((item) => (
           <button

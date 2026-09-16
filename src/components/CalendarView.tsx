@@ -35,7 +35,18 @@ export default function CalendarView({ user }: CalendarViewProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const isAdmin = user?.role === 'admin';
+  const canReviewLeaves = Boolean(
+    user?.role === 'admin' ||
+    user?.role === 'accounts' ||
+    user?.role === 'hr' ||
+    user?.role === 'operations_head' ||
+    user?.role === 'sales_head' ||
+    user?.role === 'UserRole.ADMIN' ||
+    user?.role === 'UserRole.ACCOUNTS' ||
+    user?.role === 'UserRole.HR' ||
+    user?.role === 'UserRole.OPERATIONS_HEAD' ||
+    user?.role === 'UserRole.SALES_HEAD'
+  );
 
   const fetchLeaves = async () => {
     setLoading(true);
@@ -317,18 +328,18 @@ export default function CalendarView({ user }: CalendarViewProps) {
             </form>
           </div>
 
-          {/* Admin Leaves Review Panel */}
-          {isAdmin && (
+          {/* Leaves Review Panel for Admin / Accounts / Managers */}
+          {canReviewLeaves ? (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-6">
               <div>
                 <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
                   <Clock className="text-amber-500" size={20} />
                   Pending Leaves Review
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Approve or reject leave requests</p>
+                <p className="text-xs text-gray-500 mt-0.5">Approve or reject team leave requests</p>
               </div>
 
-              <div className="space-y-4 max-h-[300px] overflow-y-auto scrollbar-thin">
+              <div className="space-y-4 max-h-[350px] overflow-y-auto scrollbar-thin">
                 {leaves.filter(l => l.status === 'Pending').length > 0 ? (
                   leaves.filter(l => l.status === 'Pending').map(leave => (
                     <div key={leave.id} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-3">
@@ -357,14 +368,14 @@ export default function CalendarView({ user }: CalendarViewProps) {
                         <button
                           onClick={() => handleUpdateStatus(leave.id, 'Approved')}
                           disabled={actioningId !== null}
-                          className="flex-1 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          className="flex-1 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                         >
                           <Check size={14} /> Approve
                         </button>
                         <button
                           onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
                           disabled={actioningId !== null}
-                          className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                          className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                         >
                           <X size={14} /> Reject
                         </button>
@@ -374,6 +385,42 @@ export default function CalendarView({ user }: CalendarViewProps) {
                 ) : (
                   <div className="p-6 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center text-gray-400 italic text-xs">
                     No pending leaves found.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                  <Clock className="text-brand-primary" size={20} />
+                  My Leave History
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">Status of your submitted leave requests</p>
+              </div>
+
+              <div className="space-y-3 max-h-[300px] overflow-y-auto scrollbar-thin">
+                {leaves.filter(l => l.userId === user?.id || l.userName === user?.name).length > 0 ? (
+                  leaves.filter(l => l.userId === user?.id || l.userName === user?.name).map(leave => (
+                    <div key={leave.id} className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-800">{leave.leaveType}</span>
+                        <span className={cn(
+                          "text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                          leave.status === 'Approved' ? "bg-green-50 text-green-700 border-green-200" :
+                          leave.status === 'Rejected' ? "bg-red-50 text-red-600 border-red-200" :
+                          "bg-amber-50 text-amber-700 border-amber-200"
+                        )}>
+                          {leave.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500">{leave.startDate} to {leave.endDate}</p>
+                      {leave.reason && <p className="text-[10px] text-gray-400 italic">"{leave.reason}"</p>}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-center text-gray-400 italic text-xs">
+                    No leave requests submitted yet.
                   </div>
                 )}
               </div>

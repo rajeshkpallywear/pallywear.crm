@@ -16,8 +16,9 @@ import VendorExpensePage from './VendorExpensePage';
 import OtherExpensePage from './OtherExpensePage';
 import ExpensesHub from './ExpensesHub';
 import OrdersChart from './OrdersChart';
+import CalendarView from './CalendarView';
 
-type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue' | 'expenses-hub';
+type SidebarView = 'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'revenue' | 'expenses-hub' | 'calendar';
 
 interface AccountsDashboardProps {
   orders: Order[];
@@ -291,6 +292,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     if (sidebarView === 'salary') return <OtherExpensePage user={user} expenseType="salary" title="Salary" description="Monthly salary payments to staff" icon={<Users size={20}/>} color="#0ea5e9" extraFields="salary" />;
     if (sidebarView === 'delivery-expense') return <OtherExpensePage user={user} expenseType="delivery" title="Delivery Expense" description="Courier and logistics costs" icon={<Truck size={20}/>} color="#f59e0b" extraFields="delivery" />;
     if (sidebarView === 'expenses-hub') return <ExpensesHub user={user} />;
+    if (sidebarView === 'calendar') return <CalendarView user={user} />;
     return null;
   };
 

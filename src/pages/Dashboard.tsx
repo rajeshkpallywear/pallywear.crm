@@ -139,7 +139,7 @@ export default function Dashboard() {
     window.location.reload();
   };
 
-  const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense'>('orders');
+  const [accountsSidebarView, setAccountsSidebarView] = React.useState<'orders' | 'vendor-expense' | 'office-expense' | 'salary' | 'delivery-expense' | 'expenses-hub' | 'calendar'>('orders');
   const [expenseExpanded, setExpenseExpanded] = React.useState(true);
 
   const [layoutMode, setLayoutMode] = React.useState<'mobile' | 'system'>(
@@ -626,7 +626,7 @@ export default function Dashboard() {
                 <button
                   onClick={() => {
                     selectTab('dashboard');
-                    setAccountsSidebarView('expenses-hub' as any);
+                    setAccountsSidebarView('expenses-hub');
                   }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all mt-1",
@@ -637,6 +637,22 @@ export default function Dashboard() {
                 >
                   <CreditCard className="w-4 h-4 flex-shrink-0 text-brand-primary" />
                   {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest font-black">Expenses Hub</span>}
+                </button>
+
+                {/* Leave Calendar */}
+                <button
+                  onClick={() => {
+                    selectTab('calendar');
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 bg-white rounded-xl shadow-sm border transition-all mt-1",
+                    isSidebarCollapsed && "md:justify-center md:px-0",
+                    activeTab === 'calendar' ? "border-brand-primary/40 shadow-md" : "border-brand-primary/20 opacity-80 hover:opacity-100"
+                  )}
+                  title={isSidebarCollapsed ? "Leave Calendar" : ""}
+                >
+                  <CalendarIcon className="w-4 h-4 flex-shrink-0 text-brand-primary" />
+                  {(!isSidebarCollapsed || isMobileOpen) && <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest font-black">Leave Calendar</span>}
                 </button>
               </div>
             </div>

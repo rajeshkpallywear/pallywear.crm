@@ -34,11 +34,13 @@ import {
   ChevronRight,
   ShieldCheck,
   Award,
-  Sparkles
+  Sparkles,
+  CalendarDays
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { mockDataService } from '../service/mockDataService';
+import CalendarView from '../components/CalendarView';
 import {
   SalarySlip,
   EmployeeSalaryProfile,
@@ -112,7 +114,7 @@ export default function HRDashboard() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(MONTHS[now.getMonth()]);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
-  const [activeTab, setActiveTab] = useState<'attendance' | 'salary_slips' | 'salary_profiles'>('salary_slips');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'salary_slips' | 'salary_profiles' | 'calendar'>('salary_slips');
 
   // Data States
   const [employees, setEmployees] = useState<UserProfile[]>([]);
@@ -602,11 +604,12 @@ export default function HRDashboard() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200/80 w-fit gap-1 shadow-xs">
+        <div className="flex flex-wrap bg-white p-1.5 rounded-2xl border border-slate-200/80 w-fit gap-1 shadow-xs">
           {[
             { id: 'salary_slips', label: '1. Salary Slips & Payslips', icon: FileText, count: filteredSalarySlips.length },
             { id: 'attendance', label: '2. Daily & Monthly Attendance', icon: Calendar, count: attendanceRecords.length },
-            { id: 'salary_profiles', label: '3. Employee Salary Structures', icon: Building, count: employees.length }
+            { id: 'salary_profiles', label: '3. Employee Salary Structures', icon: Building, count: employees.length },
+            { id: 'calendar', label: '4. Leave Calendar & Approvals', icon: CalendarDays }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -622,11 +625,13 @@ export default function HRDashboard() {
               >
                 <Icon size={16} />
                 <span>{tab.label}</span>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {tab.count}
-                </span>
+                {tab.count !== undefined && (
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -999,6 +1004,13 @@ export default function HRDashboard() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* TAB 4: LEAVE CALENDAR & APPROVALS */}
+        {activeTab === 'calendar' && (
+          <div className="bg-white/80 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <CalendarView user={user} />
           </div>
         )}
         </div>
