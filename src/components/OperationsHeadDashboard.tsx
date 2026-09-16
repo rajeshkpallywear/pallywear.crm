@@ -36,9 +36,10 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const [slaSearchTerm, setSlaSearchTerm] = useState('');
 
   // Helper to determine if an order matches date filter
-  const filterByDate = (timestamp?: number) => {
+  const filterByDate = (timestamp?: number | string) => {
     if (!timestamp || dateFilter === 'all') return true;
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return true;
     const now = new Date();
     if (dateFilter === 'today') {
       return date.toDateString() === now.toDateString();
@@ -501,7 +502,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       'S.No': idx + 1,
       'Order Number': o.orderNumber || o.id,
       'Client Name': o.clientName || o.customerInfo?.name || 'N/A',
-      'Category': getDisplayCategory(o.category),
+      'Category': getDisplayCategory(o),
       'Marketing Creator': o.createdByName || o.createdBy || 'N/A',
       'Current Status': o.status,
       'Design Completed': isDesignCompleted(o) ? 'YES' : 'NO',
@@ -620,227 +621,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
         </div>
       </div>
 
-      {/* ─── 6 Core KPI Cards (Requested Workflow Metrics) ─────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {/* CARD 1: How many order designs completed */}
-        <div
-          onClick={() => { setSelectedWorkflowTab('design_completed'); setSelectedSubTab('done'); }}
-          className={cn(
-            "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
-            selectedWorkflowTab === 'design_completed'
-              ? "border-purple-500 ring-2 ring-purple-500/20 shadow-lg shadow-purple-500/10"
-              : "border-gray-100 hover:border-purple-200 hover:shadow-md"
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform shadow-xs">
-              <Palette className="w-6 h-6" />
-            </div>
-            <span className="px-3 py-1 bg-purple-50 text-purple-700 text-[10px] font-black uppercase rounded-full border border-purple-200 flex items-center gap-1">
-              <CheckCheck className="w-3 h-3" /> Design Studio
-            </span>
-          </div>
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DESIGNS COMPLETED</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{doneDesignOrders.length}</p>
-              <span className="text-xs font-bold text-purple-600">
-                {baseFilteredOrders.length > 0 ? `${Math.round((doneDesignOrders.length / baseFilteredOrders.length) * 100)}%` : '0%'}
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              Orders with approved graphic proofs & ready assets
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-purple-600 group-hover:text-purple-700">
-            <span>View Completed Designs</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
 
-        {/* CARD 2: How many order rework */}
-        <div
-          onClick={() => { setSelectedWorkflowTab('rework'); setSelectedSubTab('all'); }}
-          className={cn(
-            "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
-            selectedWorkflowTab === 'rework'
-              ? "border-amber-500 ring-2 ring-amber-500/20 shadow-lg shadow-amber-500/10"
-              : "border-gray-100 hover:border-amber-200 hover:shadow-md"
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform shadow-xs">
-              <RefreshCw className="w-6 h-6 animate-spin-slow" />
-            </div>
-            <span className={cn(
-              "px-3 py-1 text-[10px] font-black uppercase rounded-full border flex items-center gap-1",
-              reworkOrders.length > 0 ? "bg-amber-100 text-amber-800 border-amber-300 animate-pulse" : "bg-gray-100 text-gray-600 border-gray-200"
-            )}>
-              <AlertTriangle className="w-3 h-3" /> Attention Required
-            </span>
-          </div>
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">ORDER REWORKS</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{reworkOrders.length}</p>
-              <span className="text-xs font-bold text-amber-600">
-                Corrections / Update needed
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              Orders flagged by Marketing or Client for redesign revision
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-amber-600 group-hover:text-amber-700">
-            <span>Inspect Rework Queue</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
-
-        {/* CARD 3: How many order show in order management */}
-        <div
-          onClick={() => { setSelectedWorkflowTab('order_management'); setSelectedSubTab('live_queue'); }}
-          className={cn(
-            "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
-            selectedWorkflowTab === 'order_management'
-              ? "border-cyan-500 ring-2 ring-cyan-500/20 shadow-lg shadow-cyan-500/10"
-              : "border-gray-100 hover:border-cyan-200 hover:shadow-md"
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-100 text-cyan-600 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform shadow-xs">
-              <Layers className="w-6 h-6" />
-            </div>
-            <span className="px-3 py-1 bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase rounded-full border border-cyan-200 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> OM Central
-            </span>
-          </div>
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">IN ORDER MANAGEMENT</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{orderManagementOrders.length}</p>
-              <span className="text-xs font-bold text-cyan-600">
-                Ready for production routing
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              Orders currently verified and being processed in Order Management
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-cyan-600 group-hover:text-cyan-700">
-            <span>View OM Queue</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
-
-        {/* CARD 4: How many order digitizer work complete */}
-        <div
-          onClick={() => { setSelectedWorkflowTab('digitizer_completed'); setSelectedSubTab('done'); }}
-          className={cn(
-            "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
-            selectedWorkflowTab === 'digitizer_completed'
-              ? "border-pink-500 ring-2 ring-pink-500/20 shadow-lg shadow-pink-500/10"
-              : "border-gray-100 hover:border-pink-200 hover:shadow-md"
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 text-pink-600 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform shadow-xs">
-              <Scissors className="w-6 h-6" />
-            </div>
-            <span className="px-3 py-1 bg-pink-50 text-pink-700 text-[10px] font-black uppercase rounded-full border border-pink-200 flex items-center gap-1">
-              <FileText className="w-3 h-3" /> Embroidery Tech
-            </span>
-          </div>
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DIGITIZER WORK COMPLETED</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{digitizerDoneOrders.length}</p>
-              <span className="text-xs font-bold text-pink-600">
-                EMB / Machine files ready
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              Machine punch files, stitch counts & production files uploaded
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-pink-600 group-hover:text-pink-700">
-            <span>View Digitized Orders</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
-
-        {/* CARD 5: How many orders complete in product (production) */}
-        <div
-          onClick={() => { setSelectedWorkflowTab('production_completed'); setSelectedSubTab('done'); }}
-          className={cn(
-            "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
-            selectedWorkflowTab === 'production_completed'
-              ? "border-orange-500 ring-2 ring-orange-500/20 shadow-lg shadow-orange-500/10"
-              : "border-gray-100 hover:border-orange-200 hover:shadow-md"
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform shadow-xs">
-              <Factory className="w-6 h-6" />
-            </div>
-            <span className="px-3 py-1 bg-orange-50 text-orange-700 text-[10px] font-black uppercase rounded-full border border-orange-200 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Factory Output
-            </span>
-          </div>
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">PRODUCTION COMPLETED</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{productionCompletedOrders.length}</p>
-              <span className="text-xs font-bold text-orange-600">
-                Stitching & printing done
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              Finished manufacturing stage & passed factory quality checking
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-orange-600 group-hover:text-orange-700">
-            <span>View Finished Garments</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
-
-        {/* CARD 6: How many delivery show them */}
-        <div
-          onClick={() => { setSelectedWorkflowTab('delivery'); setSelectedSubTab('in_transit'); }}
-          className={cn(
-            "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
-            selectedWorkflowTab === 'delivery'
-              ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-lg shadow-emerald-500/10"
-              : "border-gray-100 hover:border-emerald-200 hover:shadow-md"
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform shadow-xs">
-              <Truck className="w-6 h-6" />
-            </div>
-            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-full border border-emerald-200 flex items-center gap-1">
-              <CheckCheck className="w-3 h-3" /> Logistics
-            </span>
-          </div>
-          <div className="mt-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DELIVERY ORDERS</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{deliveryOrders.length}</p>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                {deliveredSuccessOrders.length} Delivered • {inTransitOrders.length} In Transit
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              Orders packed, dispatched, in transit or delivered to clients
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-emerald-600 group-hover:text-emerald-700">
-            <span>View Logistics Tracking</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </div>
-      </div>
 
       {/* ─── Marketing Staff Orders & Workflow Performance Breakdown ───────── */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
@@ -907,41 +688,6 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* ─── Workflow Stage Pipeline Visualizer ────────────────────────────── */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">End-to-End Workflow Pipeline Progress</h3>
-            <p className="text-xs text-gray-400 font-medium mt-0.5">Overall order distribution across all production phases</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-xl">
-              {baseFilteredOrders.length} Total Orders
-            </span>
-          </div>
-        </div>
-
-        {/* Progress Step Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
-          {[
-            { title: '1. Designs Done', count: doneDesignOrders.length, color: 'border-purple-200 bg-purple-50 text-purple-700', icon: Palette },
-            { title: '2. Rework Queue', count: reworkOrders.length, color: 'border-amber-200 bg-amber-50 text-amber-700', icon: RefreshCw },
-            { title: '3. In Order Mgmt', count: orderManagementOrders.length, color: 'border-cyan-200 bg-cyan-50 text-cyan-700', icon: Layers },
-            { title: '4. Digitizing Done', count: digitizerDoneOrders.length, color: 'border-pink-200 bg-pink-50 text-pink-700', icon: Scissors },
-            { title: '5. Production Done', count: productionCompletedOrders.length, color: 'border-orange-200 bg-orange-50 text-orange-700', icon: Factory },
-            { title: '6. Delivery Total', count: deliveryOrders.length, color: 'border-emerald-200 bg-emerald-50 text-emerald-700', icon: Truck },
-          ].map((step, idx) => (
-            <div key={idx} className={cn("p-3.5 rounded-2xl border flex flex-col justify-between transition-all", step.color)}>
-              <div className="flex items-center justify-between">
-                <step.icon className="w-4 h-4 opacity-70" />
-                <span className="text-xs font-black">{step.count}</span>
-              </div>
-              <p className="text-[11px] font-bold mt-2 leading-tight">{step.title}</p>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -1152,7 +898,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                           #{order.orderNumber || order.id.slice(-8)}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200">
-                          {order.category}
+                          {getDisplayCategory(order)}
                         </span>
                       </div>
 
@@ -1202,14 +948,13 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                 <th className="px-4 py-3.5 text-center">Digitizing</th>
                 <th className="px-4 py-3.5 text-center">Production</th>
                 <th className="px-4 py-3.5 text-center">Delivery</th>
-                <th className="px-4 py-3.5 text-right">Order Value</th>
-                <th className="px-4 py-3.5 text-center rounded-r-xl">Action</th>
+                <th className="px-4 py-3.5 text-right rounded-r-xl">Order Value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-medium">
               {tableOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
                     <Package className="w-10 h-10 mx-auto mb-2 opacity-30 text-gray-400" />
                     <p className="font-bold text-gray-500">No orders found matching this filter.</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">Try selecting another workflow tab or clearing the search query.</p>
@@ -1256,7 +1001,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                       {/* Category */}
                       <td className="px-4 py-3.5">
                         <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-bold rounded-lg text-[10px]">
-                          {getDisplayCategory(o.category)}
+                          {getDisplayCategory(o)}
                         </span>
                       </td>
 
@@ -1353,20 +1098,6 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                       {/* Order Value */}
                       <td className="px-4 py-3.5 text-right font-black text-gray-900">
                         ₹{amount.toLocaleString('en-IN')}
-                      </td>
-
-                      {/* Action */}
-                      <td className="px-4 py-3.5 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedOrderForModal(o);
-                          }}
-                          className="px-2.5 py-1 bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white rounded-lg text-[10px] font-black transition-all border border-brand-primary/20 cursor-pointer"
-                        >
-                          View
-                        </button>
                       </td>
                     </tr>
                   );
