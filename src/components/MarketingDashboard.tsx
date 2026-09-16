@@ -1079,6 +1079,30 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   🎨 Unassigned
                                 </span>
                               )}
+                              {selectedSection === 'recent' && (
+                                <div className="flex gap-1.5 mt-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDirectForward(order.id, 'design');
+                                    }}
+                                    className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white border border-purple-200 shadow-2xs"
+                                    title="Send order to Designs Queue"
+                                  >
+                                    🎨 Designs
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDirectForward(order.id, 'accounts');
+                                    }}
+                                    className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 shadow-2xs"
+                                    title="Send order to Accounts Queue"
+                                  >
+                                    💳 Accounts
+                                  </button>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
@@ -1225,14 +1249,39 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             </div>
                           )}
 
-                          <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => setSelectedHubOrder(order)}
-                              className="w-full py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
-                            >
-                              View & Edit Details
-                            </button>
-                          </div>
+                          {selectedSection === 'recent' ? (
+                            <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => handleDirectForward(order.id, 'design')}
+                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
+                                title="Send order to Designs Queue"
+                              >
+                                🎨 To Designs
+                              </button>
+                              <button
+                                onClick={() => handleDirectForward(order.id, 'accounts')}
+                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
+                                title="Send order to Accounts Queue"
+                              >
+                                💳 To Accounts
+                              </button>
+                              <button
+                                onClick={() => setSelectedHubOrder(order)}
+                                className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                              >
+                                View & Edit Details
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setSelectedHubOrder(order)}
+                                className="w-full py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                              >
+                                View & Edit Details
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
