@@ -337,6 +337,9 @@ export default function AdminDashboard() {
     try {
       const amt = Number(adminOrderForm.totalAmount) || 0;
       const adv = Number(adminOrderForm.advancePay) || 0;
+      const isDesignDestination = adminOrderForm.status === OrderStatus.DESIGN;
+      const isAccountsDestination = adminOrderForm.status === OrderStatus.ACCOUNTS;
+
       const newOrder = {
         customerInfo: {
           name: adminOrderForm.customerName,
@@ -361,10 +364,21 @@ export default function AdminDashboard() {
         createdBy: user?.id || user?.uid || '',
         createdByName: user?.name || 'Admin',
         isAdminOrder: true,
-        sentByAdmin: true
+        sentByAdmin: true,
+        ...(isDesignDestination ? {
+          designDeadline: Date.now() + 120 * 60 * 1000,
+          designSlaMinutes: 120,
+          sentToDesigner: true,
+          designClaimedAt: undefined,
+          designCompleted: false
+        } : {}),
+        ...(isAccountsDestination ? {
+          movedToAccountsAt: Date.now(),
+          sentToAccounts: true
+        } : {})
       };
       await addOrder(newOrder);
-      alert('Order created successfully!');
+      alert(`✓ Order created and sent to ${isDesignDestination ? 'Designs Team' : isAccountsDestination ? 'Accounts Team' : 'Global Orders'} successfully!`);
       setIsAdminOrderModalOpen(false);
       setAdminOrderForm({
         customerName: '',
@@ -1158,7 +1172,7 @@ export default function AdminDashboard() {
               <Clock className="w-4 h-4 flex-shrink-0 text-purple-600" />
               {(!isSidebarCollapsed || isMobileOpen) && (
                 <div className="flex items-center justify-between w-full">
-                  <span>SLA Tasks</span>
+                  <span>Designs Task Monitor</span>
                   {activeAdminDesignOrders.length > 0 && (
                     <span className="px-1.5 py-0.5 text-[9px] font-black bg-purple-100 text-purple-700 rounded-full">
                       {activeAdminDesignOrders.length}
@@ -1660,13 +1674,13 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <h3 className="font-black text-gray-900 text-base tracking-tight flex items-center gap-2">
-                          Design Studio Live 2-Hour SLA Tasks Monitor
+                          Designs Task Monitor
                           <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-black rounded-full">
                             {activeAdminDesignOrders.length} In Progress
                           </span>
                         </h3>
                         <p className="text-xs text-gray-400 font-medium mt-0.5">
-                          Real-time countdown tracking (120-minute target SLA) for active claimed design tasks across all designers
+                          Real-time countdown tracking for active claimed design tasks across all designers
                         </p>
                       </div>
                     </div>
@@ -1678,7 +1692,7 @@ export default function AdminDashboard() {
                         onClick={() => selectTab('sla-tasks')}
                         className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-sm shadow-purple-500/20 border-none cursor-pointer"
                       >
-                        <span>Open Full SLA Monitor</span>
+                        <span>Open Designs Task Monitor</span>
                         <ArrowRight size={13} />
                       </button>
                     </div>
@@ -1734,7 +1748,7 @@ export default function AdminDashboard() {
                         onClick={() => selectTab('sla-tasks')}
                         className="text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline bg-transparent border-none cursor-pointer"
                       >
-                        View all {activeAdminDesignOrders.length} active SLA tasks →
+                        View all {activeAdminDesignOrders.length} active design tasks →
                       </button>
                     </div>
                   )}
@@ -1787,7 +1801,7 @@ export default function AdminDashboard() {
                   <div>
                     <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
                       <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
-                      🎨 Design Studio Live 2-Hour SLA Tasks Monitor
+                      🎨 Designs Task Monitor
                     </h2>
                     <p className="text-xs text-gray-500 font-medium mt-0.5">
                       Real-time SLA countdown (120 minutes per claimed task) for Graphic Designers & Artworks

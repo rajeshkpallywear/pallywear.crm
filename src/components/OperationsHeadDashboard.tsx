@@ -21,7 +21,7 @@ interface OperationsHeadDashboardProps {
 
 export default function OperationsHeadDashboard({ orders: propOrders, user: propUser }: OperationsHeadDashboardProps) {
   const { user: authUser } = useAuth();
-  const { orders: contextOrders } = useLeads();
+  const { orders: contextOrders, updateOrder } = useLeads();
 
   const user = propUser || authUser;
   const orders = propOrders || contextOrders || [];
@@ -592,7 +592,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             <p className="text-xl font-black text-white mt-0.5">{baseFilteredOrders.length}</p>
           </div>
           <div className="bg-purple-500/20 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/30 cursor-pointer hover:bg-purple-500/30 transition-all ring-1 ring-purple-400/40" onClick={() => { setSelectedWorkflowTab('sla_tasks'); setSelectedSubTab('all'); }}>
-            <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider flex items-center gap-1">⏱️ 2h SLA Tasks</p>
+            <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider flex items-center gap-1">⏱️ Designs Task Monitor</p>
             <p className="text-xl font-black text-purple-100 mt-0.5">{activeDesignClaimedOrders.length}</p>
           </div>
           <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('design_completed'); setSelectedSubTab('open_to_claim'); }}>
@@ -705,7 +705,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/50">
               {[
                 { id: 'all', label: 'All Orders', count: baseFilteredOrders.length },
-                { id: 'sla_tasks', label: '⏱️ 2-Hour SLA Monitor', count: activeDesignClaimedOrders.length },
+                { id: 'sla_tasks', label: '⏱️ Designs Task Monitor', count: activeDesignClaimedOrders.length },
                 { id: 'design_completed', label: '🎨 Designs', count: allDesignOrders.length },
                 { id: 'rework', label: '🔄 Reworks', count: reworkOrders.length },
                 { id: 'order_management', label: '📋 Order Mgmt', count: orderManagementOrders.length },
@@ -843,13 +843,13 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
-                      Operations Live 2-Hour SLA Tasks Monitor
+                      Designs Task Monitor
                       <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-black rounded-full">
                         {activeDesignClaimedOrders.length} Active in Studio
                       </span>
                     </h3>
                     <p className="text-xs text-gray-500 font-medium">
-                      Real-time countdown tracking (120-minute SLA target) for claimed and in-progress design tasks
+                      Real-time countdown tracking for claimed and in-progress design tasks
                     </p>
                   </div>
                 </div>
@@ -1148,8 +1148,12 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       {selectedOrderForModal && (
         <OrderDetailModal
           order={selectedOrderForModal}
-          isOpen={Boolean(selectedOrderForModal)}
           onClose={() => setSelectedOrderForModal(null)}
+          onUpdateOrder={async (id, updates) => {
+            await updateOrder(id, updates);
+            setSelectedOrderForModal(prev => prev ? { ...prev, ...updates } : null);
+          }}
+          isAdmin={true}
         />
       )}
     </div>

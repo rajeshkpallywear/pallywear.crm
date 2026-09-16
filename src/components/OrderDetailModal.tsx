@@ -19,7 +19,8 @@ interface OrderDetailModalProps {
 }
 
 export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
-  const { loadOrderAttachments, orders } = useLeads();
+  const { loadOrderAttachments, orders, updateOrder: contextUpdateOrder } = useLeads();
+  const effectiveUpdateOrder = onUpdateOrder || contextUpdateOrder;
   const order = orders.find(o => o.id === initialOrder.id) || initialOrder;
 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -76,8 +77,8 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         }
       }
 
-      if (onUpdateOrder) {
-        await onUpdateOrder(order.id, updates);
+      if (effectiveUpdateOrder) {
+        await effectiveUpdateOrder(order.id, updates);
       } else if (onUpdateStatus) {
         onUpdateStatus(updates.status);
       }
@@ -102,7 +103,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   }, [initialOrder?.id]);
 
   const handleSave = async (targetDestination?: 'design' | 'accounts') => {
-    if (!onUpdateOrder) return;
+    if (!effectiveUpdateOrder) return;
     setIsSaving(true);
     try {
       let computedCategory = editedOrder.category;
@@ -148,7 +149,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         updates.movedToAccountsAt = Date.now();
       }
 
-      await onUpdateOrder(order.id, updates);
+      await effectiveUpdateOrder(order.id, updates);
       setIsEditing(false);
       if (targetDestination) {
         alert(`✓ Order details updated and sent to ${targetDestination === 'design' ? 'Designs Team' : 'Accounts Team'} immediately!`);
@@ -235,6 +236,26 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 >
                   <MessageSquare size={14} /> WhatsApp
                 </button>
+                {order.status !== OrderStatus.DESIGN && (
+                  <button
+                    disabled={isProcessingAction}
+                    onClick={() => handleDirectForward('design')}
+                    className="px-4 sm:px-5 py-2.5 sm:py-3 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-purple-700 transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50"
+                    title="Send Order directly to Design Studio"
+                  >
+                    <Sparkles size={13} /> Send to Designs
+                  </button>
+                )}
+                {order.status !== OrderStatus.ACCOUNTS && (
+                  <button
+                    disabled={isProcessingAction}
+                    onClick={() => handleDirectForward('accounts')}
+                    className="px-4 sm:px-5 py-2.5 sm:py-3 bg-amber-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-600 transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50"
+                    title="Send Order directly to Accounts Queue"
+                  >
+                    <CheckCircle size={13} /> Send to Accounts
+                  </button>
+                )}
                 {onUpdateOrder && (
                   <button
                     onClick={() => setIsEditing(true)}

@@ -439,14 +439,14 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         <button
           onClick={() => setActiveViewTab('sla_monitor')}
           className={cn(
-            "px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer relative",
+            "px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer",
             activeViewTab === 'sla_monitor'
-              ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 scale-[1.02]"
+              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
               : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
           )}
         >
           <Clock size={16} />
-          2-Hour SLA Tasks Monitor
+          Designs Task Monitor
           <span className={cn(
             "px-2 py-0.5 rounded-full text-[10px] font-black",
             activeViewTab === 'sla_monitor' ? "bg-white text-purple-700" : "bg-purple-100 text-purple-700"
@@ -468,7 +468,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-                    Design Studio Live 2-Hour SLA Tasks Monitor
+                    Designs Task Monitor
                     <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-black rounded-full">
                       {activeDesignClaimedOrders.length} In Progress
                     </span>
@@ -680,13 +680,13 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                    Design Studio Live 2-Hour SLA Tasks Monitor
+                    Designs Task Monitor
                     <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded-full">
                       {activeDesignClaimedOrders.length} In Studio
                     </span>
                   </h3>
                   <p className="text-xs text-gray-500 font-medium">
-                    Live countdown tracking (2-hour completion target) for all claimed and in-progress design tasks
+                    Live countdown tracking for all claimed and in-progress design tasks
                   </p>
                 </div>
               </div>
@@ -698,7 +698,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   onClick={() => setActiveViewTab('sla_monitor')}
                   className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-black transition-all border border-purple-200 cursor-pointer"
                 >
-                  Open Full SLA Monitor →
+                  Open Designs Task Monitor →
                 </button>
               </div>
             </div>
@@ -747,7 +747,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   onClick={() => setActiveViewTab('sla_monitor')}
                   className="text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline bg-transparent border-none cursor-pointer"
                 >
-                  View all {activeDesignClaimedOrders.length} active SLA tasks →
+                  View all {activeDesignClaimedOrders.length} active design tasks →
                 </button>
               </div>
             )}
@@ -1107,9 +1107,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       {selectedOrderForModal && (
         <OrderDetailModal
           order={selectedOrderForModal}
-          isOpen={true}
           onClose={() => setSelectedOrderForModal(null)}
-          onUpdate={async (orderId, updates) => {
+          onUpdateOrder={async (orderId, updates) => {
             await updateOrder(orderId, updates);
             setSelectedOrderForModal(prev => prev ? { ...prev, ...updates } : null);
           }}
