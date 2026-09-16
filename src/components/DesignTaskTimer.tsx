@@ -54,20 +54,30 @@ export default function DesignTaskTimer({
   const slaMs = slaMinutes * 60 * 1000;
   const deadline = numClaimedAt + slaMs;
 
-  if (isCompleted && numCompletedAt) {
-    const elapsedMs = numCompletedAt - numClaimedAt;
-    const elapsedMins = Math.floor(elapsedMs / 60000);
-    const elapsedSecs = Math.floor((elapsedMs % 60000) / 1000);
-    const wasOnTime = elapsedMs <= slaMs;
+  if (isCompleted) {
+    if (numCompletedAt && numClaimedAt) {
+      const elapsedMs = Math.max(0, numCompletedAt - numClaimedAt);
+      const elapsedMins = Math.floor(elapsedMs / 60000);
+      const elapsedSecs = Math.floor((elapsedMs % 60000) / 1000);
+      const wasOnTime = elapsedMs <= slaMs;
 
+      return (
+        <span className={cn(
+          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border",
+          wasOnTime ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-orange-50 text-orange-700 border-orange-200",
+          className
+        )}>
+          <CheckCircle2 className="w-2.5 h-2.5" />
+          {wasOnTime ? `Done in ${elapsedMins}m ${elapsedSecs}s (Within 2h)` : `Done in ${elapsedMins}m (+${elapsedMins - slaMinutes}m over 2h SLA)`}
+        </span>
+      );
+    }
     return (
       <span className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border",
-        wasOnTime ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-orange-50 text-orange-700 border-orange-200",
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200",
         className
       )}>
-        <CheckCircle2 className="w-2.5 h-2.5" />
-        {wasOnTime ? `Done in ${elapsedMins}m ${elapsedSecs}s (Within 2h)` : `Done in ${elapsedMins}m (+${elapsedMins - slaMinutes}m over 2h SLA)`}
+        <CheckCircle2 className="w-2.5 h-2.5" /> Completed (Artwork Ready)
       </span>
     );
   }

@@ -3969,11 +3969,12 @@ export default function AdminDashboard() {
         ))}
       </nav>
 
-      {/* Admin Call Logs Detail Modal */}
+      {/* Admin Call Logs Detail Modal (Mobile App Compact Model) */}
       {showAdminLogsModal && selectedAdminLeadForLogs && (
-        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 text-left">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-[2.25rem] sm:rounded-[2.5rem] shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-left">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Call Log History</span>
                 <h3 className="text-lg font-black text-gray-900">{selectedAdminLeadForLogs.name}</h3>
@@ -3990,7 +3991,7 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+            <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto flex-1">
               {selectedAdminLeadForLogs.description ? (
                 <div className="space-y-4">
                   {selectedAdminLeadForLogs.description.split('\n\n').map((entry, idx) => (
@@ -4004,7 +4005,7 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div className="p-6 bg-gray-50 flex justify-end">
+            <div className="p-4 sm:p-6 bg-gray-50 flex justify-end flex-shrink-0 border-t border-gray-100">
               <button
                 onClick={() => {
                   setShowAdminLogsModal(false);
@@ -4019,16 +4020,17 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* EDIT USER & FACE ID REGISTRATION MODAL */}
+      {/* EDIT USER & FACE ID REGISTRATION MODAL (Mobile App Compact Model) */}
       <AnimatePresence>
         {showEditUserModal && userToEdit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white p-6 rounded-3xl w-full max-w-md border border-gray-100 shadow-2xl relative text-left space-y-5"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white p-6 rounded-t-[2.25rem] sm:rounded-3xl w-full sm:max-w-md max-h-[92vh] flex flex-col overflow-y-auto border border-gray-100 shadow-2xl relative text-left space-y-5"
             >
+              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-1 sm:hidden flex-shrink-0" />
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
                   <Edit className="w-5 h-5 text-brand-primary" />

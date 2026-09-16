@@ -3,7 +3,8 @@ import {
   TrendingUp, Users, Package, CreditCard, Palette, FileText,
   DollarSign, CheckCircle2, Clock, Search, Filter, Download,
   ArrowUpRight, ChevronRight, Eye, RefreshCw, BarChart2, Shield,
-  Phone, User, Sparkles, Building2, Calendar, FileCheck, Layers, Plus
+  Phone, User, Sparkles, Building2, Calendar, FileCheck, Layers, Plus,
+  MessageSquare, Edit
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
@@ -991,8 +992,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           </div>
         </div>
 
-        {/* Drill-down Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop View (Table) */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
             <thead>
               <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
@@ -1105,7 +1106,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       <td className="px-4 py-3.5 text-right">
                         <button
                           onClick={() => setSelectedOrderForModal(o)}
-                          className="px-3 py-1 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1 ml-auto"
+                          className="px-3 py-1 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1 ml-auto shadow-xs"
                         >
                           <Eye size={12} /> Inspect
                         </button>
@@ -1122,6 +1123,124 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View (Touch-Friendly Compact Order Cards) */}
+        <div className="block md:hidden space-y-3">
+          {drillDownOrders.length > 0 ? (
+            drillDownOrders.map((o) => {
+              const sentAcc = isSentToAccounts(o);
+              const sentDes = isSentToDesigns(o);
+              const readyDes = isReceivedDesignsFile(o);
+              const amount = getOrderAmount(o);
+              const adv = getAdvanceAmount(o);
+              const phone = o.customerInfo?.phone || o.phone;
+              const cleanPhone = phone ? phone.replace(/[^0-9+]/g, '') : '';
+
+              return (
+                <div
+                  key={o.id}
+                  className="bg-white rounded-2xl p-4 border border-gray-150 shadow-xs hover:shadow-md transition-all space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-sm text-brand-primary">
+                          #{o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A')}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-gray-100 text-gray-700 border border-gray-200">
+                          {o.status}
+                        </span>
+                      </div>
+                      <h4 className="font-black text-gray-900 text-sm mt-1">{o.customerInfo?.name || 'Walk-in Customer'}</h4>
+                      <p className="text-[11px] text-gray-500 font-medium">
+                        By: <span className="font-bold text-gray-700">{o.createdByName || o.createdBy || 'Marketing'}</span>
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="font-black text-sm text-gray-900">₹{amount.toLocaleString()}</div>
+                      {adv > 0 && (
+                        <div className="text-[10px] font-bold text-emerald-600">Adv: ₹{adv.toLocaleString()}</div>
+                      )}
+                      <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
+                        {o.category} • {o.quantity || 1} pcs
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stage Badges & Timer */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100">
+                    {sentAcc && (
+                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200">
+                        ✓ Accounts
+                      </span>
+                    )}
+                    {sentDes && (
+                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                        ✓ Design Studio
+                      </span>
+                    )}
+                    {readyDes && (
+                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 size={10} /> Artwork Ready
+                      </span>
+                    )}
+                  </div>
+
+                  {(sentDes || o.assignedDesigner) && (
+                    <div className="pt-1">
+                      <DesignTaskTimer
+                        claimedAt={o.claimedAt || o.designClaimedAt}
+                        completedAt={o.designCompletedAt}
+                        isCompleted={readyDes || Boolean(o.designCompleted)}
+                        variant="bar"
+                        designerName={o.assignedDesigner}
+                      />
+                    </div>
+                  )}
+
+                  {/* Quick Action Buttons */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
+                    {phone ? (
+                      <a
+                        href={`tel:${cleanPhone}`}
+                        className="flex items-center justify-center gap-1 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 transition-all no-underline"
+                      >
+                        <Phone size={13} className="text-brand-primary" /> Call
+                      </a>
+                    ) : (
+                      <div />
+                    )}
+
+                    {phone ? (
+                      <a
+                        href={`https://wa.me/${cleanPhone.replace('+', '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold border border-emerald-200 transition-all no-underline"
+                      >
+                        <MessageSquare size={13} /> WhatsApp
+                      </a>
+                    ) : (
+                      <div />
+                    )}
+
+                    <button
+                      onClick={() => setSelectedOrderForModal(o)}
+                      className="flex items-center justify-center gap-1 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs"
+                    >
+                      <Eye size={13} /> Inspect
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-10 bg-white rounded-2xl border border-gray-150 text-gray-400 font-medium text-xs">
+              No orders matching this filter.
+            </div>
+          )}
         </div>
       </div>
       </>

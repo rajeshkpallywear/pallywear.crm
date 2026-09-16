@@ -858,11 +858,12 @@ export default function LeadDashboard() {
       </div>
       </main>
 
-      {/* ── Add Revenue Modal ───────────────────────────────────────────────── */}
+      {/* ── Add Revenue Modal (Mobile App Compact Model) ────────────────────── */}
       {showAddRevenueModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
-          <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn">
-            <div className="bg-brand-primary px-6 py-5 flex items-center justify-between text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white border border-gray-100 rounded-t-[2.25rem] sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+            <div className="bg-brand-primary px-6 py-4 sm:py-5 flex items-center justify-between text-white flex-shrink-0">
               <div>
                 <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Manual Entry</p>
                 <h3 className="text-base font-black mt-0.5">Add Revenue for {targetStaffName}</h3>
@@ -874,7 +875,7 @@ export default function LeadDashboard() {
                 ✕
               </button>
             </div>
-            <form onSubmit={handleAddRevenueSubmit} className="p-6 space-y-4 text-left">
+            <form onSubmit={handleAddRevenueSubmit} className="p-6 space-y-4 text-left overflow-y-auto flex-1">
               <div>
                 <label className={labelCls}>Staff Member</label>
                 <input disabled type="text" value={targetStaffName} className="w-full text-xs border border-gray-200 bg-gray-100 rounded-xl px-3 py-2.5 outline-none font-bold text-gray-500" />
@@ -928,11 +929,12 @@ export default function LeadDashboard() {
         </div>
       )}
 
-      {/* ── Add Lead Convert Modal ─────────────────────────────────────────── */}
+      {/* ── Add Lead Convert Modal (Mobile App Compact Model) ────────────────── */}
       {showAddLeadModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
-          <div className="bg-white border border-gray-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn">
-            <div className="bg-violet-650 px-6 py-5 flex items-center justify-between text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white border border-gray-100 rounded-t-[2.25rem] sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+            <div className="bg-violet-650 px-6 py-4 sm:py-5 flex items-center justify-between text-white flex-shrink-0">
               <div>
                 <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Manual Entry</p>
                 <h3 className="text-base font-black mt-0.5">Add Lead Convert for {targetStaffName}</h3>
@@ -944,7 +946,7 @@ export default function LeadDashboard() {
                 ✕
               </button>
             </div>
-            <form onSubmit={handleAddLeadSubmit} className="p-6 space-y-4 text-left">
+            <form onSubmit={handleAddLeadSubmit} className="p-6 space-y-4 text-left overflow-y-auto flex-1">
               <div>
                 <label className={labelCls}>Staff Member</label>
                 <input disabled type="text" value={targetStaffName} className="w-full text-xs border border-gray-200 bg-gray-100 rounded-xl px-3 py-2.5 outline-none font-bold text-gray-500" />

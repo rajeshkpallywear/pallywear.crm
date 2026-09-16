@@ -917,7 +917,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-black text-sm text-brand-primary group-hover:text-purple-700 transition-colors">
-                          #{order.orderNumber || order.id.slice(-8)}
+                          #{order.orderNumber || (order.id ? String(order.id).slice(-8) : 'N/A')}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200">
                           {getDisplayCategory(order)}
@@ -958,30 +958,186 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
             )}
           </div>
         ) : (
-          /* REGULAR WORKFLOW ORDERS TABLE */
-          <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-gray-50/80 text-[10px] font-black text-gray-400 uppercase tracking-wider border-b border-gray-100">
-              <tr>
-                <th className="px-4 py-3.5 rounded-l-xl">Order Details</th>
-                <th className="px-4 py-3.5">Client & Creator</th>
-                <th className="px-4 py-3.5">Category</th>
-                <th className="px-4 py-3.5 text-center">Design Stage</th>
-                <th className="px-4 py-3.5 text-center">Digitizing</th>
-                <th className="px-4 py-3.5 text-center">Production</th>
-                <th className="px-4 py-3.5 text-center">Delivery</th>
-                <th className="px-4 py-3.5 text-right rounded-r-xl">Order Value</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 font-medium">
+          /* REGULAR WORKFLOW ORDERS TABLE & MOBILE CARDS */
+          <>
+            {/* Desktop View (Table) */}
+            <div className="overflow-x-auto hidden md:block">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-gray-50/80 text-[10px] font-black text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3.5 rounded-l-xl">Order Details</th>
+                    <th className="px-4 py-3.5">Client & Creator</th>
+                    <th className="px-4 py-3.5">Category</th>
+                    <th className="px-4 py-3.5 text-center">Design Stage</th>
+                    <th className="px-4 py-3.5 text-center">Digitizing</th>
+                    <th className="px-4 py-3.5 text-center">Production</th>
+                    <th className="px-4 py-3.5 text-center">Delivery</th>
+                    <th className="px-4 py-3.5 text-right rounded-r-xl">Order Value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium">
+                  {tableOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
+                        <Package className="w-10 h-10 mx-auto mb-2 opacity-30 text-gray-400" />
+                        <p className="font-bold text-gray-500">No orders found matching this filter.</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Try selecting another workflow tab or clearing the search query.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    tableOrders.map((o) => {
+                      const designDone = isDesignCompleted(o);
+                      const isRework = isOrderRework(o);
+                      const digitizerDone = isDigitizerCompleted(o);
+                      const productionDone = isProductionCompleted(o);
+                      const deliveryDone = isInDelivery(o);
+                      const amount = Number(o.financials?.totalAmount || o.netTotal || 0);
+
+                      return (
+                        <tr
+                          key={o.id}
+                          onClick={() => setSelectedOrderForModal(o)}
+                          className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                        >
+                          {/* Order Details */}
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-gray-900 group-hover:text-brand-primary transition-colors">
+                                #{o.orderNumber || o.id}
+                              </span>
+                              {isRework && (
+                                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-black rounded uppercase border border-amber-200 animate-pulse">
+                                  Rework
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : 'N/A'}
+                            </p>
+                          </td>
+
+                          {/* Client & Creator */}
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-gray-800">{o.clientName || o.customerInfo?.name || 'N/A'}</p>
+                            <p className="text-[10px] text-gray-400">By: {o.createdByName || o.createdBy || 'Staff'}</p>
+                          </td>
+
+                          {/* Category */}
+                          <td className="px-4 py-3.5">
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-bold rounded-lg text-[10px]">
+                              {getDisplayCategory(o)}
+                            </span>
+                          </td>
+
+                          {/* Design Stage */}
+                          <td className="px-4 py-3.5 text-center">
+                            {isRework ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                                  <RefreshCw className="w-2.5 h-2.5 animate-spin-slow" /> Rework
+                                </span>
+                                {(o.claimedAt || o.designClaimedAt || o.assignedDesigner) && (
+                                  <DesignTaskTimer
+                                    claimedAt={o.claimedAt || o.designClaimedAt}
+                                    completedAt={o.designCompletedAt}
+                                    isCompleted={false}
+                                    designerName={o.assignedDesigner}
+                                  />
+                                )}
+                              </div>
+                            ) : designDone ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                                  <CheckCheck className="w-2.5 h-2.5" /> Done
+                                </span>
+                                {o.designCompletedAt && (o.claimedAt || o.designClaimedAt) && (
+                                  <DesignTaskTimer
+                                    claimedAt={o.claimedAt || o.designClaimedAt}
+                                    completedAt={o.designCompletedAt}
+                                    isCompleted={true}
+                                    designerName={o.assignedDesigner}
+                                  />
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="px-2 py-0.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-md text-[10px] font-bold">
+                                  In Studio
+                                </span>
+                                {(o.claimedAt || o.designClaimedAt || (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')) && (
+                                  <DesignTaskTimer
+                                    claimedAt={o.claimedAt || o.designClaimedAt}
+                                    completedAt={o.designCompletedAt}
+                                    isCompleted={false}
+                                    designerName={o.assignedDesigner}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Digitizing Stage */}
+                          <td className="px-4 py-3.5 text-center">
+                            {digitizerDone ? (
+                              <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                                <Scissors className="w-2.5 h-2.5" /> Ready
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px]">
+                                Pending
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Production Stage */}
+                          <td className="px-4 py-3.5 text-center">
+                            {productionDone ? (
+                              <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                                <Factory className="w-2.5 h-2.5" /> Done
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-md text-[10px]">
+                                {o.status === OrderStatus.PRODUCTION ? 'In Factory' : 'Queued'}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Delivery Stage */}
+                          <td className="px-4 py-3.5 text-center">
+                            {deliveryDone ? (
+                              <span className={cn(
+                                "px-2 py-0.5 border rounded-md text-[10px] font-black inline-flex items-center gap-1",
+                                o.status === OrderStatus.DELIVERED ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                              )}>
+                                <Truck className="w-2.5 h-2.5" />
+                                {o.status === OrderStatus.DELIVERED ? 'Delivered' : 'In Transit'}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px]">
+                                Pending
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Order Value */}
+                          <td className="px-4 py-3.5 text-right font-black text-gray-900">
+                            ₹{amount.toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View (Touch-Friendly Compact Workflow Cards) */}
+            <div className="block md:hidden space-y-3">
               {tableOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
-                    <Package className="w-10 h-10 mx-auto mb-2 opacity-30 text-gray-400" />
-                    <p className="font-bold text-gray-500">No orders found matching this filter.</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Try selecting another workflow tab or clearing the search query.</p>
-                  </td>
-                </tr>
+                <div className="text-center py-10 bg-white rounded-2xl border border-gray-150 text-gray-400 font-medium text-xs">
+                  <Package className="w-8 h-8 mx-auto mb-2 opacity-30 text-gray-400" />
+                  <p className="font-bold text-gray-500">No orders found.</p>
+                </div>
               ) : (
                 tableOrders.map((o) => {
                   const designDone = isDesignCompleted(o);
@@ -992,143 +1148,97 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                   const amount = Number(o.financials?.totalAmount || o.netTotal || 0);
 
                   return (
-                    <tr
+                    <div
                       key={o.id}
                       onClick={() => setSelectedOrderForModal(o)}
-                      className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                      className="bg-white rounded-2xl p-4 border border-gray-150 shadow-xs hover:shadow-md transition-all space-y-3 cursor-pointer text-left"
                     >
-                      {/* Order Details */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-gray-900 group-hover:text-brand-primary transition-colors">
-                            #{o.orderNumber || o.id}
-                          </span>
-                          {isRework && (
-                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-black rounded uppercase border border-amber-200 animate-pulse">
-                              Rework
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-sm text-brand-primary">
+                              #{o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A')}
                             </span>
-                          )}
+                            {isRework && (
+                              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-black rounded uppercase border border-amber-200">
+                                Rework
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-black text-gray-900 text-sm mt-1">{o.clientName || o.customerInfo?.name || 'Walk-in Customer'}</h4>
+                          <p className="text-[11px] text-gray-500 font-medium">
+                            By: <span className="font-bold text-gray-700">{o.createdByName || o.createdBy || 'Staff'}</span>
+                          </p>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          {o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : 'N/A'}
-                        </p>
-                      </td>
 
-                      {/* Client & Creator */}
-                      <td className="px-4 py-3.5">
-                        <p className="font-bold text-gray-800">{o.clientName || o.customerInfo?.name || 'N/A'}</p>
-                        <p className="text-[10px] text-gray-400">By: {o.createdByName || o.createdBy || 'Staff'}</p>
-                      </td>
-
-                      {/* Category */}
-                      <td className="px-4 py-3.5">
-                        <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-bold rounded-lg text-[10px]">
-                          {getDisplayCategory(o)}
-                        </span>
-                      </td>
-
-                      {/* Design Stage */}
-                      <td className="px-4 py-3.5 text-center">
-                        {isRework ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
-                              <RefreshCw className="w-2.5 h-2.5 animate-spin-slow" /> Rework
-                            </span>
-                            {(o.claimedAt || o.designClaimedAt || o.assignedDesigner) && (
-                              <DesignTaskTimer
-                                claimedAt={o.claimedAt || o.designClaimedAt}
-                                completedAt={o.designCompletedAt}
-                                isCompleted={false}
-                                designerName={o.assignedDesigner}
-                              />
-                            )}
-                          </div>
-                        ) : designDone ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
-                              <CheckCheck className="w-2.5 h-2.5" /> Done
-                            </span>
-                            {o.designCompletedAt && (o.claimedAt || o.designClaimedAt) && (
-                              <DesignTaskTimer
-                                claimedAt={o.claimedAt || o.designClaimedAt}
-                                completedAt={o.designCompletedAt}
-                                isCompleted={true}
-                                designerName={o.assignedDesigner}
-                              />
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="px-2 py-0.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-md text-[10px] font-bold">
-                              In Studio
-                            </span>
-                            {(o.claimedAt || o.designClaimedAt || (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')) && (
-                              <DesignTaskTimer
-                                claimedAt={o.claimedAt || o.designClaimedAt}
-                                completedAt={o.designCompletedAt}
-                                isCompleted={false}
-                                designerName={o.assignedDesigner}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Digitizing Stage */}
-                      <td className="px-4 py-3.5 text-center">
-                        {digitizerDone ? (
-                          <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
-                            <Scissors className="w-2.5 h-2.5" /> Ready
+                        <div className="text-right shrink-0">
+                          <div className="font-black text-sm text-gray-900">₹{amount.toLocaleString('en-IN')}</div>
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-[9px] inline-block mt-1">
+                            {getDisplayCategory(o)}
                           </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px]">
-                            Pending
-                          </span>
-                        )}
-                      </td>
+                        </div>
+                      </div>
 
-                      {/* Production Stage */}
-                      <td className="px-4 py-3.5 text-center">
-                        {productionDone ? (
-                          <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
-                            <Factory className="w-2.5 h-2.5" /> Done
+                      {/* Stage Grid */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-gray-100 text-center text-[9px]">
+                        <div className="p-1.5 bg-gray-50 rounded-lg">
+                          <span className="text-gray-400 block uppercase font-bold text-[8px]">Design</span>
+                          <span className={cn("font-black", designDone ? "text-purple-700" : isRework ? "text-amber-700" : "text-gray-600")}>
+                            {isRework ? 'Rework' : designDone ? 'Done' : 'Studio'}
                           </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-md text-[10px]">
-                            {o.status === OrderStatus.PRODUCTION ? 'In Factory' : 'Queued'}
+                        </div>
+                        <div className="p-1.5 bg-gray-50 rounded-lg">
+                          <span className="text-gray-400 block uppercase font-bold text-[8px]">Digitizing</span>
+                          <span className={cn("font-black", digitizerDone ? "text-pink-700" : "text-gray-400")}>
+                            {digitizerDone ? 'Ready' : 'Pending'}
                           </span>
-                        )}
-                      </td>
+                        </div>
+                        <div className="p-1.5 bg-gray-50 rounded-lg">
+                          <span className="text-gray-400 block uppercase font-bold text-[8px]">Factory</span>
+                          <span className={cn("font-black", productionDone ? "text-orange-700" : "text-gray-400")}>
+                            {productionDone ? 'Done' : o.status === OrderStatus.PRODUCTION ? 'In Line' : 'Queued'}
+                          </span>
+                        </div>
+                        <div className="p-1.5 bg-gray-50 rounded-lg">
+                          <span className="text-gray-400 block uppercase font-bold text-[8px]">Delivery</span>
+                          <span className={cn("font-black", deliveryDone ? "text-emerald-700" : "text-gray-400")}>
+                            {deliveryDone ? (o.status === OrderStatus.DELIVERED ? 'Delivered' : 'Transit') : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
 
-                      {/* Delivery Stage */}
-                      <td className="px-4 py-3.5 text-center">
-                        {deliveryDone ? (
-                          <span className={cn(
-                            "px-2 py-0.5 border rounded-md text-[10px] font-black inline-flex items-center gap-1",
-                            o.status === OrderStatus.DELIVERED ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"
-                          )}>
-                            <Truck className="w-2.5 h-2.5" />
-                            {o.status === OrderStatus.DELIVERED ? 'Delivered' : 'In Transit'}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px]">
-                            Pending
-                          </span>
-                        )}
-                      </td>
+                      {/* SLA Timer */}
+                      {(o.claimedAt || o.designClaimedAt || (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')) && (
+                        <div className="pt-1">
+                          <DesignTaskTimer
+                            claimedAt={o.claimedAt || o.designClaimedAt}
+                            completedAt={o.designCompletedAt}
+                            isCompleted={designDone}
+                            variant="bar"
+                            designerName={o.assignedDesigner}
+                          />
+                        </div>
+                      )}
 
-                      {/* Order Value */}
-                      <td className="px-4 py-3.5 text-right font-black text-gray-900">
-                        ₹{amount.toLocaleString('en-IN')}
-                      </td>
-                    </tr>
+                      {/* Quick Inspect Button */}
+                      <div className="pt-2 border-t border-gray-100 flex justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedOrderForModal(o);
+                          }}
+                          className="px-4 py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs flex items-center gap-1"
+                        >
+                          <Eye size={12} /> Inspect Order
+                        </button>
+                      </div>
+                    </div>
                   );
                 })
               )}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* ─── Order Detail Modal Integration ─────────────────────────────────── */}

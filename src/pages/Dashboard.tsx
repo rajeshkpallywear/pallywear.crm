@@ -159,8 +159,12 @@ export default function Dashboard() {
       if (!localStorage.getItem('pallywear_active_tab')) {
         setActiveTab('marketing_orders');
       }
+    } else if (user && (user.role === 'sales_head' || user.role === 'operations_head' || user.role === UserRole.SALES_HEAD || user.role === UserRole.OPERATIONS_HEAD)) {
+      if (!localStorage.getItem('pallywear_active_tab') || activeTab === 'marketing_orders') {
+        setActiveTab('dashboard');
+      }
     }
-  }, [user, activeTab]);
+  }, [user]);
 
   const selectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);

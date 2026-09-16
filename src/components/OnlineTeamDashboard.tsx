@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Phone, CheckCircle2, Clock, Search, Save, ClipboardList, AlertCircle, Plus, FileText, RefreshCw, Users, ArrowUpRight } from 'lucide-react';
+import {
+  Phone, CheckCircle2, Clock, Search, Save, ClipboardList,
+  AlertCircle, Plus, FileText, RefreshCw, Users, ArrowUpRight,
+  MessageCircle, Edit, Edit3, X, Flame, Thermometer, Snowflake,
+  Building2, MapPin, UserCheck, ExternalLink, ChevronRight
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';
 import { useLeads } from '../context/LeadContext';
@@ -87,17 +92,97 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
   const [showAdminLogsModal, setShowAdminLogsModal] = useState(false);
   const [selectedLeadForAdminLogs, setSelectedLeadForAdminLogs] = useState<Lead | null>(null);
   
-  // Lead logs state
+  // Lead logs state (inline side workspace)
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editStatus, setEditStatus] = useState('New');
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Quick Update Status modal (Assigned Leads column)
+  // Quick Update Status modal (Mobile App Compact Model)
   const [quickUpdateLead, setQuickUpdateLead] = useState<Lead | null>(null);
   const [quickUpdateStatus, setQuickUpdateStatus] = useState('New');
   const [quickUpdateNote, setQuickUpdateNote] = useState('');
   const [isQuickSaving, setIsQuickSaving] = useState(false);
+
+  // Full Edit Lead Modal State (Mobile App Compact Model)
+  const [fullEditLead, setFullEditLead] = useState<Lead | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editNumber, setEditNumber] = useState('');
+  const [editCompany, setEditCompany] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editLeadType, setEditLeadType] = useState<string>('Warm');
+  const [editFullStatus, setEditFullStatus] = useState('New');
+  const [editAssignedTo, setEditAssignedTo] = useState('');
+  const [editAssignedToName, setEditAssignedToName] = useState('');
+  const [editFullNote, setEditFullNote] = useState('');
+  const [isFullSaving, setIsFullSaving] = useState(false);
+
+  const openFullEditModal = (lead: Lead) => {
+    setFullEditLead(lead);
+    setEditName(lead.name || '');
+    setEditNumber(lead.number || '');
+    setEditCompany(lead.companyName || '');
+    setEditLocation((lead as any).location || '');
+    setEditLeadType(lead.leadType || 'Warm');
+    setEditFullStatus(lead.status || 'New');
+    setEditAssignedTo(lead.assignedTo || '');
+    setEditAssignedToName(lead.assignedToName || '');
+    setEditFullNote('');
+  };
+
+  const handleSaveFullEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullEditLead) return;
+    if (!editName.trim() || !editNumber.trim()) {
+      alert('Please provide both Client Name and Phone Number.');
+      return;
+    }
+
+    setIsFullSaving(true);
+    try {
+      const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+      const entry = editFullNote.trim()
+        ? `[${timestamp}] ${user?.name || 'Online Team'}: ${editFullNote.trim()}`
+        : '';
+      const updatedDescription = entry
+        ? (fullEditLead.description ? `${fullEditLead.description}\n\n${entry}` : entry)
+        : fullEditLead.description || '';
+
+      const matchedAgent = assignableAgents.find((a: any) => (a.id || a.uid) === editAssignedTo);
+      const finalAssignedName = editAssignedTo ? (matchedAgent ? matchedAgent.name : editAssignedToName) : undefined;
+
+      const updates: Partial<Lead> = {
+        name: editName.trim(),
+        number: editNumber.trim(),
+        companyName: editCompany.trim(),
+        leadType: editLeadType as any,
+        status: editFullStatus,
+        description: updatedDescription,
+        assignedTo: editAssignedTo || undefined,
+        assignedToName: finalAssignedName || undefined,
+        isTaken: Boolean(editAssignedTo)
+      };
+
+      const res = await fetch(getApiUrl(`/api/leads/${fullEditLead.id}`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      const data = await res.json();
+      if (data.success) {
+        await updateLead(fullEditLead.id, updates);
+        setFullEditLead(null);
+        alert('✓ Lead updated successfully!');
+      } else {
+        alert('Failed to update lead: ' + (data?.message || 'Server error'));
+      }
+    } catch (err: any) {
+      console.error('Error saving lead:', err);
+      alert('Error updating lead: ' + (err?.message || 'Network error'));
+    } finally {
+      setIsFullSaving(false);
+    }
+  };
 
   // Add Call Log Form State
   const [isAddLogOpen, setIsAddLogOpen] = useState(false);
@@ -487,7 +572,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto hidden md:block">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
                     <tr>
@@ -503,9 +588,20 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                       <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
                         <td className="px-6 py-4 font-bold text-gray-900">{lead.name}</td>
                         <td className="px-6 py-4 font-mono text-xs text-gray-600">
-                          <a href={`tel:${lead.number}`} className="hover:underline text-brand-primary font-bold">
-                            {lead.number}
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a href={`tel:${lead.number}`} className="hover:underline text-brand-primary font-bold">
+                              {lead.number}
+                            </a>
+                            <a
+                              href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-600 hover:text-emerald-700 p-1 hover:bg-emerald-50 rounded-md transition-colors"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle size={14} />
+                            </a>
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-gray-500 font-semibold">{lead.companyName || 'Individual'}</td>
                         <td className="px-6 py-4">
@@ -521,16 +617,37 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => {
-                              setEditingLead(lead);
-                              setEditStatus(lead.status || 'New');
-                              setNewNote('');
-                            }}
-                            className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer"
-                          >
-                            Update Status
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setQuickUpdateLead(lead);
+                                setQuickUpdateStatus(lead.status || 'New');
+                                setQuickUpdateNote('');
+                              }}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs active:scale-95"
+                              title="Quick Status & Note"
+                            >
+                              Update
+                            </button>
+                            <button
+                              onClick={() => openFullEditModal(lead)}
+                              className="px-2.5 py-1 bg-brand-primary hover:bg-brand-primary/90 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                              title="Edit All Details"
+                            >
+                              <Edit size={11} /> Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingLead(lead);
+                                setEditStatus(lead.status || 'New');
+                                setNewNote('');
+                              }}
+                              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer"
+                              title="Open in Workspace"
+                            >
+                              Workspace
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -544,17 +661,102 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Compact Cards for Small Screens */}
+              <div className="space-y-3 block md:hidden">
+                {filteredAssignedLeads.map(lead => (
+                  <div key={lead.id} className="p-4 bg-gray-50 border border-gray-150 rounded-2xl space-y-3 text-left shadow-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="font-black text-sm text-gray-900 leading-tight truncate">{lead.name}</h4>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{lead.companyName || 'Individual'}</p>
+                      </div>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border flex-shrink-0",
+                        lead.status === 'Interested' ? "bg-green-50 text-green-700 border-green-200" :
+                        lead.status === 'Not Interested' ? "bg-red-50 text-red-700 border-red-200" :
+                        lead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                        lead.status === 'Converted' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                        "bg-amber-50 text-amber-700 border-amber-200"
+                      )}>
+                        {lead.status || 'New'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <a href={`tel:${lead.number}`} className="flex items-center gap-1 text-brand-primary font-bold font-mono">
+                          <Phone size={12} /> {lead.number}
+                        </a>
+                        <a
+                          href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-600 p-1 hover:bg-emerald-50 rounded"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={14} />
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setQuickUpdateLead(lead);
+                          setQuickUpdateStatus(lead.status || 'New');
+                          setQuickUpdateNote('');
+                        }}
+                        className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border-none cursor-pointer text-center"
+                      >
+                        ⚡ Update Status
+                      </button>
+                      <button
+                        onClick={() => openFullEditModal(lead)}
+                        className="flex-1 py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Edit size={11} /> Edit Lead
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {filteredAssignedLeads.length === 0 && (
+                  <div className="py-8 text-center text-gray-400 italic text-xs">
+                    No assigned leads match your search.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm text-left">
               {editingLead ? (
                 <form onSubmit={handleUpdateStatus} className="space-y-4">
-                  <div className="border-b border-gray-50 pb-3">
-                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest font-bold">Call Workspace</span>
-                    <h4 className="text-base font-black text-gray-900 uppercase mt-0.5">{editingLead.name}</h4>
-                    <a href={`tel:${editingLead.number}`} className="text-xs text-brand-primary font-bold hover:underline font-mono">
-                      {editingLead.number}
-                    </a>
+                  <div className="border-b border-gray-50 pb-3 flex items-start justify-between">
+                    <div>
+                      <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest font-bold">Call Workspace</span>
+                      <h4 className="text-base font-black text-gray-900 uppercase mt-0.5">{editingLead.name}</h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <a href={`tel:${editingLead.number}`} className="text-xs text-brand-primary font-bold hover:underline font-mono">
+                          {editingLead.number}
+                        </a>
+                        <a
+                          href={`https://wa.me/${editingLead.number.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-600 hover:text-emerald-700"
+                        >
+                          <MessageCircle size={14} />
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openFullEditModal(editingLead)}
+                      className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-brand-primary rounded-lg text-[10px] font-bold uppercase border border-gray-200 cursor-pointer flex items-center gap-1"
+                      title="Edit Full Lead Details"
+                    >
+                      <Edit size={11} /> Edit All
+                    </button>
                   </div>
 
                   <div>
@@ -562,12 +764,14 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     <select
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-155 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                      className="w-full bg-gray-50 border border-gray-155 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 font-bold text-gray-800"
                     >
-                      <option value="New">New / Uncalled</option>
-                      <option value="Called">Called / Follow Up</option>
-                      <option value="Interested">Interested / Hot</option>
-                      <option value="Not Interested">Not Interested</option>
+                      <option value="New">🟡 New / Uncalled</option>
+                      <option value="Called">📞 Called / Follow Up</option>
+                      <option value="Interested">🔥 Interested / Hot</option>
+                      <option value="Follow Up">🔄 Follow Up</option>
+                      <option value="Not Interested">❌ Not Interested</option>
+                      <option value="Converted">✅ Converted</option>
                     </select>
                   </div>
 
@@ -641,7 +845,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
                 <tr>
@@ -657,7 +861,22 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 {filteredUnassignedLeads.map(lead => (
                   <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
                     <td className="px-6 py-4 font-bold text-gray-900">{lead.name}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-gray-600">{lead.number}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <a href={`tel:${lead.number}`} className="hover:underline text-brand-primary font-bold">
+                          {lead.number}
+                        </a>
+                        <a
+                          href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-600 hover:text-emerald-700"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={14} />
+                        </a>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-gray-500 font-semibold">{lead.companyName || '—'}</td>
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-600 font-medium">{lead.createdByName || 'System'}</span>
@@ -673,35 +892,54 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                assignedTo: user?.id || user?.uid,
-                                assignedToName: user?.name,
-                                isTaken: true
-                              })
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              await updateLead(lead.id, {
-                                assignedTo: user?.id || user?.uid,
-                                assignedToName: user?.name,
-                                isTaken: true
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  assignedTo: user?.id || user?.uid,
+                                  assignedToName: user?.name,
+                                  isTaken: true
+                                })
                               });
-                              alert('Lead claimed successfully!');
+                              const data = await res.json();
+                              if (data.success) {
+                                await updateLead(lead.id, {
+                                  assignedTo: user?.id || user?.uid,
+                                  assignedToName: user?.name,
+                                  isTaken: true
+                                });
+                                alert('Lead claimed successfully!');
+                              }
+                            } catch (e) {
+                              console.error("Failed to claim lead:", e);
                             }
-                          } catch (e) {
-                            console.error("Failed to claim lead:", e);
-                          }
-                        }}
-                        className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer"
-                      >
-                        Claim Lead
-                      </button>
+                          }}
+                          className="px-2.5 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer shadow-xs active:scale-95"
+                        >
+                          Claim
+                        </button>
+                        <button
+                          onClick={() => {
+                            setQuickUpdateLead(lead);
+                            setQuickUpdateStatus(lead.status || 'New');
+                            setQuickUpdateNote('');
+                          }}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs active:scale-95"
+                        >
+                          Update
+                        </button>
+                        <button
+                          onClick={() => openFullEditModal(lead)}
+                          className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors border-none cursor-pointer"
+                          title="Full Edit"
+                        >
+                          <Edit size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -714,6 +952,100 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards for Unassigned Leads */}
+          <div className="space-y-3 block md:hidden">
+            {filteredUnassignedLeads.map(lead => (
+              <div key={lead.id} className="p-4 bg-gray-50 border border-gray-150 rounded-2xl space-y-3 text-left shadow-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-black text-sm text-gray-900 leading-tight truncate">{lead.name}</h4>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{lead.companyName || 'Individual'}</p>
+                  </div>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border flex-shrink-0",
+                    lead.leadType === 'Hot' ? "bg-red-50 text-red-700 border-red-200" :
+                    lead.leadType === 'Warm' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    "bg-blue-50 text-blue-700 border-blue-200"
+                  )}>
+                    {lead.leadType || 'Warm'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <a href={`tel:${lead.number}`} className="flex items-center gap-1 text-brand-primary font-bold font-mono">
+                      <Phone size={12} /> {lead.number}
+                    </a>
+                    <a
+                      href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-emerald-600 p-1 hover:bg-emerald-50 rounded"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle size={14} />
+                    </a>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium">By {lead.createdByName || 'System'}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            assignedTo: user?.id || user?.uid,
+                            assignedToName: user?.name,
+                            isTaken: true
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          await updateLead(lead.id, {
+                            assignedTo: user?.id || user?.uid,
+                            assignedToName: user?.name,
+                            isTaken: true
+                          });
+                          alert('Lead claimed successfully!');
+                        }
+                      } catch (e) {
+                        console.error("Failed to claim lead:", e);
+                      }
+                    }}
+                    className="flex-1 py-1.5 bg-brand-primary text-white text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs active:scale-95 text-center"
+                  >
+                    Claim Lead
+                  </button>
+                  <button
+                    onClick={() => {
+                      setQuickUpdateLead(lead);
+                      setQuickUpdateStatus(lead.status || 'New');
+                      setQuickUpdateNote('');
+                    }}
+                    className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border-none cursor-pointer text-center"
+                  >
+                    ⚡ Update
+                  </button>
+                  <button
+                    onClick={() => openFullEditModal(lead)}
+                    className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition-colors border-none cursor-pointer"
+                    title="Full Edit"
+                  >
+                    <Edit size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {filteredUnassignedLeads.length === 0 && (
+              <div className="py-8 text-center text-gray-400 italic text-xs">
+                No unassigned leads found.
+              </div>
+            )}
           </div>
         </div>
       ) : activeTab === 'marketing_leads' ? (
@@ -736,7 +1068,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 text-gray-400 font-black uppercase tracking-widest text-[9px] border-b border-gray-100">
                 <tr>
@@ -752,7 +1084,22 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 {filteredMarketingLeads.map(lead => (
                   <tr key={lead.id} className="hover:bg-gray-50/30 transition-colors">
                     <td className="px-6 py-4 font-bold text-gray-900">{lead.name}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-gray-600">{lead.number}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <a href={`tel:${lead.number}`} className="hover:underline text-brand-primary font-bold">
+                          {lead.number}
+                        </a>
+                        <a
+                          href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-600 hover:text-emerald-700"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={14} />
+                        </a>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-gray-500 font-semibold">{lead.companyName || 'Individual'}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
@@ -773,40 +1120,33 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={async () => {
-                          if (!lead.assignedTo) {
-                            try {
-                              const res = await fetch(getApiUrl(`/api/leads/${lead.id}`), {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  assignedTo: user?.id || user?.uid,
-                                  assignedToName: user?.name,
-                                  isTaken: true
-                                })
-                              });
-                              const data = await res.json();
-                              if (data.success) {
-                                await updateLead(lead.id, {
-                                  assignedTo: user?.id || user?.uid,
-                                  assignedToName: user?.name,
-                                  isTaken: true
-                                });
-                              }
-                            } catch (e) {
-                              console.error("Failed to assign lead:", e);
-                            }
-                          }
-                          setActiveTab('assign_leads');
-                          setEditingLead(lead);
-                          setEditStatus(lead.status || 'New');
-                          setNewNote('');
-                        }}
-                        className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black rounded-lg uppercase tracking-wider hover:bg-brand-secondary hover:text-brand-primary transition-all border-none cursor-pointer"
-                      >
-                        Update Status
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => {
+                            setQuickUpdateLead(lead);
+                            setQuickUpdateStatus(lead.status || 'New');
+                            setQuickUpdateNote('');
+                          }}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs active:scale-95"
+                        >
+                          Update
+                        </button>
+                        <button
+                          onClick={() => openFullEditModal(lead)}
+                          className="px-2.5 py-1 bg-brand-primary hover:bg-brand-primary/90 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                        >
+                          <Edit size={11} /> Edit
+                        </button>
+                        {lead.description && (
+                          <button
+                            onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
+                            className="p-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg border border-indigo-100 transition-colors cursor-pointer"
+                            title="View Call Logs"
+                          >
+                            <FileText size={13} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -819,6 +1159,70 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards for Marketing Leads */}
+          <div className="space-y-3 block md:hidden">
+            {filteredMarketingLeads.map(lead => (
+              <div key={lead.id} className="p-4 bg-gray-50 border border-gray-150 rounded-2xl space-y-3 text-left shadow-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-black text-sm text-gray-900 leading-tight truncate">{lead.name}</h4>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{lead.companyName || 'Individual'}</p>
+                  </div>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border flex-shrink-0",
+                    lead.leadType === 'Hot' ? "bg-red-50 text-red-700 border-red-200" :
+                    lead.leadType === 'Warm' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    "bg-blue-50 text-blue-700 border-blue-200"
+                  )}>
+                    {lead.leadType || 'Warm'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <a href={`tel:${lead.number}`} className="flex items-center gap-1 text-brand-primary font-bold font-mono">
+                      <Phone size={12} /> {lead.number}
+                    </a>
+                    <a
+                      href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-emerald-600 p-1 hover:bg-emerald-50 rounded"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle size={14} />
+                    </a>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium">By {lead.createdByName || 'Marketing'}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setQuickUpdateLead(lead);
+                      setQuickUpdateStatus(lead.status || 'New');
+                      setQuickUpdateNote('');
+                    }}
+                    className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border-none cursor-pointer text-center"
+                  >
+                    ⚡ Update
+                  </button>
+                  <button
+                    onClick={() => openFullEditModal(lead)}
+                    className="flex-1 py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border-none cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Edit size={11} /> Edit
+                  </button>
+                </div>
+              </div>
+            ))}
+            {filteredMarketingLeads.length === 0 && (
+              <div className="py-8 text-center text-gray-400 italic text-xs">
+                No marketing leads found.
+              </div>
+            )}
           </div>
         </div>
       ) : activeTab === 'call_logs' ? (
@@ -1010,19 +1414,17 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                             <table className="w-full text-xs text-left">
                               <thead className="bg-amber-50/60 text-amber-700/70 font-black uppercase tracking-widest text-[9px] border-b border-amber-100 sticky top-0">
                                 <tr>
-                                  <th className="px-4 py-3">Agent</th>
-                                  <th className="px-4 py-3">Client Name</th>
-                                  <th className="px-4 py-3">Phone</th>
-                                  <th className="px-4 py-3">Company</th>
-                                  <th className="px-4 py-3 text-center">Status</th>
-                                  <th className="px-4 py-3 text-center">Assign To</th>
-                                  <th className="px-4 py-3 text-right">Logs</th>
+                                  <th className="px-3 py-3">Client</th>
+                                  <th className="px-3 py-3">Phone</th>
+                                  <th className="px-3 py-3 text-center">Status</th>
+                                  <th className="px-3 py-3 text-center">Assign</th>
+                                  <th className="px-3 py-3 text-right">Actions</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-amber-50">
                                 {unassigned.length === 0 ? (
                                   <tr>
-                                    <td colSpan={7} className="py-10 text-center">
+                                    <td colSpan={5} className="py-10 text-center">
                                       <div className="flex flex-col items-center gap-2 text-amber-400">
                                         <CheckCircle2 size={28} className="opacity-40" />
                                         <span className="text-xs font-bold text-gray-400 italic">All leads are assigned!</span>
@@ -1034,13 +1436,25 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                   const latestLog = logs.length > 0 ? logs[logs.length - 1] : lead.description || '—';
                                   return (
                                     <tr key={lead.id} className="hover:bg-amber-50/40 transition-colors group">
-                                      <td className="px-4 py-3 font-bold text-gray-600 text-[11px]">{lead.createdByName || 'System'}</td>
-                                      <td className="px-4 py-3 font-black text-gray-900">{lead.name}</td>
-                                      <td className="px-4 py-3 font-mono text-gray-500 text-[11px]">
-                                        <a href={`tel:${lead.number}`} className="hover:text-amber-600 transition-colors">{lead.number}</a>
+                                      <td className="px-3 py-3">
+                                        <p className="font-black text-gray-900 leading-tight">{lead.name}</p>
+                                        <p className="text-[10px] text-gray-400 font-medium truncate max-w-[100px]">{lead.companyName || '—'}</p>
                                       </td>
-                                      <td className="px-4 py-3 text-gray-400 font-medium truncate max-w-[100px]">{lead.companyName || '—'}</td>
-                                      <td className="px-4 py-3 text-center">
+                                      <td className="px-3 py-3 font-mono text-gray-500 text-[11px]">
+                                        <div className="flex items-center gap-1.5">
+                                          <a href={`tel:${lead.number}`} className="hover:text-amber-600 transition-colors font-bold">{lead.number}</a>
+                                          <a
+                                            href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-emerald-600 hover:text-emerald-700"
+                                            title="WhatsApp"
+                                          >
+                                            <MessageCircle size={13} />
+                                          </a>
+                                        </div>
+                                      </td>
+                                      <td className="px-3 py-3 text-center">
                                         <span className={cn(
                                           "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                                           lead.status === 'Converted' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
@@ -1051,7 +1465,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                           {lead.status || 'New'}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-3 text-center">
+                                      <td className="px-3 py-3 text-center">
                                         {canAssign ? (
                                           <select
                                             value={lead.assignedTo || ''}
@@ -1073,7 +1487,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                                 }
                                               } catch (err) { console.error(err); alert('Failed to assign lead.'); }
                                             }}
-                                            className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer"
+                                            className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-800 font-bold cursor-pointer max-w-[90px]"
                                           >
                                             <option value="">— Assign —</option>
                                             {assignableAgents.map((agent: any) => (
@@ -1106,22 +1520,42 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                                 console.error("Failed to claim lead:", e);
                                               }
                                             }}
-                                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider border-none cursor-pointer shadow-xs transition-all active:scale-95"
+                                            className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[9px] font-black uppercase tracking-wider border-none cursor-pointer shadow-xs transition-all active:scale-95"
                                           >
-                                            Claim Lead
+                                            Claim
                                           </button>
                                         )}
                                       </td>
-                                      <td className="px-4 py-3 text-right">
-                                        {lead.description && (
+                                      <td className="px-3 py-3 text-right">
+                                        <div className="flex items-center justify-end gap-1">
                                           <button
-                                            onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
-                                            title={latestLog}
-                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer ml-auto"
+                                            onClick={() => {
+                                              setQuickUpdateLead(lead);
+                                              setQuickUpdateStatus(lead.status || 'New');
+                                              setQuickUpdateNote('');
+                                            }}
+                                            className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black rounded-lg uppercase tracking-wider transition-all border-none cursor-pointer"
+                                            title="Quick Update"
                                           >
-                                            <FileText size={13} />
+                                            Update
                                           </button>
-                                        )}
+                                          <button
+                                            onClick={() => openFullEditModal(lead)}
+                                            className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors border-none cursor-pointer"
+                                            title="Edit Lead"
+                                          >
+                                            <Edit size={12} />
+                                          </button>
+                                          {lead.description && (
+                                            <button
+                                              onClick={() => { setSelectedLeadForAdminLogs(lead); setShowAdminLogsModal(true); }}
+                                              title={latestLog}
+                                              className="w-6 h-6 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 transition-all cursor-pointer"
+                                            >
+                                              <FileText size={12} />
+                                            </button>
+                                          )}
+                                        </div>
                                       </td>
                                     </tr>
                                   );
@@ -1218,7 +1652,18 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                         <p className="text-[10px] text-gray-400 font-medium truncate max-w-[110px]">{lead.companyName || '—'}</p>
                                       </td>
                                       <td className="px-3 py-3 font-mono text-gray-500 text-[11px]">
-                                        <a href={`tel:${lead.number}`} className="hover:text-emerald-600 transition-colors">{lead.number}</a>
+                                        <div className="flex items-center gap-1.5">
+                                          <a href={`tel:${lead.number}`} className="hover:text-emerald-600 transition-colors font-bold">{lead.number}</a>
+                                          <a
+                                            href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-emerald-600 hover:text-emerald-700"
+                                            title="WhatsApp"
+                                          >
+                                            <MessageCircle size={13} />
+                                          </a>
+                                        </div>
                                       </td>
                                       <td className="px-3 py-3 text-center">
                                         <span className={cn(
@@ -1268,8 +1713,8 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                         )}
                                       </td>
                                       <td className="px-3 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-1.5">
-                                          {/* Update Status button */}
+                                        <div className="flex items-center justify-end gap-1">
+                                          {/* Quick Update Button */}
                                           <button
                                             onClick={() => {
                                               setQuickUpdateLead(lead);
@@ -1277,9 +1722,17 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                                               setQuickUpdateNote('');
                                             }}
                                             className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black rounded-lg border-none cursor-pointer transition-all uppercase tracking-wider shadow-sm active:scale-95"
-                                            title="Update Status & Add Note"
+                                            title="Update Status & Note"
                                           >
                                             Update
+                                          </button>
+                                          {/* Full Edit Button */}
+                                          <button
+                                            onClick={() => openFullEditModal(lead)}
+                                            className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors border-none cursor-pointer"
+                                            title="Edit Lead Details"
+                                          >
+                                            <Edit size={13} />
                                           </button>
                                           {/* Call Logs button */}
                                           {lead.description && (
@@ -1311,71 +1764,165 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
         </div>
       )}
 
-      {/* ── Quick Update Status Modal ── */}
+      {/* ── Mobile App Compact Quick Update Status Modal ── */}
       {quickUpdateLead && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm border border-gray-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-            {/* Modal header */}
-            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Assigned Lead</span>
-                <h3 className="text-base font-black text-gray-900 leading-tight">{quickUpdateLead.name}</h3>
-                <p className="text-[10px] text-gray-400 font-medium mt-0.5">{quickUpdateLead.number}{quickUpdateLead.companyName ? ` · ${quickUpdateLead.companyName}` : ''}</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-[2.25rem] sm:rounded-[2.25rem] shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col border border-gray-150 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 overflow-hidden text-left">
+            {/* Mobile swipe/grab pill */}
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+
+            {/* Modal header with quick contact actions */}
+            <div className="px-5 pt-3 pb-4 border-b border-gray-100 flex items-start justify-between gap-3 bg-gradient-to-b from-gray-50/70 to-white">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-wider rounded-md border border-emerald-200">
+                    Quick Update
+                  </span>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border",
+                    quickUpdateLead.status === 'Interested' ? "bg-green-50 text-green-700 border-green-200" :
+                    quickUpdateLead.status === 'Called' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                    quickUpdateLead.status === 'Converted' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                    quickUpdateLead.status === 'Not Interested' ? "bg-red-50 text-red-700 border-red-200" :
+                    "bg-amber-50 text-amber-700 border-amber-200"
+                  )}>
+                    {quickUpdateLead.status || 'New'}
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-gray-900 truncate leading-tight">{quickUpdateLead.name}</h3>
+                <p className="text-xs text-gray-500 font-medium truncate mt-0.5">{quickUpdateLead.companyName || 'Individual'}</p>
               </div>
-              <button
-                onClick={() => setQuickUpdateLead(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 transition-colors border-none bg-transparent cursor-pointer flex-shrink-0 text-lg font-bold"
-              >
-                ✕
-              </button>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <a
+                  href={`tel:${quickUpdateLead.number}`}
+                  className="w-8 h-8 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 flex items-center justify-center transition-all shadow-xs"
+                  title="Call Customer"
+                >
+                  <Phone size={14} />
+                </a>
+                <a
+                  href={`https://wa.me/${quickUpdateLead.number.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center transition-all shadow-xs"
+                  title="WhatsApp Message"
+                >
+                  <MessageCircle size={14} />
+                </a>
+                <button
+                  onClick={() => setQuickUpdateLead(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleQuickUpdateStatus} className="px-6 py-5 space-y-4">
-              {/* Status selector */}
+            {/* Scrollable Form */}
+            <form onSubmit={handleQuickUpdateStatus} className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+              {/* 1-Tap Status Selector Grid */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Update Status</label>
-                <select
-                  value={quickUpdateStatus}
-                  onChange={(e) => setQuickUpdateStatus(e.target.value)}
-                  className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-300 cursor-pointer"
-                >
-                  <option value="New">🟡 New</option>
-                  <option value="Called">📞 Called</option>
-                  <option value="Interested">🔥 Interested</option>
-                  <option value="Not Interested">❌ Not Interested</option>
-                  <option value="Follow Up">🔄 Follow Up</option>
-                  <option value="Converted">✅ Converted</option>
-                </select>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                  Select Lead Status
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { val: 'New', label: '🟡 New', color: 'hover:border-amber-400 hover:bg-amber-50', active: 'bg-amber-50 text-amber-800 border-amber-400 ring-2 ring-amber-200 font-black' },
+                    { val: 'Called', label: '📞 Called', color: 'hover:border-indigo-400 hover:bg-indigo-50', active: 'bg-indigo-50 text-indigo-800 border-indigo-400 ring-2 ring-indigo-200 font-black' },
+                    { val: 'Interested', label: '🔥 Hot / Interested', color: 'hover:border-red-400 hover:bg-red-50', active: 'bg-red-50 text-red-800 border-red-400 ring-2 ring-red-200 font-black' },
+                    { val: 'Follow Up', label: '🔄 Follow Up', color: 'hover:border-blue-400 hover:bg-blue-50', active: 'bg-blue-50 text-blue-800 border-blue-400 ring-2 ring-blue-200 font-black' },
+                    { val: 'Not Interested', label: '❌ Not Interested', color: 'hover:border-gray-400 hover:bg-gray-100', active: 'bg-gray-100 text-gray-800 border-gray-400 ring-2 ring-gray-200 font-black' },
+                    { val: 'Converted', label: '✅ Converted', color: 'hover:border-emerald-400 hover:bg-emerald-50', active: 'bg-emerald-50 text-emerald-800 border-emerald-500 ring-2 ring-emerald-200 font-black' },
+                  ].map(s => (
+                    <button
+                      key={s.val}
+                      type="button"
+                      onClick={() => setQuickUpdateStatus(s.val)}
+                      className={cn(
+                        "py-2 px-2 text-xs font-bold rounded-xl border transition-all text-center border-gray-200 cursor-pointer bg-white",
+                        s.color,
+                        quickUpdateStatus === s.val ? s.active : "text-gray-700"
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Template Chips */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                  Quick Note Templates
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "Spoke with client",
+                    "Call back tomorrow",
+                    "Interested in bulk quote",
+                    "Budget discussion ongoing",
+                    "Wrong number / No answer",
+                    "Ready for invoice"
+                  ].map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setQuickUpdateNote(prev => prev ? `${prev} - ${chip}` : chip);
+                      }}
+                      className="px-2.5 py-1 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 border border-gray-200 hover:border-emerald-300 text-gray-600 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Notes textarea */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Add Note (optional)</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                  Call Notes &amp; Discussion
+                </label>
                 <textarea
                   value={quickUpdateNote}
                   onChange={(e) => setQuickUpdateNote(e.target.value)}
-                  placeholder="e.g. Called — interested in jersey order of 50 pcs..."
+                  placeholder="Enter details of your phone call..."
                   rows={3}
-                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium text-gray-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-200 resize-none transition-all placeholder:text-gray-300"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-gray-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 resize-none transition-all placeholder:text-gray-400 leading-relaxed"
                 />
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-1">
+              {/* Switch to Full Edit Link */}
+              <div className="pt-1">
                 <button
-                  type="submit"
-                  disabled={isQuickSaving}
-                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-black rounded-xl text-sm transition-all border-none cursor-pointer active:scale-95 shadow-md shadow-emerald-200"
+                  type="button"
+                  onClick={() => {
+                    const leadToEdit = quickUpdateLead;
+                    setQuickUpdateLead(null);
+                    openFullEditModal(leadToEdit);
+                  }}
+                  className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-brand-primary rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border border-dashed border-gray-300 cursor-pointer transition-colors"
                 >
-                  {isQuickSaving ? 'Saving…' : 'Save Update'}
+                  <Edit size={13} /> Edit Full Lead Details (Name, Phone, Assignee) →
                 </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setQuickUpdateLead(null)}
-                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-all border-none cursor-pointer"
+                  className="w-1/3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border-none cursor-pointer"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isQuickSaving}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-black rounded-xl text-xs uppercase tracking-wider transition-all border-none cursor-pointer active:scale-95 shadow-md shadow-emerald-500/20"
+                >
+                  {isQuickSaving ? 'Saving…' : 'Save Update'}
                 </button>
               </div>
             </form>
@@ -1383,11 +1930,237 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
         </div>
       )}
 
-      {/* Add Lead Inline Modal Form */}
+      {/* ── Mobile App Compact Full Edit Lead Modal ── */}
+      {fullEditLead && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-[2.25rem] sm:rounded-[2.25rem] shadow-2xl w-full sm:max-w-lg max-h-[92vh] flex flex-col border border-gray-150 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 overflow-hidden text-left">
+            {/* Mobile swipe/grab pill */}
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+
+            {/* Modal Header */}
+            <div className="px-5 pt-3 pb-4 border-b border-gray-100 flex items-start justify-between gap-3 bg-gradient-to-b from-gray-50/70 to-white">
+              <div className="min-w-0">
+                <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary text-[9px] font-black uppercase tracking-wider rounded-md border border-brand-primary/20 block w-fit mb-1">
+                  Edit Lead Details
+                </span>
+                <h3 className="text-lg font-black text-gray-900 truncate leading-tight">{editName || 'Edit Lead'}</h3>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{editNumber || 'No phone'}</p>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {editNumber && (
+                  <>
+                    <a
+                      href={`tel:${editNumber}`}
+                      className="w-8 h-8 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 flex items-center justify-center transition-all shadow-xs"
+                      title="Call Customer"
+                    >
+                      <Phone size={14} />
+                    </a>
+                    <a
+                      href={`https://wa.me/${editNumber.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center transition-all shadow-xs"
+                      title="WhatsApp Message"
+                    >
+                      <MessageCircle size={14} />
+                    </a>
+                  </>
+                )}
+                <button
+                  onClick={() => setFullEditLead(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSaveFullEdit} className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Client Name */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Client Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g. Rajesh Kumar"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
+                  />
+                </div>
+
+                {/* Phone Number */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Phone Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editNumber}
+                    onChange={(e) => setEditNumber(e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
+                  />
+                </div>
+
+                {/* Company Name / Requirement */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Company / Requirement</label>
+                  <input
+                    type="text"
+                    value={editCompany}
+                    onChange={(e) => setEditCompany(e.target.value)}
+                    placeholder="e.g. Sports Club / 50 Jerseys"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
+                  />
+                </div>
+
+                {/* Location */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">City / Location</label>
+                  <input
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="e.g. Chennai, Tamil Nadu"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Lead Warmth / Type Selector */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Lead Type / Interest Level</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { val: 'Hot', label: '🔥 Hot (High Priority)', active: 'bg-red-50 text-red-800 border-red-400 ring-2 ring-red-200 font-black' },
+                    { val: 'Warm', label: '⚡ Warm (Moderate)', active: 'bg-amber-50 text-amber-800 border-amber-400 ring-2 ring-amber-200 font-black' },
+                    { val: 'Cold', label: '❄️ Cold (Prospect)', active: 'bg-blue-50 text-blue-800 border-blue-400 ring-2 ring-blue-200 font-black' },
+                  ].map(t => (
+                    <button
+                      key={t.val}
+                      type="button"
+                      onClick={() => setEditLeadType(t.val as any)}
+                      className={cn(
+                        "py-2 px-2 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer bg-white",
+                        editLeadType === t.val ? t.active : "text-gray-600 border-gray-200 hover:bg-gray-50"
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lead Status Selector */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Workflow Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { val: 'New', label: '🟡 New', active: 'bg-amber-50 text-amber-800 border-amber-400 ring-2 ring-amber-200 font-black' },
+                    { val: 'Called', label: '📞 Called', active: 'bg-indigo-50 text-indigo-800 border-indigo-400 ring-2 ring-indigo-200 font-black' },
+                    { val: 'Interested', label: '🔥 Interested', active: 'bg-red-50 text-red-800 border-red-400 ring-2 ring-red-200 font-black' },
+                    { val: 'Follow Up', label: '🔄 Follow Up', active: 'bg-blue-50 text-blue-800 border-blue-400 ring-2 ring-blue-200 font-black' },
+                    { val: 'Not Interested', label: '❌ Not Interested', active: 'bg-gray-100 text-gray-800 border-gray-400 ring-2 ring-gray-200 font-black' },
+                    { val: 'Converted', label: '✅ Converted', active: 'bg-emerald-50 text-emerald-800 border-emerald-500 ring-2 ring-emerald-200 font-black' },
+                  ].map(s => (
+                    <button
+                      key={s.val}
+                      type="button"
+                      onClick={() => setEditFullStatus(s.val)}
+                      className={cn(
+                        "py-2 px-2 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer bg-white",
+                        editFullStatus === s.val ? s.active : "text-gray-600 border-gray-200 hover:bg-gray-50"
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assignee Selection (if manager or can assign) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Assigned Executive / Agent</label>
+                {canAssign ? (
+                  <select
+                    value={editAssignedTo}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setEditAssignedTo(id);
+                      const agent = assignableAgents.find((a: any) => (a.id || a.uid) === id);
+                      setEditAssignedToName(agent ? agent.name : '');
+                    }}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 cursor-pointer"
+                  >
+                    <option value="">— Unassigned Pool —</option>
+                    {assignableAgents.map((agent: any) => (
+                      <option key={agent.id || agent.uid} value={agent.id || agent.uid}>
+                        {agent.name} ({agent.role || 'Staff'})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 flex items-center gap-2">
+                    <UserCheck size={14} className="text-emerald-600" />
+                    <span>{fullEditLead.assignedToName || 'Unassigned'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Call Record */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Add New Call Note (Optional)</label>
+                <textarea
+                  value={editFullNote}
+                  onChange={(e) => setEditFullNote(e.target.value)}
+                  placeholder="e.g. Spoke with client — confirmed order requirements. Ready for invoice."
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-gray-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 resize-none transition-all placeholder:text-gray-400 leading-relaxed"
+                />
+              </div>
+
+              {/* Past Call History */}
+              {fullEditLead.description && (
+                <div className="space-y-1 pt-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Previous Call History</label>
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 max-h-32 overflow-y-auto text-[11px] font-medium text-gray-700 whitespace-pre-wrap leading-relaxed">
+                    {fullEditLead.description}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2 sticky bottom-0 bg-white py-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setFullEditLead(null)}
+                  className="w-1/3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isFullSaving}
+                  className="flex-1 py-2.5 bg-brand-primary hover:bg-brand-primary/95 disabled:bg-brand-primary/50 text-white font-black rounded-xl text-xs uppercase tracking-wider transition-all border-none cursor-pointer active:scale-95 shadow-md shadow-brand-primary/20"
+                >
+                  {isFullSaving ? 'Saving Changes…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Lead Inline Modal Form (Mobile App Compact Model) */}
       {showAddLeadFormInline && (
-        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 text-left">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-[2.25rem] sm:rounded-[2.25rem] shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col border border-gray-150 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 overflow-hidden text-left">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Register New Prospect</span>
                 <h3 className="text-lg font-black text-gray-900">Add Lead</h3>
@@ -1400,13 +2173,13 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   setNewLeadLocation('');
                   setNewLeadType('Warm');
                 }}
-                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border-none cursor-pointer bg-transparent"
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
               >
-                <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+                <X size={16} />
               </button>
             </div>
             
-            <form onSubmit={handleAddNewLeadInline} className="p-6 space-y-4 text-left">
+            <form onSubmit={handleAddNewLeadInline} className="p-6 space-y-4 text-left overflow-y-auto flex-1">
               <div>
                 <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Name *</label>
                 <input
@@ -1415,7 +2188,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   placeholder="e.g. Rajesh Kumar"
                   value={newLeadName}
                   onChange={(e) => setNewLeadName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20"
                 />
               </div>
 
@@ -1427,18 +2200,18 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   placeholder="e.g. +91 9999999999"
                   value={newLeadPhone}
                   onChange={(e) => setNewLeadPhone(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 font-mono"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 font-mono font-bold text-gray-900"
                 />
               </div>
 
               <div>
-                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Location</label>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Location / City</label>
                 <input
                   type="text"
                   placeholder="e.g. New Delhi, India"
                   value={newLeadLocation}
                   onChange={(e) => setNewLeadLocation(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20"
                 />
               </div>
 
@@ -1447,7 +2220,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 <select
                   value={newLeadType}
                   onChange={(e) => setNewLeadType(e.target.value as any)}
-                  className="w-full bg-gray-50 border border-gray-150 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 cursor-pointer"
                 >
                   <option value="Hot">🔥 Hot (High Interest)</option>
                   <option value="Warm">⚡ Warm (Moderate Interest)</option>
@@ -1455,7 +2228,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                 </select>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-2 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1465,14 +2238,14 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     setNewLeadLocation('');
                     setNewLeadType('Warm');
                   }}
-                  className="flex-1 py-3 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
+                  className="w-1/3 py-2.5 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingNewLead}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                  className="flex-1 py-2.5 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
                 >
                   {isSubmittingNewLead ? 'Submitting...' : 'Save Lead'}
                 </button>
@@ -1482,11 +2255,12 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
         </div>
       )}
 
-      {/* Daniel's Online Leads Call Logs Detail Modal */}
+      {/* Online Leads Call Logs Detail Modal (Mobile App Compact Model) */}
       {showAdminLogsModal && selectedLeadForAdminLogs && (
-        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-150 animate-in fade-in zoom-in-95 duration-200 text-left">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-[2.25rem] sm:rounded-[2.25rem] shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col border border-gray-150 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 overflow-hidden text-left">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Call Log History</span>
                 <h3 className="text-lg font-black text-gray-900">{selectedLeadForAdminLogs.name}</h3>
@@ -1497,13 +2271,13 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   setShowAdminLogsModal(false);
                   setSelectedLeadForAdminLogs(null);
                 }}
-                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors border-none cursor-pointer bg-transparent"
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
               >
-                <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+                <X size={16} />
               </button>
             </div>
             
-            <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+            <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto flex-1">
               {selectedLeadForAdminLogs.description ? (
                 <div className="space-y-4">
                   {selectedLeadForAdminLogs.description.split('\n\n').map((entry, idx) => (
@@ -1517,28 +2291,40 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
               )}
             </div>
 
-            <div className="p-6 bg-gray-50 flex justify-end">
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-2 justify-end">
+              <button
+                onClick={() => {
+                  const leadToEdit = selectedLeadForAdminLogs;
+                  setShowAdminLogsModal(false);
+                  setSelectedLeadForAdminLogs(null);
+                  openFullEditModal(leadToEdit);
+                }}
+                className="px-4 py-2 bg-white text-brand-primary border border-brand-primary/20 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-brand-primary/5 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Edit size={12} /> Edit Lead
+              </button>
               <button
                 onClick={() => {
                   setShowAdminLogsModal(false);
                   setSelectedLeadForAdminLogs(null);
                 }}
-                className="px-6 py-2.5 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-primary/95 transition-all cursor-pointer border-none shadow-md"
+                className="px-5 py-2 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-primary/95 transition-all cursor-pointer border-none shadow-md"
               >
-                Close Logs
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Call Log Modal Form */}
+      {/* Add Call Log Modal Form (Mobile App Compact Model) */}
       {isAddLogOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-t-[2.25rem] sm:rounded-[2.25rem] shadow-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col border border-gray-150 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 overflow-hidden text-left">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-2.5 sm:hidden flex-shrink-0" />
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Record New Client Interaction</span>
+                <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest block mb-0.5">Record Client Interaction</span>
                 <h3 className="text-lg font-black text-gray-900">Add Call Log</h3>
               </div>
               <button
@@ -1546,13 +2332,13 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   setIsAddLogOpen(false);
                   resetAddLogForm();
                 }}
-                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
               >
-                <Plus className="w-5 h-5 rotate-45 text-gray-400" />
+                <X size={16} />
               </button>
             </div>
             
-            <form onSubmit={handleAddCallLog} className="p-6 space-y-4 text-left">
+            <form onSubmit={handleAddCallLog} className="p-6 space-y-4 text-left overflow-y-auto flex-1">
               <div>
                 <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Client Name *</label>
                 <input
@@ -1561,7 +2347,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   value={addLogName}
                   onChange={(e) => setAddLogName(e.target.value)}
                   placeholder="e.g. Rajesh Kumar"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-bold text-gray-800"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 font-bold text-gray-800"
                 />
               </div>
 
@@ -1573,7 +2359,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   value={addLogPhone}
                   onChange={(e) => setAddLogPhone(e.target.value)}
                   placeholder="e.g. +91 98765 43210"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-mono text-gray-800 font-bold"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 font-mono text-gray-800 font-bold"
                 />
               </div>
 
@@ -1584,7 +2370,7 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   value={addLogRequirement}
                   onChange={(e) => setAddLogRequirement(e.target.value)}
                   placeholder="e.g. 50 Customized Hoodies"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-bold text-gray-800"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 font-bold text-gray-800"
                 />
               </div>
 
@@ -1595,25 +2381,25 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                   value={addLogNotes}
                   onChange={(e) => setAddLogNotes(e.target.value)}
                   placeholder="Enter details of conversation..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary font-medium text-gray-800"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-primary/20 font-medium text-gray-800 resize-none"
                 />
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-2 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAddLogOpen(false);
                     resetAddLogForm();
                   }}
-                  className="flex-1 py-3 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
+                  className="w-1/3 py-2.5 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isAddingLog}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                  className="flex-1 py-2.5 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
                 >
                   {isAddingLog ? 'Submitting...' : 'Save Call log'}
                 </button>
