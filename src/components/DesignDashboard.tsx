@@ -262,6 +262,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         assignedDesigner: o.assignedDesigner || 'Unassigned',
         claimedBy: o.claimedBy,
         claimedByName: o.claimedByName,
+        claimedAt: o.claimedAt,
+        designClaimedAt: o.designClaimedAt,
+        designCompletedAt: o.designCompletedAt,
+        designDeadline: o.designDeadline,
+        designSlaMinutes: o.designSlaMinutes,
+        updatedAt: o.updatedAt,
         createdByName: o.createdByName || '',
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
@@ -274,6 +280,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         staffPdfs: o.staffPdfs || [],
         marketing_image: o.marketing_image || '',
         accountsAttachments: [],
+        sentByAccounts: false,
         sizeBreakdown: o.sizeBreakdown || [],
         designSentToMarketing: o.designSentToMarketing || o.details?.designSentToMarketing,
         designSentToDigitizer: o.designSentToDigitizer || o.details?.designSentToDigitizer,
@@ -308,6 +315,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         assignedDesigner: c.staffName || 'Unassigned',
         claimedBy: undefined,
         claimedByName: c.staffName || undefined,
+        claimedAt: c.claimedAt,
+        designClaimedAt: c.claimedAt,
+        designCompletedAt: undefined,
+        designDeadline: c.claimedAt ? c.claimedAt + 120 * 60 * 1000 : undefined,
+        designSlaMinutes: 120,
+        updatedAt: c.createdAt,
         createdByName: c.staffName || 'Staff',
         status: isCompleted ? OrderStatus.ORDER_MANAGEMENT : OrderStatus.DESIGN, // simulate pipeline
         isHold: false,
@@ -320,6 +333,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         staffPdfs: c.pdfAttachments || [],
         marketing_image: '',
         accountsAttachments: [],
+        sentByAccounts: false,
         sizeBreakdown: []
       };
     });
@@ -361,6 +375,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         assignedDesigner: o.assignedDesigner || 'Unassigned',
         claimedBy: o.claimedBy,
         claimedByName: o.claimedByName,
+        claimedAt: o.claimedAt,
+        designClaimedAt: o.designClaimedAt,
+        designCompletedAt: o.designCompletedAt,
+        designDeadline: o.designDeadline,
+        designSlaMinutes: o.designSlaMinutes,
+        updatedAt: o.updatedAt,
         createdByName: o.createdByName || '',
         status: o.status,
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
@@ -374,6 +394,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         staffPdfs: o.staffPdfs || [],
         marketing_image: o.marketing_image || '',
         accountsAttachments: o.accountsAttachments || [],
+        sentByAccounts: true,
         sizeBreakdown: o.sizeBreakdown || [],
         designSentToMarketing: o.designSentToMarketing || o.details?.designSentToMarketing,
         designSentToDigitizer: o.designSentToDigitizer || o.details?.designSentToDigitizer,
@@ -411,6 +432,62 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       ['production', 'delivery', 'delivered'].includes(String(item?.status || '').toLowerCase()) ||
       (item?.isCompleted && !isItemSentToDigitizer(item))
     );
+  };
+
+  // Helper: Check if an item was created or updated today
+  const isTodayItem = (item: any) => {
+    if (!item) return false;
+    const now = new Date();
+    const checkTimestamp = (ts?: number | string) => {
+      if (!ts) return false;
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear() === now.getFullYear() &&
+             d.getMonth() === now.getMonth() &&
+             d.getDate() === now.getDate();
+    };
+    return checkTimestamp(item.createdAt) || checkTimestamp(item.claimedAt) || checkTimestamp(item.designClaimedAt) || checkTimestamp(item.updatedAt);
+  };
+
+  // Helper: Check if an item is in revise / rework flow
+  const isReviseFlowItem = (item: any) => {
+    if (!item) return false;
+    if (item.isRework) return true;
+    if (item.reworkNotes && String(item.reworkNotes).trim().length > 0) return true;
+    if (item.status === OrderStatus.DESIGN && (item.original_design_file || item.original_design_zip || (item.designNotes && item.designNotes.length > 0))) {
+      return true;
+    }
+    const notesStr = String(item.notes || item.designNotes || '').toLowerCase();
+    if (notesStr.includes('[rework') || notesStr.includes('correction requested') || notesStr.includes('sent back from marketing') || notesStr.includes('revise')) {
+      return true;
+    }
+    return false;
+  };
+
+  // Helper: Determine if SLA Timer should be shown for this queue/item
+  // Rules:
+  // 1. Accounts Forwarded Queue -> DO NOT SHOW timer.
+  // 2. Marketing Forwarded Queue -> Show timer for Today orders and Revise flow orders.
+  const shouldShowTimer = (item: any) => {
+    if (activeChannel === 'accounts_queue') return false;
+    if (item?.sentByAccounts) return false;
+    return isTodayItem(item) || isReviseFlowItem(item);
+  };
+
+  // Helper: Get running start timestamp for SLA timer (especially for Revise flow & Today orders)
+  const getEffectiveClaimedAt = (item: any) => {
+    if (!item) return undefined;
+    if (item.claimedAt || item.designClaimedAt) {
+      return item.claimedAt || item.designClaimedAt;
+    }
+    // For revise flow items or today items, start timer countdown from when action occurred
+    if (isReviseFlowItem(item)) {
+      return item.updatedAt || item.createdAt || Date.now();
+    }
+    if (isTodayItem(item)) {
+      return item.createdAt || item.updatedAt || Date.now();
+    }
+    return undefined;
   };
 
   // Filter lists based on primary tab and subsection
@@ -1314,24 +1391,28 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1 w-fit mx-auto">
                               ⭐ Assigned to You
                             </span>
-                            <DesignTaskTimer
-                              claimedAt={item.claimedAt || item.designClaimedAt}
-                              completedAt={item.designCompletedAt}
-                              isCompleted={item.isCompleted}
-                              designerName={item.assignedDesigner}
-                            />
+                            {shouldShowTimer(item) && (
+                              <DesignTaskTimer
+                                claimedAt={getEffectiveClaimedAt(item)}
+                                completedAt={item.designCompletedAt}
+                                isCompleted={item.isCompleted}
+                                designerName={item.assignedDesigner}
+                              />
+                            )}
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-1">
                             <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-250 flex items-center justify-center gap-1 w-fit mx-auto" title={`Claimed by ${item.assignedDesigner}`}>
                               🔒 {item.assignedDesigner}
                             </span>
-                            <DesignTaskTimer
-                              claimedAt={item.claimedAt || item.designClaimedAt}
-                              completedAt={item.designCompletedAt}
-                              isCompleted={item.isCompleted}
-                              designerName={item.assignedDesigner}
-                            />
+                            {shouldShowTimer(item) && (
+                              <DesignTaskTimer
+                                claimedAt={getEffectiveClaimedAt(item)}
+                                completedAt={item.designCompletedAt}
+                                isCompleted={item.isCompleted}
+                                designerName={item.assignedDesigner}
+                              />
+                            )}
                           </div>
                         )}
                       </td>
@@ -1514,24 +1595,28 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                           <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[9px] font-black uppercase">
                             ⭐ Assigned to You
                           </span>
-                          <DesignTaskTimer
-                            claimedAt={item.claimedAt || item.designClaimedAt}
-                            completedAt={item.designCompletedAt}
-                            isCompleted={item.isCompleted}
-                            designerName={item.assignedDesigner}
-                          />
+                          {shouldShowTimer(item) && (
+                            <DesignTaskTimer
+                              claimedAt={getEffectiveClaimedAt(item)}
+                              completedAt={item.designCompletedAt}
+                              isCompleted={item.isCompleted}
+                              designerName={item.assignedDesigner}
+                            />
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-250 rounded text-[9px] font-bold uppercase">
                             🔒 {item.assignedDesigner}
                           </span>
-                          <DesignTaskTimer
-                            claimedAt={item.claimedAt || item.designClaimedAt}
-                            completedAt={item.designCompletedAt}
-                            isCompleted={item.isCompleted}
-                            designerName={item.assignedDesigner}
-                          />
+                          {shouldShowTimer(item) && (
+                            <DesignTaskTimer
+                              claimedAt={getEffectiveClaimedAt(item)}
+                              completedAt={item.designCompletedAt}
+                              isCompleted={item.isCompleted}
+                              designerName={item.assignedDesigner}
+                            />
+                          )}
                         </div>
                       )}
                     </div>
@@ -1643,14 +1728,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
             {/* Modal body */}
             <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              {/* 1-Hour SLA Task Timer Header Bar */}
-              <DesignTaskTimer
-                claimedAt={selectedOrder.claimedAt || selectedOrder.designClaimedAt}
-                completedAt={selectedOrder.designCompletedAt}
-                isCompleted={Boolean(selectedOrder.designCompleted)}
-                variant="bar"
-                designerName={selectedOrder.assignedDesigner}
-              />
+              {/* 2-Hour SLA Task Timer Header Bar */}
+              {shouldShowTimer(selectedOrder) && (
+                <DesignTaskTimer
+                  claimedAt={getEffectiveClaimedAt(selectedOrder)}
+                  completedAt={selectedOrder.designCompletedAt}
+                  isCompleted={Boolean(selectedOrder.designCompleted)}
+                  variant="bar"
+                  designerName={selectedOrder.assignedDesigner}
+                />
+              )}
 
               {/* Hold Alert Notification Banner */}
               {selectedOrder.status === OrderStatus.HOLD && (

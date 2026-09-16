@@ -49,6 +49,12 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         if (hadPriorDesign) {
           updates.isRework = true;
           updates.reworkNotes = `Correction/update requested by Marketing on ${new Date().toLocaleDateString()}`;
+          updates.claimedAt = Date.now();
+          updates.designClaimedAt = Date.now();
+          updates.designDeadline = Date.now() + 120 * 60 * 1000;
+          updates.designSlaMinutes = 120;
+          updates.designCompleted = false;
+          updates.designCompletedAt = undefined;
         }
         if (isAdmin) {
           updates.isAdminOrder = true;
@@ -130,6 +136,12 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
         if (hadPriorDesign) {
           updates.isRework = true;
           updates.reworkNotes = `Updated & forwarded to Design on ${new Date().toLocaleDateString()}`;
+          updates.claimedAt = Date.now();
+          updates.designClaimedAt = Date.now();
+          updates.designDeadline = Date.now() + 120 * 60 * 1000;
+          updates.designSlaMinutes = 120;
+          updates.designCompleted = false;
+          updates.designCompletedAt = undefined;
         }
       } else if (targetDestination === 'accounts') {
         updates.status = OrderStatus.ACCOUNTS;
@@ -224,40 +236,12 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   <MessageSquare size={14} /> WhatsApp
                 </button>
                 {onUpdateOrder && (
-                  <>
-                    <button
-                      disabled={isProcessingAction}
-                      onClick={() => handleDirectForward('design')}
-                      className={cn(
-                        "px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50",
-                        order.status === OrderStatus.DESIGN
-                          ? "bg-purple-700 hover:bg-purple-800 ring-2 ring-purple-300"
-                          : "bg-purple-600 hover:bg-purple-700"
-                      )}
-                      title="Send or re-send this order immediately to the Designs team"
-                    >
-                      <Sparkles size={14} /> {order.status === OrderStatus.DESIGN ? 'Re-send to Designs' : 'Send to Designs'}
-                    </button>
-                    <button
-                      disabled={isProcessingAction}
-                      onClick={() => handleDirectForward('accounts')}
-                      className={cn(
-                        "px-4 sm:px-5 py-2.5 sm:py-3 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-md flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50",
-                        order.status === OrderStatus.ACCOUNTS
-                          ? "bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-300"
-                          : "bg-amber-500 hover:bg-amber-600"
-                      )}
-                      title="Send or re-send this order immediately to the Accounts team"
-                    >
-                      <CheckCircle size={14} /> {order.status === OrderStatus.ACCOUNTS ? 'Re-send to Accounts' : 'Send to Accounts'}
-                    </button>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="px-4 sm:px-6 py-2.5 sm:py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md cursor-pointer border-none"
-                    >
-                      Edit Details
-                    </button>
-                  </>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-brand-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md cursor-pointer border-none"
+                  >
+                    Edit Details
+                  </button>
                 )}
                 {onEdit && (
                   <button
@@ -1093,32 +1077,6 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <div className="flex flex-col gap-2">
-                          <button
-                            disabled={isProcessingAction}
-                            onClick={() => handleDirectForward('design')}
-                            className={cn(
-                              "w-full py-3 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer",
-                              order.status === OrderStatus.DESIGN
-                                ? "bg-purple-700 hover:bg-purple-800 ring-2 ring-purple-400"
-                                : "bg-purple-600 hover:bg-purple-700"
-                            )}
-                          >
-                            <Sparkles size={14} /> {order.status === OrderStatus.DESIGN ? 'Re-send to Designs' : 'Send to Designs'}
-                          </button>
-                          <button
-                            disabled={isProcessingAction}
-                            onClick={() => handleDirectForward('accounts')}
-                            className={cn(
-                              "w-full py-3 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-black cursor-pointer",
-                              order.status === OrderStatus.ACCOUNTS
-                                ? "bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-400"
-                                : "bg-amber-500 hover:bg-amber-600"
-                            )}
-                          >
-                            <CheckCircle size={14} /> {order.status === OrderStatus.ACCOUNTS ? 'Re-send to Accounts' : 'Send to Accounts'}
-                          </button>
-                        </div>
                         <button
                           disabled={isProcessingAction}
                           onClick={async () => {

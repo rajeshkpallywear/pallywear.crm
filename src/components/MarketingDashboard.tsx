@@ -140,6 +140,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         if (hadPriorDesign) {
           updates.isRework = true;
           updates.reworkNotes = `Correction requested by Marketing on ${new Date().toLocaleDateString()}`;
+          updates.claimedAt = Date.now();
+          updates.designClaimedAt = Date.now();
+          updates.designDeadline = Date.now() + 120 * 60 * 1000;
+          updates.designSlaMinutes = 120;
+          updates.designCompleted = false;
+          updates.designCompletedAt = undefined;
         }
         // Always ensure sentByAccounts is false when dispatched from Marketing
         updates.sentByAccounts = false;
@@ -536,6 +542,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       if (hadPriorDesign) {
         destinationUpdates.isRework = true;
         destinationUpdates.reworkNotes = `Correction/update requested by Marketing on ${new Date().toLocaleDateString()}`;
+        destinationUpdates.claimedAt = Date.now();
+        destinationUpdates.designClaimedAt = Date.now();
+        destinationUpdates.designDeadline = Date.now() + 120 * 60 * 1000;
+        destinationUpdates.designSlaMinutes = 120;
+        destinationUpdates.designCompleted = false;
+        destinationUpdates.designCompletedAt = undefined;
       }
     } else if (targetDestination === 'accounts') {
       destinationUpdates.status = OrderStatus.ACCOUNTS;
@@ -1067,38 +1079,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   🎨 Unassigned
                                 </span>
                               )}
-                              <div className="flex gap-1.5 mt-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDirectForward(order.id, 'design');
-                                  }}
-                                  className={cn(
-                                    "text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider",
-                                    order.status === OrderStatus.DESIGN
-                                      ? "text-white bg-purple-600 shadow-xs"
-                                      : "text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white border border-purple-200"
-                                  )}
-                                  title="Send or re-send this order to Designs Queue immediately"
-                                >
-                                  {order.status === OrderStatus.DESIGN ? '🎨 Designs' : 'Designs'}
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDirectForward(order.id, 'accounts');
-                                  }}
-                                  className={cn(
-                                    "text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider",
-                                    order.status === OrderStatus.ACCOUNTS
-                                      ? "text-white bg-amber-600 shadow-xs"
-                                      : "text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200"
-                                  )}
-                                  title="Send or re-send this order to Accounts Queue immediately"
-                                >
-                                  {order.status === OrderStatus.ACCOUNTS ? '💳 Accounts' : 'Accounts'}
-                                </button>
-                              </div>
                             </>
                           )}
                         </div>
@@ -1245,34 +1225,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             </div>
                           )}
 
-                          <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => handleDirectForward(order.id, 'design')}
-                              className={cn(
-                                "py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center",
-                                order.status === OrderStatus.DESIGN
-                                  ? "bg-purple-600 text-white shadow-xs border-none"
-                                  : "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
-                              )}
-                              title="Send or re-send to Designs queue immediately"
-                            >
-                              {order.status === OrderStatus.DESIGN ? '🎨 Designs (Active)' : '🎨 To Designs'}
-                            </button>
-                            <button
-                              onClick={() => handleDirectForward(order.id, 'accounts')}
-                              className={cn(
-                                "py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center",
-                                order.status === OrderStatus.ACCOUNTS
-                                  ? "bg-amber-600 text-white shadow-xs border-none"
-                                  : "bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
-                              )}
-                              title="Send or re-send to Accounts queue immediately"
-                            >
-                              {order.status === OrderStatus.ACCOUNTS ? '💳 Accounts (Active)' : '💳 To Accounts'}
-                            </button>
+                          <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => setSelectedHubOrder(order)}
-                              className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                              className="w-full py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
                             >
                               View & Edit Details
                             </button>
