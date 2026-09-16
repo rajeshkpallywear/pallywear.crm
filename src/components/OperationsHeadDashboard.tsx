@@ -28,7 +28,8 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedWorkflowTab, setSelectedWorkflowTab] = useState<'all' | 'sla_tasks' | 'design_completed' | 'rework' | 'order_management' | 'digitizer_completed' | 'production_completed' | 'delivery'>('all');
+  const [selectedWorkflowTab, setSelectedWorkflowTab] = useState<'all' | 'sla_tasks' | 'design_completed' | 'rework' | 'order_management' | 'digitizer_completed' | 'production_completed' | 'delivery' | 'inventory'>('all');
+  const [selectedSubTab, setSelectedSubTab] = useState<string>('open_to_claim');
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
   const [slaDesignerFilter, setSlaDesignerFilter] = useState<string>('all');
@@ -81,17 +82,69 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       o.designRework === true ||
       (o.reworkNotes && String(o.reworkNotes).trim().length > 0) ||
       String(o.notes || '').toLowerCase().includes('rework') ||
-      String(o.notes || '').toLowerCase().includes('correction')
+      String(o.notes || '').toLowerCase().includes('correction') ||
+      String(o.designNotes || '').toLowerCase().includes('rework')
     );
   };
 
-  // 3. How many order in Order Management
+  // 3. Admin order detection
+  const isItemAdminOrder = (o: Order) => {
+    if (o.isAdminOrder || (o as any).sentByAdmin) return true;
+    const creator = String(o.createdByName || o.createdBy || '').toLowerCase();
+    if (creator.includes('admin') || creator.includes('administrator')) return true;
+    const notesStr = String(o.notes || o.designNotes || '').toLowerCase();
+    if (notesStr.includes('[admin') || notesStr.includes('admin created') || notesStr.includes('admin order')) return true;
+    return false;
+  };
+
+  // 4. Design Unclaimed vs Claimed
+  const isUnclaimedDesignItem = (o: Order) => {
+    if (isDesignCompleted(o) || isOrderRework(o)) return false;
+    if (o.claimedBy) return false;
+    if (!o.assignedDesigner) return true;
+    const clean = String(o.assignedDesigner).trim().toLowerCase();
+    return clean === 'unassigned' || clean === 'designer assigned' || clean === '' || clean.includes('staff');
+  };
+
+  const isClaimedDesignItem = (o: Order) => {
+    if (isDesignCompleted(o) || isOrderRework(o)) return false;
+    if (isUnclaimedDesignItem(o)) return false;
+    return Boolean(
+      o.claimedBy ||
+      o.claimedByName ||
+      o.claimedAt ||
+      o.designClaimedAt ||
+      (o.assignedDesigner && o.assignedDesigner !== 'Unassigned')
+    );
+  };
+
+  const isDesignHold = (o: Order) => {
+    const s = String(o.status || '').toLowerCase();
+    const prev = String(o.previousStatus || '').toLowerCase();
+    return (s === 'hold' && (prev === 'design' || !prev)) || Boolean(o.details?.designHold) || Boolean((o as any).designHold);
+  };
+
+  // 5. How many order in Order Management
   const isInOrderManagement = (o: Order) => {
     const s = String(o.status || '').toLowerCase();
     return s === 'order_management' || s === 'ordermanagement' || o.status === OrderStatus.ORDER_MANAGEMENT;
   };
 
-  // 4. How many order digitizer work complete
+  // 6. How many order digitizer work complete
+  const isOrderForDigitizer = (o: Order) => {
+    return Boolean(
+      o.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === 'true' ||
+      o.status === OrderStatus.DIGITIZER ||
+      o.digitizerCompleted === true ||
+      o.details?.digitizerCompleted === true ||
+      o.details?.hasMachineFiles === true ||
+      (o.machineFiles && o.machineFiles.length > 0) ||
+      Boolean(o.embroidery_file)
+    );
+  };
+
   const isDigitizerCompleted = (o: Order) => {
     return Boolean(
       o.digitizerCompleted === true ||
@@ -106,7 +159,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     );
   };
 
-  // 5. How many orders complete in product (production)
+  // 7. How many orders complete in product (production)
   const isProductionCompleted = (o: Order) => {
     const s = String(o.status || '').toLowerCase();
     return Boolean(
@@ -120,7 +173,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     );
   };
 
-  // 6. How many delivery show them
+  // 8. How many delivery show them
   const isInDelivery = (o: Order) => {
     const s = String(o.status || '').toLowerCase();
     return Boolean(
@@ -133,15 +186,79 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     );
   };
 
-  // Metrics lists
-  const designCompletedOrders = useMemo(() => baseFilteredOrders.filter(isDesignCompleted), [baseFilteredOrders]);
-  const reworkOrders = useMemo(() => baseFilteredOrders.filter(isOrderRework), [baseFilteredOrders]);
+  // ─── Sub-Tab Derived Collections ──────────────────────────────────────────
+  // DESIGNS SUB-LISTS:
+  const unclaimedDesignOrders = useMemo(() => baseFilteredOrders.filter(isUnclaimedDesignItem), [baseFilteredOrders]);
+  const claimedDesignOrders = useMemo(() => baseFilteredOrders.filter(isClaimedDesignItem), [baseFilteredOrders]);
+  const holdDesignOrders = useMemo(() => baseFilteredOrders.filter(isDesignHold), [baseFilteredOrders]);
+  const doneDesignOrders = useMemo(() => baseFilteredOrders.filter(o => isDesignCompleted(o) && !isOrderRework(o)), [baseFilteredOrders]);
+  const reworkDesignOrders = useMemo(() => baseFilteredOrders.filter(isOrderRework), [baseFilteredOrders]);
+  const adminDesignOrders = useMemo(() => baseFilteredOrders.filter(isItemAdminOrder), [baseFilteredOrders]);
+  const allDesignOrders = useMemo(() => baseFilteredOrders.filter(o =>
+    isDesignCompleted(o) ||
+    isOrderRework(o) ||
+    o.status === OrderStatus.DESIGN ||
+    (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN) ||
+    Boolean(o.assignedDesigner && o.assignedDesigner !== 'Unassigned') ||
+    Boolean(o.claimedAt || o.designClaimedAt)
+  ), [baseFilteredOrders]);
+
+  // ORDER MANAGEMENT SUB-LISTS:
+  const omLiveQueueOrders = useMemo(() => baseFilteredOrders.filter(o => (String(o.status || '').toLowerCase() === 'order_management' || o.status === OrderStatus.ORDER_MANAGEMENT) && o.status !== OrderStatus.HOLD), [baseFilteredOrders]);
+  const omInProductionOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.PRODUCTION || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)), [baseFilteredOrders]);
+  const omHoldOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.ORDER_MANAGEMENT || !o.previousStatus)), [baseFilteredOrders]);
+  const omCompletedOrders = useMemo(() => baseFilteredOrders.filter(o => [OrderStatus.PRODUCTION, OrderStatus.DELIVERY, OrderStatus.DELIVERED].includes(o.status) || (o.status === OrderStatus.HOLD && [OrderStatus.PRODUCTION, OrderStatus.DELIVERY].includes(o.previousStatus as any))), [baseFilteredOrders]);
   const orderManagementOrders = useMemo(() => baseFilteredOrders.filter(isInOrderManagement), [baseFilteredOrders]);
-  const digitizerCompletedOrders = useMemo(() => baseFilteredOrders.filter(isDigitizerCompleted), [baseFilteredOrders]);
+
+  // DIGITIZER SUB-LISTS:
+  const digitizerPendingOrders = useMemo(() => baseFilteredOrders.filter(o => isOrderForDigitizer(o) && !isDigitizerCompleted(o)), [baseFilteredOrders]);
+  const digitizerDoneOrders = useMemo(() => baseFilteredOrders.filter(isDigitizerCompleted), [baseFilteredOrders]);
+  const allDigitizerOrders = useMemo(() => baseFilteredOrders.filter(o => isOrderForDigitizer(o) || isDigitizerCompleted(o)), [baseFilteredOrders]);
+
+  // PRODUCTION SUB-LISTS:
+  const productionRecentOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.PRODUCTION && !o.details?.productionStarted), [baseFilteredOrders]);
+  const productionProcessingOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.PRODUCTION && o.details?.productionStarted === true), [baseFilteredOrders]);
+  const productionHoldOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION), [baseFilteredOrders]);
+  const productionDoneOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.DELIVERED || isProductionCompleted(o) || o.details?.productionCompleted === true), [baseFilteredOrders]);
   const productionCompletedOrders = useMemo(() => baseFilteredOrders.filter(isProductionCompleted), [baseFilteredOrders]);
+  const allProductionOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.PRODUCTION || isProductionCompleted(o) || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION)), [baseFilteredOrders]);
+
+  // DELIVERY SUB-LISTS:
+  const inTransitOrders = useMemo(() => baseFilteredOrders.filter(o => (o.status === OrderStatus.DELIVERY || o.deliveryStatus === 'in_transit') && o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.HOLD), [baseFilteredOrders]);
+  const deliveryHoldOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DELIVERY || !o.previousStatus)), [baseFilteredOrders]);
+  const deliveredSuccessOrders = useMemo(() => baseFilteredOrders.filter(o => o.status === OrderStatus.DELIVERED || o.deliveryStatus === 'delivered'), [baseFilteredOrders]);
   const deliveryOrders = useMemo(() => baseFilteredOrders.filter(isInDelivery), [baseFilteredOrders]);
-  const deliveredSuccessOrders = useMemo(() => baseFilteredOrders.filter(o => String(o.status || '').toLowerCase() === 'delivered' || o.status === OrderStatus.DELIVERED), [baseFilteredOrders]);
-  const inTransitOrders = useMemo(() => baseFilteredOrders.filter(o => String(o.status || '').toLowerCase() === 'delivery' || o.status === OrderStatus.DELIVERY), [baseFilteredOrders]);
+
+  // INVENTORY SUB-LISTS:
+  const inventoryIntakeOrders = useMemo(() => baseFilteredOrders.filter(o =>
+    o.status !== OrderStatus.DELIVERED &&
+    (o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY) &&
+    !o.details?.sentToDeliveryDashboard &&
+    o.details?.dispatchType !== 'in_house' &&
+    o.details?.dispatchType !== 'courier' &&
+    !o.details?.courierName
+  ), [baseFilteredOrders]);
+
+  const inventoryCourierOrders = useMemo(() => baseFilteredOrders.filter(o =>
+    o.status !== OrderStatus.DELIVERED &&
+    o.status === OrderStatus.DELIVERY &&
+    (o.details?.dispatchType === 'courier' || Boolean(o.details?.courierName))
+  ), [baseFilteredOrders]);
+
+  const inventoryShippedOrders = useMemo(() => baseFilteredOrders.filter(o =>
+    o.status === OrderStatus.DELIVERED || o.deliveryStatus === 'delivered'
+  ), [baseFilteredOrders]);
+
+  const inventoryAllOrders = useMemo(() => {
+    const map = new Map<string, Order>();
+    [...inventoryIntakeOrders, ...inventoryCourierOrders, ...inventoryShippedOrders].forEach(o => map.set(o.id, o));
+    return Array.from(map.values());
+  }, [inventoryIntakeOrders, inventoryCourierOrders, inventoryShippedOrders]);
+
+  // General Metrics
+  const designCompletedOrders = doneDesignOrders;
+  const reworkOrders = useMemo(() => baseFilteredOrders.filter(isOrderRework), [baseFilteredOrders]);
+  const digitizerCompletedOrders = digitizerDoneOrders;
 
   // All design studio related orders
   const allDesignStudioOrders = useMemo(() => {
@@ -176,6 +293,71 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     });
     return Array.from(set);
   }, [allDesignStudioOrders]);
+
+  // Sub-tabs configuration for current workflow stage
+  const currentSubTabs = useMemo(() => {
+    if (selectedWorkflowTab === 'design_completed') {
+      return [
+        { id: 'open_to_claim', label: 'Open to Claim', count: unclaimedDesignOrders.length, icon: Clock },
+        { id: 'my_claimed', label: 'My Claimed Tasks', count: claimedDesignOrders.length, icon: Users },
+        { id: 'hold', label: 'On Hold', count: holdDesignOrders.length, icon: AlertCircle },
+        { id: 'done', label: 'Done', count: doneDesignOrders.length, icon: CheckCheck },
+        { id: 'rework', label: 'Designs Rework', count: reworkDesignOrders.length, icon: RefreshCw },
+        { id: 'admin_order', label: 'Admin Order', count: adminDesignOrders.length, icon: ShieldCheck },
+        { id: 'all', label: 'All Designs', count: allDesignOrders.length, icon: Palette }
+      ];
+    }
+    if (selectedWorkflowTab === 'order_management') {
+      return [
+        { id: 'live_queue', label: 'Live Queue', count: omLiveQueueOrders.length, icon: Clock },
+        { id: 'in_production', label: 'In Production', count: omInProductionOrders.length, icon: Factory },
+        { id: 'hold', label: 'On Hold', count: omHoldOrders.length, icon: AlertCircle },
+        { id: 'completed', label: 'Completed', count: omCompletedOrders.length, icon: CheckCircle2 },
+        { id: 'all', label: 'All OM', count: orderManagementOrders.length, icon: Layers }
+      ];
+    }
+    if (selectedWorkflowTab === 'digitizer_completed') {
+      return [
+        { id: 'pending', label: 'Pending', count: digitizerPendingOrders.length, icon: Clock },
+        { id: 'done', label: 'Done', count: digitizerDoneOrders.length, icon: CheckCheck },
+        { id: 'all', label: 'All Digitizing', count: allDigitizerOrders.length, icon: Scissors }
+      ];
+    }
+    if (selectedWorkflowTab === 'production_completed') {
+      return [
+        { id: 'recent', label: 'Recent', count: productionRecentOrders.length, icon: Package },
+        { id: 'processing', label: 'Processing', count: productionProcessingOrders.length, icon: Clock },
+        { id: 'hold', label: 'Hold', count: productionHoldOrders.length, icon: AlertCircle },
+        { id: 'done', label: 'Done', count: productionDoneOrders.length, icon: CheckCheck },
+        { id: 'all', label: 'All Production', count: allProductionOrders.length, icon: Factory }
+      ];
+    }
+    if (selectedWorkflowTab === 'delivery') {
+      return [
+        { id: 'in_transit', label: 'In Transit', count: inTransitOrders.length, icon: Truck },
+        { id: 'hold', label: 'Hold', count: deliveryHoldOrders.length, icon: AlertCircle },
+        { id: 'delivered', label: 'Delivered', count: deliveredSuccessOrders.length, icon: CheckCheck },
+        { id: 'all', label: 'All Delivery', count: deliveryOrders.length, icon: Truck }
+      ];
+    }
+    if (selectedWorkflowTab === 'inventory') {
+      return [
+        { id: 'intake', label: 'Intake Queue', count: inventoryIntakeOrders.length, icon: Layers },
+        { id: 'courier', label: 'Courier Shipping', count: inventoryCourierOrders.length, icon: Truck },
+        { id: 'shipped', label: 'Shipped Archive', count: inventoryShippedOrders.length, icon: CheckCheck },
+        { id: 'all', label: 'All Inventory', count: inventoryAllOrders.length, icon: Package }
+      ];
+    }
+    return [];
+  }, [
+    selectedWorkflowTab,
+    unclaimedDesignOrders, claimedDesignOrders, holdDesignOrders, doneDesignOrders, reworkDesignOrders, adminDesignOrders, allDesignOrders,
+    omLiveQueueOrders, omInProductionOrders, omHoldOrders, omCompletedOrders, orderManagementOrders,
+    digitizerPendingOrders, digitizerDoneOrders, allDigitizerOrders,
+    productionRecentOrders, productionProcessingOrders, productionHoldOrders, productionDoneOrders, allProductionOrders,
+    inTransitOrders, deliveryHoldOrders, deliveredSuccessOrders, deliveryOrders,
+    inventoryIntakeOrders, inventoryCourierOrders, inventoryShippedOrders, inventoryAllOrders
+  ]);
 
   // Filtered SLA tasks for dedicated monitor
   const filteredSlaTasks = useMemo(() => {
@@ -248,15 +430,47 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     return Object.values(staffMap).sort((a, b) => b.totalOrders - a.totalOrders);
   }, [baseFilteredOrders]);
 
-  // Current active table orders depending on tab & search
+  // Current active table orders depending on tab & sub-tab & search
   const tableOrders = useMemo(() => {
     let list: Order[] = baseFilteredOrders;
-    if (selectedWorkflowTab === 'design_completed') list = designCompletedOrders;
-    else if (selectedWorkflowTab === 'rework') list = reworkOrders;
-    else if (selectedWorkflowTab === 'order_management') list = orderManagementOrders;
-    else if (selectedWorkflowTab === 'digitizer_completed') list = digitizerCompletedOrders;
-    else if (selectedWorkflowTab === 'production_completed') list = productionCompletedOrders;
-    else if (selectedWorkflowTab === 'delivery') list = deliveryOrders;
+
+    if (selectedWorkflowTab === 'design_completed') {
+      if (selectedSubTab === 'open_to_claim') list = unclaimedDesignOrders;
+      else if (selectedSubTab === 'my_claimed') list = claimedDesignOrders;
+      else if (selectedSubTab === 'hold') list = holdDesignOrders;
+      else if (selectedSubTab === 'done') list = doneDesignOrders;
+      else if (selectedSubTab === 'rework') list = reworkDesignOrders;
+      else if (selectedSubTab === 'admin_order') list = adminDesignOrders;
+      else list = allDesignOrders;
+    } else if (selectedWorkflowTab === 'rework') {
+      list = reworkOrders;
+    } else if (selectedWorkflowTab === 'order_management') {
+      if (selectedSubTab === 'live_queue') list = omLiveQueueOrders;
+      else if (selectedSubTab === 'in_production') list = omInProductionOrders;
+      else if (selectedSubTab === 'hold') list = omHoldOrders;
+      else if (selectedSubTab === 'completed') list = omCompletedOrders;
+      else list = orderManagementOrders;
+    } else if (selectedWorkflowTab === 'digitizer_completed') {
+      if (selectedSubTab === 'pending') list = digitizerPendingOrders;
+      else if (selectedSubTab === 'done') list = digitizerDoneOrders;
+      else list = allDigitizerOrders;
+    } else if (selectedWorkflowTab === 'production_completed') {
+      if (selectedSubTab === 'recent') list = productionRecentOrders;
+      else if (selectedSubTab === 'processing') list = productionProcessingOrders;
+      else if (selectedSubTab === 'hold') list = productionHoldOrders;
+      else if (selectedSubTab === 'done') list = productionDoneOrders;
+      else list = allProductionOrders;
+    } else if (selectedWorkflowTab === 'delivery') {
+      if (selectedSubTab === 'in_transit') list = inTransitOrders;
+      else if (selectedSubTab === 'hold') list = deliveryHoldOrders;
+      else if (selectedSubTab === 'delivered') list = deliveredSuccessOrders;
+      else list = deliveryOrders;
+    } else if (selectedWorkflowTab === 'inventory') {
+      if (selectedSubTab === 'intake') list = inventoryIntakeOrders;
+      else if (selectedSubTab === 'courier') list = inventoryCourierOrders;
+      else if (selectedSubTab === 'shipped') list = inventoryShippedOrders;
+      else list = inventoryAllOrders;
+    }
 
     if (!searchTerm.trim()) return list;
 
@@ -270,9 +484,15 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       String(o.assignedDesigner || '').toLowerCase().includes(term)
     );
   }, [
-    baseFilteredOrders, selectedWorkflowTab, designCompletedOrders,
-    reworkOrders, orderManagementOrders, digitizerCompletedOrders,
-    productionCompletedOrders, deliveryOrders, searchTerm
+    baseFilteredOrders, selectedWorkflowTab, selectedSubTab,
+    unclaimedDesignOrders, claimedDesignOrders, holdDesignOrders, doneDesignOrders, reworkDesignOrders, adminDesignOrders, allDesignOrders,
+    reworkOrders,
+    omLiveQueueOrders, omInProductionOrders, omHoldOrders, omCompletedOrders, orderManagementOrders,
+    digitizerPendingOrders, digitizerDoneOrders, allDigitizerOrders,
+    productionRecentOrders, productionProcessingOrders, productionHoldOrders, productionDoneOrders, allProductionOrders,
+    inTransitOrders, deliveryHoldOrders, deliveredSuccessOrders, deliveryOrders,
+    inventoryIntakeOrders, inventoryCourierOrders, inventoryShippedOrders, inventoryAllOrders,
+    searchTerm
   ]);
 
   // Export excel report
@@ -360,38 +580,42 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
         </div>
 
         {/* Live Status Strip */}
-        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15 cursor-pointer hover:bg-white/20 transition-all" onClick={() => setSelectedWorkflowTab('all')}>
-            <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">📦 Marketing Created</p>
+        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2.5">
+          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15 cursor-pointer hover:bg-white/20 transition-all" onClick={() => { setSelectedWorkflowTab('all'); setSelectedSubTab('all'); }}>
+            <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">📦 All Created</p>
             <p className="text-xl font-black text-white mt-0.5">{baseFilteredOrders.length}</p>
           </div>
-          <div className="bg-purple-500/20 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/30 cursor-pointer hover:bg-purple-500/30 transition-all ring-1 ring-purple-400/40" onClick={() => setSelectedWorkflowTab('sla_tasks')}>
+          <div className="bg-purple-500/20 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/30 cursor-pointer hover:bg-purple-500/30 transition-all ring-1 ring-purple-400/40" onClick={() => { setSelectedWorkflowTab('sla_tasks'); setSelectedSubTab('all'); }}>
             <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider flex items-center gap-1">⏱️ 2h SLA Tasks</p>
             <p className="text-xl font-black text-purple-100 mt-0.5">{activeDesignClaimedOrders.length}</p>
           </div>
-          <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-all" onClick={() => setSelectedWorkflowTab('design_completed')}>
-            <p className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">🎨 Designs Done</p>
-            <p className="text-xl font-black text-purple-200 mt-0.5">{designCompletedOrders.length}</p>
+          <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('design_completed'); setSelectedSubTab('open_to_claim'); }}>
+            <p className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">🎨 Designs</p>
+            <p className="text-xl font-black text-purple-200 mt-0.5">{allDesignOrders.length}</p>
           </div>
-          <div className="bg-amber-500/10 backdrop-blur-xs p-3 rounded-2xl border border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-all" onClick={() => setSelectedWorkflowTab('rework')}>
+          <div className="bg-amber-500/10 backdrop-blur-xs p-3 rounded-2xl border border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('rework'); setSelectedSubTab('all'); }}>
             <p className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">🔄 Reworks</p>
             <p className="text-xl font-black text-amber-200 mt-0.5">{reworkOrders.length}</p>
           </div>
-          <div className="bg-cyan-500/10 backdrop-blur-xs p-3 rounded-2xl border border-cyan-500/20 cursor-pointer hover:bg-cyan-500/20 transition-all" onClick={() => setSelectedWorkflowTab('order_management')}>
-            <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">📋 In Order Mgmt</p>
+          <div className="bg-cyan-500/10 backdrop-blur-xs p-3 rounded-2xl border border-cyan-500/20 cursor-pointer hover:bg-cyan-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('order_management'); setSelectedSubTab('live_queue'); }}>
+            <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">📋 Order Mgmt</p>
             <p className="text-xl font-black text-cyan-200 mt-0.5">{orderManagementOrders.length}</p>
           </div>
-          <div className="bg-pink-500/10 backdrop-blur-xs p-3 rounded-2xl border border-pink-500/20 cursor-pointer hover:bg-pink-500/20 transition-all" onClick={() => setSelectedWorkflowTab('digitizer_completed')}>
-            <p className="text-[10px] text-pink-300 font-bold uppercase tracking-wider">✂️ Digitizer Done</p>
-            <p className="text-xl font-black text-pink-200 mt-0.5">{digitizerCompletedOrders.length}</p>
+          <div className="bg-pink-500/10 backdrop-blur-xs p-3 rounded-2xl border border-pink-500/20 cursor-pointer hover:bg-pink-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('digitizer_completed'); setSelectedSubTab('pending'); }}>
+            <p className="text-[10px] text-pink-300 font-bold uppercase tracking-wider">✂️ Digitizer</p>
+            <p className="text-xl font-black text-pink-200 mt-0.5">{allDigitizerOrders.length}</p>
           </div>
-          <div className="bg-orange-500/10 backdrop-blur-xs p-3 rounded-2xl border border-orange-500/20 cursor-pointer hover:bg-orange-500/20 transition-all" onClick={() => setSelectedWorkflowTab('production_completed')}>
-            <p className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">🏭 Production Done</p>
-            <p className="text-xl font-black text-orange-200 mt-0.5">{productionCompletedOrders.length}</p>
+          <div className="bg-orange-500/10 backdrop-blur-xs p-3 rounded-2xl border border-orange-500/20 cursor-pointer hover:bg-orange-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('production_completed'); setSelectedSubTab('recent'); }}>
+            <p className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">🏭 Production</p>
+            <p className="text-xl font-black text-orange-200 mt-0.5">{allProductionOrders.length}</p>
           </div>
-          <div className="bg-emerald-500/10 backdrop-blur-xs p-3 rounded-2xl border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all" onClick={() => setSelectedWorkflowTab('delivery')}>
-            <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">🚚 Delivery Total</p>
+          <div className="bg-emerald-500/10 backdrop-blur-xs p-3 rounded-2xl border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('delivery'); setSelectedSubTab('in_transit'); }}>
+            <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">🚚 Delivery</p>
             <p className="text-xl font-black text-emerald-200 mt-0.5">{deliveryOrders.length}</p>
+          </div>
+          <div className="bg-indigo-500/10 backdrop-blur-xs p-3 rounded-2xl border border-indigo-500/20 cursor-pointer hover:bg-indigo-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('inventory'); setSelectedSubTab('intake'); }}>
+            <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">📦 Inventory</p>
+            <p className="text-xl font-black text-indigo-200 mt-0.5">{inventoryAllOrders.length}</p>
           </div>
         </div>
       </div>
@@ -400,7 +624,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* CARD 1: How many order designs completed */}
         <div
-          onClick={() => setSelectedWorkflowTab('design_completed')}
+          onClick={() => { setSelectedWorkflowTab('design_completed'); setSelectedSubTab('done'); }}
           className={cn(
             "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
             selectedWorkflowTab === 'design_completed'
@@ -419,9 +643,9 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
           <div className="mt-4">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DESIGNS COMPLETED</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{designCompletedOrders.length}</p>
+              <p className="text-3xl font-black text-gray-900 tracking-tight">{doneDesignOrders.length}</p>
               <span className="text-xs font-bold text-purple-600">
-                {baseFilteredOrders.length > 0 ? `${Math.round((designCompletedOrders.length / baseFilteredOrders.length) * 100)}%` : '0%'}
+                {baseFilteredOrders.length > 0 ? `${Math.round((doneDesignOrders.length / baseFilteredOrders.length) * 100)}%` : '0%'}
               </span>
             </div>
             <p className="text-[11px] text-gray-400 font-medium mt-1">
@@ -436,7 +660,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
         {/* CARD 2: How many order rework */}
         <div
-          onClick={() => setSelectedWorkflowTab('rework')}
+          onClick={() => { setSelectedWorkflowTab('rework'); setSelectedSubTab('all'); }}
           className={cn(
             "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
             selectedWorkflowTab === 'rework'
@@ -475,7 +699,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
         {/* CARD 3: How many order show in order management */}
         <div
-          onClick={() => setSelectedWorkflowTab('order_management')}
+          onClick={() => { setSelectedWorkflowTab('order_management'); setSelectedSubTab('live_queue'); }}
           className={cn(
             "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
             selectedWorkflowTab === 'order_management'
@@ -511,7 +735,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
         {/* CARD 4: How many order digitizer work complete */}
         <div
-          onClick={() => setSelectedWorkflowTab('digitizer_completed')}
+          onClick={() => { setSelectedWorkflowTab('digitizer_completed'); setSelectedSubTab('done'); }}
           className={cn(
             "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
             selectedWorkflowTab === 'digitizer_completed'
@@ -530,7 +754,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
           <div className="mt-4">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">DIGITIZER WORK COMPLETED</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{digitizerCompletedOrders.length}</p>
+              <p className="text-3xl font-black text-gray-900 tracking-tight">{digitizerDoneOrders.length}</p>
               <span className="text-xs font-bold text-pink-600">
                 EMB / Machine files ready
               </span>
@@ -547,7 +771,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
         {/* CARD 5: How many orders complete in product (production) */}
         <div
-          onClick={() => setSelectedWorkflowTab('production_completed')}
+          onClick={() => { setSelectedWorkflowTab('production_completed'); setSelectedSubTab('done'); }}
           className={cn(
             "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
             selectedWorkflowTab === 'production_completed'
@@ -583,7 +807,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
         {/* CARD 6: How many delivery show them */}
         <div
-          onClick={() => setSelectedWorkflowTab('delivery')}
+          onClick={() => { setSelectedWorkflowTab('delivery'); setSelectedSubTab('in_transit'); }}
           className={cn(
             "group bg-white p-6 rounded-3xl border transition-all duration-300 cursor-pointer shadow-sm relative overflow-hidden",
             selectedWorkflowTab === 'delivery'
@@ -703,10 +927,10 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
         {/* Progress Step Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
           {[
-            { title: '1. Designs Done', count: designCompletedOrders.length, color: 'border-purple-200 bg-purple-50 text-purple-700', icon: Palette },
+            { title: '1. Designs Done', count: doneDesignOrders.length, color: 'border-purple-200 bg-purple-50 text-purple-700', icon: Palette },
             { title: '2. Rework Queue', count: reworkOrders.length, color: 'border-amber-200 bg-amber-50 text-amber-700', icon: RefreshCw },
             { title: '3. In Order Mgmt', count: orderManagementOrders.length, color: 'border-cyan-200 bg-cyan-50 text-cyan-700', icon: Layers },
-            { title: '4. Digitizing Done', count: digitizerCompletedOrders.length, color: 'border-pink-200 bg-pink-50 text-pink-700', icon: Scissors },
+            { title: '4. Digitizing Done', count: digitizerDoneOrders.length, color: 'border-pink-200 bg-pink-50 text-pink-700', icon: Scissors },
             { title: '5. Production Done', count: productionCompletedOrders.length, color: 'border-orange-200 bg-orange-50 text-orange-700', icon: Factory },
             { title: '6. Delivery Total', count: deliveryOrders.length, color: 'border-emerald-200 bg-emerald-50 text-emerald-700', icon: Truck },
           ].map((step, idx) => (
@@ -722,59 +946,106 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       </div>
 
       {/* ─── Workflow Interactive Tabs & Data Table ────────────────────────── */}
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden space-y-6 p-6">
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden space-y-4 p-6">
         {/* Navigation & Search Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-5">
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/50">
-            {[
-              { id: 'all', label: 'All Orders', count: baseFilteredOrders.length },
-              { id: 'sla_tasks', label: '⏱️ 2-Hour SLA Monitor', count: activeDesignClaimedOrders.length },
-              { id: 'design_completed', label: '🎨 Design Done', count: designCompletedOrders.length },
-              { id: 'rework', label: '🔄 Reworks', count: reworkOrders.length },
-              { id: 'order_management', label: '📋 Order Mgmt', count: orderManagementOrders.length },
-              { id: 'digitizer_completed', label: '✂️ Digitizing Done', count: digitizerCompletedOrders.length },
-              { id: 'production_completed', label: '🏭 Production Done', count: productionCompletedOrders.length },
-              { id: 'delivery', label: '🚚 Delivery', count: deliveryOrders.length },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedWorkflowTab(tab.id as any)}
-                className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5",
-                  selectedWorkflowTab === tab.id
-                    ? tab.id === 'sla_tasks'
-                      ? "bg-purple-600 text-white shadow-xs font-black"
-                      : "bg-white text-brand-primary shadow-xs font-black"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                )}
-              >
-                <span>{tab.label}</span>
-                <span className={cn(
-                  "text-[10px] px-1.5 py-0.2 rounded-full font-black",
-                  selectedWorkflowTab === tab.id
-                    ? tab.id === 'sla_tasks'
-                      ? "bg-white text-purple-700"
-                      : "bg-brand-primary/10 text-brand-primary"
-                    : "bg-gray-200/70 text-gray-600"
-                )}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
+        <div className="flex flex-col gap-4 border-b border-gray-100 pb-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Main Stage Tabs */}
+            <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/50">
+              {[
+                { id: 'all', label: 'All Orders', count: baseFilteredOrders.length },
+                { id: 'sla_tasks', label: '⏱️ 2-Hour SLA Monitor', count: activeDesignClaimedOrders.length },
+                { id: 'design_completed', label: '🎨 Designs', count: allDesignOrders.length },
+                { id: 'rework', label: '🔄 Reworks', count: reworkOrders.length },
+                { id: 'order_management', label: '📋 Order Mgmt', count: orderManagementOrders.length },
+                { id: 'digitizer_completed', label: '✂️ Digitizer', count: allDigitizerOrders.length },
+                { id: 'production_completed', label: '🏭 Production', count: allProductionOrders.length },
+                { id: 'delivery', label: '🚚 Delivery', count: deliveryOrders.length },
+                { id: 'inventory', label: '📦 Inventory', count: inventoryAllOrders.length },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setSelectedWorkflowTab(tab.id as any);
+                    if (tab.id === 'design_completed') setSelectedSubTab('open_to_claim');
+                    else if (tab.id === 'order_management') setSelectedSubTab('live_queue');
+                    else if (tab.id === 'digitizer_completed') setSelectedSubTab('pending');
+                    else if (tab.id === 'production_completed') setSelectedSubTab('recent');
+                    else if (tab.id === 'delivery') setSelectedSubTab('in_transit');
+                    else if (tab.id === 'inventory') setSelectedSubTab('intake');
+                    else setSelectedSubTab('all');
+                  }}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5",
+                    selectedWorkflowTab === tab.id
+                      ? tab.id === 'sla_tasks'
+                        ? "bg-purple-600 text-white shadow-xs font-black"
+                        : "bg-white text-brand-primary shadow-xs font-black"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-black",
+                    selectedWorkflowTab === tab.id
+                      ? tab.id === 'sla_tasks'
+                        ? "bg-white text-purple-700"
+                        : "bg-brand-primary/10 text-brand-primary"
+                      : "bg-gray-200/70 text-gray-600"
+                  )}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Search Box for Table */}
+            {selectedWorkflowTab !== 'sla_tasks' && (
+              <div className="relative min-w-[260px]">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search by order #, client, category..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:bg-white transition-all"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Search Box for Table */}
-          {selectedWorkflowTab !== 'sla_tasks' && (
-            <div className="relative min-w-[260px]">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search by order #, client, category..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:bg-white transition-all"
-              />
+          {/* Departmental Sub-Tabs Bar */}
+          {currentSubTabs.length > 0 && selectedWorkflowTab !== 'sla_tasks' && (
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-50/90 rounded-2xl border border-slate-200/80 animate-fadeIn">
+              {currentSubTabs.map(subTab => {
+                const IconComponent = subTab.icon;
+                const isActive = selectedSubTab === subTab.id;
+                return (
+                  <button
+                    key={subTab.id}
+                    onClick={() => setSelectedSubTab(subTab.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5 whitespace-nowrap active:scale-95",
+                      isActive
+                        ? "bg-slate-900 text-white shadow-xs font-black scale-[1.02]"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white"
+                    )}
+                  >
+                    {IconComponent && <IconComponent className={cn("w-3.5 h-3.5", isActive ? "text-amber-400" : "opacity-60")} />}
+                    <span>{subTab.label}</span>
+                    <span
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.2 rounded-full font-black min-w-[18px] text-center",
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-200 text-slate-700"
+                      )}
+                    >
+                      {subTab.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

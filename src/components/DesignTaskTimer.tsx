@@ -3,8 +3,8 @@ import { Clock, AlertTriangle, CheckCircle2, Timer, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface DesignTaskTimerProps {
-  claimedAt?: number;
-  completedAt?: number;
+  claimedAt?: number | string;
+  completedAt?: number | string;
   isCompleted?: boolean;
   slaMinutes?: number; // default 120 (2 hours)
   variant?: 'badge' | 'compact' | 'bar';
@@ -23,15 +23,27 @@ export default function DesignTaskTimer({
 }: DesignTaskTimerProps) {
   const [now, setNow] = useState(Date.now());
 
+  const numClaimedAt = React.useMemo(() => {
+    if (!claimedAt) return undefined;
+    const n = typeof claimedAt === 'number' ? claimedAt : new Date(claimedAt).getTime();
+    return isNaN(n) ? undefined : n;
+  }, [claimedAt]);
+
+  const numCompletedAt = React.useMemo(() => {
+    if (!completedAt) return undefined;
+    const n = typeof completedAt === 'number' ? completedAt : new Date(completedAt).getTime();
+    return isNaN(n) ? undefined : n;
+  }, [completedAt]);
+
   useEffect(() => {
-    if (isCompleted || !claimedAt) return;
+    if (isCompleted || !numClaimedAt) return;
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 1000);
     return () => clearInterval(interval);
-  }, [claimedAt, isCompleted]);
+  }, [numClaimedAt, isCompleted]);
 
-  if (!claimedAt) {
+  if (!numClaimedAt) {
     return (
       <span className={cn("text-[9px] font-bold text-gray-400 inline-flex items-center gap-1", className)}>
         <Clock className="w-3 h-3 opacity-60" /> 2h SLA ready
@@ -40,10 +52,10 @@ export default function DesignTaskTimer({
   }
 
   const slaMs = slaMinutes * 60 * 1000;
-  const deadline = claimedAt + slaMs;
+  const deadline = numClaimedAt + slaMs;
 
-  if (isCompleted && completedAt) {
-    const elapsedMs = completedAt - claimedAt;
+  if (isCompleted && numCompletedAt) {
+    const elapsedMs = numCompletedAt - numClaimedAt;
     const elapsedMins = Math.floor(elapsedMs / 60000);
     const elapsedSecs = Math.floor((elapsedMs % 60000) / 1000);
     const wasOnTime = elapsedMs <= slaMs;
@@ -73,7 +85,7 @@ export default function DesignTaskTimer({
     : `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 
   if (variant === 'bar') {
-    const elapsed = Math.max(0, now - claimedAt);
+    const elapsed = Math.max(0, now - (numClaimedAt || 0));
     const progressPct = Math.min(100, Math.max(0, (elapsed / slaMs) * 100));
     return (
       <div className={cn(
