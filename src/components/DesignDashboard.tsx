@@ -504,7 +504,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } else if (selectedSection === 'completed_digitizer') {
       baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item));
     } else if (selectedSection === 'unclaimed') {
-      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework);
+      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder);
     } else if (selectedSection === 'my_tasks') {
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold && !item.isRework);
     } else if (selectedSection === 'rework') {
@@ -537,7 +537,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
-    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework).length;
+    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder).length;
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold && !item.isRework).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;

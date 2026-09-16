@@ -104,7 +104,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
   // 4. Design Unclaimed vs Claimed
   const isUnclaimedDesignItem = (o: Order) => {
-    if (isDesignCompleted(o) || isOrderRework(o)) return false;
+    if (isDesignCompleted(o) || isOrderRework(o) || isItemAdminOrder(o)) return false;
     if (o.claimedBy) return false;
     if (!o.assignedDesigner) return true;
     const clean = String(o.assignedDesigner).trim().toLowerCase();
