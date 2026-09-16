@@ -26,7 +26,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const user = propUser || authUser;
   const orders = propOrders || contextOrders || [];
 
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorkflowTab, setSelectedWorkflowTab] = useState<'all' | 'sla_tasks' | 'design_completed' | 'rework' | 'order_management' | 'digitizer_completed' | 'production_completed' | 'delivery' | 'inventory'>('all');
   const [selectedSubTab, setSelectedSubTab] = useState<string>('open_to_claim');
@@ -43,6 +43,10 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     const now = new Date();
     if (dateFilter === 'today') {
       return date.toDateString() === now.toDateString();
+    }
+    if (dateFilter === 'yesterday') {
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      return date.toDateString() === yesterday.toDateString();
     }
     if (dateFilter === 'week') {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -553,6 +557,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
               {[
                 { id: 'all', label: 'All Time' },
                 { id: 'today', label: 'Today' },
+                { id: 'yesterday', label: 'Yesterday' },
                 { id: 'week', label: 'This Week' },
                 { id: 'month', label: 'This Month' }
               ].map(t => (
@@ -695,7 +700,7 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden space-y-4 p-6">
         {/* Navigation & Search Controls */}
         <div className="flex flex-col gap-4 border-b border-gray-100 pb-5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             {/* Main Stage Tabs */}
             <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/50">
               {[
@@ -745,19 +750,49 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
               ))}
             </div>
 
-            {/* Search Box for Table */}
-            {selectedWorkflowTab !== 'sla_tasks' && (
-              <div className="relative min-w-[260px]">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by order #, client, category..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:bg-white transition-all"
-                />
+            {/* Right Controls: Date Filter Pills + Table Search */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Quick Date Filters Bar */}
+              <div className="flex items-center gap-1 bg-gray-100/90 p-1 rounded-2xl border border-gray-200/80">
+                <div className="flex items-center gap-1 pl-2 pr-1 text-[11px] font-bold text-gray-500">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                </div>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'today', label: 'Today' },
+                  { id: 'yesterday', label: 'Yesterday' },
+                  { id: 'week', label: 'This Week' },
+                  { id: 'month', label: 'This Month' }
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setDateFilter(t.id as any)}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer whitespace-nowrap",
+                      dateFilter === t.id
+                        ? "bg-brand-primary text-white shadow-xs font-black scale-[1.02]"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
-            )}
+
+              {/* Search Box for Table */}
+              {selectedWorkflowTab !== 'sla_tasks' && (
+                <div className="relative min-w-[240px]">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by order #, client, category..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:bg-white transition-all"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Departmental Sub-Tabs Bar */}

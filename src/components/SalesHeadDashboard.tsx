@@ -79,7 +79,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const orders = propOrders || contextOrders || [];
   const invoices = propInvoices || contextInvoices || [];
 
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedExecutive, setSelectedExecutive] = useState<string | null>(null);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
@@ -90,12 +90,17 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const [slaSearchTerm, setSlaSearchTerm] = useState('');
 
   // Helper to determine if an order matches date filter
-  const filterByDate = (timestamp?: number) => {
+  const filterByDate = (timestamp?: number | string) => {
     if (!timestamp || dateFilter === 'all') return true;
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return true;
     const now = new Date();
     if (dateFilter === 'today') {
       return date.toDateString() === now.toDateString();
+    }
+    if (dateFilter === 'yesterday') {
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      return date.toDateString() === yesterday.toDateString();
     }
     if (dateFilter === 'week') {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -391,7 +396,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           <div className="flex flex-wrap items-center gap-3">
             {/* Date Range Selector */}
             <div className="bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/20 flex items-center">
-              {(['all', 'today', 'week', 'month'] as const).map(d => (
+              {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(d => (
                 <button
                   key={d}
                   onClick={() => setDateFilter(d)}
@@ -402,7 +407,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       : "text-white/75 hover:text-white hover:bg-white/5 bg-transparent"
                   )}
                 >
-                  {d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === 'week' ? 'This Week' : 'This Month'}
+                  {d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === 'yesterday' ? 'Yesterday' : d === 'week' ? 'This Week' : 'This Month'}
                 </button>
               ))}
             </div>

@@ -22,10 +22,10 @@ export default function Logo({ className, iconOnly = false, inverted = false }: 
             </div>
             {!iconOnly && (
                 <span className={cn(
-                    "text-xl font-bold tracking-tight",
+                    "text-xl font-black tracking-tight",
                     inverted ? "text-white" : "text-gray-900"
                 )}>
-                    PALLYWEAR
+                    POP
                 </span>
             )}
         </div>

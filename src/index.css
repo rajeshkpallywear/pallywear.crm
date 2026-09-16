@@ -48,10 +48,14 @@
   }
   body {
     @apply font-sans text-brand-dark;
+    background-color: #ebf3fa;
     background-image: 
-      linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(240, 246, 255, 0.32) 100%),
-      url('/dashboard-bg.jpg');
-    background-size: cover;
+      radial-gradient(at 0% 0%, rgba(219, 234, 254, 0.75) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(199, 221, 250, 0.65) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(224, 238, 255, 0.75) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(214, 231, 254, 0.65) 0px, transparent 50%),
+      linear-gradient(135deg, #f0f6fc 0%, #e6effa 50%, #dce8f7 100%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover;
     background-position: center top;
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -69,15 +73,15 @@
 }
 
 .glass-card {
-  @apply bg-white/75 backdrop-blur-2xl border border-white/60 shadow-xl;
+  @apply bg-white/85 backdrop-blur-2xl border border-white/80 shadow-xl;
 }
 
 .glass-panel {
-  @apply bg-white/70 backdrop-blur-2xl border border-white/60 shadow-xl;
+  @apply bg-white/80 backdrop-blur-2xl border border-white/80 shadow-xl;
 }
 
 .glass-inner {
-  @apply bg-white/75 backdrop-blur-xl border border-white/50 shadow-xs;
+  @apply bg-white/85 backdrop-blur-xl border border-white/70 shadow-xs;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -93,10 +97,14 @@
 }
 
 .dashboard-page-bg {
+  background-color: #ebf3fa;
   background-image: 
-    linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(245, 248, 255, 0.50) 100%),
-    url('/dashboard-bg.jpg');
-  background-size: cover;
+    radial-gradient(at 0% 0%, rgba(219, 234, 254, 0.75) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(199, 221, 250, 0.65) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(224, 238, 255, 0.75) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(214, 231, 254, 0.65) 0px, transparent 50%),
+    linear-gradient(135deg, #f0f6fc 0%, #e6effa 50%, #dce8f7 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover;
   background-position: center top;
   background-attachment: fixed;
   background-repeat: no-repeat;
@@ -104,13 +112,13 @@
 }
 
 .hero-bg {
+  background-color: #ebf3fa;
   background-image:
-    linear-gradient(135deg, rgba(15, 7, 68, 0.25) 0%, rgba(26, 11, 145, 0.20) 100%),
-    url('/dashboard-bg.jpg');
+    linear-gradient(135deg, rgba(26, 11, 145, 0.08) 0%, rgba(79, 70, 229, 0.06) 100%),
+    linear-gradient(135deg, #eef5fc 0%, #e1edf9 100%);
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  background-repeat: no-repeat;
   position: relative;
   overflow: hidden;
 }
@@ -119,6 +127,6 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 40%, rgba(15, 7, 68, 0.35) 100%);
+  background: radial-gradient(circle at center, transparent 40%, rgba(26, 11, 145, 0.05) 100%);
   pointer-events: none;
 }
