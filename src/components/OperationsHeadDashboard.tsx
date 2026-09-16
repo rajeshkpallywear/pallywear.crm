@@ -4,14 +4,16 @@ import {
   CheckCircle2, AlertCircle, Clock, Search, Filter, Download,
   Layers, ArrowUpRight, ChevronRight, Eye, Calendar, Sparkles,
   BarChart2, FileText, CheckCheck, TrendingUp, ShieldCheck,
-  Building2, Users, AlertTriangle, ArrowRight
+  Building2, Users, AlertTriangle, ArrowRight, Plus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, Invoice } from '../types';
 import { cn, getDisplayCategory } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import DesignTaskTimer from './DesignTaskTimer';
+import AdminCreateOrderModal from './AdminCreateOrderModal';
+import InvoiceFormModal from './InvoiceFormModal';
 import * as XLSX from 'xlsx';
 
 interface OperationsHeadDashboardProps {
@@ -21,7 +23,7 @@ interface OperationsHeadDashboardProps {
 
 export default function OperationsHeadDashboard({ orders: propOrders, user: propUser }: OperationsHeadDashboardProps) {
   const { user: authUser } = useAuth();
-  const { orders: contextOrders, updateOrder } = useLeads();
+  const { orders: contextOrders, updateOrder, addInvoice, updateInvoice } = useLeads();
 
   const user = propUser || authUser;
   const orders = propOrders || contextOrders || [];
@@ -34,6 +36,27 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
   const [slaDesignerFilter, setSlaDesignerFilter] = useState<string>('all');
   const [slaSearchTerm, setSlaSearchTerm] = useState('');
+
+  // Modal states for Create Order & Create Invoice
+  const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
+  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+
+  const handleEditInvoiceSubmit = async (invoiceData: any) => {
+    try {
+      if (editingInvoice?.id) {
+        await updateInvoice(editingInvoice.id, invoiceData);
+        alert("✓ Invoice updated successfully!");
+      } else {
+        await addInvoice(invoiceData);
+        alert("✓ Invoice created successfully!");
+      }
+      setIsInvoiceFormOpen(false);
+      setEditingInvoice(null);
+    } catch (err: any) {
+      alert("Failed to save invoice: " + (err?.message || ""));
+    }
+  };
 
   // Helper to determine if an order matches date filter
   const filterByDate = (timestamp?: number | string) => {
@@ -528,101 +551,65 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
   return (
     <div className="space-y-8 animate-fadeIn text-left max-w-7xl mx-auto pb-12">
-      {/* ─── Hero Header & Operations Control Banner ──────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-2xl border border-white/10">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-72 h-72 bg-gradient-to-bl from-indigo-500/20 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2.5 mb-2">
-              <span className="px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Operations Head Control
-              </span>
-              <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-full text-[10px] font-bold">
-                Live Marketing Orders Sync
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              Operations & Production Workflow
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-300 font-medium mt-1 max-w-2xl leading-relaxed">
-              Monitoring all orders created by Marketing team across Graphic Design Studio, Reworks, Order Management, Digitizing Embroidery, Factory Production, and Delivery.
-            </p>
-          </div>
-
-          {/* Quick Date Filters & Export */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/10 flex items-center gap-1">
-              {[
-                { id: 'all', label: 'All Time' },
-                { id: 'today', label: 'Today' },
-                { id: 'yesterday', label: 'Yesterday' },
-                { id: 'week', label: 'This Week' },
-                { id: 'month', label: 'This Month' }
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setDateFilter(t.id as any)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer",
-                    dateFilter === t.id
-                      ? "bg-white text-gray-900 shadow-md scale-105"
-                      : "text-gray-300 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={exportExcel}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-2xl transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20 border-none cursor-pointer active:scale-95"
-            >
-              <Download className="w-4 h-4" /> Export Report
-            </button>
-          </div>
+      {/* ─── Header Action & Quick Filters Bar ──────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-xl text-xs font-black uppercase tracking-wider border border-brand-primary/20">
+            Operations & Production Workflow
+          </span>
+          <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold">
+            Live Marketing Sync
+          </span>
         </div>
 
-        {/* Live Status Strip */}
-        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2.5">
-          <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15 cursor-pointer hover:bg-white/20 transition-all" onClick={() => { setSelectedWorkflowTab('all'); setSelectedSubTab('all'); }}>
-            <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">📦 All Created</p>
-            <p className="text-xl font-black text-white mt-0.5">{baseFilteredOrders.length}</p>
+        {/* Quick Date Filters & Create/Export Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-xs flex items-center gap-1">
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'today', label: 'Today' },
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setDateFilter(t.id as any)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer",
+                  dateFilter === t.id
+                    ? "bg-brand-primary text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-          <div className="bg-purple-500/20 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/30 cursor-pointer hover:bg-purple-500/30 transition-all ring-1 ring-purple-400/40" onClick={() => { setSelectedWorkflowTab('sla_tasks'); setSelectedSubTab('all'); }}>
-            <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider flex items-center gap-1">⏱️ Designs Task Monitor</p>
-            <p className="text-xl font-black text-purple-100 mt-0.5">{activeDesignClaimedOrders.length}</p>
-          </div>
-          <div className="bg-purple-500/10 backdrop-blur-xs p-3 rounded-2xl border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('design_completed'); setSelectedSubTab('open_to_claim'); }}>
-            <p className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">🎨 Designs</p>
-            <p className="text-xl font-black text-purple-200 mt-0.5">{allDesignOrders.length}</p>
-          </div>
-          <div className="bg-amber-500/10 backdrop-blur-xs p-3 rounded-2xl border border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('rework'); setSelectedSubTab('all'); }}>
-            <p className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">🔄 Reworks</p>
-            <p className="text-xl font-black text-amber-200 mt-0.5">{reworkOrders.length}</p>
-          </div>
-          <div className="bg-cyan-500/10 backdrop-blur-xs p-3 rounded-2xl border border-cyan-500/20 cursor-pointer hover:bg-cyan-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('order_management'); setSelectedSubTab('live_queue'); }}>
-            <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">📋 Order Mgmt</p>
-            <p className="text-xl font-black text-cyan-200 mt-0.5">{orderManagementOrders.length}</p>
-          </div>
-          <div className="bg-pink-500/10 backdrop-blur-xs p-3 rounded-2xl border border-pink-500/20 cursor-pointer hover:bg-pink-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('digitizer_completed'); setSelectedSubTab('pending'); }}>
-            <p className="text-[10px] text-pink-300 font-bold uppercase tracking-wider">✂️ Digitizer</p>
-            <p className="text-xl font-black text-pink-200 mt-0.5">{allDigitizerOrders.length}</p>
-          </div>
-          <div className="bg-orange-500/10 backdrop-blur-xs p-3 rounded-2xl border border-orange-500/20 cursor-pointer hover:bg-orange-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('production_completed'); setSelectedSubTab('recent'); }}>
-            <p className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">🏭 Production</p>
-            <p className="text-xl font-black text-orange-200 mt-0.5">{allProductionOrders.length}</p>
-          </div>
-          <div className="bg-emerald-500/10 backdrop-blur-xs p-3 rounded-2xl border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('delivery'); setSelectedSubTab('in_transit'); }}>
-            <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">🚚 Delivery</p>
-            <p className="text-xl font-black text-emerald-200 mt-0.5">{deliveryOrders.length}</p>
-          </div>
-          <div className="bg-indigo-500/10 backdrop-blur-xs p-3 rounded-2xl border border-indigo-500/20 cursor-pointer hover:bg-indigo-500/20 transition-all" onClick={() => { setSelectedWorkflowTab('inventory'); setSelectedSubTab('intake'); }}>
-            <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">📦 Inventory</p>
-            <p className="text-xl font-black text-indigo-200 mt-0.5">{inventoryAllOrders.length}</p>
-          </div>
+
+          <button
+            onClick={() => setIsCreateOrderOpen(true)}
+            className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-brand-primary/20 flex items-center gap-1.5 border-none cursor-pointer"
+          >
+            <Plus size={14} /> Create Order
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingInvoice(null);
+              setIsInvoiceFormOpen(true);
+            }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 border-none cursor-pointer"
+          >
+            <Plus size={14} /> Create Invoice
+          </button>
+
+          <button
+            onClick={exportExcel}
+            className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black rounded-2xl transition-all flex items-center gap-1.5 shadow-xs border-none cursor-pointer active:scale-95"
+          >
+            <Download className="w-4 h-4" /> Export Report
+          </button>
         </div>
       </div>
 
@@ -1156,6 +1143,23 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
           isAdmin={true}
         />
       )}
+
+      {/* Create Order Modal */}
+      <AdminCreateOrderModal
+        isOpen={isCreateOrderOpen}
+        onClose={() => setIsCreateOrderOpen(false)}
+      />
+
+      {/* Create Invoice Modal */}
+      <InvoiceFormModal
+        isOpen={isInvoiceFormOpen}
+        onClose={() => {
+          setIsInvoiceFormOpen(false);
+          setEditingInvoice(null);
+        }}
+        invoice={editingInvoice}
+        onSubmit={handleEditInvoiceSubmit}
+      />
     </div>
   );
 }

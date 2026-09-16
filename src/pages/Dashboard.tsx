@@ -40,11 +40,13 @@ import OrdersChart from '../components/OrdersChart';
 import SidebarChat from '../components/SidebarChat';
 import SalesHeadDashboard from '../components/SalesHeadDashboard';
 import OperationsHeadDashboard from '../components/OperationsHeadDashboard';
+import AdminCreateOrderModal from '../components/AdminCreateOrderModal';
+import InvoiceFormModal from '../components/InvoiceFormModal';
 import { OrderStatus } from '../types';
 
 export default function Dashboard() {
   const { user, logout, registeredUsers } = useAuth();
-  const { leads, orders, inventory, invoices, addOrder, updateOrder, deleteOrder, addLead, deleteLead } = useLeads();
+  const { leads, orders, inventory, invoices, addOrder, updateOrder, deleteOrder, addLead, deleteLead, addInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
 
   const filteredOrders = React.useMemo(() => {
@@ -86,6 +88,26 @@ export default function Dashboard() {
   const activeOrders = React.useMemo(() => filteredOrders.filter(o => o.status !== 'hold'), [filteredOrders]);
 
   const [showProfileModal, setShowProfileModal] = React.useState(false);
+  const [isAdminOrderModalOpen, setIsAdminOrderModalOpen] = React.useState(false);
+  const [isInvoiceFormModalOpen, setIsInvoiceFormModalOpen] = React.useState(false);
+  const [editingInvoice, setEditingInvoice] = React.useState<any | null>(null);
+
+  const handleInvoiceSubmit = async (invoiceData: any) => {
+    try {
+      if (editingInvoice?.id) {
+        await updateInvoice(editingInvoice.id, invoiceData);
+        alert('✓ Invoice updated successfully!');
+      } else {
+        await addInvoice(invoiceData);
+        alert('✓ Invoice created successfully!');
+      }
+      setIsInvoiceFormModalOpen(false);
+      setEditingInvoice(null);
+    } catch (err: any) {
+      alert('Failed to save invoice: ' + (err?.message || ''));
+    }
+  };
+
   const [activeTab, setActiveTab] = React.useState<'dashboard' | 'reports' | 'clients' | 'invoices' | 'inventory' | 'history' | 'digitizer_comm' | 'marketing_orders' | 'calendar' | 'online_leads'>(() => {
     const saved = localStorage.getItem('pallywear_active_tab');
     if (saved && ['dashboard', 'reports', 'clients', 'invoices', 'inventory', 'history', 'digitizer_comm', 'marketing_orders', 'calendar', 'online_leads'].includes(saved)) {
@@ -703,6 +725,42 @@ export default function Dashboard() {
               </button>
             </div>
           )}
+
+          {/* Quick Action Buttons for Admin, Sales Head, and Operations Head */}
+          {user?.role && [
+            UserRole.ADMIN,
+            'admin',
+            UserRole.SALES_HEAD,
+            'sales_head',
+            UserRole.OPERATIONS_HEAD,
+            'operations_head'
+          ].includes(user.role as any) && (
+            <div className="pt-4 mt-2 border-t border-gray-100 space-y-2">
+              <button
+                onClick={() => setIsAdminOrderModalOpen(true)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-primary/95 transition-all shadow-md shadow-brand-primary/15 border-none cursor-pointer",
+                  isSidebarCollapsed && "md:justify-center md:px-0"
+                )}
+                title={isSidebarCollapsed ? "Create Order" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Order</span>}
+              </button>
+              <button
+                onClick={() => {
+                  setEditingInvoice(null);
+                  setIsInvoiceFormModalOpen(true);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-650 transition-all shadow-md shadow-emerald-500/15 border-none cursor-pointer",
+                  isSidebarCollapsed && "md:justify-center md:px-0"
+                )}
+                title={isSidebarCollapsed ? "Create Invoice" : ""}
+              >
+                <Plus className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Create Invoice</span>}
+              </button>
+            </div>
+          )}
         </nav>
 
         <div className="mt-auto p-4 border-t border-gray-50">
@@ -1297,6 +1355,24 @@ export default function Dashboard() {
       </AnimatePresence>
 
       <SidebarChat />
+
+      <AdminCreateOrderModal
+        isOpen={isAdminOrderModalOpen}
+        onClose={() => setIsAdminOrderModalOpen(false)}
+        onSubmitSuccess={() => {
+          setIsAdminOrderModalOpen(false);
+        }}
+      />
+
+      <InvoiceFormModal
+        isOpen={isInvoiceFormModalOpen}
+        onClose={() => {
+          setIsInvoiceFormModalOpen(false);
+          setEditingInvoice(null);
+        }}
+        invoice={editingInvoice}
+        onSubmit={handleInvoiceSubmit}
+      />
     </div>
   );
 }

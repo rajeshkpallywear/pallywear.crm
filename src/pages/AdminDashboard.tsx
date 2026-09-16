@@ -1198,14 +1198,29 @@ export default function AdminDashboard() {
               Admin Control Panel
             </span>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setIsAdminOrderModalOpen(true)}
+              className="px-3 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-brand-primary/20 flex items-center gap-1.5 border-none cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Create Order</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditingInvoice(null);
+                setIsInvoiceFormModalOpen(true);
+              }}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 border-none cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Create Invoice</span>
+            </button>
             <button
               onClick={() => navigate('/hr-dashboard')}
-              className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center gap-1.5 transition-colors cursor-pointer"
               title="HR & Payroll Dashboard"
             >
               <Briefcase className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">HR & Payroll</span>
+              <span className="hidden md:inline">HR & Payroll</span>
             </button>
             <div className="relative">
               <button

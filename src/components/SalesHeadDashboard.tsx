@@ -3,7 +3,7 @@ import {
   TrendingUp, Users, Package, CreditCard, Palette, FileText,
   DollarSign, CheckCircle2, Clock, Search, Filter, Download,
   ArrowUpRight, ChevronRight, Eye, RefreshCw, BarChart2, Shield,
-  Phone, User, Sparkles, Building2, Calendar, FileCheck, Layers
+  Phone, User, Sparkles, Building2, Calendar, FileCheck, Layers, Plus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
@@ -11,6 +11,8 @@ import { Order, OrderStatus, Invoice } from '../types';
 import { cn } from '../lib/utils';
 import OrderDetailModal from './OrderDetailModal';
 import DesignTaskTimer from './DesignTaskTimer';
+import AdminCreateOrderModal from './AdminCreateOrderModal';
+import InvoiceFormModal from './InvoiceFormModal';
 
 // Helper to check if order was sent to Accounts
 const isSentToAccounts = (o: Order) => {
@@ -73,7 +75,7 @@ interface SalesHeadDashboardProps {
 
 export default function SalesHeadDashboard({ orders: propOrders, invoices: propInvoices, user: propUser }: SalesHeadDashboardProps) {
   const { user: authUser } = useAuth();
-  const { orders: contextOrders, invoices: contextInvoices, updateOrder } = useLeads();
+  const { orders: contextOrders, invoices: contextInvoices, updateOrder, addInvoice, updateInvoice } = useLeads();
 
   const user = propUser || authUser;
   const orders = propOrders || contextOrders || [];
@@ -88,6 +90,27 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
   const [slaDesignerFilter, setSlaDesignerFilter] = useState<string>('all');
   const [slaSearchTerm, setSlaSearchTerm] = useState('');
+
+  // Modal states for Create Order & Create Invoice
+  const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
+  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+
+  const handleEditInvoiceSubmit = async (invoiceData: any) => {
+    try {
+      if (editingInvoice?.id) {
+        await updateInvoice(editingInvoice.id, invoiceData);
+        alert("✓ Invoice updated successfully!");
+      } else {
+        await addInvoice(invoiceData);
+        alert("✓ Invoice created successfully!");
+      }
+      setIsInvoiceFormOpen(false);
+      setEditingInvoice(null);
+    } catch (err: any) {
+      alert("Failed to save invoice: " + (err?.message || ""));
+    }
+  };
 
   // Helper to determine if an order matches date filter
   const filterByDate = (timestamp?: number | string) => {
@@ -376,84 +399,85 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
-      {/* Top Welcome Banner */}
-      <div className="bg-gradient-to-r from-brand-primary via-indigo-900 to-purple-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-brand-primary/10 relative overflow-hidden text-left">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-bold uppercase tracking-wider text-purple-200">
-              <Shield className="w-3.5 h-3.5 text-amber-300" /> Sales Head Executive Portal
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Marketing & Sales Operations Oversight
-            </h1>
-            <p className="text-xs sm:text-sm text-purple-200 max-w-2xl font-medium">
-              Real-time individual performance metrics, order routing tracking to Accounts & Design Studio, design deliverables completion, and revenue analytics.
-            </p>
-          </div>
+      {/* Navigation Tabs and Date/Action Controls */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Navigation Tabs: Performance Overview vs Dedicated SLA Monitor */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setActiveViewTab('overview')}
+            className={cn(
+              "px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer",
+              activeViewTab === 'overview'
+                ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25 scale-[1.02]"
+                : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
+            )}
+          >
+            <BarChart2 size={16} /> Sales Performance Overview
+          </button>
 
-          {/* Action Bar */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Date Range Selector */}
-            <div className="bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/20 flex items-center">
-              {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setDateFilter(d)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
-                    dateFilter === d
-                      ? "bg-white text-brand-primary shadow-md"
-                      : "text-white/75 hover:text-white hover:bg-white/5 bg-transparent"
-                  )}
-                >
-                  {d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === 'yesterday' ? 'Yesterday' : d === 'week' ? 'This Week' : 'This Month'}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={handleExportCSV}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2 border-none cursor-pointer"
-            >
-              <Download size={14} /> Export CSV
-            </button>
-          </div>
+          <button
+            onClick={() => setActiveViewTab('sla_monitor')}
+            className={cn(
+              "px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer",
+              activeViewTab === 'sla_monitor'
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
+            )}
+          >
+            <Clock size={16} />
+            Designs Task Monitor
+            <span className={cn(
+              "px-2 py-0.5 rounded-full text-[10px] font-black",
+              activeViewTab === 'sla_monitor' ? "bg-white text-purple-700" : "bg-purple-100 text-purple-700"
+            )}>
+              {activeDesignClaimedOrders.length}
+            </span>
+          </button>
         </div>
-      </div>
 
-      {/* Navigation Tabs: Performance Overview vs Dedicated SLA Monitor */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={() => setActiveViewTab('overview')}
-          className={cn(
-            "px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer",
-            activeViewTab === 'overview'
-              ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25 scale-[1.02]"
-              : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
-          )}
-        >
-          <BarChart2 size={16} /> Sales Performance Overview
-        </button>
+        {/* Date Range Selector & Export / Create Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="bg-white p-1 rounded-2xl border border-gray-200 shadow-xs flex items-center">
+            {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(d => (
+              <button
+                key={d}
+                onClick={() => setDateFilter(d)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer",
+                  dateFilter === d
+                    ? "bg-brand-primary text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
+                )}
+              >
+                {d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === 'yesterday' ? 'Yesterday' : d === 'week' ? 'This Week' : 'This Month'}
+              </button>
+            ))}
+          </div>
 
-        <button
-          onClick={() => setActiveViewTab('sla_monitor')}
-          className={cn(
-            "px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 border-none cursor-pointer",
-            activeViewTab === 'sla_monitor'
-              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
-              : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50"
-          )}
-        >
-          <Clock size={16} />
-          Designs Task Monitor
-          <span className={cn(
-            "px-2 py-0.5 rounded-full text-[10px] font-black",
-            activeViewTab === 'sla_monitor' ? "bg-white text-purple-700" : "bg-purple-100 text-purple-700"
-          )}>
-            {activeDesignClaimedOrders.length}
-          </span>
-        </button>
+          <button
+            onClick={() => setIsCreateOrderOpen(true)}
+            className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-brand-primary/20 flex items-center gap-1.5 border-none cursor-pointer"
+          >
+            <Plus size={14} /> Create Order
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingInvoice(null);
+              setIsInvoiceFormOpen(true);
+            }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 border-none cursor-pointer"
+          >
+            <Plus size={14} /> Create Invoice
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 border-none cursor-pointer"
+          >
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       {activeViewTab === 'sla_monitor' ? (
@@ -1115,6 +1139,23 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           isAdmin={true}
         />
       )}
+
+      {/* Create Order Modal */}
+      <AdminCreateOrderModal
+        isOpen={isCreateOrderOpen}
+        onClose={() => setIsCreateOrderOpen(false)}
+      />
+
+      {/* Create Invoice Modal */}
+      <InvoiceFormModal
+        isOpen={isInvoiceFormOpen}
+        onClose={() => {
+          setIsInvoiceFormOpen(false);
+          setEditingInvoice(null);
+        }}
+        invoice={editingInvoice}
+        onSubmit={handleEditInvoiceSubmit}
+      />
     </div>
   );
 }
