@@ -27,7 +27,9 @@ import {
   Eye,
   X,
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  StickyNote,
+  Layers
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import FileUpload from './FileUpload';
