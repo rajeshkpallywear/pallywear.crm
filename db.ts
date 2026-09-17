@@ -324,11 +324,15 @@ export async function initDB() {
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS \`sidebar_messages\` (
         \`id\` varchar(50) NOT NULL,
-        \`senderId\` varchar(50) NOT NULL,
+        \`senderId\` varchar(100) NOT NULL,
         \`senderName\` varchar(100) NOT NULL,
         \`senderRole\` varchar(50) NOT NULL,
         \`message\` text NOT NULL,
         \`attachment\` longtext DEFAULT NULL,
+        \`fileName\` varchar(255) DEFAULT NULL,
+        \`fileType\` varchar(50) DEFAULT NULL,
+        \`voiceNote\` varchar(100) DEFAULT NULL,
+        \`recipientId\` varchar(100) DEFAULT NULL,
         \`createdAt\` bigint NOT NULL,
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -503,7 +507,12 @@ export async function initDB() {
       "ALTER TABLE `invoices` ADD COLUMN `designGst` decimal(15,2) DEFAULT 0.00",
       "ALTER TABLE `invoices` ADD COLUMN `designDiscount` decimal(15,2) DEFAULT 0.00",
       "ALTER TABLE `invoices` ADD COLUMN `designNotes` text DEFAULT NULL",
-      "ALTER TABLE `sidebar_messages` ADD COLUMN `recipientId` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `sidebar_messages` ADD COLUMN `recipientId` varchar(100) DEFAULT NULL",
+      "ALTER TABLE `sidebar_messages` ADD COLUMN `fileName` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `sidebar_messages` ADD COLUMN `fileType` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `sidebar_messages` ADD COLUMN `voiceNote` varchar(100) DEFAULT NULL",
+      "ALTER TABLE `sidebar_messages` MODIFY COLUMN `senderId` varchar(100) NOT NULL",
+      "ALTER TABLE `sidebar_messages` MODIFY COLUMN `recipientId` varchar(100) DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `assignedDesigner` varchar(50) DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `holdReason` text DEFAULT NULL",
       "ALTER TABLE `orders` ADD COLUMN `previousStatus` varchar(50) DEFAULT NULL",

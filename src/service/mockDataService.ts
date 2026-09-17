@@ -608,10 +608,29 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getMessages: async (senderId?: string, recipientId?: string): Promise<SidebarMessage[]> => {
+  getMessages: async (options?: {
+    senderAliases?: string[];
+    recipientAliases?: string[];
+    userAliases?: string[];
+    senderId?: string;
+    recipientId?: string;
+  } | string, maybeRecipientId?: string): Promise<SidebarMessage[]> => {
     let url = getApiUrl('/api/messages');
-    if (senderId && recipientId) {
-      url += `?senderId=${senderId}&recipientId=${recipientId}`;
+    if (typeof options === 'string') {
+      const senderId = options;
+      const recipientId = maybeRecipientId;
+      if (senderId && recipientId) {
+        url += `?senderId=${encodeURIComponent(senderId)}&recipientId=${encodeURIComponent(recipientId)}`;
+      }
+    } else if (options && typeof options === 'object') {
+      const params = new URLSearchParams();
+      if (options.senderAliases?.length) params.set('senderAliases', options.senderAliases.join(','));
+      if (options.recipientAliases?.length) params.set('recipientAliases', options.recipientAliases.join(','));
+      if (options.userAliases?.length) params.set('userAliases', options.userAliases.join(','));
+      if (options.senderId) params.set('senderId', options.senderId);
+      if (options.recipientId) params.set('recipientId', options.recipientId);
+      const queryStr = params.toString();
+      if (queryStr) url += `?${queryStr}`;
     }
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch sidebar messages');
