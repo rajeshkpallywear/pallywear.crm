@@ -255,7 +255,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       return {
         id: o.id,
         isOrder: true,
-        isRaisedTask: Boolean(o.isRaisedTask || o.details?.isRaisedTask),
+        isRaisedTask: Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task'),
         customerName: o.customerInfo?.name || '',
         phone: o.customerInfo?.phone || '',
         category: o.category || 'T-Shirt',
@@ -498,7 +498,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     let baseList = activeChannel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
 
     // Filter by subsection
-    if (selectedSection === 'hold') {
+    if (selectedSection === 'all') {
+      baseList = baseList.filter(item => isAdmin || !isClaimedByOther(item));
+    } else if (selectedSection === 'hold') {
       baseList = baseList.filter(item => item.isHold && (isAdmin || isClaimedByMe(item) || isUnclaimedItem(item.assignedDesigner, item.claimedBy)));
     } else if (selectedSection === 'completed') {
       baseList = baseList.filter(item => item.isCompleted && (isAdmin || isClaimedByMe(item)));
@@ -1734,652 +1736,645 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       />
 
       {/* High-Fidelity Interactive Workspace Modal for Selected Order */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
-          >
-            {/* Modal header */}
-            <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
-              <div>
-                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                  <Palette size={20} className="text-purple-600 animate-pulse" />
-                  Art Workspace
-                </h3>
-                <p className="text-xs text-gray-500 font-bold uppercase tabular-nums">Pipeline Order #{selectedOrder.id}</p>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedOrder(null);
-                  setDesignFiles([]);
-                  setMachineFiles([]);
-                  setOriginalFile('');
-                  setOriginalFilename('');
-                  setDesignZipFile('');
-                  setDesignZipFilename('');
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors border-none bg-transparent cursor-pointer"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
+      {selectedOrder && (() => {
+        const isSelectedRaisedTask = Boolean(
+          selectedOrder.isRaisedTask ||
+          selectedOrder.details?.isRaisedTask ||
+          selectedOrder.category === 'Design Task' ||
+          selectedOrder.raisedTaskCategory === 'Design Task'
+        );
 
-            {/* Modal body */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              {/* 2-Hour SLA Task Timer Header Bar */}
-              {shouldShowTimer(selectedOrder) && (
-                <DesignTaskTimer
-                  claimedAt={getEffectiveClaimedAt(selectedOrder)}
-                  completedAt={selectedOrder.designCompletedAt}
-                  isCompleted={Boolean(selectedOrder.designCompleted)}
-                  variant="bar"
-                  designerName={selectedOrder.assignedDesigner}
-                />
-              )}
-
-              {/* Hold Alert Notification Banner */}
-              {selectedOrder.status === OrderStatus.HOLD && (
-                <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start gap-4 text-left">
-                  <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={24} />
-                  <div>
-                    <h5 className="text-sm font-black text-red-900 uppercase italic">Artwork Production is Currently Blocked (On Hold)</h5>
-                    <p className="text-xs text-red-700 font-semibold mt-1">Stated Impediment: "{selectedOrder.holdReason || 'No details provided'}"</p>
-                    <p className="text-[10px] text-red-500 font-bold mt-1">Use the "Resume Active Work" button in the action footer to lift holds and upload vector outputs.</p>
-                  </div>
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
+            >
+              {/* Modal header */}
+              <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                    <Palette size={20} className="text-purple-600 animate-pulse" />
+                    {isSelectedRaisedTask ? 'Design Task Workspace' : 'Art Workspace'}
+                  </h3>
+                  <p className="text-xs text-gray-500 font-bold uppercase tabular-nums">
+                    {isSelectedRaisedTask ? `Design Task #${selectedOrder.id}` : `Pipeline Order #${selectedOrder.id}`}
+                  </p>
                 </div>
-              )}
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    setDesignFiles([]);
+                    setMachineFiles([]);
+                    setOriginalFile('');
+                    setOriginalFilename('');
+                    setDesignZipFile('');
+                    setDesignZipFilename('');
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Left Column: Customer Details, Sizing Breakdown, Reference Attachments */}
-                <div className="lg:col-span-6 space-y-6">
-                  {/* Customer Spec Card */}
-                  <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                    <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                      <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
-                        <User size={13} />
-                        Order Details
-                      </h4>
-                      <span className="text-[9.5px] font-mono font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border border-gray-200">
-                        #{selectedOrder.id.slice(-8)}
-                      </span>
+              {/* Modal body */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                {/* 2-Hour SLA Task Timer Header Bar */}
+                {shouldShowTimer(selectedOrder) && (
+                  <DesignTaskTimer
+                    claimedAt={getEffectiveClaimedAt(selectedOrder)}
+                    completedAt={selectedOrder.designCompletedAt}
+                    isCompleted={Boolean(selectedOrder.designCompleted)}
+                    variant="bar"
+                    designerName={selectedOrder.assignedDesigner}
+                  />
+                )}
+
+                {/* Hold Alert Notification Banner */}
+                {selectedOrder.status === OrderStatus.HOLD && (
+                  <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start gap-4 text-left">
+                    <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={24} />
+                    <div>
+                      <h5 className="text-sm font-black text-red-900 uppercase italic">Artwork Production is Currently Blocked (On Hold)</h5>
+                      <p className="text-xs text-red-700 font-semibold mt-1">Stated Impediment: "{selectedOrder.holdReason || 'No details provided'}"</p>
+                      <p className="text-[10px] text-red-500 font-bold mt-1">Use the "Resume Active Work" button in the action footer to lift holds and upload vector outputs.</p>
                     </div>
+                  </div>
+                )}
 
-                    {/* Customer & Creator Information */}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-black text-sm shadow-sm shrink-0">
-                          {selectedOrder.customerInfo?.name?.charAt(0)?.toUpperCase() || 'C'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo?.name || 'Customer'}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-[9.5px] font-bold uppercase tracking-wider text-brand-primary">
-                              Created by: {selectedOrder.createdByName || 'System'}
-                            </p>
-                            {selectedOrder.customerInfo?.phone && (
-                              <a
-                                href={`tel:${selectedOrder.customerInfo.phone}`}
-                                className="text-[10px] text-gray-500 hover:text-brand-primary font-semibold flex items-center gap-1 no-underline"
-                              >
-                                <Phone size={10} className="text-brand-primary" /> {selectedOrder.customerInfo.phone}
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Order Category & Quantities Banner */}
-                    <div className="bg-white p-3.5 rounded-2xl border border-purple-100 shadow-2xs space-y-2.5 text-left">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                            <Package size={13} className="text-brand-primary" />
-                            Primary Category:
-                          </span>
-                          <span className="px-2.5 py-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-tight shadow-2xs">
-                            {getDisplayCategory(selectedOrder)}
-                          </span>
-                        </div>
-
-                        <span className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-lg text-xs font-black border border-gray-200 tracking-tight">
-                          Total Qty: {selectedOrder.quantity || selectedOrder.sizeBreakdown?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1} Pcs
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left Column: Customer Details, Sizing Breakdown, Reference Attachments */}
+                  <div className="lg:col-span-6 space-y-6">
+                    {/* Customer Spec Card */}
+                    <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                        <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                          <User size={13} />
+                          {isSelectedRaisedTask ? 'Design Task Details' : 'Order Details'}
+                        </h4>
+                        <span className="text-[9.5px] font-mono font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border border-gray-200">
+                          #{selectedOrder.id.slice(-8)}
                         </span>
                       </div>
 
-                      {/* All Distinct Categories Chips */}
-                      {(() => {
-                        const distinctCats = selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0
-                          ? Array.from(new Set(selectedOrder.sizeBreakdown.map(i => i.category).filter(Boolean)))
-                          : (selectedOrder.category ? [selectedOrder.category] : []);
-
-                        if (distinctCats.length === 0) return null;
-
-                        return (
-                          <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[9.5px] font-black text-gray-500 uppercase tracking-wider">Order Categories:</span>
-                            {distinctCats.map((cat, idx) => (
-                              <span
-                                key={idx}
-                                className="text-[10px] font-extrabold bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-900 border border-purple-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
-                                {cat}
-                              </span>
-                            ))}
+                      {/* Customer & Creator Information */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+                            {selectedOrder.customerInfo?.name?.charAt(0)?.toUpperCase() || 'C'}
                           </div>
-                        );
-                      })()}
-                    </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{selectedOrder.customerInfo?.name || 'Customer'}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-[9.5px] font-bold uppercase tracking-wider text-brand-primary">
+                                Created by: {selectedOrder.createdByName || 'System'}
+                              </p>
+                              {selectedOrder.customerInfo?.phone && (
+                                <a
+                                  href={`tel:${selectedOrder.customerInfo.phone}`}
+                                  className="text-[10px] text-gray-500 hover:text-brand-primary font-semibold flex items-center gap-1 no-underline"
+                                >
+                                  <Phone size={10} className="text-brand-primary" /> {selectedOrder.customerInfo.phone}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-                    {/* Sizing / Garment Breakdown Table if sizeBreakdown exists */}
-                    {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
-                      <div className="space-y-1.5 text-left">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9.5px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                            <Package size={12} className="text-brand-primary" />
-                            Product Breakdown & Specs ({selectedOrder.sizeBreakdown.length} items)
+                      {/* Order Category & Quantities Banner */}
+                      <div className="bg-white p-3.5 rounded-2xl border border-purple-100 shadow-2xs space-y-2.5 text-left">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                              <Package size={13} className="text-brand-primary" />
+                              Primary Category:
+                            </span>
+                            <span className="px-2.5 py-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-tight shadow-2xs">
+                              {getDisplayCategory(selectedOrder)}
+                            </span>
+                          </div>
+
+                          <span className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-lg text-xs font-black border border-gray-200 tracking-tight">
+                            Total Qty: {selectedOrder.quantity || selectedOrder.sizeBreakdown?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1} Pcs
                           </span>
                         </div>
-                        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-2xs max-h-[180px] overflow-y-auto">
-                          <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
-                            <thead className="sticky top-0 bg-gray-50 z-10">
-                              <tr className="text-[9px] font-black uppercase tracking-wider text-gray-500 border-b border-gray-200">
-                                <th className="px-2.5 py-1.5">Category</th>
-                                <th className="px-2.5 py-1.5">Size</th>
-                                <th className="px-2.5 py-1.5">Colour</th>
-                                <th className="px-2.5 py-1.5">Print / Specs</th>
-                                <th className="px-2.5 py-1.5">Material / Model</th>
-                                <th className="px-2.5 py-1.5 text-center">Qty</th>
+
+                        {/* All Distinct Categories Chips */}
+                        {(() => {
+                          const distinctCats = selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0
+                            ? Array.from(new Set(selectedOrder.sizeBreakdown.map(i => i.category).filter(Boolean)))
+                            : (selectedOrder.category ? [selectedOrder.category] : []);
+
+                          if (distinctCats.length === 0) return null;
+
+                          return (
+                            <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9.5px] font-black text-gray-500 uppercase tracking-wider">Order Categories:</span>
+                              {distinctCats.map((cat, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-[10px] font-extrabold bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-900 border border-purple-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Marketing / Client Intake Notes */}
+                      <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-left space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-amber-900 font-black text-[10px] uppercase tracking-wider">
+                          <StickyNote size={12} className="text-amber-600" />
+                          <span>Marketing / Client Intake Notes:</span>
+                        </div>
+                        <p className="text-xs text-amber-950 font-semibold leading-relaxed whitespace-pre-wrap">
+                          {selectedOrder.notes || selectedOrder.designNotes || 'No specific intake instructions provided.'}
+                        </p>
+                      </div>
+
+                      {/* Editable Artwork Completion Notes & Reasons Box */}
+                      <div className="space-y-2 text-left bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10.5px] font-black text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <FileText size={12} className="text-brand-primary" />
+                            Artwork Completion Notes & Reasons
+                          </label>
+                          <span className="text-[9px] font-bold text-emerald-600 flex items-center gap-1">
+                            ✓ Notes preview
+                          </span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all resize-none text-gray-900 font-medium"
+                          placeholder="State production modifications, font details, pantone color codes, or artwork notes for Marketing & Production..."
+                          value={designNotesText}
+                          onChange={(e) => setDesignNotesText(e.target.value)}
+                        />
+                      </div>
+                    </section>
+
+                    {/* Sizing Breakdown (If Garment Order) */}
+                    {selectedOrder.sizeBreakdown && selectedOrder.sizeBreakdown.length > 0 && (
+                      <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                          <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                            <Layers size={13} />
+                            Garment Sizing & Specifications
+                          </h4>
+                          <span className="text-[9.5px] font-bold text-gray-500">
+                            {selectedOrder.sizeBreakdown.length} line items
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs whitespace-nowrap">
+                            <thead>
+                              <tr className="bg-white text-[9px] font-black text-gray-500 uppercase border-b border-gray-200">
+                                <th className="p-2">Category</th>
+                                <th className="p-2">Material</th>
+                                <th className="p-2">Colour</th>
+                                <th className="p-2">Print Type</th>
+                                <th className="p-2">Model</th>
+                                <th className="p-2 text-right">Qty</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                              {selectedOrder.sizeBreakdown.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                                  <td className="px-2.5 py-1.5 font-bold text-brand-primary text-[10px] uppercase">{item.category}</td>
-                                  <td className="px-2.5 py-1.5 font-bold text-gray-900 text-[10px]">{item.size}</td>
-                                  <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{item.colour || '-'}</td>
-                                  <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{item.printType || '-'}</td>
-                                  <td className="px-2.5 py-1.5 text-gray-600 text-[10px]">{[item.material, item.model].filter(Boolean).join(' ') || '-'}</td>
-                                  <td className="px-2.5 py-1.5 font-black text-center text-gray-900 text-[10px]">{item.quantity}</td>
+                              {selectedOrder.sizeBreakdown.map((row, idx) => (
+                                <tr key={idx} className="hover:bg-white/60">
+                                  <td className="p-2 font-bold text-gray-900">{row.category || '-'}</td>
+                                  <td className="p-2 text-gray-600">{row.material || '-'}</td>
+                                  <td className="p-2 text-gray-600">{row.colour || '-'}</td>
+                                  <td className="p-2 text-gray-600">{row.printType || '-'}</td>
+                                  <td className="p-2 text-gray-600">{row.model || '-'}</td>
+                                  <td className="p-2 font-black text-brand-primary text-right">{row.quantity || 0}</td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
-                      </div>
+                      </section>
                     )}
 
-                    {/* Marketing / Order Intake Notes Display Box */}
-                    <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-1 text-left">
-                      <span className="text-[9.5px] font-black text-amber-800 uppercase tracking-widest block flex items-center gap-1.5">
-                        📋 Marketing / Client Intake Notes:
-                      </span>
-                      <p className="text-xs text-gray-800 font-semibold whitespace-pre-line leading-relaxed">
-                        {selectedOrder.notes || selectedOrder.designNotes || 'No notes provided by marketing.'}
-                      </p>
-                    </div>
-
-                    {/* Marketing Voice Instructions Audio Player */}
-                    {selectedOrder.voiceNote && (
-                      <div className="p-3.5 bg-purple-50/90 border-2 border-purple-200 rounded-2xl space-y-2 text-left shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
-                            <Mic size={14} className="text-purple-600 animate-pulse" />
-                            🎙️ Client Voice Instructions:
-                          </span>
-                          <span className="text-[8.5px] font-extrabold bg-purple-200/80 text-purple-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Listen to Audio
-                          </span>
-                        </div>
-                        <audio controls src={selectedOrder.voiceNote} className="w-full h-8 rounded-xl bg-white p-0.5 outline-none shadow-2xs" />
+                    {/* Reference Attachments from Marketing / Customer */}
+                    <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                        <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                          <Paperclip size={13} />
+                          Sales Reference Attachments ({(selectedOrder.staffImages || []).length + (selectedOrder.marketing_image ? 1 : 0) + (selectedOrder.staffPdfs || []).length + (selectedOrder.accountsAttachments || []).length})
+                        </h4>
                       </div>
-                    )}
 
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-black text-purple-900 uppercase tracking-wider pl-0.5 flex items-center gap-1.5">
-                          <span>📝 Artwork Completion Notes & Reasons</span>
-                        </label>
-                        {!designNotesText.trim() ? (
-                          <span className="text-[9.5px] text-red-600 font-extrabold bg-red-50 px-2 py-0.5 rounded-md border border-red-200 animate-pulse">
-                            ⚠️ Required before completing
-                          </span>
-                        ) : (
-                          <span className="text-[9.5px] text-emerald-600 font-bold flex items-center gap-1">
-                            ✓ Notes provided
-                          </span>
-                        )}
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {/* Reference Images */}
+                        {[
+                          ...(selectedOrder.staffImages || []),
+                          ...(selectedOrder.marketing_image ? [selectedOrder.marketing_image] : []),
+                          ...(selectedOrder.accountsAttachments || []).filter(f => typeof f === 'string' && (f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
+                        ].map((imgUrl, i) => (
+                          <div
+                            key={i}
+                            onClick={() => setViewingImage(imgUrl)}
+                            className="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-white cursor-pointer shadow-xs hover:shadow-md transition-all"
+                          >
+                            <img src={imgUrl} alt="Ref" className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn size={16} />
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Reference PDFs / Docs */}
+                        {[
+                          ...(selectedOrder.staffPdfs || []),
+                          ...(selectedOrder.accountsAttachments || []).filter(f => typeof f === 'string' && !(f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
+                        ].map((docUrl, i) => {
+                          const docName = `Reference_Document_${i + 1}`;
+                          return (
+                            <div
+                              key={`pdf-${i}`}
+                              onClick={() => downloadFile(docUrl, `${docName}.pdf`)}
+                              className="group relative aspect-square rounded-xl overflow-hidden border border-indigo-200 bg-indigo-50/50 p-2 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-100 transition-all shadow-xs"
+                              title="Click to download reference document"
+                            >
+                              <FileText size={24} className="text-indigo-600 mb-1" />
+                              <span className="text-[9px] font-bold text-indigo-900 truncate w-full px-1">{docName}</span>
+                              <span className="text-[8px] text-indigo-600 font-extrabold uppercase mt-0.5">Download</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <textarea
-                        value={designNotesText}
-                        onChange={(e) => setDesignNotesText(e.target.value)}
-                        rows={4}
-                        placeholder="Enter completion remarks, design reasoning, pantone codes, print dimensions, or client feedback response..."
-                        className={cn(
-                          "w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none transition-all",
-                          !designNotesText.trim() ? "border-red-300 focus:border-red-500 bg-red-50/20" : "border-gray-200"
-                        )}
-                      />
-                    </div>
-                  </section>
+                    </section>
+                  </div>
 
-                  {/* Reference Attachments from Sales Desk */}
-                  <section className="space-y-3">
-                    <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-gray-105">
-                      <Paperclip size={13} />
-                      Sales Reference Attachments ({[...(selectedOrder.staffImages || []), ...(selectedOrder.staffPdfs || [])].length})
-                    </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {[...(selectedOrder.staffImages || []), ...(selectedOrder.staffPdfs || [])].map((file, i) => {
-                        const isAudio = file.startsWith('data:audio/');
-                        return (
-                          <div key={i} className="flex flex-col gap-2 p-2 bg-gray-50 rounded-2xl border border-gray-100 group relative">
-                            <div className="aspect-square rounded-xl overflow-hidden relative bg-white flex items-center justify-center border border-gray-150">
-                              {file.startsWith('data:image/') ? (
-                                <img src={file} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              ) : isAudio ? (
-                                <div className="flex flex-col items-center gap-2 text-purple-600">
-                                  <Mic size={28} />
-                                  <span className="text-[8px] font-black uppercase">Voice spec</span>
-                                </div>
-                              ) : (
-                                <div className="flex flex-col items-center gap-2 text-red-500">
-                                  <FileText size={28} />
-                                  <span className="text-[8px] font-black uppercase">PDF Specification</span>
-                                </div>
-                              )}
+                  {/* Right Column: Outputs Upload Bench (PNG, ZIP, PDFs) & Chat Hub */}
+                  <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
+                    {/* Vector/Machine Language File Assembly Desk */}
+                    <div className="bg-purple-50/40 p-5 rounded-2xl border border-purple-100 space-y-5">
+                      <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                        <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
+                          <Upload size={14} />
+                          {isSelectedRaisedTask ? 'Artwork Output (Original PNG)' : 'Outputs Upload Bench (Original PNG & ZIP)'}
+                        </h4>
+                        <span className="text-[9px] font-black bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                          Lossless Quality
+                        </span>
+                      </div>
 
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                                {file.startsWith('data:image/') && (
-                                  <button
-                                    onClick={() => setViewingImage(file)}
-                                    className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all border-none cursor-pointer"
-                                  >
+                      <div className="space-y-4">
+                        {/* Upload 1: Design PNG Image (100% Original Lossless Quality) */}
+                        <div className={cn(
+                          "space-y-2 bg-white p-3.5 rounded-xl border transition-all",
+                          !originalFile ? "border-purple-200" : "border-purple-300 shadow-xs"
+                        )}>
+                          <div className="flex justify-between items-center">
+                            <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-purple-500" />
+                              {isSelectedRaisedTask ? '1. Completed Design Artwork (Original Full Quality PNG)' : '1. Design PNG Image (Original Full Quality)'}
+                            </p>
+                            {originalFile ? (
+                              <span className="text-[9px] text-green-600 font-extrabold flex items-center gap-1">
+                                ✓ Original Quality Ready
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-purple-600 font-bold">✨ Recommended (PNG)</span>
+                            )}
+                          </div>
+
+                          {originalFile ? (
+                            <div className="flex items-center justify-between gap-3 bg-purple-50/60 p-3 rounded-xl border border-purple-150">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  onClick={() => setViewingImage(originalFile)}
+                                  className="w-12 h-12 rounded-lg overflow-hidden border border-purple-200 bg-white cursor-pointer relative group shrink-0"
+                                  title="Click to zoom full image"
+                                >
+                                  <img src={originalFile} alt="Original PNG" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                                     <ZoomIn size={14} />
-                                  </button>
-                                )}
+                                  </div>
+                                </div>
+                                <div className="text-left min-w-0">
+                                  <p className="text-xs font-bold text-gray-900 truncate" title={originalFilename || 'Original Design Image'}>
+                                    {originalFilename || 'Original_Design.png'}
+                                  </p>
+                                  <p className="text-[10px] text-purple-700 font-extrabold">100% Original Lossless Quality</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
                                 <button
                                   type="button"
-                                  onClick={() => downloadFile(file, `Ref_Spec_${i + 1}_Order_${selectedOrder.id.slice(-6)}${file.startsWith('data:image/') || file.includes('.png') ? '.png' : ''}`)}
-                                  className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-all cursor-pointer border-none"
-                                  title="Download File"
+                                  onClick={() => downloadFile(originalFile, originalFilename || `Design_Original_${selectedOrder.id.slice(-6)}.png`)}
+                                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none"
+                                  title="Download Original Quality PNG"
                                 >
-                                  <Download size={14} />
+                                  <Download size={11} />
+                                  Download PNG
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOriginalFile('');
+                                    setOriginalFilename('');
+                                  }}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                                  title="Remove and replace"
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>
-                            {(isAudio || file.includes('audio/')) && (
-                              <audio controls className="w-full h-5 scale-90 mt-1">
-                                <source src={file} />
-                              </audio>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                </div>
-
-                {/* Right Column: Outputs Upload Bench (PNG, ZIP, PDFs) & Chat Hub */}
-                <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
-                  {/* Vector/Machine Language File Assembly Desk */}
-                  <div className="bg-purple-50/40 p-5 rounded-2xl border border-purple-100 space-y-5">
-                    <div className="flex items-center justify-between border-b border-purple-100 pb-2">
-                      <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
-                        <Upload size={14} />
-                        Outputs Upload Bench (Original PNG & ZIP)
-                      </h4>
-                      <span className="text-[9px] font-black bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                        Lossless Quality
-                      </span>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Upload 1: Design PNG Image (100% Original Lossless Quality) */}
-                      <div className={cn(
-                        "space-y-2 bg-white p-3.5 rounded-xl border transition-all",
-                        !originalFile ? "border-purple-200" : "border-purple-300 shadow-xs"
-                      )}>
-                        <div className="flex justify-between items-center">
-                          <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-purple-500" />
-                            1. Design PNG Image (Original Full Quality)
-                          </p>
-                          {originalFile ? (
-                            <span className="text-[9px] text-green-600 font-extrabold flex items-center gap-1">
-                              ✓ Original Quality Ready
-                            </span>
                           ) : (
-                            <span className="text-[9px] text-purple-600 font-bold">✨ Recommended (PNG)</span>
+                            <FileUpload
+                              key={`png_${selectedOrder.id}`}
+                              label=""
+                              accept="image/png,image/*"
+                              preserveOriginalQuality={true}
+                              maxFiles={1}
+                              helperText={isSelectedRaisedTask ? "Upload finished high-resolution artwork PNG (lossless, no compression)" : "Upload lossless PNG image in full original resolution (No compression)"}
+                              onFilesWithMetadataSelected={(files) => {
+                                if (files && files[0]) {
+                                  setOriginalFile(files[0].data);
+                                  setOriginalFilename(files[0].name);
+                                }
+                              }}
+                              onFilesSelected={(files) => {
+                                if (files && files[0] && !originalFile) {
+                                  setOriginalFile(files[0]);
+                                  setOriginalFilename('Original_Design.png');
+                                }
+                              }}
+                            />
                           )}
                         </div>
 
-                        {originalFile ? (
-                          <div className="flex items-center justify-between gap-3 bg-purple-50/60 p-3 rounded-xl border border-purple-150">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div
-                                onClick={() => setViewingImage(originalFile)}
-                                className="w-12 h-12 rounded-lg overflow-hidden border border-purple-200 bg-white cursor-pointer relative group shrink-0"
-                                title="Click to zoom full image"
-                              >
-                                <img src={originalFile} alt="Original PNG" className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                  <ZoomIn size={14} />
+                        {/* Upload 2: Design ZIP Package (Vector / Production Archive) - Hidden for Design Tasks */}
+                        {!isSelectedRaisedTask && (
+                          <div className={cn(
+                            "space-y-2 bg-white p-3.5 rounded-xl border transition-all",
+                            !designZipFile ? "border-indigo-200" : "border-indigo-300 shadow-xs"
+                          )}>
+                            <div className="flex justify-between items-center">
+                              <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                2. Design ZIP Package (Vector / Source Package)
+                              </p>
+                              {designZipFile ? (
+                                <span className="text-[9px] text-green-600 font-extrabold flex items-center gap-1">
+                                  ✓ ZIP Ready
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-indigo-600 font-bold">📦 ZIP / Vector Archive</span>
+                              )}
+                            </div>
+
+                            {designZipFile ? (
+                              <div className="flex items-center justify-between gap-3 bg-indigo-50/60 p-3 rounded-xl border border-indigo-150">
+                                <div className="flex items-center gap-3 min-w-0 text-left">
+                                  <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                                    <FolderOpen size={20} />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-gray-900 truncate" title={designZipFilename || 'Design_Package.zip'}>
+                                      {designZipFilename || 'Design_Package.zip'}
+                                    </p>
+                                    <p className="text-[10px] text-indigo-700 font-bold">Production ZIP Archive (Original Quality)</p>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="text-left min-w-0">
-                                <p className="text-xs font-bold text-gray-900 truncate" title={originalFilename || 'Original Design Image'}>
-                                  {originalFilename || 'Original_Design.png'}
-                                </p>
-                                <p className="text-[10px] text-purple-700 font-extrabold">100% Original Lossless Quality</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => downloadFile(originalFile, originalFilename || `Design_Original_${selectedOrder.id.slice(-6)}.png`)}
-                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none"
-                                title="Download Original Quality PNG"
-                              >
-                                <Download size={11} />
-                                Download PNG
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOriginalFile('');
-                                  setOriginalFilename('');
-                                }}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                                title="Remove and replace"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <FileUpload
-                            key={`png_${selectedOrder.id}`}
-                            label=""
-                            accept="image/png,image/*"
-                            preserveOriginalQuality={true}
-                            maxFiles={1}
-                            helperText="Upload lossless PNG image in full original resolution (No compression)"
-                            onFilesWithMetadataSelected={(files) => {
-                              if (files && files[0]) {
-                                setOriginalFile(files[0].data);
-                                setOriginalFilename(files[0].name);
-                              }
-                            }}
-                            onFilesSelected={(files) => {
-                              if (files && files[0] && !originalFile) {
-                                setOriginalFile(files[0]);
-                                setOriginalFilename('Original_Design.png');
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
-
-                      {/* Upload 2: Design ZIP Package (Vector / Production Archive) */}
-                      <div className={cn(
-                        "space-y-2 bg-white p-3.5 rounded-xl border transition-all",
-                        !designZipFile ? "border-indigo-200" : "border-indigo-300 shadow-xs"
-                      )}>
-                        <div className="flex justify-between items-center">
-                          <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                            2. Design ZIP Package (Vector / Source Package)
-                          </p>
-                          {designZipFile ? (
-                            <span className="text-[9px] text-green-600 font-extrabold flex items-center gap-1">
-                              ✓ ZIP Ready
-                            </span>
-                          ) : (
-                            <span className="text-[9px] text-indigo-600 font-bold">📦 ZIP / Vector Archive</span>
-                          )}
-                        </div>
-
-                        {designZipFile ? (
-                          <div className="flex items-center justify-between gap-3 bg-indigo-50/60 p-3 rounded-xl border border-indigo-150">
-                            <div className="flex items-center gap-3 min-w-0 text-left">
-                              <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                                <FolderOpen size={20} />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-gray-900 truncate" title={designZipFilename || 'Design_Package.zip'}>
-                                  {designZipFilename || 'Design_Package.zip'}
-                                </p>
-                                <p className="text-[10px] text-indigo-700 font-bold">Production ZIP Archive (Original Quality)</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => downloadFile(designZipFile, designZipFilename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`)}
-                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none"
-                                title="Download Original ZIP Archive"
-                              >
-                                <Download size={11} />
-                                Download ZIP
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setDesignZipFile('');
-                                  setDesignZipFilename('');
-                                }}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                                title="Remove and replace"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <FileUpload
-                            key={`zip_${selectedOrder.id}`}
-                            label=""
-                            accept=".zip,.rar,.7z,.emb,.dst,.cdr,.ai,.psd,application/zip"
-                            preserveOriginalQuality={true}
-                            maxFiles={1}
-                            helperText="Upload ZIP package containing raw vectors (.ai, .cdr, .psd, .dst, .emb)"
-                            onFilesWithMetadataSelected={(files) => {
-                              if (files && files[0]) {
-                                setDesignZipFile(files[0].data);
-                                setDesignZipFilename(files[0].name);
-                              }
-                            }}
-                            onFilesSelected={(files) => {
-                              if (files && files[0] && !designZipFile) {
-                                setDesignZipFile(files[0]);
-                                setDesignZipFilename('Design_Package.zip');
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
-
-                      {/* Upload 3: Additional Vector Outputs / Deliverables */}
-                      <div className="space-y-2 bg-white p-3.5 rounded-xl border border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-gray-400" />
-                            3. Additional Vector Outputs / PDFs ({designFiles.length})
-                          </p>
-                        </div>
-                        <FileUpload
-                          key={`files_${selectedOrder.id}`}
-                          label=""
-                          accept=".pdf,image/*,.zip"
-                          preserveOriginalQuality={true}
-                          helperText="Upload additional mockup PDFs or tracing sheets"
-                          onFilesSelected={(files) => setDesignFiles(prev => [...prev, ...files])}
-                        />
-                        {designFiles.length > 0 && (
-                          <div className="max-h-[100px] overflow-y-auto space-y-1 mt-2">
-                            {designFiles.map((file, i) => (
-                              <div key={i} className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border border-slate-200">
-                                <div className="flex items-center gap-2 truncate">
-                                  <FileText size={13} className="text-purple-600 shrink-0" />
-                                  <span className="truncate max-w-[150px] font-mono font-bold">Deliverable_{i + 1}.pdf</span>
-                                </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() => downloadFile(file, `Deliverable_${i + 1}_Order_${selectedOrder.id.slice(-6)}.pdf`)}
-                                    className="text-purple-600 hover:text-purple-800 font-bold bg-transparent border-none cursor-pointer text-[10px]"
+                                    onClick={() => downloadFile(designZipFile, designZipFilename || `Design_Package_${selectedOrder.id.slice(-6)}.zip`)}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 shadow-xs cursor-pointer border-none"
+                                    title="Download Original ZIP Archive"
                                   >
-                                    Download
+                                    <Download size={11} />
+                                    Download ZIP
                                   </button>
                                   <button
-                                    onClick={() => handleRemoveFile(i, 'design')}
-                                    className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                                    onClick={() => {
+                                      setDesignZipFile('');
+                                      setDesignZipFilename('');
+                                    }}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                                    title="Remove and replace"
                                   >
-                                    Delete
+                                    <Trash2 size={14} />
                                   </button>
                                 </div>
                               </div>
-                            ))}
+                            ) : (
+                              <FileUpload
+                                key={`zip_${selectedOrder.id}`}
+                                label=""
+                                accept=".zip,.rar,.7z,.emb,.dst,.cdr,.ai,.psd,application/zip"
+                                preserveOriginalQuality={true}
+                                maxFiles={1}
+                                helperText="Upload ZIP package containing raw vectors (.ai, .cdr, .psd, .dst, .emb)"
+                                onFilesWithMetadataSelected={(files) => {
+                                  if (files && files[0]) {
+                                    setDesignZipFile(files[0].data);
+                                    setDesignZipFilename(files[0].name);
+                                  }
+                                }}
+                                onFilesSelected={(files) => {
+                                  if (files && files[0] && !designZipFile) {
+                                    setDesignZipFile(files[0]);
+                                    setDesignZipFilename('Design_Package.zip');
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Upload 3: Additional Vector Outputs / Deliverables - Hidden for Design Tasks */}
+                        {!isSelectedRaisedTask && (
+                          <div className="space-y-2 bg-white p-3.5 rounded-xl border border-gray-200">
+                            <div className="flex justify-between items-center">
+                              <p className="text-[10px] font-black text-gray-700 uppercase tracking-tight flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-gray-400" />
+                                3. Additional Vector Outputs / PDFs ({designFiles.length})
+                              </p>
+                            </div>
+                            <FileUpload
+                              key={`files_${selectedOrder.id}`}
+                              label=""
+                              accept=".pdf,image/*,.zip"
+                              preserveOriginalQuality={true}
+                              helperText="Upload additional mockup PDFs or tracing sheets"
+                              onFilesSelected={(files) => setDesignFiles(prev => [...prev, ...files])}
+                            />
+                            {designFiles.length > 0 && (
+                              <div className="max-h-[100px] overflow-y-auto space-y-1 mt-2">
+                                {designFiles.map((file, i) => (
+                                  <div key={i} className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                    <div className="flex items-center gap-2 truncate">
+                                      <FileText size={13} className="text-purple-600 shrink-0" />
+                                      <span className="truncate max-w-[150px] font-mono font-bold">Deliverable_{i + 1}.pdf</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => downloadFile(file, `Deliverable_${i + 1}_Order_${selectedOrder.id.slice(-6)}.pdf`)}
+                                        className="text-purple-600 hover:text-purple-800 font-bold bg-transparent border-none cursor-pointer text-[10px]"
+                                      >
+                                        Download
+                                      </button>
+                                      <button
+                                        onClick={() => handleRemoveFile(i, 'design')}
+                                        className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Chat Panel Interface (Only Backoffice Chat) */}
-                  <div className="bg-gray-50 rounded-2xl border border-gray-150 p-4 shrink-0 flex flex-col gap-3 min-h-[260px] justify-between">
-                    <div>
-                      <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                          <MessageSquare size={12} />
-                          Backoffice Coordinator Chat
-                        </span>
-                        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                      </div>
+                    {/* Chat Panel Interface (Only Backoffice Chat) - Hidden for Design Tasks */}
+                    {!isSelectedRaisedTask && (
+                      <div className="bg-gray-50 rounded-2xl border border-gray-150 p-4 shrink-0 flex flex-col gap-3 min-h-[260px] justify-between">
+                        <div>
+                          <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                              <MessageSquare size={12} />
+                              Backoffice Coordinator Chat
+                            </span>
+                            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                          </div>
 
-                      {/* Live Channel */}
-                      <div className="space-y-3">
-                        <div className="max-h-[160px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
-                          {omMessages.length === 0 ? (
-                            <p className="italic text-gray-400 text-center py-4 text-xs">No messages with Backoffice coordinates yet.</p>
-                          ) : (
-                            omMessages.map((msg, idx) => {
-                              const isDesigner = msg.senderRole === 'designer';
-                              return (
-                                <div key={idx} className={cn(
-                                  "p-3 rounded-2xl max-w-[85%] space-y-1 block text-left",
-                                  isDesigner ? "bg-black text-white ml-auto" : "bg-gray-200 text-gray-900 mr-auto"
-                                )}>
-                                  <p className="text-[9px] font-black opacity-60 uppercase">{msg.sender}</p>
-                                  <p className="font-medium text-xs leading-relaxed">{msg.text}</p>
-                                  {msg.attachments && msg.attachments.map((att, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 mt-1 bg-white/10 p-1.5 rounded-lg">
-                                      <Paperclip size={10} />
-                                      <span className="text-[9px] truncate max-w-[130px]">Reference File</span>
+                          {/* Live Channel */}
+                          <div className="space-y-3">
+                            <div className="max-h-[160px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
+                              {omMessages.length === 0 ? (
+                                <p className="italic text-gray-400 text-center py-4 text-xs">No messages with Backoffice coordinates yet.</p>
+                              ) : (
+                                omMessages.map((msg, idx) => {
+                                  const isDesigner = msg.senderRole === 'designer';
+                                  return (
+                                    <div key={idx} className={cn(
+                                      "p-3 rounded-2xl max-w-[85%] space-y-1 block text-left",
+                                      isDesigner ? "bg-black text-white ml-auto" : "bg-gray-200 text-gray-900 mr-auto"
+                                    )}>
+                                      <p className="text-[9px] font-black opacity-60 uppercase">{msg.sender}</p>
+                                      <p className="font-medium text-xs leading-relaxed">{msg.text}</p>
+                                      {msg.attachments && msg.attachments.map((att, i) => (
+                                        <div key={i} className="flex items-center gap-1.5 mt-1 bg-white/10 p-1.5 rounded-lg">
+                                          <Paperclip size={10} />
+                                          <span className="text-[9px] truncate max-w-[130px]">Reference File</span>
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
+                                  );
+                                })
+                              )}
+                            </div>
 
-                        {/* Message Trigger Form */}
-                        <div className="flex gap-2 border-t border-gray-200 pt-3">
-                          <input
-                            type="text"
-                            placeholder="Send re-work details to Manager..."
-                            className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 outline-none text-gray-800 font-medium"
-                            value={omNewMessage}
-                            onChange={(e) => setOmNewMessage(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSendOmChatMessage();
-                            }}
-                          />
-                          <button
-                            onClick={handleSendOmChatMessage}
-                            className="h-9 w-9 bg-black text-white flex items-center justify-center rounded-xl hover:bg-gray-800 transition-all cursor-pointer border-none"
-                          >
-                            <Send size={14} />
-                          </button>
+                            {/* Message Trigger Form */}
+                            <div className="flex gap-2 border-t border-gray-200 pt-3">
+                              <input
+                                type="text"
+                                placeholder="Send re-work details to Manager..."
+                                className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 outline-none text-gray-800 font-medium"
+                                value={omNewMessage}
+                                onChange={(e) => setOmNewMessage(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSendOmChatMessage();
+                                }}
+                              />
+                              <button
+                                onClick={handleSendOmChatMessage}
+                                className="h-9 w-9 bg-black text-white flex items-center justify-center rounded-xl hover:bg-gray-800 transition-all cursor-pointer border-none"
+                              >
+                                <Send size={14} />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Modal actions footer */}
-            <div className="p-8 border-t border-gray-100 flex flex-col sm:flex-row gap-4 shrink-0 bg-gray-50/50">
-              {/* Hold / Resume buttons */}
-              {selectedOrder.status === OrderStatus.HOLD ? (
-                <button
-                  disabled={isProcessing}
-                  onClick={handlePutOnHold}
-                  className="px-6 py-4 bg-green-100 hover:bg-green-200 text-green-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <CheckCircle size={15} />
-                  Resume Active Work
-                </button>
-              ) : (
-                <button
-                  disabled={isProcessing}
-                  onClick={handlePutOnHold}
-                  className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Clock size={15} />
-                  Request Design Hold
-                </button>
-              )}
+              {/* Modal actions footer */}
+              <div className="p-8 border-t border-gray-100 flex flex-col sm:flex-row gap-4 shrink-0 bg-gray-50/50">
+                {/* Hold / Resume buttons */}
+                {selectedOrder.status === OrderStatus.HOLD ? (
+                  <button
+                    disabled={isProcessing}
+                    onClick={handlePutOnHold}
+                    className="px-6 py-4 bg-green-100 hover:bg-green-200 text-green-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <CheckCircle size={15} />
+                    Resume Active Work
+                  </button>
+                ) : (
+                  <button
+                    disabled={isProcessing}
+                    onClick={handlePutOnHold}
+                    className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Clock size={15} />
+                    Request Design Hold
+                  </button>
+                )}
 
-              {/* Show action buttons depending on whether it is Accounts Sent vs Marketing Sent */}
-              {(activeChannel === 'accounts_queue' || (selectedOrder.accountsAttachments || []).length > 0) ? (
-                /* Accounts Sent Order -> Send to Digitizer & Send to Order Management */
-                <>
-                  <button
-                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                    onClick={handleSendToDigitizer}
-                    className="flex-1 py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessing ? 'Processing files...' : 'Send to Digitizer'}
-                    <CheckCircle size={15} />
-                  </button>
-                  <button
-                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                    onClick={handleSendToOrderManagement}
-                    className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessing ? 'Processing...' : 'Send to Order Management'}
-                    <CheckCircle size={15} />
-                  </button>
-                </>
-              ) : (
-                /* Marketing Sent Order -> Return to Marketing & Send to Marketing */
-                <>
-                  <button
-                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                    onClick={handleReturnToCreator}
-                    className="px-6 py-4 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    Return to Marketing
-                  </button>
-                  <button
-                    disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                    onClick={handleSendToMarketing}
-                    className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 animate-pulse"
-                  >
-                    {isProcessing ? 'Processing files...' : 'Send to Marketing'}
-                    <CheckCircle size={15} />
-                  </button>
-                </>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
+                {/* Show action buttons depending on whether it is Accounts Sent vs Marketing Sent */}
+                {(activeChannel === 'accounts_queue' || (selectedOrder.accountsAttachments || []).length > 0) ? (
+                  /* Accounts Sent Order -> Send to Digitizer & Send to Order Management */
+                  <>
+                    <button
+                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      onClick={handleSendToDigitizer}
+                      className="flex-1 py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isProcessing ? 'Processing files...' : 'Send to Digitizer'}
+                      <CheckCircle size={15} />
+                    </button>
+                    <button
+                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      onClick={handleSendToOrderManagement}
+                      className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isProcessing ? 'Processing...' : 'Send to Order Management'}
+                      <CheckCircle size={15} />
+                    </button>
+                  </>
+                ) : (
+                  /* Marketing Sent Order -> Return to Marketing & Send to Marketing */
+                  <>
+                    <button
+                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      onClick={handleReturnToCreator}
+                      className="px-6 py-4 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      Return to Marketing
+                    </button>
+                    <button
+                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      onClick={handleSendToMarketing}
+                      className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 animate-pulse"
+                    >
+                      {isProcessing ? 'Processing files...' : 'Send to Marketing'}
+                      <CheckCircle size={15} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        );
+      })()}
 
       {/* Global Image Viewer Modal */}
       {viewingImage && (
