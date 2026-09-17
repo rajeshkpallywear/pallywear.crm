@@ -156,6 +156,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
   }, [selectedOrder, activeChannel, refreshChatCounter]);
 
+  const isAdmin = Boolean(user?.role === 'admin' || user?.role === 'UserRole.ADMIN' || user?.email?.toLowerCase() === 'admin@pallywear.com');
+
   // Assist sorting / parsing designer name rules
   const isClaimedByMe = (item: any) => {
     if (item?.claimedBy && (user?.id || user?.uid)) {
@@ -497,24 +499,25 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
     // Filter by subsection
     if (selectedSection === 'hold') {
-      baseList = baseList.filter(item => item.isHold);
+      baseList = baseList.filter(item => item.isHold && (isAdmin || isClaimedByMe(item) || isUnclaimedItem(item.assignedDesigner, item.claimedBy)));
     } else if (selectedSection === 'completed') {
-      baseList = baseList.filter(item => item.isCompleted);
+      baseList = baseList.filter(item => item.isCompleted && (isAdmin || isClaimedByMe(item)));
     } else if (selectedSection === 'completed_om') {
-      baseList = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item));
+      baseList = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item) && (isAdmin || isClaimedByMe(item)));
     } else if (selectedSection === 'completed_digitizer') {
-      baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item));
+      baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item) && (isAdmin || isClaimedByMe(item)));
     } else if (selectedSection === 'marketing_tasks') {
-      baseList = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold);
+      // Unclaimed tasks are visible to all designers. Once taken/claimed, only visible to claiming designer (or admin)
+      baseList = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
     } else if (selectedSection === 'unclaimed') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder);
     } else if (selectedSection === 'my_tasks') {
-      // In My Tasks: show all claimed active tasks by this designer (including reworks, clearly badged)
+      // In My Tasks: strictly show only tasks claimed by THIS logged-in designer
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'rework') {
-      baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold);
+      baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
     } else if (selectedSection === 'admin_order') {
-      baseList = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework);
+      baseList = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
     }
 
     // Search term matching
@@ -544,12 +547,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
     const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder).length;
-    const marketingTasksCount = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold).length;
+    const marketingTasksCount = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
-    const holdCount = baseList.filter(item => item.isHold).length;
-    const completedCount = baseList.filter(item => item.isCompleted).length;
-    const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold).length;
-    const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework).length;
+    const holdCount = baseList.filter(item => item.isHold && (isAdmin || isClaimedByMe(item) || isUnclaimedItem(item.assignedDesigner, item.claimedBy))).length;
+    const completedCount = baseList.filter(item => item.isCompleted && (isAdmin || isClaimedByMe(item))).length;
+    const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
+    const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
     const digitizerSentCount = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item)).length;
     const omSentCount = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item)).length;
     const totalCount = baseList.length;
