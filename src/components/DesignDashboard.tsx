@@ -238,7 +238,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const isCompletedDesign = statusLower === 'delivered' || isDesignDone;
       const isDesignPhase = statusLower === 'design';
       const isHoldFromDesign = statusLower === 'hold' && prevStatusLower === 'design';
-      const isMarketing = !o.sentByAccounts && (!o.accountsAttachments || o.accountsAttachments.length === 0);
+      const isMarketing = !o.sentByAccounts;
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing;
     })
     .map(o => {
@@ -349,7 +349,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const isCompletedDesign = statusLower === 'delivered' || isDesignDone;
       const isDesignPhase = statusLower === 'design';
       const isHoldFromDesign = statusLower === 'hold' && (prevStatusLower === 'design' || prevStatusLower === 'accounts');
-      const isAccounts = o.sentByAccounts || (o.accountsAttachments && o.accountsAttachments.length > 0);
+      const isAccounts = Boolean(o.sentByAccounts);
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts;
     })
     .map(o => {
@@ -1156,7 +1156,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
             { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
-            { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
+            ...(activeChannel === 'marketing_queue' ? [
+              { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
+            ] : []),
             { key: 'admin_order', label: '👑 Admin Order', count: activeStats.adminOrderCount, color: 'bg-indigo-600' },
           ] as const).map(({ key, label, count, color }) => (
             <button
