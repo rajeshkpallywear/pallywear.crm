@@ -229,6 +229,8 @@ export interface Order {
   reworkNotes?: string;
   sentByAdmin?: boolean;
   movedToAccountsAt?: number;
+  isRaisedTask?: boolean;
+  raisedTaskCategory?: string;
 }
 
 export interface InventoryMovement {

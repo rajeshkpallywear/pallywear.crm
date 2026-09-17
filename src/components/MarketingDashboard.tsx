@@ -11,7 +11,8 @@ import {
   Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn,
   Copy, Share2, Trash2, Package, AlertCircle, AlertTriangle, Mic, Send,
   MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight,
-  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck, Factory, RefreshCw
+  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck, Factory, RefreshCw,
+  Palette
 } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
@@ -27,6 +28,7 @@ import {
 } from '../constants';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
+import RaiseDesignTaskModal from './RaiseDesignTaskModal';
 import imageCompression from 'browser-image-compression';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
@@ -84,10 +86,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     isUrgent: false
   });
 
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'design_received' | 'rework' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'design_received' | 'rework' | 'hold' | 'completed' | 'raised_tasks'>('recent');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [isRaiseTaskModalOpen, setIsRaiseTaskModalOpen] = useState(false);
 
   // Voice recording state
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -158,6 +161,79 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       showActionToast(`✓ Order #${orderId.slice(-6)} sent to ${target === 'design' ? 'Designs Queue' : 'Accounts Queue'} immediately!`);
     } catch (err) {
       showActionToast("Action failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRaiseTaskSubmit = async (taskData: {
+    title: string;
+    customerPhone?: string;
+    category: string;
+    priority: 'normal' | 'urgent';
+    notes: string;
+    images: string[];
+    pdfs: string[];
+    voiceNote?: string;
+    sendDirectlyToDesign: boolean;
+  }) => {
+    setIsProcessing(true);
+    try {
+      const newOrderData: Partial<Order> = {
+        customerInfo: {
+          name: taskData.title,
+          phone: taskData.customerPhone || 'N/A',
+          address: 'Raised Design Task',
+        },
+        category: taskData.category || 'T-Shirt',
+        quantity: 1,
+        status: taskData.sendDirectlyToDesign ? OrderStatus.DESIGN : OrderStatus.PENDING,
+        isUrgent: taskData.priority === 'urgent',
+        isRaisedTask: true,
+        raisedTaskCategory: taskData.category,
+        notes: taskData.notes,
+        designNotes: taskData.notes,
+        marketing_notes: taskData.notes,
+        staffImages: taskData.images || [],
+        marketing_image: taskData.images?.[0] || undefined,
+        staffPdfs: taskData.pdfs || [],
+        voiceNote: taskData.voiceNote,
+        sentByAccounts: false,
+        designSentToMarketing: false,
+        designCompleted: false,
+        sizeBreakdown: [],
+        details: {
+          isRaisedTask: true,
+          raisedBy: user?.name || 'Marketing Team',
+          raisedAt: Date.now(),
+          notes: taskData.notes,
+          priority: taskData.priority
+        },
+        financials: {
+          totalAmount: 0,
+          advancePay: 0,
+          balanceAmount: 0
+        },
+        accountsAttachments: [],
+        orderManagementAttachments: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      await onCreateOrder(newOrderData);
+      showActionToast(
+        taskData.sendDirectlyToDesign
+          ? `🚀 Task "${taskData.title}" created & sent directly to Design Team!`
+          : `✓ Raised Task "${taskData.title}" saved successfully!`
+      );
+      if (taskData.sendDirectlyToDesign) {
+        setSelectedSection('process');
+      } else {
+        setSelectedSection('raised_tasks');
+      }
+    } catch (err) {
+      console.error('Failed to raise design task:', err);
+      showActionToast('Failed to raise design task. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -793,6 +869,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
+  const isRaisedTaskOrder = (o: Order) => {
+    return Boolean(o.isRaisedTask || o.details?.isRaisedTask);
+  };
+
   const isReturnedFromDesign = (o: Order) => {
     const s = String(o.status || '').toLowerCase();
     const isPendingOrDraft = s === 'pending' || s === 'draft';
@@ -853,6 +933,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term) || (o.reworkNotes || '').toLowerCase().includes(term);
       if (!matchesSearch) return false;
 
+      if (selectedSection === 'raised_tasks') {
+        return isRaisedTaskOrder(o);
+      }
       if (selectedSection === 'design_received') {
         return isReturnedFromDesign(o);
       }
@@ -874,6 +957,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   }, [orders, debouncedSearchTerm, selectedSection]);
 
   const recentOrdersCount = useMemo(() => orders.filter(isRecentOrder).length, [orders]);
+  const raisedTasksCount = useMemo(() => orders.filter(isRaisedTaskOrder).length, [orders]);
   const designReceivedOrdersCount = useMemo(() => orders.filter(isReturnedFromDesign).length, [orders]);
   const reworkOrdersCount = useMemo(() => orders.filter(isReworkOrder).length, [orders]);
   const processOrdersCount = useMemo(() => orders.filter(isProcessOrder).length, [orders]);
@@ -900,6 +984,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
       {/* Action Buttons Header */}
       <div className="flex items-center justify-end gap-2.5 border-b border-gray-100 pb-3 sm:pb-4">
+        <button
+          onClick={() => setIsRaiseTaskModalOpen(true)}
+          className="flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-purple-700 via-indigo-700 to-brand-primary hover:opacity-95 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black transition-all shadow-md active:scale-95 text-[10px] sm:text-xs uppercase cursor-pointer border-none"
+          title="Raise a new design task with artwork and notes"
+        >
+          <Palette size={14} className="sm:w-4 sm:h-4 text-purple-200" />
+          <span>+ Raise Task</span>
+        </button>
         <button
           onClick={() => {
             resetForm();
@@ -938,6 +1030,23 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           )}
         >
           Recent ({recentOrdersCount})
+        </button>
+        <button
+          onClick={() => setSelectedSection('raised_tasks')}
+          className={cn(
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0 flex items-center justify-center gap-1.5",
+            selectedSection === 'raised_tasks'
+              ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+              : "text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 hover:text-indigo-900"
+          )}
+        >
+          <span>🎨 Raised Tasks</span>
+          <span className={cn(
+            "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+            selectedSection === 'raised_tasks' ? "bg-white/20 text-white" : "bg-indigo-200/80 text-indigo-900"
+          )}>
+            {raisedTasksCount}
+          </span>
         </button>
         <button
           onClick={() => setSelectedSection('process')}
@@ -1047,6 +1156,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           {isReworkOrder(order) && (
                             <span className="bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">REWORK</span>
                           )}
+                          {isRaisedTaskOrder(order) && (
+                            <span className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">TASK</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-3">
@@ -1137,9 +1249,16 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             </div>
                           ) : (
                             <>
-                              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                                {order.status.replace('_', ' ')}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                                  {order.status.replace('_', ' ')}
+                                </span>
+                                {isRaisedTaskOrder(order) && (
+                                  <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[8px] font-black px-1.5 py-0.5 rounded">
+                                    Raised Task
+                                  </span>
+                                )}
+                              </div>
                               {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
                                 <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
                                   🎨 {order.assignedDesigner}
@@ -1149,30 +1268,32 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   🎨 Unassigned
                                 </span>
                               )}
-                              {selectedSection === 'recent' && (
+                              {(selectedSection === 'recent' || (isRaisedTaskOrder(order) && order.status !== OrderStatus.DESIGN)) ? (
                                 <div className="flex gap-1.5 mt-1">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleDirectForward(order.id, 'design');
                                     }}
-                                    className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white border border-purple-200 shadow-2xs"
-                                    title="Send order to Designs Queue"
+                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-purple-700 to-indigo-700 hover:opacity-95 shadow-xs flex items-center gap-1 border-none"
+                                    title="Send task to Designs Queue"
                                   >
-                                    🎨 Designs
+                                    <span>🚀 Send to Design</span>
                                   </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDirectForward(order.id, 'accounts');
-                                    }}
-                                    className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 shadow-2xs"
-                                    title="Send order to Accounts Queue"
-                                  >
-                                    💳 Accounts
-                                  </button>
+                                  {selectedSection === 'recent' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDirectForward(order.id, 'accounts');
+                                      }}
+                                      className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 shadow-2xs"
+                                      title="Send order to Accounts Queue"
+                                    >
+                                      💳 Accounts
+                                    </button>
+                                  )}
                                 </div>
-                              )}
+                              ) : null}
                             </>
                           )}
                         </div>
@@ -1216,7 +1337,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex flex-col">
-                        <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
+                          {isRaisedTaskOrder(order) && (
+                            <span className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">TASK</span>
+                          )}
+                        </div>
                         <span className="text-[9px] text-gray-400 font-mono mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</span>
                       </div>
                       {order.isUrgent && (
@@ -1324,9 +1450,16 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         <>
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                              {order.status.replace('_', ' ')}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
+                                {order.status.replace('_', ' ')}
+                              </span>
+                              {isRaisedTaskOrder(order) && (
+                                <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[8px] font-black px-1.5 py-0.5 rounded">
+                                  Task
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center justify-between text-xs mt-1">
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Designer:</span>
@@ -1347,28 +1480,39 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             </div>
                           )}
 
-                          {selectedSection === 'recent' ? (
+                          {(selectedSection === 'recent' || (isRaisedTaskOrder(order) && order.status !== OrderStatus.DESIGN)) ? (
                             <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => handleDirectForward(order.id, 'design')}
-                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
+                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-gradient-to-r from-purple-700 to-indigo-700 hover:opacity-90 text-white shadow-xs border-none"
                                 title="Send order to Designs Queue"
                               >
-                                🎨 To Designs
+                                🚀 Send to Design
                               </button>
-                              <button
-                                onClick={() => handleDirectForward(order.id, 'accounts')}
-                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
-                                title="Send order to Accounts Queue"
-                              >
-                                💳 To Accounts
-                              </button>
-                              <button
-                                onClick={() => setSelectedHubOrder(order)}
-                                className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
-                              >
-                                View & Edit Details
-                              </button>
+                              {selectedSection === 'recent' ? (
+                                <button
+                                  onClick={() => handleDirectForward(order.id, 'accounts')}
+                                  className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
+                                  title="Send order to Accounts Queue"
+                                >
+                                  💳 To Accounts
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setSelectedHubOrder(order)}
+                                  className="py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                                >
+                                  View & Edit
+                                </button>
+                              )}
+                              {selectedSection === 'recent' && (
+                                <button
+                                  onClick={() => setSelectedHubOrder(order)}
+                                  className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                                >
+                                  View & Edit Details
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <div className="mt-1" onClick={(e) => e.stopPropagation()}>
@@ -1386,8 +1530,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   </div>
                 ))
               ) : (
-                <div className="p-8 text-center text-gray-400 italic">
-                  No orders found.
+                <div className="py-8 text-center text-gray-400 italic text-xs">
+                  No orders found in this section.
                 </div>
               )}
             </div>
@@ -2460,6 +2604,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         </div>,
         document.body
       )}
+
+      {/* Raise Design Task Modal */}
+      <RaiseDesignTaskModal
+        isOpen={isRaiseTaskModalOpen}
+        onClose={() => setIsRaiseTaskModalOpen(false)}
+        onSubmit={handleRaiseTaskSubmit}
+        user={user}
+      />
     </div>
   );
 }
