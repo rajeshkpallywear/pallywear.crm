@@ -27,7 +27,7 @@ foreach (explode('&', $rawQuery) as $param) {
     }
 }
 
-// The target URLs to try (127.0.0.1 local loopback first, then public IP)
+// The target URLs to try (127.0.0.1 local loopback IPv4 first, then localhost, then public IP)
 $targetHosts = ['http://127.0.0.1:3000', 'http://localhost:3000', 'http://118.139.167.81:3000'];
 
 // Only forward the Content-Type request header to protect against header clash or double gzip issues
@@ -55,6 +55,7 @@ foreach ($targetHosts as $host) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HEADER, true);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); // Force fast IPv4 resolution
 
     if (!empty($input)) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
@@ -65,7 +66,7 @@ foreach ($targetHosts as $host) {
     }
 
     curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 800); // Fail fast in 800ms if unreachable
 
     $response = curl_exec($ch);
     $info = curl_getinfo($ch);

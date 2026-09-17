@@ -75,12 +75,43 @@ function getCached<T>(key: string, maxAgeMs = 15000): T | null {
   return mem ? mem.data : null;
 }
 
+function stripAttachmentsForStorage(data: any): any {
+  if (!Array.isArray(data)) return data;
+  return data.map(item => {
+    if (!item || typeof item !== 'object' || !item.id) return item;
+    // Don't store large attachment base64 in localStorage cache
+    if ('status' in item && ('staffImages' in item || 'designAttachments' in item || 'original_design_file' in item)) {
+      const {
+        staffImages, staffPdfs, staffAttachments, accountsAttachments,
+        orderManagementAttachments, designAttachments, machineFiles,
+        original_design_file, original_design_zip, marketing_image, invoice_file,
+        ...lightOrder
+      } = item;
+      return {
+        ...lightOrder,
+        staffImages: [],
+        staffPdfs: [],
+        accountsAttachments: [],
+        orderManagementAttachments: [],
+        designAttachments: [],
+        machineFiles: [],
+        marketing_image: '',
+        original_design_file: '',
+        original_design_zip: '',
+        invoice_file: ''
+      };
+    }
+    return item;
+  });
+}
+
 function setCache<T>(key: string, data: T) {
   const entry: CacheEntry<T> = { data, timestamp: Date.now() };
   memoryCache.set(key, entry);
   try {
     if (Array.isArray(data) && data.length < 2000) {
-      localStorage.setItem(`pw_cache_${key}`, JSON.stringify(entry));
+      const cleanData = key === 'orders' ? stripAttachmentsForStorage(data) : data;
+      localStorage.setItem(`pw_cache_${key}`, JSON.stringify({ data: cleanData, timestamp: Date.now() }));
     }
   } catch (_) {}
 }

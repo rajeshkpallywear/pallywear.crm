@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { mockDataService, getInitialCached } from '../service/mockDataService';
-import { Lead, Invoice, Order, InventoryMovement } from '../types';
+import { Lead, Invoice, Order, OrderStatus, InventoryMovement } from '../types';
 import { useAuth } from './AuthContext';
 
 interface LeadContextType {
@@ -196,14 +196,49 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
   const addOrder = async (orderData: Partial<Order>) => {
     if (!user) return;
-    const nextOrder = await mockDataService.createOrder({
+    const generatedId = orderData.id || `ORD-${Date.now().toString(36).toUpperCase()}`;
+    const nextOrder: Order = {
+      id: generatedId,
+      customerInfo: {
+        name: '',
+        phone: '',
+        address: '',
+        ...orderData.customerInfo
+      },
+      category: orderData.category || 'General',
+      quantity: orderData.quantity || 1,
+      details: orderData.details || {},
+      sizeBreakdown: orderData.sizeBreakdown || [],
+      financials: orderData.financials || { totalAmount: 0, advancePay: 0, balanceAmount: 0 },
+      status: orderData.status || OrderStatus.ACCOUNTS,
+      staffImages: orderData.staffImages || [],
+      staffPdfs: orderData.staffPdfs || [],
+      accountsAttachments: orderData.accountsAttachments || [],
+      orderManagementAttachments: orderData.orderManagementAttachments || [],
+      designAttachments: orderData.designAttachments || [],
+      machineFiles: orderData.machineFiles || [],
+      sentByAccounts: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
       ...orderData,
       createdBy: orderData.createdBy || user.id,
       createdByName: orderData.createdByName || user.name,
-    });
-    setOrders((prev) => [...prev, nextOrder]);
+    };
 
-    // Automatically sync/create Client (Lead)
+    // ⚡ Instant optimistic update (0ms lag)
+    setOrders((prev) => [nextOrder, ...prev.filter(o => o.id !== nextOrder.id)]);
+
+    try {
+      const persisted = await mockDataService.createOrder(nextOrder);
+      if (persisted.id && persisted.id !== generatedId) {
+        setOrders((prev) => prev.map(o => o.id === generatedId ? persisted : o));
+      }
+    } catch (err) {
+      console.error("Failed to save order on server:", err);
+      // fallback handled in service
+    }
+
+    // Automatically sync/create Client (Lead) in background
     const phone = nextOrder.customerInfo?.phone;
     if (phone) {
       const existingLead = leads.find(l => l.number === phone);

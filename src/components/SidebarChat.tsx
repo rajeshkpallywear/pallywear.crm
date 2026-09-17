@@ -16,6 +16,7 @@ import { mockDataService } from '../service/mockDataService';
 import { SidebarMessage } from '../types';
 import { cn } from '../lib/utils';
 import ImageViewer from './ImageViewer';
+import imageCompression from 'browser-image-compression';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🔥', '🎉', '🙏', '👏', '💯', '👕', '🎨', '📦', '✨'];
 
@@ -109,7 +110,7 @@ export default function SidebarChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -121,12 +122,29 @@ export default function SidebarChat() {
     setAttachmentName(file.name);
     setAttachmentType(type);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setAttachment(reader.result as string);
-      setShowAttachMenu(false);
-    };
-    reader.readAsDataURL(file);
+    try {
+      let processedFile: File | Blob = file;
+      if (type === 'image') {
+        try {
+          processedFile = await imageCompression(file, {
+            maxSizeMB: 0.25,
+            maxWidthOrHeight: 1200,
+            initialQuality: 0.8,
+            useWebWorker: true,
+          });
+        } catch (err) {
+          console.warn('Chat image compression fallback:', err);
+        }
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachment(reader.result as string);
+        setShowAttachMenu(false);
+      };
+      reader.readAsDataURL(processedFile);
+    } catch (err) {
+      console.error('Error processing attachment:', err);
+    }
   };
 
   const handleSend = async (e?: React.FormEvent) => {

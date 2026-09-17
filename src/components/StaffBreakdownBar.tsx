@@ -52,13 +52,14 @@ export function filterOrdersWithStaffAndDate<T extends Order | any>(
   if (searchQuery && searchQuery.trim()) {
     const q = searchQuery.toLowerCase().trim();
     list = list.filter(item => {
-      const creator = (item.createdByName || (userMap && item.createdBy && userMap[item.createdBy]) || item.createdBy || '').toLowerCase();
-      const customer = (item.customerInfo?.name || item.customerName || item.clientName || '').toLowerCase();
-      const phone = (item.customerInfo?.phone || item.phone || '').toLowerCase();
-      const id = (item.id || '').toLowerCase();
-      const designer = (item.assignedDesigner || item.claimedByName || '').toLowerCase();
-      const category = (item.category || '').toLowerCase();
-      const notes = (item.notes || item.designNotes || '').toLowerCase();
+      const it = item as any;
+      const creator = (it.createdByName || (userMap && it.createdBy && userMap[it.createdBy]) || it.createdBy || '').toLowerCase();
+      const customer = (it.customerInfo?.name || it.customerName || it.clientName || '').toLowerCase();
+      const phone = (it.customerInfo?.phone || it.phone || '').toLowerCase();
+      const id = (it.id || '').toLowerCase();
+      const designer = (it.assignedDesigner || it.claimedByName || '').toLowerCase();
+      const category = (it.category || '').toLowerCase();
+      const notes = (it.notes || it.designNotes || '').toLowerCase();
 
       return (
         creator.includes(q) ||
@@ -76,7 +77,8 @@ export function filterOrdersWithStaffAndDate<T extends Order | any>(
   if (staffFilter && staffFilter !== 'all') {
     const targetStaff = staffFilter.trim().toLowerCase();
     list = list.filter(item => {
-      const creator = (item.createdByName || (userMap && item.createdBy && userMap[item.createdBy]) || item.createdBy || '').trim().toLowerCase();
+      const it = item as any;
+      const creator = (it.createdByName || (userMap && it.createdBy && userMap[it.createdBy]) || it.createdBy || '').trim().toLowerCase();
       return creator === targetStaff;
     });
   }
@@ -91,9 +93,10 @@ export function filterOrdersWithStaffAndDate<T extends Order | any>(
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
     list = list.filter(item => {
-      let t = Number(item.createdAt || 0);
-      if (!t && item.date) {
-        t = new Date(item.date).getTime();
+      const it = item as any;
+      let t = Number(it.createdAt || 0);
+      if (!t && it.date) {
+        t = new Date(it.date).getTime();
       }
       if (!t) return false;
 

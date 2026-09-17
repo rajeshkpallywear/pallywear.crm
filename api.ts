@@ -50,7 +50,7 @@ router.post('/auth/login', async (req, res) => {
       return res.json({ success: true, user: matchedAccount });
     }
 
-    const rows = await query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]) as any[];
+    const rows = await query('SELECT * FROM users WHERE email = ?', [normalizedEmail]) as any[];
     if (rows.length === 0) {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
@@ -678,10 +678,11 @@ router.post('/orders', async (req, res) => {
       const createdByName = order.createdByName || '';
       const byText = createdByName ? ` [By: ${createdByName}]` : '';
 
-      for (const role of targetRoles) {
-        await query(
-          'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [
+      if (targetRoles.length > 0) {
+        const notifPlaceholders = targetRoles.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+        const notifParams: any[] = [];
+        targetRoles.forEach(role => {
+          notifParams.push(
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             role,
             `New Order ${orderIdDisplay} (${clientName})`,
@@ -689,8 +690,9 @@ router.post('/orders', async (req, res) => {
             order.id,
             0,
             Date.now()
-          ]
-        );
+          );
+        });
+        await query(`INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES ${notifPlaceholders}`, notifParams);
       }
     }
 
@@ -937,14 +939,18 @@ const handleUpdateOrderFields = async (req, res) => {
     const sql = `UPDATE orders SET ${fields.join(', ')} WHERE id = ?`;
     await query(sql, params);
 
-    // Cascade ID updates to other referencing tables
+    // Cascade ID updates in parallel to other referencing tables
     if (newId && newId !== id) {
-      await query('UPDATE invoices SET order_id = ? WHERE order_id = ?', [newId, id]);
-      await query('UPDATE notifications SET orderId = ? WHERE orderId = ?', [newId, id]);
-      await query('UPDATE expenses SET id = ? WHERE id = ?', [`rev-${newId}`, `rev-${id}`]);
+      await Promise.all([
+        query('UPDATE invoices SET order_id = ? WHERE order_id = ?', [newId, id]),
+        query('UPDATE notifications SET orderId = ? WHERE orderId = ?', [newId, id]),
+        query('UPDATE expenses SET id = ? WHERE id = ?', [`rev-${newId}`, `rev-${id}`])
+      ]);
     }
     
     const newStatus = updates.status;
+    const postTasks: Promise<any>[] = [];
+
     if (newStatus && oldStatus !== newStatus) {
       const targetRoles = [];
       if (newStatus === 'accounts') targetRoles.push('accounts');
@@ -978,10 +984,11 @@ const handleUpdateOrderFields = async (req, res) => {
       const createdByName = updates.createdByName || existing[0]?.createdByName || '';
       const byText = createdByName ? ` [By: ${createdByName}]` : '';
 
-      await Promise.all(targetRoles.map(role =>
-        query(
-          'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [
+      if (targetRoles.length > 0) {
+        const notifPlaceholders = targetRoles.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+        const notifParams: any[] = [];
+        targetRoles.forEach(role => {
+          notifParams.push(
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             role,
             `Order ${orderIdDisplay} (${clientName})`,
@@ -989,16 +996,17 @@ const handleUpdateOrderFields = async (req, res) => {
             id,
             0,
             Date.now()
-          ]
-        )
-      ));
+          );
+        });
+        postTasks.push(query(`INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES ${notifPlaceholders}`, notifParams));
+      }
     }
 
     if (updates.designSentToDigitizer) {
       const clientName = updates.customerName || updates.customerInfo?.name || existing[0]?.customerName || 'Client';
       const rawId = String(newId || id || '');
       const orderIdDisplay = rawId.startsWith('#') ? rawId : `#${rawId.slice(-8)}`;
-      await query(
+      postTasks.push(query(
         'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
           `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -1009,53 +1017,60 @@ const handleUpdateOrderFields = async (req, res) => {
           0,
           Date.now()
         ]
-      );
+      ));
     }
 
     if (newStatus === 'accounts') {
       const revId = `rev-${id}`;
-      const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
-      const totalAmount = existing[0]?.totalAmount || 0;
-      const customerName = existing[0]?.customerName || 'Client';
-      const category = existing[0]?.category || 'Order';
-      const quantity = existing[0]?.quantity || 0;
-      
-      if (revExisting.length > 0) {
-        await query(
-          'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
-          [
-            totalAmount,
-            customerName,
-            category,
-            String(quantity),
-            updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
-            revId
-          ]
-        );
-      } else {
-        await query(
-          `INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            revId,
-            'revenue',
-            updates.createdBy || 'system',
-            updates.createdByName || 'System',
-            customerName,
-            category,
-            String(quantity),
-            null,
-            null,
-            totalAmount,
-            new Date().toISOString().split('T')[0],
-            null,
-            updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
-            null,
-            new Date().toLocaleString('en-US', { month: 'long' }),
-            Date.now()
-          ]
-        );
-      }
+      const revTask = (async () => {
+        const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
+        const totalAmount = existing[0]?.totalAmount || 0;
+        const customerName = existing[0]?.customerName || 'Client';
+        const category = existing[0]?.category || 'Order';
+        const quantity = existing[0]?.quantity || 0;
+        
+        if (revExisting.length > 0) {
+          await query(
+            'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
+            [
+              totalAmount,
+              customerName,
+              category,
+              String(quantity),
+              updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
+              revId
+            ]
+          );
+        } else {
+          await query(
+            `INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              revId,
+              'revenue',
+              updates.createdBy || 'system',
+              updates.createdByName || 'System',
+              customerName,
+              category,
+              String(quantity),
+              null,
+              null,
+              totalAmount,
+              new Date().toISOString().split('T')[0],
+              null,
+              updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
+              null,
+              new Date().toLocaleString('en-US', { month: 'long' }),
+              Date.now()
+            ]
+          );
+        }
+      })();
+      postTasks.push(revTask);
+    }
+
+    if (postTasks.length > 0) {
+      await Promise.all(postTasks);
     }
     
     res.json({ success: true });

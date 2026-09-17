@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Package, Clock, FileText, Upload, X, IndianRupee, FileCheck2, ShieldCheck, Phone, Users, Calendar, AlertCircle } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { cn } from '../lib/utils';
 
 interface Expense {
@@ -57,13 +58,29 @@ export default function VendorDashboard({ user }: VendorDashboardProps) {
     fetchVendorExpenses();
   }, [user]);
 
-  const handleBillUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('File too large. Max 5MB.'); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => setBillFile(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    try {
+      let processedFile: File | Blob = file;
+      if (file.type.startsWith('image/')) {
+        try {
+          processedFile = await imageCompression(file, {
+            maxSizeMB: 0.3,
+            maxWidthOrHeight: 1400,
+            initialQuality: 0.8,
+            useWebWorker: true,
+          });
+        } catch (err) {
+          console.warn('Bill image compression fallback:', err);
+        }
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => setBillFile(ev.target?.result as string);
+      reader.readAsDataURL(processedFile);
+    } catch (err) {
+      console.error('Error processing bill file:', err);
+    }
   };
 
   const handleSaveBill = async (e: React.FormEvent) => {

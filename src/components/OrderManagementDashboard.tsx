@@ -51,6 +51,7 @@ import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
 import InventoryManagement from './InventoryManagement';
 import OrdersChart from './OrdersChart';
+import Logo from './Logo';
 import { useLeads } from '../context/LeadContext';
 import { getApiBaseUrl } from '../lib/apiConfig';
 

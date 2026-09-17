@@ -113,6 +113,7 @@ export default function ImageViewer({ src, onClose, fileName = 'design_original'
                 className="max-h-[82vh] max-w-[88vw] object-contain shadow-2xl rounded-2xl select-none bg-transparent"
                 style={{ imageRendering: 'high-quality' }}
                 draggable={false}
+                decoding="async"
                 alt="Design Asset"
               />
               <div className="mt-3 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[10px] text-purple-200 font-bold flex items-center gap-1 border border-white/10">

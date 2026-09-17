@@ -27,6 +27,7 @@ import {
 } from '../constants';
 import FileUpload from './FileUpload';
 import ImageViewer from './ImageViewer';
+import imageCompression from 'browser-image-compression';
 import { cn, getDisplayCategory, isOrderSizeValid } from '../lib/utils';
 import { useRef } from 'react';
 import ConversationDashboard from './ConversationDashboard';
@@ -375,7 +376,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   useEffect(() => {
     if (!isCreating) return;
 
-    const handleGlobalModalPaste = (e: globalThis.ClipboardEvent) => {
+    const handleGlobalModalPaste = async (e: globalThis.ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items || items.length === 0) return;
 
@@ -390,22 +391,38 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
       if (imageFiles.length > 0) {
         for (const file of imageFiles) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const dataUrl = event.target?.result as string;
-            if (dataUrl) {
-              setFormData(prev => {
-                if (prev.imageAttachments.includes(dataUrl)) return prev;
-                return {
-                  ...prev,
-                  imageAttachments: [...prev.imageAttachments, dataUrl].slice(-10)
-                };
+          try {
+            let processedFile: File | Blob = file;
+            try {
+              processedFile = await imageCompression(file, {
+                maxSizeMB: 0.35,
+                maxWidthOrHeight: 1600,
+                initialQuality: 0.82,
+                useWebWorker: true
               });
-              setNoteFeedback("✓ Screenshot/Image attached to blueprints!");
-              setTimeout(() => setNoteFeedback(null), 3000);
+            } catch (compErr) {
+              console.warn("Marketing paste image compression fallback:", compErr);
             }
-          };
-          reader.readAsDataURL(file);
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const dataUrl = event.target?.result as string;
+              if (dataUrl) {
+                setFormData(prev => {
+                  if (prev.imageAttachments.includes(dataUrl)) return prev;
+                  return {
+                    ...prev,
+                    imageAttachments: [...prev.imageAttachments, dataUrl].slice(-10)
+                  };
+                });
+                setNoteFeedback("✓ Screenshot/Image attached to blueprints!");
+                setTimeout(() => setNoteFeedback(null), 3000);
+              }
+            };
+            reader.readAsDataURL(processedFile);
+          } catch (err) {
+            console.error("Failed to process pasted image:", err);
+          }
         }
       }
     };

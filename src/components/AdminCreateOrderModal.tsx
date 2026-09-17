@@ -10,6 +10,7 @@ import { Order, OrderStatus, SizeBreakdown } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
 import FileUpload from './FileUpload';
+import imageCompression from 'browser-image-compression';
 import { cn, isOrderSizeValid } from '../lib/utils';
 import {
   CATEGORIES, JERSEY_MATERIALS, JERSEY_MODELS, SLEEVE_OPTIONS,
@@ -209,7 +210,7 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleGlobalModalPaste = (e: globalThis.ClipboardEvent) => {
+    const handleGlobalModalPaste = async (e: globalThis.ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items || items.length === 0) return;
 
@@ -219,19 +220,35 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
           const file = item.getAsFile();
           if (!file) continue;
 
-          const reader = new FileReader();
-          reader.onload = (loadEvent) => {
-            const dataUrl = loadEvent.target?.result as string;
-            if (dataUrl) {
-              setFormData((prev) => ({
-                ...prev,
-                imageAttachments: [...prev.imageAttachments, dataUrl].slice(-10)
-              }));
-              setNoteFeedback("✓ Screenshot/Image attached to order!");
-              setTimeout(() => setNoteFeedback(null), 3000);
+          try {
+            let processedFile: File | Blob = file;
+            try {
+              processedFile = await imageCompression(file, {
+                maxSizeMB: 0.35,
+                maxWidthOrHeight: 1600,
+                initialQuality: 0.82,
+                useWebWorker: true
+              });
+            } catch (compErr) {
+              console.warn("Clipboard image compression fallback:", compErr);
             }
-          };
-          reader.readAsDataURL(file);
+
+            const reader = new FileReader();
+            reader.onload = (loadEvent) => {
+              const dataUrl = loadEvent.target?.result as string;
+              if (dataUrl) {
+                setFormData((prev) => ({
+                  ...prev,
+                  imageAttachments: [...prev.imageAttachments, dataUrl].slice(-10)
+                }));
+                setNoteFeedback("✓ Screenshot/Image attached to order!");
+                setTimeout(() => setNoteFeedback(null), 3000);
+              }
+            };
+            reader.readAsDataURL(processedFile);
+          } catch (err) {
+            console.error("Failed to read pasted image:", err);
+          }
         }
       }
     };

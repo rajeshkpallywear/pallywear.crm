@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Factory, Download, ChevronRight, FileText, CheckCircle, Package, ZoomIn, Share2, Globe, Trash2, TrendingUp, Clock, AlertCircle, Sparkles, Wand2, Scissors, ShieldAlert, ExternalLink, FolderOpen, Edit3, Save, Copy, Mic, MessageSquare, X, Camera, Upload, Image as ImageIcon } from 'lucide-react';
 import imageCompression from 'browser-image-compression';

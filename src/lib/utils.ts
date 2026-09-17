@@ -40,8 +40,8 @@ export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
 
 export function shareOrderToWhatsApp(order: Order) {
   try {
-    const customer = order.customerInfo || {};
-    const defaultPhone = (customer.phone || '').trim();
+    const customer = (order.customerInfo || {}) as any;
+    const defaultPhone = (customer.phone || order.customerPhone || '').trim();
     
     const phoneInput = prompt(
       "Enter the WhatsApp phone number (with country code, e.g. 919876543210) to share this order.\n\nLeave empty to pick any contact directly inside WhatsApp:",

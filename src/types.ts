@@ -21,6 +21,8 @@ export interface Lead {
   status?: string;
   description?: string;
   isOnlineLead?: boolean | number;
+  isTaken?: boolean | number;
+  email?: string;
 }
 
 export interface InvoiceItem {
@@ -114,6 +116,7 @@ export enum OrderStatus {
   PENDING = 'pending',
   ACCOUNTS = 'accounts',
   DESIGN = 'design',
+  DIGITIZER = 'digitizer',
   ORDER_MANAGEMENT = 'order_management',
   PRODUCTION = 'production',
   DELIVERY = 'delivery',
@@ -155,7 +158,20 @@ export interface Order {
     name: string;
     phone: string;
     address: string;
+    company?: string;
   };
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  customerCompany?: string;
+  orderNumber?: string;
+  netTotal?: number;
+  totalOrderValue?: number;
+  advanceAmount?: number;
+  embroidery_file?: string;
+  designRework?: boolean;
+  productionCompleted?: boolean;
+  deliveryStatus?: string;
   category: string;
   quantity: number;
   details: Record<string, any>;

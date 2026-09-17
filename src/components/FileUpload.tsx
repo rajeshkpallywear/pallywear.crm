@@ -114,14 +114,17 @@ export default function FileUpload({
 
       try {
         let fileObj: File | Blob = file;
-        const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
         const isZip = file.type.includes('zip') || file.name.toLowerCase().endsWith('.zip') || file.name.toLowerCase().endsWith('.rar') || file.name.toLowerCase().endsWith('.7z');
-        const shouldCompress = !preserveOriginalQuality && !isPng && !isZip && file.type.startsWith('image/');
+        const isPdf = file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
+        const isEmbroidery = /\.(dst|emb|cdr|ai|pes|jef|exp|xxx)$/i.test(file.name);
+        const isImg = (file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) && !isEmbroidery;
+        const shouldCompress = !preserveOriginalQuality && !isZip && !isPdf && !isEmbroidery && isImg;
 
         if (shouldCompress) {
           const options = {
-            maxSizeMB: 1.5,
-            maxWidthOrHeight: 2560,
+            maxSizeMB: 0.35,
+            maxWidthOrHeight: 1600,
+            initialQuality: 0.82,
             useWebWorker: true,
           };
           try {
@@ -141,7 +144,7 @@ export default function FileUpload({
 
         processedFiles.push({
           name: file.name,
-          type: file.type || (isZip ? 'application/zip' : isPng ? 'image/png' : 'application/octet-stream'),
+          type: file.type || (isZip ? 'application/zip' : isPdf ? 'application/pdf' : isImg ? 'image/jpeg' : 'application/octet-stream'),
           size: fileObj.size || file.size,
           data: data
         });
@@ -209,7 +212,7 @@ export default function FileUpload({
 
     const files: File[] = [];
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      files.push(...Array.from(e.dataTransfer.files));
+      files.push(...(Array.from(e.dataTransfer.files) as File[]));
     }
     
     if (files.length > 0) {
@@ -429,7 +432,7 @@ export default function FileUpload({
                 >
                   {isImg ? (
                     <>
-                      <img src={file.data} alt={file.name} className="w-full h-full object-cover" />
+                      <img src={file.data} alt={file.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                         <Eye size={14} />
                       </div>

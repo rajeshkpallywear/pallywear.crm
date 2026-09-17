@@ -10,7 +10,12 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || 'Pallywear@24',
   database: process.env.DB_NAME || 'pallywearcrm',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 15,
+  maxIdle: 10,
+  idleTimeout: 60000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  connectTimeout: 5000,
   queueLimit: 0,
 });
 
@@ -559,6 +564,8 @@ export async function initDB() {
       "CREATE INDEX idx_salary_slips_status ON `salary_slips` (`status`)",
       "CREATE INDEX idx_staff_att_user ON `staff_attendance` (`userId`)",
       "CREATE INDEX idx_staff_att_date ON `staff_attendance` (`date`)",
+      "CREATE INDEX idx_notif_role_read ON `notifications` (`userRole`, `isRead`)",
+      "CREATE INDEX idx_notif_order ON `notifications` (`orderId`)",
     ];
 
     for (const q of indexQueries) {

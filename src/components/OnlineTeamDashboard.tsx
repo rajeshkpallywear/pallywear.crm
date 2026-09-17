@@ -26,6 +26,9 @@ interface Lead {
   entryDate?: string;
   createdBy: string;
   createdByName?: string;
+  isTaken?: boolean | number;
+  isOnlineLead?: boolean | number;
+  email?: string;
 }
 
 const isLeadAssignedToUser = (l: Lead, u: any) => {
