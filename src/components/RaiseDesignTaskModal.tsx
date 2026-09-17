@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, Upload, Image as ImageIcon, FileText, Send, Sparkles,
   Loader2, Mic, CheckCircle2, AlertCircle, Trash2, Eye,
-  Palette, Tag, AlertTriangle
+  Palette
 } from 'lucide-react';
-import { CATEGORIES } from '../constants';
 import imageCompression from 'browser-image-compression';
 import ImageViewer from './ImageViewer';
 
@@ -18,9 +18,6 @@ interface RaiseDesignTaskModalProps {
   onClose: () => void;
   onSubmit: (taskData: {
     title: string;
-    customerPhone?: string;
-    category: string;
-    priority: 'normal' | 'urgent';
     notes: string;
     images: string[];
     pdfs: string[];
@@ -37,14 +34,15 @@ export default function RaiseDesignTaskModal({
   user
 }: RaiseDesignTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0] || 'T-Shirt');
-  const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
   const [notes, setNotes] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [pdfs, setPdfs] = useState<string[]>([]);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const [isCompressing, setIsCompressing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -63,6 +61,7 @@ export default function RaiseDesignTaskModal({
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    setNotesError(null);
     setIsCompressing(true);
     try {
       const compressedResults: string[] = [];
@@ -92,7 +91,7 @@ export default function RaiseDesignTaskModal({
       setImages(prev => [...prev, ...compressedResults]);
     } catch (err) {
       console.error('Error uploading image:', err);
-      alert('Failed to upload image. Please try again.');
+      setSubmitError('Failed to upload image. Please try again.');
     } finally {
       setIsCompressing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -130,22 +129,27 @@ export default function RaiseDesignTaskModal({
   };
 
   const handleSubmit = async (sendDirectlyToDesign: boolean) => {
+    setTitleError(null);
+    setNotesError(null);
+    setSubmitError(null);
+
+    let hasError = false;
+
     if (!title.trim()) {
-      alert('Please enter a Task Title or Customer Reference.');
-      return;
+      setTitleError('Task Title is required.');
+      hasError = true;
     }
     if (!notes.trim() && images.length === 0) {
-      alert('Please provide instructions/notes or upload a reference image for the design team.');
-      return;
+      setNotesError('Please enter design instructions or attach reference images.');
+      hasError = true;
     }
+
+    if (hasError) return;
 
     setIsSubmitting(true);
     try {
       await onSubmit({
         title: title.trim(),
-        customerPhone: customerPhone.trim(),
-        category,
-        priority,
         notes: notes.trim(),
         images,
         pdfs,
@@ -153,15 +157,16 @@ export default function RaiseDesignTaskModal({
         sendDirectlyToDesign
       });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to submit design task:', error);
+      setSubmitError(error?.message || 'Failed to submit design task. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in duration-200">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-150 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
         
         {/* Modal Top Header */}
@@ -174,7 +179,7 @@ export default function RaiseDesignTaskModal({
               <h3 className="font-bold text-base tracking-tight leading-tight flex items-center gap-2">
                 <span>Raise Design Task</span>
                 <span className="bg-white/20 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                  Marketing Hub
+                  Design Hub
                 </span>
               </h3>
               <p className="text-[11px] text-purple-100 font-medium">
@@ -194,79 +199,40 @@ export default function RaiseDesignTaskModal({
         {/* Modal Form Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 custom-scrollbar">
           
-          {/* 1. Task Title & Category */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div className="sm:col-span-2 space-y-1">
-              <label className="block text-xs font-bold text-gray-700">
-                Task Title / Client Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Royal Club Jersey Design, Custom Polo Logo Mockup"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#f8f9fb] border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-purple-600 focus:bg-white transition-all shadow-xs"
-              />
+          {/* Submit Error Alert if any */}
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2.5 text-xs text-red-700 font-semibold animate-in fade-in">
+              <AlertCircle size={16} className="shrink-0 text-red-600" />
+              <span>{submitError}</span>
             </div>
+          )}
 
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-gray-700">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-[#f8f9fb] border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-800 outline-none focus:border-purple-600 focus:bg-white transition-all shadow-xs cursor-pointer"
-              >
-                {CATEGORIES.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+          {/* 1. Task Title */}
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-700">
+              Task Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Royal Club Jersey Design, Custom Polo Logo Mockup"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (titleError) setTitleError(null);
+              }}
+              className={`w-full bg-[#f8f9fb] border rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none transition-all shadow-xs ${
+                titleError ? 'border-red-500 bg-red-50/20 focus:border-red-600' : 'border-gray-200 focus:border-purple-600 focus:bg-white'
+              }`}
+              autoFocus
+            />
+            {titleError && (
+              <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1 mt-1">
+                <AlertCircle size={12} /> {titleError}
+              </p>
+            )}
           </div>
 
-          {/* 2. Priority & Customer Phone */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-gray-700">Priority Level</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPriority('normal')}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                    priority === 'normal'
-                      ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
-                      : 'bg-[#f8f9fb] border-gray-200 text-gray-500 hover:bg-gray-100'
-                  }`}
-                >
-                  ⚡ Normal Priority
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPriority('urgent')}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center justify-center gap-1.5 ${
-                    priority === 'urgent'
-                      ? 'bg-red-50 border-red-300 text-red-700 shadow-xs animate-pulse'
-                      : 'bg-[#f8f9fb] border-gray-200 text-gray-500 hover:bg-gray-100'
-                  }`}
-                >
-                  <AlertTriangle size={13} />
-                  🔥 Urgent (Rush)
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-gray-700">Client Contact / Phone (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. +91 98765 43210"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full bg-[#f8f9fb] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-purple-600 focus:bg-white transition-all shadow-xs"
-              />
-            </div>
-          </div>
-
-          {/* 3. Reference Image Uploads */}
+          {/* 2. Reference Image Uploads */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-gray-700 flex items-center justify-between">
               <span>Sample Images & Logo References</span>
@@ -354,9 +320,19 @@ export default function RaiseDesignTaskModal({
 - Fabric: Sublimation Dry-Fit 180 GSM
 - Color Theme: Royal Navy Blue & Neon Orange"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-[#f8f9fb] border border-gray-200 rounded-2xl p-3.5 text-xs text-gray-900 outline-none focus:border-purple-600 focus:bg-white transition-all shadow-xs resize-none leading-relaxed"
+              onChange={(e) => {
+                setNotes(e.target.value);
+                if (notesError) setNotesError(null);
+              }}
+              className={`w-full bg-[#f8f9fb] border rounded-2xl p-3.5 text-xs text-gray-900 outline-none transition-all shadow-xs resize-none leading-relaxed ${
+                notesError ? 'border-red-500 bg-red-50/20 focus:border-red-600' : 'border-gray-200 focus:border-purple-600 focus:bg-white'
+              }`}
             />
+            {notesError && (
+              <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1 mt-1">
+                <AlertCircle size={12} /> {notesError}
+              </p>
+            )}
           </div>
 
           {/* 5. Voice Instructions Recorder (Optional) */}
@@ -452,4 +428,8 @@ export default function RaiseDesignTaskModal({
       )}
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 }

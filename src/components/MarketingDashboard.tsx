@@ -168,9 +168,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const handleRaiseTaskSubmit = async (taskData: {
     title: string;
-    customerPhone?: string;
-    category: string;
-    priority: 'normal' | 'urgent';
     notes: string;
     images: string[];
     pdfs: string[];
@@ -182,15 +179,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       const newOrderData: Partial<Order> = {
         customerInfo: {
           name: taskData.title,
-          phone: taskData.customerPhone || 'N/A',
-          address: 'Raised Design Task',
+          phone: '-',
+          address: 'Design Task',
         },
-        category: taskData.category || 'T-Shirt',
+        category: 'Design Task',
         quantity: 1,
         status: taskData.sendDirectlyToDesign ? OrderStatus.DESIGN : OrderStatus.PENDING,
-        isUrgent: taskData.priority === 'urgent',
+        isUrgent: false,
         isRaisedTask: true,
-        raisedTaskCategory: taskData.category,
+        raisedTaskCategory: 'Design Task',
         notes: taskData.notes,
         designNotes: taskData.notes,
         marketing_notes: taskData.notes,
@@ -204,10 +201,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         sizeBreakdown: [],
         details: {
           isRaisedTask: true,
-          raisedBy: user?.name || 'Marketing Team',
+          raisedBy: user?.name || 'Marketing Desk',
           raisedAt: Date.now(),
-          notes: taskData.notes,
-          priority: taskData.priority
+          notes: taskData.notes
         },
         financials: {
           totalAmount: 0,
