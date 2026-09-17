@@ -69,9 +69,9 @@ export default function RaiseDesignTaskModal({
         let processed: File | Blob = file;
         try {
           processed = await imageCompression(file, {
-            maxSizeMB: 0.3,
-            maxWidthOrHeight: 1400,
-            initialQuality: 0.8,
+            maxSizeMB: 2.5,
+            maxWidthOrHeight: 4000,
+            initialQuality: 0.95,
             useWebWorker: true,
           });
         } catch {

@@ -21,13 +21,15 @@ interface OrderDetailModalProps {
 export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
   const { loadOrderAttachments, orders, updateOrder: contextUpdateOrder } = useLeads();
   const effectiveUpdateOrder = onUpdateOrder || contextUpdateOrder;
-  const order = orders.find(o => o.id === initialOrder.id) || initialOrder;
+  const order = initialOrder ? (orders.find(o => o.id === initialOrder.id) || initialOrder) : null;
 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedOrder, setEditedOrder] = useState<Order>(order);
+  const [editedOrder, setEditedOrder] = useState<Order | null>(order);
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+  if (!order) return null;
 
   const handleDirectForward = async (target: 'design' | 'accounts') => {
     setIsProcessingAction(true);
@@ -180,6 +182,417 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
       default: return 'bg-gray-100 text-gray-600';
     }
   };
+
+  const isRaisedTask = Boolean(
+    order.isRaisedTask ||
+    order.details?.isRaisedTask ||
+    order.category === 'Design Task' ||
+    order.raisedTaskCategory === 'Design Task'
+  );
+
+  const marketingImages = [
+    ...(order.staffImages || []),
+    ...(order.marketing_image ? [order.marketing_image] : []),
+    ...(order.staffAttachments || []).filter(f => typeof f === 'string' && (f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
+  ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
+
+  const marketingDocs = [
+    ...(order.staffPdfs || []),
+    ...(order.staffAttachments || []).filter(f => typeof f === 'string' && !(f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
+  ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
+
+  const designerReturnedImages = [
+    ...(order.designAttachments || []),
+    ...(order.original_design_file ? [order.original_design_file] : [])
+  ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
+
+  const designerMasterZip = order.original_design_zip || '';
+  const designerMasterZipName = order.original_design_zip_filename || 'Master_Vector_Assets.zip';
+  const designerMasterFilename = order.original_design_filename || '';
+  const designerMachineFiles = order.machineFiles || [];
+
+  const hasReturnedDesigns = Boolean(
+    order.designCompleted ||
+    order.designSentToMarketing ||
+    designerReturnedImages.length > 0 ||
+    designerMasterZip ||
+    designerMasterFilename ||
+    designerMachineFiles.length > 0
+  );
+
+  const downloadAllAssets = () => {
+    const allFiles = [
+      ...marketingImages.map((src, i) => ({ src, name: `Reference_Artwork_${i + 1}.png` })),
+      ...marketingDocs.map((src, i) => ({ src, name: `Reference_Doc_${i + 1}.pdf` })),
+      ...designerReturnedImages.map((src, i) => ({ src, name: `Completed_Mockup_${i + 1}.png` })),
+      ...(designerMasterZip ? [{ src: designerMasterZip, name: designerMasterZipName }] : []),
+      ...designerMachineFiles.map((src, i) => ({ src, name: `Embroidery_File_${i + 1}.dst` }))
+    ];
+    if (allFiles.length === 0) {
+      alert("No attachment files to download.");
+      return;
+    }
+    allFiles.forEach(file => {
+      downloadFile(file.src, file.name);
+    });
+  };
+
+  if (isRaisedTask) {
+    return createPortal(
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden max-h-[94vh] flex flex-col border border-gray-150"
+        >
+          {/* Header */}
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-purple-900 via-indigo-900 to-gray-900 text-white">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-white shrink-0 shadow-sm">
+                <Palette size={24} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg sm:text-2xl font-black tracking-tight text-white">
+                    {order.customerInfo?.name || 'Design Task'}
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-purple-200 border border-white/20">
+                    🎨 Design Task
+                  </span>
+                  {hasReturnedDesigns ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 flex items-center gap-1">
+                      <CheckCircle size={11} /> Completed & Returned
+                    </span>
+                  ) : order.status === OrderStatus.DESIGN ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/30 text-purple-200 border border-purple-400/40 flex items-center gap-1">
+                      <Sparkles size={11} /> In Design Studio
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/30 text-amber-200 border border-amber-400/40">
+                      ⏳ Pending Marketing
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-purple-200/80 font-mono mt-0.5">
+                  ID: #{order.id} • Raised on {new Date(order.createdAt).toLocaleDateString()} by {order.createdByName || order.details?.raisedBy || 'Marketing'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => shareOrderToWhatsApp(order)}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all shadow-sm flex items-center gap-1.5 border-none cursor-pointer"
+                title="Share Task info to WhatsApp"
+              >
+                <MessageSquare size={13} /> WhatsApp
+              </button>
+              {order.status !== OrderStatus.DESIGN && (
+                <button
+                  disabled={isProcessingAction}
+                  onClick={() => handleDirectForward('design')}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:opacity-90 text-white rounded-xl font-black uppercase tracking-wider text-[10px] transition-all shadow-md flex items-center gap-1.5 border-none cursor-pointer disabled:opacity-50"
+                  title="Forward Task directly to Design Team"
+                >
+                  <Sparkles size={13} /> 🚀 Send to Designs
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors border-none bg-transparent cursor-pointer text-white"
+                title="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar bg-[#f8f9fb]">
+            
+            {/* Grid layout: Left = Notes & Details, Right = Visual Artworks */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              
+              {/* Left Column (5 Cols) */}
+              <div className="lg:col-span-5 space-y-4">
+                
+                {/* 1. Design Instructions Card */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-purple-700 flex items-center gap-1.5">
+                      <FileText size={14} /> Design Instructions
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-bold">
+                      Marketing Desk
+                    </span>
+                  </div>
+                  <div className="bg-purple-50/40 p-3.5 rounded-xl border border-purple-100 text-xs text-gray-800 font-medium whitespace-pre-wrap leading-relaxed">
+                    {order.notes || order.designNotes || order.marketing_notes || 'No written instructions provided.'}
+                  </div>
+
+                  {order.voiceNote && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                        <Mic size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-800">Voice Instructions Attached</p>
+                        <p className="text-[10px] text-gray-500 truncate">{order.voiceNote}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Designer Completion Notes & Returned Specs Card */}
+                {hasReturnedDesigns && (
+                  <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-emerald-100 pb-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1.5">
+                        <CheckCircle size={14} /> Designer Output & Reasons
+                      </span>
+                      <span className="text-[10px] text-emerald-600 font-bold">
+                        {order.assignedDesigner || order.claimedByName || 'Design Studio'}
+                      </span>
+                    </div>
+                    <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 text-xs text-emerald-950 font-medium whitespace-pre-wrap leading-relaxed">
+                      {order.reworkNotes || order.productionNotes || order.details?.notes || 'Artwork completed and returned to Marketing.'}
+                    </div>
+                    {order.designCompletedAt && (
+                      <p className="text-[10px] text-gray-400 font-medium">
+                        Completed at: {new Date(order.designCompletedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Task Status Card */}
+                <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs space-y-2">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Design Studio Status</p>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-3 h-3 rounded-full ${hasReturnedDesigns ? 'bg-emerald-500' : order.status === OrderStatus.DESIGN ? 'bg-purple-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span className="text-xs font-bold text-gray-800">
+                      {hasReturnedDesigns
+                        ? `Artwork Completed by ${order.assignedDesigner || order.claimedByName || 'Design Team'}`
+                        : order.status === OrderStatus.DESIGN
+                        ? `Claimed by ${order.assignedDesigner || order.claimedByName || 'Designer'} • 2-Hour SLA Timer Running`
+                        : 'Waiting in Marketing Queue • Ready to Send to Design'}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column (7 Cols) - Full Quality Visuals */}
+              <div className="lg:col-span-7 space-y-4">
+                
+                {/* Section A: Designer Completed Mockups & Returned Artwork (Full Quality) */}
+                {hasReturnedDesigns && (
+                  <div className="bg-white p-5 rounded-2xl border-2 border-emerald-300/80 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                          <Sparkles size={15} className="text-emerald-600" />
+                          Designer Completed Artworks & Master Files
+                        </span>
+                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                          Full Quality
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-semibold">Click to Zoom & Download</span>
+                    </div>
+
+                    {/* Returned Image Previews */}
+                    {designerReturnedImages.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                        {designerReturnedImages.map((img, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setViewingImage(img)}
+                            className="group relative rounded-xl overflow-hidden border border-emerald-200 aspect-square bg-gray-50 cursor-pointer shadow-xs hover:shadow-md transition-all"
+                          >
+                            <img
+                              src={img}
+                              alt="Returned Artwork"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              style={{ imageRendering: 'high-quality' }}
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setViewingImage(img); }}
+                                className="p-2 bg-white text-gray-900 rounded-xl hover:bg-purple-50 transition-colors border-none cursor-pointer"
+                                title="Zoom Full Screen"
+                              >
+                                <ZoomIn size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); downloadFile(img, `Completed_Design_${idx + 1}.png`); }}
+                                className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors border-none cursor-pointer"
+                                title="Download Full Quality"
+                              >
+                                <Download size={15} />
+                              </button>
+                            </div>
+                            <span className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              Mockup #{idx + 1}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Master ZIP & Vector Files */}
+                    {(designerMasterZip || designerMasterFilename) && (
+                      <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center justify-between gap-3 mt-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <FolderOpen size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-emerald-950 truncate">
+                              {designerMasterZipName || designerMasterFilename || 'Vector_Master_Files.zip'}
+                            </p>
+                            <p className="text-[10px] text-emerald-700 font-medium">CorelDraw / Illustrator / Master ZIP</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => downloadFile(designerMasterZip || designerReturnedImages[0], designerMasterZipName || 'Master_Vector_Design.zip')}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border-none cursor-pointer shrink-0"
+                        >
+                          <Download size={13} /> Download Vector
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Section B: Marketing Reference Images & Artworks (Full Quality) */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                        <Camera size={15} className="text-purple-600" />
+                        Marketing Reference Artworks ({marketingImages.length})
+                      </span>
+                      <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                        Original Quality
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-semibold">Click to Zoom & Download</span>
+                  </div>
+
+                  {marketingImages.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                      {marketingImages.map((img, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setViewingImage(img)}
+                          className="group relative rounded-xl overflow-hidden border border-gray-200 aspect-square bg-gray-50 cursor-pointer shadow-xs hover:shadow-md transition-all"
+                        >
+                          <img
+                            src={img}
+                            alt="Marketing Reference"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            style={{ imageRendering: 'high-quality' }}
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setViewingImage(img); }}
+                              className="p-2 bg-white text-gray-900 rounded-xl hover:bg-purple-50 transition-colors border-none cursor-pointer"
+                              title="Zoom Full Screen"
+                            >
+                              <ZoomIn size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); downloadFile(img, `Reference_Artwork_${idx + 1}.png`); }}
+                              className="p-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors border-none cursor-pointer"
+                              title="Download Full Quality"
+                            >
+                              <Download size={15} />
+                            </button>
+                          </div>
+                          <span className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            Reference #{idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-gray-400 text-xs italic bg-gray-50 rounded-xl">
+                      No reference images uploaded with this task.
+                    </div>
+                  )}
+
+                  {/* PDF attachments if any */}
+                  {marketingDocs.length > 0 && (
+                    <div className="space-y-1.5 pt-2">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Document Attachments</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {marketingDocs.map((doc, idx) => (
+                          <div key={idx} className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText size={16} className="text-purple-600 shrink-0" />
+                              <span className="text-xs font-bold text-gray-700 truncate">Document #{idx + 1}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => downloadFile(doc, `Task_Document_${idx + 1}.pdf`)}
+                              className="p-1 bg-white hover:bg-purple-100 text-purple-700 rounded border border-gray-200 cursor-pointer"
+                              title="Download PDF"
+                            >
+                              <Download size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 sm:p-5 bg-white border-t border-gray-150 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex items-center gap-4 text-gray-500 text-xs">
+              <span className="font-bold">Task: #{order.id}</span>
+              <span>•</span>
+              <span className="font-bold">{order.customerInfo?.name}</span>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={downloadAllAssets}
+                className="flex-1 sm:flex-initial px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 border-none cursor-pointer"
+              >
+                <Download size={14} /> Download All Assets
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 sm:flex-initial px-6 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-colors border-none cursor-pointer"
+              >
+                Close Report
+              </button>
+            </div>
+          </div>
+
+          {viewingImage && (
+            <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`DesignTask_${order.id}`} />
+          )}
+        </motion.div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[100] flex items-center justify-center p-4 overflow-y-auto">
@@ -1156,7 +1569,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             <div className="w-px h-8 bg-gray-200 hidden sm:block" />
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-widest">Agent</span>
-              <span className="text-sm font-black text-gray-900">{order.customerInfo.name.split(' ')[0]} Hub</span>
+              <span className="text-sm font-black text-gray-900">{(order.customerInfo?.name || 'Order').split(' ')[0]} Hub</span>
             </div>
           </div>
           <button
