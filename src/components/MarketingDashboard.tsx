@@ -11,7 +11,7 @@ import {
   Plus, Search, ChevronRight, FileText, User, Phone, MapPin, X, ZoomIn,
   Copy, Share2, Trash2, Package, AlertCircle, AlertTriangle, Mic, Send,
   MessageSquare, Paperclip, Clock, Sparkles, Wand2, ArrowRight,
-  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck, Factory
+  ClipboardPaste, CheckCircle2, Check, ShieldCheck, IndianRupee, ClipboardCheck, Factory, RefreshCw
 } from 'lucide-react';
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
@@ -84,7 +84,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     isUrgent: false
   });
 
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'design_received' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'design_received' | 'rework' | 'hold' | 'completed'>('recent');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -806,6 +806,19 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     return isPendingOrDraft && hasDesign;
   };
 
+  const isReworkOrder = (o: Order) => {
+    const s = String(o.status || '').toLowerCase();
+    const prev = String(o.previousStatus || '').toLowerCase();
+    const isDesignPhase = s === 'design' || (s === 'hold' && prev === 'design');
+    const isReworkFlag = Boolean(
+      o.isRework === true ||
+      o.details?.isRework === true ||
+      o.designRework === true ||
+      (o.reworkNotes && String(o.reworkNotes).trim().length > 0)
+    );
+    return isDesignPhase && isReworkFlag;
+  };
+
   const isRecentOrder = (o: Order) => {
     const s = String(o.status || '').toLowerCase();
     const isPendingOrDraft = s === 'pending' || s === 'draft';
@@ -837,11 +850,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
     return orders.filter(o => {
-      const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term);
+      const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term) || (o.reworkNotes || '').toLowerCase().includes(term);
       if (!matchesSearch) return false;
 
       if (selectedSection === 'design_received') {
         return isReturnedFromDesign(o);
+      }
+      if (selectedSection === 'rework') {
+        return isReworkOrder(o);
       }
       if (selectedSection === 'hold') {
         return isHoldOrder(o);
@@ -859,6 +875,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const recentOrdersCount = useMemo(() => orders.filter(isRecentOrder).length, [orders]);
   const designReceivedOrdersCount = useMemo(() => orders.filter(isReturnedFromDesign).length, [orders]);
+  const reworkOrdersCount = useMemo(() => orders.filter(isReworkOrder).length, [orders]);
   const processOrdersCount = useMemo(() => orders.filter(isProcessOrder).length, [orders]);
   const holdOrdersCount = useMemo(() => orders.filter(isHoldOrder).length, [orders]);
   const completedOrdersCount = useMemo(() => orders.filter(isDoneOrder).length, [orders]);
@@ -949,6 +966,23 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           </span>
         </button>
         <button
+          onClick={() => setSelectedSection('rework')}
+          className={cn(
+            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0 flex items-center justify-center gap-1.5",
+            selectedSection === 'rework'
+              ? "bg-amber-600 text-white shadow-md shadow-amber-600/30"
+              : "text-amber-800 bg-amber-50 hover:bg-amber-100 hover:text-amber-950"
+          )}
+        >
+          <span>🔁 In Rework</span>
+          <span className={cn(
+            "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+            selectedSection === 'rework' ? "bg-white/20 text-white" : "bg-amber-200/80 text-amber-950"
+          )}>
+            {reworkOrdersCount}
+          </span>
+        </button>
+        <button
           onClick={() => setSelectedSection('hold')}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0",
@@ -1010,6 +1044,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           {order.isUrgent && (
                             <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">URGENT</span>
                           )}
+                          {isReworkOrder(order) && (
+                            <span className="bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">REWORK</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-3">
@@ -1046,7 +1083,23 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       <td className="py-4 px-3 font-bold text-gray-900 text-xs">{order.quantity || 1}</td>
                       <td className="py-4 px-3">
                         <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          {isReturnedFromDesign(order) ? (
+                          {isReworkOrder(order) ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-amber-100 text-amber-950 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                                🔁 In Rework (Design)
+                              </span>
+                              {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && (
+                                <span className="text-[9.5px] text-amber-800 font-bold">
+                                  🎨 Designer: {order.assignedDesigner}
+                                </span>
+                              )}
+                              {order.reworkNotes && (
+                                <span className="text-[8.5px] text-amber-900 italic max-w-[200px] truncate" title={order.reworkNotes}>
+                                  "{order.reworkNotes}"
+                                </span>
+                              )}
+                            </div>
+                          ) : isReturnedFromDesign(order) ? (
                             <div className="flex flex-col gap-1">
                               <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1">
                                 ✓ Design Received
@@ -1205,7 +1258,35 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     </div>
 
                     <div className="flex flex-col gap-2 pt-1">
-                      {isReturnedFromDesign(order) ? (
+                      {isReworkOrder(order) ? (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
+                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-amber-100 text-amber-950 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                              <RefreshCw size={10} className="text-amber-600" /> 🔁 In Rework (Design)
+                            </span>
+                          </div>
+                          {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Designer:</span>
+                              <span className="text-[10px] text-amber-800 font-bold">🎨 {order.assignedDesigner}</span>
+                            </div>
+                          )}
+                          {order.reworkNotes && (
+                            <div className="text-[9px] text-amber-900 bg-amber-50/80 p-2 rounded-xl border border-amber-200 italic">
+                              Correction Note: "{order.reworkNotes}"
+                            </div>
+                          )}
+                          <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => setSelectedHubOrder(order)}
+                              className="w-full py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                            >
+                              View & Edit Details
+                            </button>
+                          </div>
+                        </div>
+                      ) : isReturnedFromDesign(order) ? (
                         <div className="flex flex-col gap-1.5">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>

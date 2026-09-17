@@ -506,7 +506,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     } else if (selectedSection === 'unclaimed') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder);
     } else if (selectedSection === 'my_tasks') {
-      baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold && !item.isRework);
+      // In My Tasks: show all claimed active tasks by this designer (including reworks, clearly badged)
+      baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'rework') {
       baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'admin_order') {
@@ -520,7 +521,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         (item.customerName || '').toLowerCase().includes(term) ||
         (item.id || '').toLowerCase().includes(term) ||
         (item.category || '').toLowerCase().includes(term) ||
-        (item.notes || '').toLowerCase().includes(term)
+        (item.notes || '').toLowerCase().includes(term) ||
+        (item.reworkNotes || '').toLowerCase().includes(term)
       );
     }
 
@@ -529,6 +531,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const aMine = isClaimedByMe(a) ? 2 : (isUnclaimedItem(a.assignedDesigner, a.claimedBy) ? 1 : 0);
       const bMine = isClaimedByMe(b) ? 2 : (isUnclaimedItem(b.assignedDesigner, b.claimedBy) ? 1 : 0);
       if (aMine !== bMine) return bMine - aMine;
+      if ((a.isRework ? 1 : 0) !== (b.isRework ? 1 : 0)) return (b.isRework ? 1 : 0) - (a.isRework ? 1 : 0);
       if ((a.isUrgent ? 1 : 0) !== (b.isUrgent ? 1 : 0)) return (b.isUrgent ? 1 : 0) - (a.isUrgent ? 1 : 0);
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
@@ -538,7 +541,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
     const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder).length;
-    const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold && !item.isRework).length;
+    const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
     const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold).length;
@@ -1153,9 +1156,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
             { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
-            ...(activeChannel === 'marketing_queue' ? [
-              { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
-            ] : []),
+            { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
             { key: 'admin_order', label: '👑 Admin Order', count: activeStats.adminOrderCount, color: 'bg-indigo-600' },
           ] as const).map(({ key, label, count, color }) => (
             <button
@@ -1344,6 +1345,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               <span className="text-[9px] text-gray-400 italic truncate" title={item.notes}>
                                 Note: {item.notes}
                               </span>
+                            )}
+                            {item.isRework && item.reworkNotes && (
+                              <div className="mt-1 p-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[9px] text-amber-900 font-medium">
+                                <span className="font-black text-amber-950 uppercase tracking-wider text-[8px] flex items-center gap-1">
+                                  <RefreshCw size={10} className="text-amber-600" /> Correction Note:
+                                </span>
+                                <span className="line-clamp-2">{item.reworkNotes}</span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -1563,6 +1572,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         <a href={`tel:${item.phone}`} className="text-xs text-gray-500 font-semibold hover:text-brand-primary flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <Phone size={12} className="text-brand-primary" /> {item.phone}
                         </a>
+                        {item.isRework && item.reworkNotes && (
+                          <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-900 font-medium">
+                            <span className="font-black text-amber-950 uppercase tracking-wider text-[8.5px] flex items-center gap-1">
+                              <RefreshCw size={11} className="text-amber-600" /> Correction Note:
+                            </span>
+                            <span className="block mt-0.5">{item.reworkNotes}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

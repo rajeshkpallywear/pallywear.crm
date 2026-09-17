@@ -44,6 +44,14 @@ const isSentToDesigns = (o: Order) => {
 
 // Helper to check if order has received completed design files from Design Studio
 const isReceivedDesignsFile = (o: Order) => {
+  const isCurrentlyInRework = Boolean(
+    (o.isRework === true || o.details?.isRework === true || o.designRework === true || (o.reworkNotes && String(o.reworkNotes).trim().length > 0)) &&
+    (String(o.status || '').toLowerCase() === 'design' || o.status === OrderStatus.DESIGN) &&
+    !o.designCompleted &&
+    !o.designSentToMarketing
+  );
+  if (isCurrentlyInRework) return false;
+
   return Boolean(
     o.designCompleted === true ||
     o.details?.designCompleted === true ||

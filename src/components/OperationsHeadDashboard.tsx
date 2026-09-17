@@ -88,13 +88,18 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
 
   // 1. How many order designs completed
   const isDesignCompleted = (o: Order) => {
-    if (o.isRework === true || o.details?.isRework === true) return false;
+    // If order is currently in active rework phase, design is pending rework
+    if (isOrderRework(o)) return false;
     return Boolean(
       o.designCompleted === true ||
       o.details?.designCompleted === true ||
       o.details?.designCompleted === 'true' ||
       o.designSentToMarketing === true ||
       o.details?.designSentToMarketing === true ||
+      o.designSentToDigitizer === true ||
+      o.details?.designSentToDigitizer === true ||
+      o.designSentToOM === true ||
+      o.details?.designSentToOM === true ||
       o.original_design_file ||
       o.original_design_zip ||
       (o.designAttachments && o.designAttachments.length > 0) ||
@@ -102,17 +107,19 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
     );
   };
 
-  // 2. How many order rework
+  // 2. How many order rework (ACTIVE Design Rework)
   const isOrderRework = (o: Order) => {
-    return Boolean(
+    const s = String(o.status || '').toLowerCase();
+    const prev = String(o.previousStatus || '').toLowerCase();
+    const isDesignPhase = s === 'design' || (s === 'hold' && prev === 'design');
+    const isReworkFlag = Boolean(
       o.isRework === true ||
       o.details?.isRework === true ||
       o.designRework === true ||
-      (o.reworkNotes && String(o.reworkNotes).trim().length > 0) ||
-      String(o.notes || '').toLowerCase().includes('rework') ||
-      String(o.notes || '').toLowerCase().includes('correction') ||
-      String(o.designNotes || '').toLowerCase().includes('rework')
+      (o.reworkNotes && String(o.reworkNotes).trim().length > 0)
     );
+    // Only orders actively in the Design pipeline awaiting rework
+    return isDesignPhase && isReworkFlag && !o.designCompleted && !o.designSentToMarketing && !o.designSentToDigitizer && !o.designSentToOM;
   };
 
   // 3. Admin order detection
