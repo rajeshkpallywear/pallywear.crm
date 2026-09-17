@@ -608,42 +608,55 @@ export const mockDataService = {
     notifyUpdate();
   },
 
-  getMessages: async (options?: {
-    senderAliases?: string[];
-    recipientAliases?: string[];
-    userAliases?: string[];
-    senderId?: string;
-    recipientId?: string;
-  } | string, maybeRecipientId?: string): Promise<SidebarMessage[]> => {
-    let url = getApiUrl('/api/messages');
-    if (typeof options === 'string') {
-      const senderId = options;
-      const recipientId = maybeRecipientId;
-      if (senderId && recipientId) {
-        url += `?senderId=${encodeURIComponent(senderId)}&recipientId=${encodeURIComponent(recipientId)}`;
+  getMessages: async (): Promise<SidebarMessage[]> => {
+    try {
+      const res = await fetch(getApiUrl('/api/messages'));
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          try {
+            localStorage.setItem('pallywear_messages_cache', JSON.stringify(data));
+          } catch {}
+          return data;
+        }
       }
-    } else if (options && typeof options === 'object') {
-      const params = new URLSearchParams();
-      if (options.senderAliases?.length) params.set('senderAliases', options.senderAliases.join(','));
-      if (options.recipientAliases?.length) params.set('recipientAliases', options.recipientAliases.join(','));
-      if (options.userAliases?.length) params.set('userAliases', options.userAliases.join(','));
-      if (options.senderId) params.set('senderId', options.senderId);
-      if (options.recipientId) params.set('recipientId', options.recipientId);
-      const queryStr = params.toString();
-      if (queryStr) url += `?${queryStr}`;
+    } catch (e) {
+      console.warn('Failed to fetch messages from backend, checking local cache:', e);
     }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to fetch sidebar messages');
-    return res.json();
+    try {
+      const cached = localStorage.getItem('pallywear_messages_cache');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return [];
   },
 
   saveMessage: async (msg: Omit<SidebarMessage, 'id' | 'createdAt'>): Promise<void> => {
-    const res = await fetch(getApiUrl('/api/messages'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(msg)
-    });
-    if (!res.ok) throw new Error('Failed to save sidebar message');
+    const fullMsg: SidebarMessage = {
+      id: `msg_${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
+      createdAt: Date.now(),
+      ...msg
+    };
+
+    try {
+      const res = await fetch(getApiUrl('/api/messages'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullMsg)
+      });
+      if (!res.ok) {
+        console.warn('Backend saveMessage returned non-ok status');
+      }
+    } catch (e) {
+      console.warn('Failed to save message to backend, saving to local cache:', e);
+    }
+
+    try {
+      const raw = localStorage.getItem('pallywear_messages_cache');
+      const list: SidebarMessage[] = raw ? JSON.parse(raw) : [];
+      list.push(fullMsg);
+      localStorage.setItem('pallywear_messages_cache', JSON.stringify(list));
+    } catch {}
+
     notifyUpdate();
   },
 

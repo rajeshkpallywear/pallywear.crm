@@ -1425,71 +1425,10 @@ router.delete('/expenses/:id', async (req, res) => {
 // ----------------------------------------------------
 
 router.get('/messages', async (req, res) => {
-  const { senderId, recipientId, senderAliases, recipientAliases, userAliases, userId } = req.query;
   try {
-    const parseAliases = (val: any): string[] => {
-      if (!val) return [];
-      if (Array.isArray(val)) return val.map(v => String(v).trim().toLowerCase()).filter(Boolean);
-      return String(val).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    };
-
-    let sAliases = parseAliases(senderAliases);
-    if (senderId) sAliases.push(String(senderId).trim().toLowerCase());
-    sAliases = Array.from(new Set(sAliases.filter(Boolean)));
-
-    let rAliases = parseAliases(recipientAliases);
-    if (recipientId) rAliases.push(String(recipientId).trim().toLowerCase());
-    rAliases = Array.from(new Set(rAliases.filter(Boolean)));
-
-    let uAliases = parseAliases(userAliases);
-    if (userId) uAliases.push(String(userId).trim().toLowerCase());
-    uAliases = Array.from(new Set(uAliases.filter(Boolean)));
-
-    let rows: any[] = [];
-
-    // Case 1: Specific 1-on-1 direct chat between User A and User B
-    if (sAliases.length > 0 && rAliases.length > 0 && !rAliases.includes('global')) {
-      const sPlaceholders = sAliases.map(() => '?').join(',');
-      const rPlaceholders = rAliases.map(() => '?').join(',');
-
-      const sql = `
-        SELECT * FROM sidebar_messages 
-        WHERE (
-          (LOWER(senderId) IN (${sPlaceholders}) OR LOWER(senderName) IN (${sPlaceholders}))
-          AND LOWER(recipientId) IN (${rPlaceholders})
-        ) OR (
-          (LOWER(senderId) IN (${rPlaceholders}) OR LOWER(senderName) IN (${rPlaceholders}))
-          AND LOWER(recipientId) IN (${sPlaceholders})
-        )
-        ORDER BY createdAt ASC
-      `;
-      const params = [...sAliases, ...sAliases, ...rAliases, ...rAliases, ...rAliases, ...sAliases];
-      rows = await query(sql, params) as any[];
-    } 
-    // Case 2: Fetch all messages relevant to current user (for unread counts & contact previews)
-    else if (uAliases.length > 0) {
-      const uPlaceholders = uAliases.map(() => '?').join(',');
-      const sql = `
-        SELECT * FROM sidebar_messages 
-        WHERE recipientId IS NULL 
-           OR LOWER(recipientId) = 'global'
-           OR LOWER(recipientId) IN (${uPlaceholders})
-           OR LOWER(senderId) IN (${uPlaceholders})
-           OR LOWER(senderName) IN (${uPlaceholders})
-        ORDER BY createdAt ASC
-      `;
-      const params = [...uAliases, ...uAliases, ...uAliases];
-      rows = await query(sql, params) as any[];
-    } 
-    // Case 3: Global team workspace group chat
-    else {
-      rows = await query(
-        `SELECT * FROM sidebar_messages 
-         WHERE recipientId IS NULL OR LOWER(recipientId) = 'global'
-         ORDER BY createdAt ASC`
-      ) as any[];
-    }
-
+    const rows = await query(
+      'SELECT * FROM sidebar_messages ORDER BY createdAt ASC'
+    ) as any[];
     res.json(rows);
   } catch (error: any) {
     console.error('Error fetching sidebar messages:', error);
