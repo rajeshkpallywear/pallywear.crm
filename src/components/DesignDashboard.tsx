@@ -58,8 +58,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
   const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('marketing_queue');
 
-  // Subsection filters: 'unclaimed', 'my_tasks', 'hold', 'completed', 'completed_om', 'completed_digitizer', 'rework', 'admin_order'
-  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'hold' | 'completed' | 'completed_om' | 'completed_digitizer' | 'rework' | 'admin_order'>('unclaimed');
+  // Subsection filters: 'unclaimed', 'my_tasks', 'marketing_tasks', 'hold', 'completed', 'completed_om', 'completed_digitizer', 'rework', 'admin_order'
+  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'marketing_tasks' | 'hold' | 'completed' | 'completed_om' | 'completed_digitizer' | 'rework' | 'admin_order'>('unclaimed');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -253,6 +253,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       return {
         id: o.id,
         isOrder: true,
+        isRaisedTask: Boolean(o.isRaisedTask || o.details?.isRaisedTask),
         customerName: o.customerInfo?.name || '',
         phone: o.customerInfo?.phone || '',
         category: o.category || 'T-Shirt',
@@ -503,6 +504,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item));
     } else if (selectedSection === 'completed_digitizer') {
       baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item));
+    } else if (selectedSection === 'marketing_tasks') {
+      baseList = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'unclaimed') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder);
     } else if (selectedSection === 'my_tasks') {
@@ -541,6 +544,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
     const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder).length;
+    const marketingTasksCount = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold).length;
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold).length;
     const completedCount = baseList.filter(item => item.isCompleted).length;
@@ -552,6 +556,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
     return { 
       unclaimedCount, 
+      marketingTasksCount,
       myTasksCount, 
       holdCount, 
       completedCount, 
@@ -575,11 +580,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           claimedByName: designerName,
           claimedAt: claimTime,
           designClaimedAt: claimTime,
-          designDeadline: claimTime + 60 * 60 * 1000,
-          designSlaMinutes: 60,
+          designDeadline: claimTime + 120 * 60 * 1000,
+          designSlaMinutes: 120,
           updatedAt: Date.now()
         });
-        alert(`Success: Order #${item.id.slice(-8)} is now claimed by you! A 2-Hour SLA task timer has started. Opening Workspace...`);
+        alert(`Success: Task #${item.id.slice(-8)} is now claimed by you! A 2-Hour SLA task timer has started. Opening Workspace...`);
         const fullOrder = orders.find(o => o.id === item.id);
         if (fullOrder) {
           setSelectedOrder({
@@ -1153,6 +1158,9 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {([
             { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount, color: 'bg-brand-primary' },
+            ...(activeChannel === 'marketing_queue' ? [
+              { key: 'marketing_tasks', label: '🎨 Marketing Tasks', count: activeStats.marketingTasksCount, color: 'bg-purple-700' },
+            ] : []),
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
             { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
             { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
@@ -1271,6 +1279,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                             <span className="font-mono text-xs font-black text-brand-primary">
                               #{item.id.slice(-8)}
                             </span>
+                            {item.isRaisedTask && (
+                              <span className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
+                                🎨 RAISED TASK
+                              </span>
+                            )}
                             {item.isUrgent && (
                               <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
                             )}
@@ -1507,6 +1520,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-black text-gray-500 text-xs">#{idx + 1}</span>
                         <span className="font-mono font-black text-brand-primary">#{item.id.slice(-8)}</span>
+                        {item.isRaisedTask && (
+                          <span className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide uppercase flex items-center gap-0.5 shadow-xs">
+                            🎨 RAISED TASK
+                          </span>
+                        )}
                         {item.isUrgent && (
                           <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded animate-pulse tracking-wide uppercase">URGENT</span>
                         )}
@@ -1919,19 +1937,27 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center">
-                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider pl-0.5">Design Studio Output Notes</label>
-                        {!designNotesText.trim() && (
-                          <span className="text-[10px] text-red-500 font-bold">⚠️ Required before sending</span>
+                        <label className="text-[10px] font-black text-purple-900 uppercase tracking-wider pl-0.5 flex items-center gap-1.5">
+                          <span>📝 Artwork Completion Notes & Reasons</span>
+                        </label>
+                        {!designNotesText.trim() ? (
+                          <span className="text-[9.5px] text-red-600 font-extrabold bg-red-50 px-2 py-0.5 rounded-md border border-red-200 animate-pulse">
+                            ⚠️ Required before completing
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] text-emerald-600 font-bold flex items-center gap-1">
+                            ✓ Notes provided
+                          </span>
                         )}
                       </div>
                       <textarea
                         value={designNotesText}
                         onChange={(e) => setDesignNotesText(e.target.value)}
                         rows={4}
-                        placeholder="Write down any notes, pantone color codes, or print dimensions for the design here..."
+                        placeholder="Enter completion remarks, design reasoning, pantone codes, print dimensions, or client feedback response..."
                         className={cn(
-                          "w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none",
-                          !designNotesText.trim() ? "border-red-300 focus:border-red-500 bg-red-50/10" : "border-gray-200"
+                          "w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:border-brand-primary resize-none transition-all",
+                          !designNotesText.trim() ? "border-red-300 focus:border-red-500 bg-red-50/20" : "border-gray-200"
                         )}
                       />
                     </div>

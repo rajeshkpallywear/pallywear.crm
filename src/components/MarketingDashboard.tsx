@@ -1131,10 +1131,10 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             <table className="hidden md:table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="text-gray-400 uppercase font-black text-[9px] tracking-wider border-b border-gray-100">
-                  <th className="pb-3 px-3">Order ID</th>
-                  <th className="pb-3 px-3">Customer</th>
+                  <th className="pb-3 px-3">{selectedSection === 'raised_tasks' ? 'Task ID' : 'Order ID'}</th>
+                  <th className="pb-3 px-3">{selectedSection === 'raised_tasks' ? 'Task / Customer' : 'Customer'}</th>
                   <th className="pb-3 px-3">Category</th>
-                  <th className="pb-3 px-3">Qty</th>
+                  <th className="pb-3 px-3">{selectedSection === 'raised_tasks' ? 'Type' : 'Qty'}</th>
                   <th className="pb-3 px-3">Pipeline Status</th>
                   <th className="pb-3 px-3 text-right"></th>
                 </tr>
@@ -1192,7 +1192,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           {getDisplayCategory(order)}
                         </span>
                       </td>
-                      <td className="py-4 px-3 font-bold text-gray-900 text-xs">{order.quantity || 1}</td>
+                      <td className="py-4 px-3 font-bold text-gray-900 text-xs">
+                        {isRaisedTaskOrder(order) ? (
+                          <span className="text-[9px] font-black uppercase text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                            🎨 Design Task
+                          </span>
+                        ) : (
+                          order.quantity || 1
+                        )}
+                      </td>
                       <td className="py-4 px-3">
                         <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
                           {isReworkOrder(order) ? (
