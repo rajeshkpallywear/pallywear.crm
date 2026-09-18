@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
 import {
   Layout, Bell, Settings, BarChart3,
-  Users, Shield, Globe, TrendingUp, DollarSign,
+  Users, User, Shield, Globe, TrendingUp, DollarSign,
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
   Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace, Briefcase,
   Palette, Truck, Package, ArrowRight, Layers, Scissors,
   RefreshCw, AlertTriangle, Eye, LayoutGrid, List, Sparkles
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import AdminCreateOrderModal from '../components/AdminCreateOrderModal';
 import FileUpload from '../components/FileUpload';
@@ -348,6 +349,8 @@ export default function AdminDashboard() {
   };
   const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory'>('all');
   const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'orders' | 'tasks'>('all');
+  const [orderClassificationFilter, setOrderClassificationFilter] = useState<'all' | 'bulk' | 'mixed' | 'gift' | 'standard'>('all');
   const [orderStaffSearch, setOrderStaffSearch] = useState('');
   const [orderStaffFilter, setOrderStaffFilter] = useState('all');
   const [orderDateRangeFilter, setOrderDateRangeFilter] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('all');
@@ -745,6 +748,48 @@ export default function AdminDashboard() {
     return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
   };
 
+  // 10+ quantity classified as Bulk Order
+  const isBulkOrder = (o: Order) => {
+    const qty = Number(o.quantity || (o.sizeBreakdown ? o.sizeBreakdown.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0));
+    return qty >= 10;
+  };
+
+  // 3 or more distinct product categories classified as Mixed Order
+  const isMixedOrder = (o: Order) => {
+    if (o.category === 'Mixed Order' || (o.category && o.category.toLowerCase().includes('mixed'))) return true;
+    if (o.sizeBreakdown && o.sizeBreakdown.length > 0) {
+      const distinctCats = new Set(o.sizeBreakdown.map(i => (i.category || '').trim().toLowerCase()).filter(Boolean));
+      return distinctCats.size >= 3;
+    }
+    return false;
+  };
+
+  // Gift item or other specialized merchandise categories
+  const isGiftOrOtherOrder = (o: Order) => {
+    const giftKeywords = ['gift', 'memento', 'trophy', 'mug', 'cap', 'bag', 'bottle', 'keychain', 'merch', 'other'];
+    const cat = (o.category || '').toLowerCase();
+    if (giftKeywords.some(k => cat.includes(k))) return true;
+    if (o.sizeBreakdown && o.sizeBreakdown.length > 0) {
+      return o.sizeBreakdown.some(i => {
+        const icat = (i.category || '').toLowerCase();
+        return giftKeywords.some(k => icat.includes(k));
+      });
+    }
+    return false;
+  };
+
+  const uniqueMarketingStaff = useMemo(() => {
+    const staffSet = new Set<string>();
+    orders.forEach(o => {
+      const name = (o.createdByName || o.createdBy || '').trim();
+      if (name && name !== 'Unknown' && name !== 'System' && name !== 'admin' && name !== 'CEO Admin') staffSet.add(name);
+    });
+    registeredUsers.filter(u => u.role === 'marketing' || u.role === 'staff' || u.role === 'sales_head').forEach(u => {
+      if (u.name) staffSet.add(u.name.trim());
+    });
+    return Array.from(staffSet);
+  }, [orders, registeredUsers]);
+
   const allMarketingTasks = useMemo(() => {
     return orders.filter(isRaisedTaskOrder);
   }, [orders]);
@@ -974,6 +1019,86 @@ export default function AdminDashboard() {
     });
   }, [allDesignStudioOrders, slaStatusFilter, slaDesignerFilter, slaTaskSearch]);
 
+  const currentOrdersList = useMemo(() => {
+    let list = orders;
+    if (orderTypeFilter === 'orders') list = list.filter(o => !isRaisedTaskOrder(o));
+    if (orderTypeFilter === 'tasks') list = list.filter(isRaisedTaskOrder);
+
+    if (orderClassificationFilter === 'bulk') {
+      list = list.filter(isBulkOrder);
+    } else if (orderClassificationFilter === 'mixed') {
+      list = list.filter(isMixedOrder);
+    } else if (orderClassificationFilter === 'gift') {
+      list = list.filter(isGiftOrOtherOrder);
+    } else if (orderClassificationFilter === 'standard') {
+      list = list.filter(o => !isBulkOrder(o) && !isMixedOrder(o) && !isGiftOrOtherOrder(o));
+    }
+
+    return list;
+  }, [orders, orderTypeFilter, orderClassificationFilter]);
+
+  const handleExportOrdersToExcel = () => {
+    const listToExport = getFilteredDeptOrders();
+    if (listToExport.length === 0) {
+      alert("No orders available to export with the currently selected filters.");
+      return;
+    }
+
+    const exportRows = listToExport.map(o => {
+      const isTask = isRaisedTaskOrder(o);
+      const isBulk = isBulkOrder(o);
+      const isMixed = isMixedOrder(o);
+      const isGift = isGiftOrOtherOrder(o);
+
+      let classification = 'Standard';
+      if (isBulk && isMixed) classification = 'Bulk & Mixed (10+ Qty & 3+ Cats)';
+      else if (isBulk) classification = 'Bulk Order (10+ Qty)';
+      else if (isMixed) classification = 'Mixed Order (3+ Cats)';
+      else if (isGift) classification = 'Gift Item / Other';
+
+      const itemsSummary = (o.sizeBreakdown || [])
+        .map(b => `${b.category || 'Item'} (${b.size || '-'}): ${b.quantity}pcs @ ₹${b.price || 0}`)
+        .join('; ');
+
+      return {
+        'Order ID': `#${o.id.slice(-8)}`,
+        'Full ID': o.id,
+        'Created Date': o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '-',
+        'Created Time': o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+        'Item Type': isTask ? 'Design Task' : (o.isConvertedFromTask || o.details?.isConvertedFromTask) ? 'Converted Task Order' : 'Customer Order',
+        'Classification': classification,
+        'Customer Name': o.customerInfo?.name || '-',
+        'Customer Phone': o.customerInfo?.phone || '-',
+        'Shipping Address': o.customerInfo?.address || '-',
+        'Marketing Staff': o.createdByName || o.createdBy || 'Unknown',
+        'Assigned Designer': o.assignedDesigner && o.assignedDesigner !== 'Unassigned' ? o.assignedDesigner : (o.claimedByName || 'Unassigned'),
+        'Category': o.category || '-',
+        'Total Quantity': o.quantity || 1,
+        'Status': String(o.status || '').replace('_', ' ').toUpperCase(),
+        'Total Amount (₹)': o.financials?.totalAmount || 0,
+        'Advance Paid (₹)': o.financials?.advancePay || 0,
+        'Balance Due (₹)': o.financials?.balanceAmount || 0,
+        'Delivery Amount (₹)': o.financials?.deliveryAmount || 0,
+        'Is Urgent': o.isUrgent ? 'YES' : 'NO',
+        'Urgent Reason': o.urgentReason || o.details?.urgentReason || '',
+        'Size & Items Breakdown': itemsSummary || '-',
+        'Notes & Specifications': o.notes || o.productionNotes || o.designNotes || '',
+        'Hold Reason': o.holdReason || ''
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Global_Orders');
+    
+    // Auto-width column configuration
+    const maxCols = Object.keys(exportRows[0] || {}).length;
+    worksheet['!cols'] = Array(maxCols).fill({ wch: 20 });
+
+    const fileName = `Global_Orders_Report_${orderTypeFilter}_${orderClassificationFilter}_${new Date().toISOString().split('T')[0]}`;
+    XLSX.writeFile(workbook, `${fileName}.xlsx`);
+  };
+
   const getDeptStats = (dept: 'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory') => {
     let totalCount = 0;
     let queueCount = 0;
@@ -982,72 +1107,72 @@ export default function AdminDashboard() {
 
     switch (dept) {
       case 'all':
-        totalCount = orders.length;
-        completedCount = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD).length;
+        totalCount = currentOrdersList.length;
+        completedCount = currentOrdersList.filter(o => o.status === OrderStatus.DELIVERED).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD).length;
         queueCount = Math.max(0, totalCount - completedCount - holdCount);
         break;
 
       case 'staff':
-        totalCount = orders.length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
-        queueCount = orders.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
-        completedCount = orders.filter(o => {
+        totalCount = currentOrdersList.length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && (!o.previousStatus || o.previousStatus === OrderStatus.PENDING || o.previousStatus === OrderStatus.DRAFT)).length;
+        queueCount = currentOrdersList.filter(o => o.status === OrderStatus.PENDING || o.status === OrderStatus.DRAFT).length;
+        completedCount = currentOrdersList.filter(o => {
           const eff = getEffectiveStatus(o);
           return eff !== OrderStatus.PENDING && eff !== OrderStatus.DRAFT;
         }).length;
         break;
 
       case 'accounts':
-        queueCount = orders.filter(o => o.status === OrderStatus.ACCOUNTS).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
-        completedCount = orders.filter(o => isOrderAccountsCompleted(o)).length;
+        queueCount = currentOrdersList.filter(o => o.status === OrderStatus.ACCOUNTS).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS).length;
+        completedCount = currentOrdersList.filter(o => isOrderAccountsCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
 
       case 'designers':
-        queueCount = orders.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o)).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned'))).length;
-        completedCount = orders.filter(o => isOrderDesignCompleted(o)).length;
+        queueCount = currentOrdersList.filter(o => o.status === OrderStatus.DESIGN && !isOrderDesignCompleted(o)).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.DESIGN || (!o.previousStatus && o.assignedDesigner && o.assignedDesigner !== 'Unassigned'))).length;
+        completedCount = currentOrdersList.filter(o => isOrderDesignCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
 
       case 'digitizer':
-        queueCount = orders.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD).length;
-        holdCount = orders.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD).length;
-        completedCount = orders.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o)).length;
+        queueCount = currentOrdersList.filter(o => isOrderForDigitizer(o) && !isOrderDigitizerCompleted(o) && o.status !== OrderStatus.HOLD).length;
+        holdCount = currentOrdersList.filter(o => isOrderForDigitizer(o) && o.status === OrderStatus.HOLD).length;
+        completedCount = currentOrdersList.filter(o => isOrderForDigitizer(o) && isOrderDigitizerCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
 
       case 'order_management':
-        queueCount = orders.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
-        completedCount = orders.filter(o => isOrderOmCompleted(o)).length;
+        queueCount = currentOrdersList.filter(o => o.status === OrderStatus.ORDER_MANAGEMENT).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ORDER_MANAGEMENT).length;
+        completedCount = currentOrdersList.filter(o => isOrderOmCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
 
       case 'production':
-        queueCount = orders.filter(o => o.status === OrderStatus.PRODUCTION).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
-        completedCount = orders.filter(o => isOrderProductionCompleted(o)).length;
+        queueCount = currentOrdersList.filter(o => o.status === OrderStatus.PRODUCTION).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.PRODUCTION).length;
+        completedCount = currentOrdersList.filter(o => isOrderProductionCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
 
       case 'inventory':
-        queueCount = orders.filter(o => {
+        queueCount = currentOrdersList.filter(o => {
           if (o.status === OrderStatus.HOLD || o.status === OrderStatus.DELIVERED) return false;
           if (o.details?.sentToDeliveryDashboard === true || o.details?.dispatchType === 'in_house' || o.details?.inventoryDispatched === true || o.details?.dispatchType === 'courier' || o.details?.courierName) return false;
           return o.status === OrderStatus.PRODUCTION || o.status === OrderStatus.DELIVERY;
         }).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY)).length;
-        completedCount = orders.filter(o => isOrderInventoryCompleted(o)).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && (o.previousStatus === OrderStatus.PRODUCTION || o.previousStatus === OrderStatus.DELIVERY)).length;
+        completedCount = currentOrdersList.filter(o => isOrderInventoryCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
 
       case 'delivery':
-        queueCount = orders.filter(o => o.status === OrderStatus.DELIVERY).length;
-        holdCount = orders.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
-        completedCount = orders.filter(o => isOrderDeliveryCompleted(o)).length;
+        queueCount = currentOrdersList.filter(o => o.status === OrderStatus.DELIVERY).length;
+        holdCount = currentOrdersList.filter(o => o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DELIVERY).length;
+        completedCount = currentOrdersList.filter(o => isOrderDeliveryCompleted(o)).length;
         totalCount = queueCount + holdCount + completedCount;
         break;
     }
@@ -1057,7 +1182,7 @@ export default function AdminDashboard() {
   };
 
   const getFilteredDeptOrders = () => {
-    let baseList = orders;
+    let baseList = currentOrdersList;
 
     // Filter by selected department & section
     if (selectedDept !== 'all') {
@@ -2746,6 +2871,113 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
 
+                {/* Order vs Task Separation & Classification Filter Bar */}
+                <div className="bg-white/90 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm text-left space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider mr-1">View Type:</span>
+                      <div className="flex items-center bg-gray-100/90 p-1 rounded-xl gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrderTypeFilter('all');
+                            setSelectedSection('total');
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1.5",
+                            orderTypeFilter === 'all'
+                              ? "bg-black text-white shadow-xs"
+                              : "text-gray-500 hover:text-gray-900 bg-transparent"
+                          )}
+                        >
+                          <Globe size={13} />
+                          <span>All ({orders.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrderTypeFilter('orders');
+                            setSelectedSection('total');
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1.5",
+                            orderTypeFilter === 'orders'
+                              ? "bg-brand-primary text-white shadow-xs"
+                              : "text-gray-600 hover:text-brand-primary bg-transparent"
+                          )}
+                        >
+                          <Package size={13} />
+                          <span>📦 Orders ({orders.filter(o => !isRaisedTaskOrder(o)).length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrderTypeFilter('tasks');
+                            setSelectedSection('total');
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1.5",
+                            orderTypeFilter === 'tasks'
+                              ? "bg-purple-600 text-white shadow-xs"
+                              : "text-gray-600 hover:text-purple-700 bg-transparent"
+                          )}
+                        >
+                          <Palette size={13} />
+                          <span>🎨 Tasks ({orders.filter(isRaisedTaskOrder).length})</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Export to Excel Action */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleExportOrdersToExcel}
+                        className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-black rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer border-none"
+                        title="Export currently filtered orders to Excel spreadsheet (.xlsx)"
+                      >
+                        <Download size={14} />
+                        <span>📥 Export to Excel (.xlsx)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Order Classification Row (Bulk 10+, Mixed 3+ Cats, Gift / Other) */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-dashed border-gray-100">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider mr-1">Classification:</span>
+                      {[
+                        { id: 'all', label: `All Items (${(orderTypeFilter === 'orders' ? orders.filter(o => !isRaisedTaskOrder(o)) : orderTypeFilter === 'tasks' ? orders.filter(isRaisedTaskOrder) : orders).length})`, activeCls: 'bg-black text-white' },
+                        { id: 'bulk', label: `📦 Bulk Orders (10+ Qty) (${(orderTypeFilter === 'orders' ? orders.filter(o => !isRaisedTaskOrder(o)) : orderTypeFilter === 'tasks' ? orders.filter(isRaisedTaskOrder) : orders).filter(isBulkOrder).length})`, activeCls: 'bg-amber-600 text-white' },
+                        { id: 'mixed', label: `🔀 Mixed Orders (3+ Cats) (${(orderTypeFilter === 'orders' ? orders.filter(o => !isRaisedTaskOrder(o)) : orderTypeFilter === 'tasks' ? orders.filter(isRaisedTaskOrder) : orders).filter(isMixedOrder).length})`, activeCls: 'bg-indigo-600 text-white' },
+                        { id: 'gift', label: `🎁 Gift Items / Other (${(orderTypeFilter === 'orders' ? orders.filter(o => !isRaisedTaskOrder(o)) : orderTypeFilter === 'tasks' ? orders.filter(isRaisedTaskOrder) : orders).filter(isGiftOrOtherOrder).length})`, activeCls: 'bg-pink-600 text-white' },
+                        { id: 'standard', label: `Standard Orders (${(orderTypeFilter === 'orders' ? orders.filter(o => !isRaisedTaskOrder(o)) : orderTypeFilter === 'tasks' ? orders.filter(isRaisedTaskOrder) : orders).filter(o => !isBulkOrder(o) && !isMixedOrder(o) && !isGiftOrOtherOrder(o)).length})`, activeCls: 'bg-slate-700 text-white' }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            setOrderClassificationFilter(tab.id as any);
+                            setSelectedSection('total');
+                          }}
+                          className={cn(
+                            "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border",
+                            orderClassificationFilter === tab.id
+                              ? cn(tab.activeCls, "border-transparent shadow-xs")
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                          )}
+                        >
+                          <span>{tab.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="text-[11px] font-bold text-gray-500">
+                      Showing <span className="font-black text-gray-900">{getFilteredDeptOrders().length}</span> {orderTypeFilter === 'orders' ? 'Customer Orders' : orderTypeFilter === 'tasks' ? 'Design Tasks' : 'Items'}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Department Pipeline Selector Tabs */}
                 <div className="bg-white/90 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm space-y-3 text-left">
                   <div className="flex flex-wrap items-center gap-2">
@@ -2935,15 +3167,15 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Search Bar Toolbar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                {/* Search & Staff Filter Toolbar */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
                   <div className="relative flex-1 w-full">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       value={orderStaffSearch}
                       onChange={e => setOrderStaffSearch(e.target.value)}
-                      placeholder="Search staff (e.g. Godwin), customer, order #, category, designer..."
+                      placeholder="Search customer, order #, staff, category, designer..."
                       className="w-full text-xs pl-10 pr-8 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white shadow-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
                     />
                     {orderStaffSearch && (
@@ -2956,11 +3188,40 @@ export default function AdminDashboard() {
                     )}
                   </div>
 
+                  {/* Dedicated Marketing Staff Dropdown Filter */}
+                  <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 w-full md:w-auto">
+                    <User size={13} className="text-gray-400 shrink-0" />
+                    <select
+                      value={orderStaffFilter}
+                      onChange={e => setOrderStaffFilter(e.target.value)}
+                      className="text-xs font-bold text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-1 w-full"
+                    >
+                      <option value="all">👤 All Staff & Marketing Creators ({orders.length})</option>
+                      {uniqueMarketingStaff.map(s => {
+                        const count = orders.filter(o => (o.createdByName || o.createdBy || '').trim().toLowerCase() === s.toLowerCase()).length;
+                        return (
+                          <option key={s} value={s}>
+                            👤 {s} ({count})
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {orderStaffFilter !== 'all' && (
+                      <button
+                        onClick={() => setOrderStaffFilter('all')}
+                        className="text-gray-400 hover:text-gray-600 p-0.5 border-none bg-transparent cursor-pointer"
+                        title="Clear staff filter"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                     <span className="text-xs font-black text-gray-500 px-2">
                       {getFilteredDeptOrders().length} Orders Found
                     </span>
-                    {(orderStaffSearch || orderStaffFilter !== 'all' || orderDateRangeFilter !== 'all' || selectedDept !== 'all' || selectedSection !== 'total') && (
+                    {(orderStaffSearch || orderStaffFilter !== 'all' || orderDateRangeFilter !== 'all' || selectedDept !== 'all' || selectedSection !== 'total' || orderTypeFilter !== 'all' || orderClassificationFilter !== 'all') && (
                       <button
                         onClick={() => {
                           setOrderStaffSearch('');
@@ -2969,6 +3230,8 @@ export default function AdminDashboard() {
                           setOrderCustomDate('');
                           setSelectedDept('all');
                           setSelectedSection('total');
+                          setOrderTypeFilter('all');
+                          setOrderClassificationFilter('all');
                         }}
                         className="px-3.5 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-xl hover:bg-red-100 transition-colors whitespace-nowrap cursor-pointer"
                       >
@@ -3004,12 +3267,52 @@ export default function AdminDashboard() {
                         return (
                           <tr key={o.id} className="hover:bg-gray-50/50 group transition-colors">
                             <td className="px-6 py-4 font-mono font-black text-brand-primary text-xs">
-                              #{o.id.slice(-8)}
-                              {isOrderCreatedToday && (
-                                <span className="block mt-1 text-[8px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
-                                  ⚡ Today
-                                </span>
-                              )}
+                              <div className="flex flex-col gap-1">
+                                <span>#{o.id.slice(-8)}</span>
+                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                  {isRaisedTaskOrder(o) ? (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                      🎨 TASK
+                                    </span>
+                                  ) : (o.isConvertedFromTask || o.details?.isConvertedFromTask) ? (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      ✨ CONVERTED
+                                    </span>
+                                  ) : (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                      📦 ORDER
+                                    </span>
+                                  )}
+                                  {isBulkOrder(o) && (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                      📦 BULK ({o.quantity})
+                                    </span>
+                                  )}
+                                  {isMixedOrder(o) && (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
+                                      🔀 MIXED
+                                    </span>
+                                  )}
+                                  {isGiftOrOtherOrder(o) && (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-pink-100 text-pink-900 border border-pink-300">
+                                      🎁 GIFT
+                                    </span>
+                                  )}
+                                  {isOrderCreatedToday && (
+                                    <span className="text-[8px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                      ⚡ Today
+                                    </span>
+                                  )}
+                                  {o.isUrgent && (
+                                    <span 
+                                      title={o.urgentReason || o.details?.urgentReason || 'Urgent'}
+                                      className="text-[8px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse"
+                                    >
+                                      URGENT
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">

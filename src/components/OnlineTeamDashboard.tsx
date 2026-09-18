@@ -866,18 +866,24 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
                     <td className="px-6 py-4 font-bold text-gray-900">{lead.name}</td>
                     <td className="px-6 py-4 font-mono text-xs text-gray-600">
                       <div className="flex items-center gap-2">
-                        <a href={`tel:${lead.number}`} className="hover:underline text-brand-primary font-bold">
-                          {lead.number}
-                        </a>
-                        <a
-                          href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-emerald-600 hover:text-emerald-700"
-                          title="WhatsApp"
-                        >
-                          <MessageCircle size={14} />
-                        </a>
+                        {lead.number ? (
+                          <>
+                            <a href={`tel:${lead.number}`} className="hover:underline text-brand-primary font-bold">
+                              {lead.number}
+                            </a>
+                            <a
+                              href={`https://wa.me/${String(lead.number || '').replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-600 hover:text-emerald-700"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle size={14} />
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500 font-semibold">{lead.companyName || '—'}</td>
@@ -978,18 +984,24 @@ export default function OnlineTeamDashboard({ user, defaultTab = 'active_leads',
 
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <a href={`tel:${lead.number}`} className="flex items-center gap-1 text-brand-primary font-bold font-mono">
-                      <Phone size={12} /> {lead.number}
-                    </a>
-                    <a
-                      href={`https://wa.me/${lead.number.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-emerald-600 p-1 hover:bg-emerald-50 rounded"
-                      title="WhatsApp"
-                    >
-                      <MessageCircle size={14} />
-                    </a>
+                    {lead.number ? (
+                      <>
+                        <a href={`tel:${lead.number}`} className="flex items-center gap-1 text-brand-primary font-bold font-mono">
+                          <Phone size={12} /> {lead.number}
+                        </a>
+                        <a
+                          href={`https://wa.me/${String(lead.number || '').replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-600 p-1 hover:bg-emerald-50 rounded"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={14} />
+                        </a>
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
                   </div>
                   <span className="text-[10px] text-gray-400 font-medium">By {lead.createdByName || 'System'}</span>
                 </div>
