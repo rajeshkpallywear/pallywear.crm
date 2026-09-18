@@ -78,7 +78,19 @@ export default function Dashboard() {
       return orders;
     }
     
-    return orders.filter(o => o.createdBy === user.id || o.createdBy === (user as any).uid);
+    const uId = String(user.id || (user as any).uid || '');
+    const uName = (user.name || '').toLowerCase().trim();
+    const uEmail = (user.email || '').toLowerCase().trim();
+    return orders.filter(o => {
+      const createdBy = String(o.createdBy || '');
+      const createdByName = (o.createdByName || '').toLowerCase().trim();
+      const assignedTo = String(o.assignedTo || '');
+      return (uId && (createdBy === uId || assignedTo === uId)) ||
+        (user.id && (createdBy === String(user.id) || assignedTo === String(user.id))) ||
+        (user.uid && (createdBy === String((user as any).uid) || assignedTo === String((user as any).uid))) ||
+        (uEmail && (createdBy.toLowerCase() === uEmail || assignedTo.toLowerCase() === uEmail)) ||
+        (uName && (createdByName === uName || createdBy.toLowerCase() === uName));
+    });
   }, [orders, user]);
 
   // Hold orders — only shown in the dedicated hold section
