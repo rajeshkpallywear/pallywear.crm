@@ -376,6 +376,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       category: taskCategory,
       details: {
         ...(task.details || {}),
+        isRaisedTask: false,
+        raisedTaskCategory: undefined,
         isConvertedFromTask: true,
         convertedFromTaskId: task.id,
         convertedFromTaskTitle: task.customerInfo?.name || 'Design Task',
@@ -826,9 +828,19 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     try {
       const isConvertedOrder = Boolean(convertingTask || formData.details?.isConvertedFromTask);
       const convertedMeta = isConvertedOrder ? {
+        isRaisedTask: false,
+        raisedTaskCategory: undefined,
         isConvertedFromTask: true,
         convertedFromTaskId: convertingTask?.id || formData.details?.convertedFromTaskId,
         convertedFromTaskTitle: convertingTask?.customerInfo?.name || formData.details?.convertedFromTaskTitle,
+        details: {
+          ...(formData.details || {}),
+          isRaisedTask: false,
+          raisedTaskCategory: undefined,
+          isConvertedFromTask: true,
+          convertedFromTaskId: convertingTask?.id || formData.details?.convertedFromTaskId,
+          convertedFromTaskTitle: convertingTask?.customerInfo?.name || formData.details?.convertedFromTaskTitle,
+        },
         designCompleted: true,
         designCompletedAt: convertingTask?.designCompletedAt || formData.details?.designCompletedAt || Date.now(),
         original_design_file: convertingTask?.original_design_file || formData.details?.original_design_file || (convertingTask?.designAttachments && convertingTask.designAttachments[0]) || formData.imageAttachments[0] || '',
@@ -1053,6 +1065,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
   const isRaisedTaskOrder = (o: Order) => {
+    if (o.isConvertedFromTask || o.details?.isConvertedFromTask) return false;
     return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
   };
 
@@ -1421,9 +1434,16 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           {isRaisedTaskOrder(order) ? (
                             isRaisedTaskCompleted(order) ? (
                               <div className="flex flex-col gap-1">
-                                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-emerald-100 text-emerald-950 border border-emerald-300 flex items-center gap-1 shadow-2xs">
-                                  <CheckCircle2 size={10} className="text-emerald-600" /> ✓ Completed / Art Ready
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-emerald-100 text-emerald-950 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                                    <CheckCircle2 size={10} className="text-emerald-600" /> ✓ Completed / Art Ready
+                                  </span>
+                                  {order.details?.isConverted && (
+                                    <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-teal-100 text-teal-800 border border-teal-200">
+                                      ✨ Converted
+                                    </span>
+                                  )}
+                                </div>
                                 {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && (
                                   <span className="text-[9.5px] text-emerald-800 font-bold">
                                     🎨 Completed By: {order.assignedDesigner}
@@ -1434,40 +1454,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                     "{order.designNotes || order.notes}"
                                   </span>
                                 )}
-                                <div className="flex gap-1.5 mt-1 flex-wrap">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleConvertTaskToOrder(order);
-                                    }}
-                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 shadow-xs flex items-center gap-1 border-none active:scale-95"
-                                    title="Convert this completed task into a full customer order"
-                                  >
-                                    <Package size={11} />
-                                    <span>🛒 Convert to Order</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedHubOrder(order);
-                                    }}
-                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 flex items-center gap-1 shadow-2xs"
-                                    title="View Artwork & Specs"
-                                  >
-                                    <span>👁️ View Artwork</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setReworkModalTask(order);
-                                      setReworkNotesInput('');
-                                    }}
-                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 flex items-center gap-1 shadow-2xs"
-                                    title="Send back to Design Studio for revisions/corrections"
-                                  >
-                                    <span>🔁 Request Changes</span>
-                                  </button>
-                                </div>
                               </div>
                             ) : (
                               <div className="flex flex-col gap-1">
@@ -1638,20 +1624,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                       <td className="py-4 px-3 text-right">
                         <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                           <span className="text-[9px] font-mono text-gray-400 mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
-                          {isRaisedTaskOrder(order) && isRaisedTaskCompleted(order) && (
-                            <button
-                              onClick={() => handleConvertTaskToOrder(order)}
-                              className="px-2.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-90 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none shadow-xs"
-                              title="Convert to Full Order"
-                            >
-                              🛒 Convert
-                            </button>
-                          )}
                           <button
                             onClick={() => setSelectedHubOrder(order)}
-                            className="px-2.5 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-brand-primary hover:text-white text-gray-700 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none shadow-2xs"
                           >
-                            Edit
+                            {isRaisedTaskOrder(order) ? '👁️ Open Task' : 'Edit'}
                           </button>
                         </div>
                       </td>
@@ -1682,6 +1659,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           <span className="font-mono font-black text-brand-primary">#{order.id.slice(-6)}</span>
                           {isRaisedTaskOrder(order) && (
                             <span className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">TASK</span>
+                          )}
+                          {(order.isConvertedFromTask || order.details?.isConvertedFromTask) && (
+                            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">CONVERTED</span>
                           )}
                         </div>
                         <span className="text-[9px] text-gray-400 font-mono mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</span>
@@ -1732,9 +1712,16 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                              <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                ✓ Art Ready / Completed
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  ✓ Art Ready / Completed
+                                </span>
+                                {order.details?.isConverted && (
+                                  <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-teal-100 text-teal-800 border border-teal-200">
+                                    ✨ Converted
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             {order.assignedDesigner && (
                               <div className="flex items-center justify-between text-xs">
@@ -1747,28 +1734,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 Note: "{order.designNotes || order.notes}"
                               </div>
                             )}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => handleConvertTaskToOrder(order)}
-                                className="col-span-full py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white rounded-xl font-black text-xs transition-all uppercase cursor-pointer border-none text-center shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
-                              >
-                                <Package size={14} />
-                                <span>🛒 Convert to Order</span>
-                              </button>
+                            <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => setSelectedHubOrder(order)}
-                                className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer text-center shadow-xs"
+                                className="w-full py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer text-center shadow-2xs"
                               >
-                                View Artwork & Specs
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setReworkModalTask(order);
-                                  setReworkNotesInput('');
-                                }}
-                                className="w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer text-center shadow-2xs"
-                              >
-                                🔁 Request Changes
+                                👁️ Open Task Details
                               </button>
                             </div>
                           </div>
