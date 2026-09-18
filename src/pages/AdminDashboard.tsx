@@ -2084,7 +2084,7 @@ export default function AdminDashboard() {
                       {Object.keys(marketingCreatorsStats).length === 0 ? (
                         <p className="text-xs text-gray-400 italic py-2">No marketing tasks logged yet.</p>
                       ) : (
-                        Object.entries(marketingCreatorsStats).map(([staffName, stat]) => (
+                        Object.entries(marketingCreatorsStats).map(([staffName, stat]: [string, any]) => (
                           <div
                             key={staffName}
                             onClick={() => {
@@ -2139,7 +2139,7 @@ export default function AdminDashboard() {
                       {Object.keys(designersTaskStats).length === 0 ? (
                         <p className="text-xs text-gray-400 italic py-2">No designer claimed tasks yet.</p>
                       ) : (
-                        Object.entries(designersTaskStats).map(([designerName, stat]) => (
+                        Object.entries(designersTaskStats).map(([designerName, stat]: [string, any]) => (
                           <div
                             key={designerName}
                             onClick={() => {

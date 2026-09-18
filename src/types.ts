@@ -231,6 +231,8 @@ export interface Order {
   movedToAccountsAt?: number;
   isRaisedTask?: boolean;
   raisedTaskCategory?: string;
+  isConvertedFromTask?: boolean;
+  billingInvoiceAttached?: boolean;
 }
 
 export interface InventoryMovement {

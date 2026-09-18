@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Upload, Image as ImageIcon, FileText, Send, Sparkles,
@@ -110,7 +110,7 @@ export default function RaiseDesignTaskModal({
     e.stopPropagation();
     setIsDraggingOver(false);
 
-    const files = Array.from(e.dataTransfer.files || []);
+    const files: File[] = Array.from(e.dataTransfer.files || []) as File[];
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     const docFiles = files.filter(f => !f.type.startsWith('image/'));
 

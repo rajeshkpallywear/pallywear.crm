@@ -72,6 +72,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Processing States
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<'digitizer' | 'order_management' | 'marketing' | 'return' | 'hold' | null>(null);
   const [isStaffChatOpen, setIsStaffChatOpen] = useState(false);
   const [selectedItemIdForStaffChat, setSelectedItemIdForStaffChat] = useState<string | null>(null);
 
@@ -722,6 +723,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
 
     setIsProcessing(true);
+    setProcessingAction('marketing');
     try {
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.PENDING,
@@ -760,6 +762,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       alert("An error occurred while moving the order.");
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -788,6 +791,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
 
     setIsProcessing(true);
+    setProcessingAction('digitizer');
     try {
       await onUpdateOrder(selectedOrder.id, {
         designCompleted: true,
@@ -825,6 +829,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       alert("An error occurred while sending to Digitizer.");
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -853,6 +858,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
 
     setIsProcessing(true);
+    setProcessingAction('order_management');
     try {
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.ORDER_MANAGEMENT,
@@ -891,6 +897,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       alert("An error occurred while sending to Order Management.");
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -907,6 +914,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       actionLabel: 'Return to Staff',
       onHiddenSubmit: async (reason) => {
         setIsProcessing(true);
+        setProcessingAction('return');
         try {
           const newNote = `[REWORK RETURNED BY DESIGNER] ${new Date().toLocaleString()}: ${reason.trim()}`;
           const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
@@ -925,6 +933,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
           setPromptError("Database update failed. Please try again.");
         } finally {
           setIsProcessing(false);
+          setProcessingAction(null);
         }
       }
     });
@@ -936,6 +945,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     if (selectedOrder.status === OrderStatus.HOLD) {
       // Resume design work directly
       setIsProcessing(true);
+      setProcessingAction('hold');
       try {
         await onUpdateOrder(selectedOrder.id, {
           status: OrderStatus.DESIGN,
@@ -951,42 +961,44 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         console.error(e);
       } finally {
         setIsProcessing(false);
+        setProcessingAction(null);
       }
-      return;
-    }
+    } else {
+      setPromptInputValue('');
+      setPromptError('');
+      setCustomPrompt({
+        type: 'hold',
+        title: 'Put Design Task On Hold',
+        description: 'Please specify the exact hold reason for the team (e.g. waiting for client high-res logo, color confirmation):',
+        placeholder: 'Enter mandatory hold reason...',
+        actionLabel: 'Confirm Hold',
+        onHiddenSubmit: async (reason) => {
+          setIsProcessing(true);
+          setProcessingAction('hold');
+          try {
+            const holdNote = `[DESIGN HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
+            const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${holdNote}` : holdNote;
 
-    setPromptInputValue('');
-    setPromptError('');
-    setCustomPrompt({
-      type: 'hold',
-      title: 'Place Design on Hold',
-      description: 'Provide an active reason for placing this design on Hold:',
-      placeholder: 'Enter hold reason (e.g. pending customer logo vector format, pending color swatch decision)...',
-      actionLabel: 'Place on Hold',
-      onHiddenSubmit: async (reason) => {
-        setIsProcessing(true);
-        try {
-          const newNote = `[DESIGN PIPELINE ON HOLD] ${new Date().toLocaleString()}: ${reason.trim()}`;
-          const updatedNotes = selectedOrder.notes ? `${selectedOrder.notes}\n\n${newNote}` : newNote;
-
-          await onUpdateOrder(selectedOrder.id, {
-            status: OrderStatus.HOLD,
-            previousStatus: OrderStatus.DESIGN,
-            holdReason: reason.trim(),
-            notes: updatedNotes,
-            updatedAt: Date.now()
-          });
-          setSelectedOrder(null);
-          setCustomPrompt(null);
-          alert("Design artwork successfully put on hold.");
-        } catch (e) {
-          console.error(e);
-          setPromptError("Database update failed. Please try again.");
-        } finally {
-          setIsProcessing(false);
+            await onUpdateOrder(selectedOrder.id, {
+              status: OrderStatus.HOLD,
+              previousStatus: OrderStatus.DESIGN,
+              holdReason: reason.trim(),
+              notes: updatedNotes,
+              updatedAt: Date.now()
+            });
+            setSelectedOrder(prev => prev ? { ...prev, status: OrderStatus.HOLD, holdReason: reason.trim(), notes: updatedNotes } : null);
+            setCustomPrompt(null);
+            alert("Order put on Design HOLD.");
+          } catch (e) {
+            console.error(e);
+            setPromptError("Failed to put order on hold.");
+          } finally {
+            setIsProcessing(false);
+            setProcessingAction(null);
+          }
         }
-      }
-    });
+      });
+    }
   };
 
   const handleSendOmChatMessage = async () => {
@@ -2313,21 +2325,39 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                 {/* Hold / Resume buttons */}
                 {selectedOrder.status === OrderStatus.HOLD ? (
                   <button
-                    disabled={isProcessing}
+                    disabled={Boolean(processingAction)}
                     onClick={handlePutOnHold}
-                    className="px-6 py-4 bg-green-100 hover:bg-green-200 text-green-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer"
+                    className="px-6 py-4 bg-green-100 hover:bg-green-200 text-green-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    <CheckCircle size={15} />
-                    Resume Active Work
+                    {processingAction === 'hold' ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-green-800/30 border-t-green-800 rounded-full animate-spin" />
+                        <span>Resuming...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={15} />
+                        <span>Resume Active Work</span>
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button
-                    disabled={isProcessing}
+                    disabled={Boolean(processingAction)}
                     onClick={handlePutOnHold}
-                    className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer"
+                    className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    <Clock size={15} />
-                    Request Design Hold
+                    {processingAction === 'hold' ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock size={15} />
+                        <span>Request Design Hold</span>
+                      </>
+                    )}
                   </button>
                 )}
 
@@ -2336,39 +2366,73 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                   /* Accounts Sent Order -> Send to Digitizer & Send to Order Management */
                   <>
                     <button
-                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      disabled={Boolean(processingAction) || selectedOrder.status === OrderStatus.HOLD}
                       onClick={handleSendToDigitizer}
                       className="flex-1 py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      {isProcessing ? 'Processing files...' : 'Send to Digitizer'}
-                      <CheckCircle size={15} />
+                      {processingAction === 'digitizer' ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Sending to Digitizer...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Send to Digitizer</span>
+                          <CheckCircle size={15} />
+                        </>
+                      )}
                     </button>
                     <button
-                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      disabled={Boolean(processingAction) || selectedOrder.status === OrderStatus.HOLD}
                       onClick={handleSendToOrderManagement}
                       className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      {isProcessing ? 'Processing...' : 'Send to Order Management'}
-                      <CheckCircle size={15} />
+                      {processingAction === 'order_management' ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Sending to Order Management...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Send to Order Management</span>
+                          <CheckCircle size={15} />
+                        </>
+                      )}
                     </button>
                   </>
                 ) : (
                   /* Marketing Sent Order -> Return to Marketing & Send to Marketing */
                   <>
                     <button
-                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      disabled={Boolean(processingAction) || selectedOrder.status === OrderStatus.HOLD}
                       onClick={handleReturnToCreator}
                       className="px-6 py-4 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.02] border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      Return to Marketing
+                      {processingAction === 'return' ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-amber-800/30 border-t-amber-800 rounded-full animate-spin" />
+                          <span>Returning...</span>
+                        </>
+                      ) : (
+                        <span>Return to Marketing</span>
+                      )}
                     </button>
                     <button
-                      disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
+                      disabled={Boolean(processingAction) || selectedOrder.status === OrderStatus.HOLD}
                       onClick={handleSendToMarketing}
-                      className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 animate-pulse"
+                      className="flex-1 py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-black uppercase text-xs tracking-wider transition-all scale-100 hover:scale-[1.01] active:scale-95 shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      {isProcessing ? 'Processing files...' : 'Send to Marketing'}
-                      <CheckCircle size={15} />
+                      {processingAction === 'marketing' ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Sending to Marketing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Send to Marketing</span>
+                          <CheckCircle size={15} />
+                        </>
+                      )}
                     </button>
                   </>
                 )}

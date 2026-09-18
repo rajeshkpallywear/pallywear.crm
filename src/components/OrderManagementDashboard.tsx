@@ -853,17 +853,6 @@ export default function OrderManagementDashboard({ orders, inventory = [], onUpd
                           </span>
                         )}
                       </div>
-
-                      {selectedOrder.details && Object.keys(selectedOrder.details).length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2.5">
-                          {Object.entries(selectedOrder.details).map(([k, v]) => (
-                            <div key={k} className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-semibold text-gray-700 shadow-2xs">
-                              <span className="text-gray-400 uppercase font-black mr-1">{k}:</span>
-                              <span className="font-bold text-gray-900">{String(v)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
