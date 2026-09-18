@@ -91,6 +91,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [isRaiseTaskModalOpen, setIsRaiseTaskModalOpen] = useState(false);
+  const [convertingTask, setConvertingTask] = useState<Order | null>(null);
 
   // Voice recording state
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -320,6 +321,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       isUrgent: false
     });
     setEditingOrderId(null);
+    setConvertingTask(null);
     setNoteFeedback(null);
     setProductionNoteFeedback(null);
     setRecordingSeconds(0);
@@ -327,6 +329,86 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     setFieldErrors({});
     setShowSubmitReviewModal(false);
     setShowValidationModal(false);
+  };
+
+  const handleConvertTaskToOrder = (task: Order) => {
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+    }
+    setConvertingTask(task);
+    setEditingOrderId(null);
+
+    // Collect all image and pdf attachments from task
+    const allTaskImages = [
+      ...(task.designAttachments || []),
+      ...(task.original_design_file ? [task.original_design_file] : []),
+      ...(task.staffImages || []),
+      ...(task.marketing_image ? [task.marketing_image] : []),
+      ...(task.staffAttachments || []).filter(f => typeof f === 'string' && (f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
+    ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
+
+    const allTaskPdfs = [
+      ...(task.staffPdfs || []),
+      ...(task.staffAttachments || []).filter(f => typeof f === 'string' && !(f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
+    ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
+
+    const taskCategory = task.category && task.category !== 'Design Task' ? task.category : CATEGORIES[0];
+    const initialBreakdown: SizeBreakdown[] = [
+      {
+        category: taskCategory,
+        size: SIZE_OPTIONS[0],
+        quantity: 1,
+        price: 0,
+        gstRate: 0,
+        colour: '',
+        printType: '',
+        sleeve: '',
+        pocket: '',
+        material: '',
+        model: ''
+      }
+    ];
+
+    setFormData({
+      customerName: task.customerInfo?.name && task.customerInfo?.name !== 'Design Task' ? task.customerInfo.name : '',
+      phone: task.customerInfo?.phone && task.customerInfo?.phone !== '-' ? task.customerInfo.phone : '',
+      address: task.customerInfo?.address && task.customerInfo?.address !== 'Design Task' ? task.customerInfo.address : '',
+      category: taskCategory,
+      details: {
+        ...(task.details || {}),
+        isConvertedFromTask: true,
+        convertedFromTaskId: task.id,
+        convertedFromTaskTitle: task.customerInfo?.name || 'Design Task',
+        assignedDesigner: task.assignedDesigner || task.claimedByName || undefined,
+        claimedBy: task.claimedBy || undefined,
+        claimedByName: task.claimedByName || undefined,
+        original_design_file: task.original_design_file || (task.designAttachments && task.designAttachments[0]) || allTaskImages[0] || '',
+        original_design_filename: task.original_design_filename || '',
+        original_design_zip: task.original_design_zip || '',
+        original_design_zip_filename: task.original_design_zip_filename || '',
+        machineFiles: task.machineFiles || [],
+        designCompleted: true,
+        designCompletedAt: task.designCompletedAt || Date.now(),
+      },
+      imageAttachments: allTaskImages,
+      pdfAttachments: allTaskPdfs,
+      sizeBreakdown: initialBreakdown,
+      deliveryAmount: 0,
+      totalAmount: 0,
+      advancePay: 0,
+      notes: task.notes || task.designNotes || task.marketing_notes || '',
+      productionNotes: task.productionNotes || task.details?.notes || '',
+      voiceNote: task.voiceNote || '',
+      isUrgent: false
+    });
+
+    setValidationErrors([]);
+    setFieldErrors({});
+    setShowSubmitReviewModal(false);
+    setShowValidationModal(false);
+    setSelectedHubOrder(null);
+    setIsCreating(true);
+    showActionToast(`✨ Converting Task #${task.id.slice(-6)} into new customer order!`);
   };
 
   const [noteFeedback, setNoteFeedback] = useState<string | null>(null);
@@ -742,38 +824,90 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     setIsProcessing(true);
 
     try {
+      const isConvertedOrder = Boolean(convertingTask || formData.details?.isConvertedFromTask);
+      const convertedMeta = isConvertedOrder ? {
+        isConvertedFromTask: true,
+        convertedFromTaskId: convertingTask?.id || formData.details?.convertedFromTaskId,
+        convertedFromTaskTitle: convertingTask?.customerInfo?.name || formData.details?.convertedFromTaskTitle,
+        designCompleted: true,
+        designCompletedAt: convertingTask?.designCompletedAt || formData.details?.designCompletedAt || Date.now(),
+        original_design_file: convertingTask?.original_design_file || formData.details?.original_design_file || (convertingTask?.designAttachments && convertingTask.designAttachments[0]) || formData.imageAttachments[0] || '',
+        original_design_filename: convertingTask?.original_design_filename || formData.details?.original_design_filename || '',
+        original_design_zip: convertingTask?.original_design_zip || formData.details?.original_design_zip || '',
+        original_design_zip_filename: convertingTask?.original_design_zip_filename || formData.details?.original_design_zip_filename || '',
+        machineFiles: convertingTask?.machineFiles || formData.details?.machineFiles || [],
+        assignedDesigner: convertingTask?.assignedDesigner || convertingTask?.claimedByName || formData.details?.assignedDesigner || undefined,
+        claimedBy: convertingTask?.claimedBy || formData.details?.claimedBy || undefined,
+        claimedByName: convertingTask?.claimedByName || formData.details?.claimedByName || undefined,
+      } : {};
+
       if (editingOrderId) {
-        await onUpdateOrder(editingOrderId, finalOrderData);
+        await onUpdateOrder(editingOrderId, {
+          ...finalOrderData,
+          ...convertedMeta,
+        });
         if (targetDestination === 'design') {
           showActionToast(`✓ Order updated & sent to Designs Queue immediately!`);
         } else if (targetDestination === 'accounts') {
           showActionToast(`✓ Order updated & sent to Accounts Queue immediately!`);
+          setSelectedSection('process');
         } else {
           showActionToast(`✓ Order updated in portal successfully.`);
         }
       } else {
-        await onCreateOrder({
+        const orderToCreate: Partial<Order> = {
           ...finalOrderData,
-          status: targetStatus,
+          ...convertedMeta,
+          isRaisedTask: false,
+          status: targetDestination === 'accounts' ? OrderStatus.ACCOUNTS : (targetStatus || OrderStatus.PENDING),
+          movedToAccountsAt: targetDestination === 'accounts' ? Date.now() : undefined,
           designSentToMarketing: false,
-          designCompleted: false,
-          original_design_file: '',
-          original_design_filename: '',
-          original_design_zip: '',
-          original_design_zip_filename: '',
           createdAt: Date.now(),
-        });
+        };
+
+        if (!isConvertedOrder) {
+          orderToCreate.original_design_file = '';
+          orderToCreate.original_design_filename = '';
+          orderToCreate.original_design_zip = '';
+          orderToCreate.original_design_zip_filename = '';
+        }
+
+        await onCreateOrder(orderToCreate);
+
+        if (convertingTask) {
+          try {
+            await onUpdateOrder(convertingTask.id, {
+              details: {
+                ...(convertingTask.details || {}),
+                isConverted: true,
+                convertedAt: Date.now(),
+              }
+            });
+          } catch (taskErr) {
+            console.warn("Failed to mark task as converted:", taskErr);
+          }
+        }
+
         if (targetDestination === 'design') {
           showActionToast(`✓ Order placed & sent to Designs Queue immediately!`);
+          setSelectedSection('process');
         } else if (targetDestination === 'accounts') {
-          showActionToast(`✓ Order placed & sent to Accounts Queue immediately!`);
+          showActionToast(`✓ Order converted & forwarded to Accounts Queue immediately!`);
+          setSelectedSection('process');
         } else {
-          showActionToast(`✓ Order created successfully.`);
+          if (isConvertedOrder) {
+            showActionToast(`✓ Converted Order added to Recent List! Ready to forward to Accounts.`);
+            setSelectedSection('recent');
+          } else {
+            showActionToast(`✓ Order created successfully.`);
+            setSelectedSection('recent');
+          }
         }
       }
       setShowSubmitReviewModal(false);
       setIsCreating(false);
       setEditingOrderId(null);
+      setConvertingTask(null);
       resetForm();
     } catch (error: any) {
       console.error("Order submission failed:", error);
@@ -944,6 +1078,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const isReturnedFromDesign = (o: Order) => {
     if (isRaisedTaskOrder(o)) return false;
+    // Converted orders with completed artwork stay in Recent until forwarded to Accounts
+    if (o.isConvertedFromTask || o.details?.isConvertedFromTask) return false;
     const s = String(o.status || '').toLowerCase();
     if (s === 'hold') return false;
     const isPendingOrDraft = s === 'pending' || s === 'draft';
@@ -1002,8 +1138,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
-    return orders.filter(o => {
-      const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term) || (o.reworkNotes || '').toLowerCase().includes(term);
+    return (orders || []).filter(o => {
+      if (!o) return false;
+      const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || String(o.id || '').toLowerCase().includes(term) || String(o.reworkNotes || '').toLowerCase().includes(term);
       if (!matchesSearch) return false;
 
       if (selectedSection === 'task_process') {
@@ -1234,6 +1371,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           {isRaisedTaskOrder(order) && (
                             <span className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">TASK</span>
                           )}
+                          {(order.isConvertedFromTask || order.details?.isConvertedFromTask) && (
+                            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xs">CONVERTED</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-3">
@@ -1298,6 +1438,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      handleConvertTaskToOrder(order);
+                                    }}
+                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 shadow-xs flex items-center gap-1 border-none active:scale-95"
+                                    title="Convert this completed task into a full customer order"
+                                  >
+                                    <Package size={11} />
+                                    <span>🛒 Convert to Order</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setSelectedHubOrder(order);
                                     }}
                                     className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 flex items-center gap-1 shadow-2xs"
@@ -1314,7 +1465,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                     className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 flex items-center gap-1 shadow-2xs"
                                     title="Send back to Design Studio for revisions/corrections"
                                   >
-                                    <span>🔁 Request Changes / Rework</span>
+                                    <span>🔁 Request Changes</span>
                                   </button>
                                 </div>
                               </div>
@@ -1419,8 +1570,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             <>
                               <div className="flex items-center gap-1.5">
                                 <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                                  {order.status.replace('_', ' ')}
+                                  {String(order.status || '').replace('_', ' ')}
                                 </span>
+                                {(order.isConvertedFromTask || order.details?.isConvertedFromTask) && (
+                                  <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Art Ready
+                                  </span>
+                                )}
                               </div>
                               {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
                                 <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
@@ -1433,26 +1589,41 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               )}
                               {selectedSection === 'recent' ? (
                                 <div className="flex gap-1.5 mt-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDirectForward(order.id, 'design');
-                                    }}
-                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-purple-700 to-indigo-700 hover:opacity-95 shadow-xs flex items-center gap-1 border-none"
-                                    title="Send order to Designs Queue"
-                                  >
-                                    <span>🚀 Send to Design</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDirectForward(order.id, 'accounts');
-                                    }}
-                                    className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 shadow-2xs"
-                                    title="Send order to Accounts Queue"
-                                  >
-                                    💳 Accounts
-                                  </button>
+                                  {order.isConvertedFromTask || order.details?.isConvertedFromTask ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDirectForward(order.id, 'accounts');
+                                      }}
+                                      className="text-[9px] font-black rounded px-3 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 shadow-xs flex items-center gap-1 border-none active:scale-95"
+                                      title="Forward task converted order to Accounts Queue"
+                                    >
+                                      <span>💳 Forward to Accounts</span>
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDirectForward(order.id, 'design');
+                                        }}
+                                        className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-purple-700 to-indigo-700 hover:opacity-95 shadow-xs flex items-center gap-1 border-none"
+                                        title="Send order to Designs Queue"
+                                      >
+                                        <span>🚀 Send to Design</span>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDirectForward(order.id, 'accounts');
+                                        }}
+                                        className="text-[9px] font-black rounded px-2 py-0.5 transition-all cursor-pointer uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 shadow-2xs"
+                                        title="Send order to Accounts Queue"
+                                      >
+                                        💳 Accounts
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               ) : null}
                             </>
@@ -1465,8 +1636,17 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                         )}
                       </td>
                       <td className="py-4 px-3 text-right">
-                        <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                           <span className="text-[9px] font-mono text-gray-400 mr-1">{new Date(order.createdAt).toLocaleDateString()}</span>
+                          {isRaisedTaskOrder(order) && isRaisedTaskCompleted(order) && (
+                            <button
+                              onClick={() => handleConvertTaskToOrder(order)}
+                              className="px-2.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-90 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none shadow-xs"
+                              title="Convert to Full Order"
+                            >
+                              🛒 Convert
+                            </button>
+                          )}
                           <button
                             onClick={() => setSelectedHubOrder(order)}
                             className="px-2.5 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
@@ -1569,8 +1749,15 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
                               <button
+                                onClick={() => handleConvertTaskToOrder(order)}
+                                className="col-span-full py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white rounded-xl font-black text-xs transition-all uppercase cursor-pointer border-none text-center shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
+                              >
+                                <Package size={14} />
+                                <span>🛒 Convert to Order</span>
+                              </button>
+                              <button
                                 onClick={() => setSelectedHubOrder(order)}
-                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center shadow-xs"
+                                className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer text-center shadow-xs"
                               >
                                 View Artwork & Specs
                               </button>
@@ -1581,7 +1768,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 }}
                                 className="w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer text-center shadow-2xs"
                               >
-                                🔁 Request Changes / Rework
+                                🔁 Request Changes
                               </button>
                             </div>
                           </div>
@@ -1700,8 +1887,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
                             <div className="flex items-center gap-1.5">
                               <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider ${getStatusStyles(order.status)}`}>
-                                {order.status.replace('_', ' ')}
+                                {String(order.status || '').replace('_', ' ')}
                               </span>
+                              {(order.isConvertedFromTask || order.details?.isConvertedFromTask) && (
+                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  Art Ready
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center justify-between text-xs mt-1">
@@ -1725,20 +1917,32 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
                           {selectedSection === 'recent' ? (
                             <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => handleDirectForward(order.id, 'design')}
-                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-gradient-to-r from-purple-700 to-indigo-700 hover:opacity-90 text-white shadow-xs border-none"
-                                title="Send order to Designs Queue"
-                              >
-                                🚀 Send to Design
-                              </button>
-                              <button
-                                onClick={() => handleDirectForward(order.id, 'accounts')}
-                                className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
-                                title="Send order to Accounts Queue"
-                              >
-                                💳 To Accounts
-                              </button>
+                              {order.isConvertedFromTask || order.details?.isConvertedFromTask ? (
+                                <button
+                                  onClick={() => handleDirectForward(order.id, 'accounts')}
+                                  className="col-span-2 py-2.5 rounded-xl font-black text-xs uppercase cursor-pointer transition-all text-center bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white shadow-xs border-none flex items-center justify-center gap-1.5 active:scale-95"
+                                  title="Forward converted order to Accounts Queue"
+                                >
+                                  <span>💳 Forward to Accounts</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleDirectForward(order.id, 'design')}
+                                    className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-gradient-to-r from-purple-700 to-indigo-700 hover:opacity-90 text-white shadow-xs border-none"
+                                    title="Send order to Designs Queue"
+                                  >
+                                    🚀 Send to Design
+                                  </button>
+                                  <button
+                                    onClick={() => handleDirectForward(order.id, 'accounts')}
+                                    className="py-2 rounded-xl font-black text-[9px] uppercase cursor-pointer transition-all text-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
+                                    title="Send order to Accounts Queue"
+                                  >
+                                    💳 To Accounts
+                                  </button>
+                                </>
+                              )}
                               <button
                                 onClick={() => setSelectedHubOrder(order)}
                                 className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
@@ -1844,7 +2048,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             <div className="sticky top-0 bg-white px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 flex items-center justify-between z-10">
               <div className="flex items-center gap-4">
                 <h3 className="text-xl font-black text-gray-900 uppercase italic tracking-tight">
-                  {editingOrderId ? 'Modify Order Details' : 'Create Intake Order'}
+                  {convertingTask ? 'Convert Task to Order' : editingOrderId ? 'Modify Order Details' : 'Create Intake Order'}
                 </h3>
                 <label className="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-xl cursor-pointer hover:bg-red-100/50 transition-colors">
                   <input
@@ -1865,6 +2069,34 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             </div>
 
             <form onSubmit={handleInitiateSubmit} className="p-4 sm:p-8 space-y-4 sm:space-y-8 text-left">
+              {convertingTask && (
+                <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Package size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-black text-emerald-950 uppercase tracking-tight">
+                          ✨ Converting Task #{convertingTask.id.slice(-6)}: {convertingTask.customerInfo?.name}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-200 text-emerald-900 border border-emerald-300">
+                          Art Ready
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
+                        Completed design files & specifications preloaded • Fill out phone, shipping, sizes, and pricing to create order.
+                      </p>
+                    </div>
+                  </div>
+                  {convertingTask.assignedDesigner && (
+                    <span className="text-xs font-bold text-emerald-800 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-200 shrink-0">
+                      🎨 Designer: {convertingTask.assignedDesigner}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <section className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                   <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider">
@@ -2772,35 +3004,63 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
               >
                 ✏️ Back
               </button>
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={() => handleFinalSubmit()}
-                className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
-              >
-                <ShieldCheck size={14} />
-                <span>{editingOrderId ? 'Save Details' : 'Save Order'}</span>
-              </button>
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={() => handleFinalSubmit('design')}
-                className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
-                title="Save and dispatch immediately to Designs Team"
-              >
-                <Sparkles size={14} />
-                <span>Save & Send to Designs</span>
-              </button>
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={() => handleFinalSubmit('accounts')}
-                className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
-                title="Save and dispatch immediately to Accounts Team"
-              >
-                <CheckCircle2 size={14} />
-                <span>Save & Send to Accounts</span>
-              </button>
+
+              {convertingTask || formData.details?.isConvertedFromTask ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleFinalSubmit()}
+                    className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                    title="Save order as draft/pending into Recent Orders list"
+                  >
+                    <ShieldCheck size={14} />
+                    <span>Save to Recent List</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleFinalSubmit('accounts')}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                    title="Save converted order and forward directly to Accounts Queue"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>💳 Save & Send to Accounts</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleFinalSubmit()}
+                    className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                  >
+                    <ShieldCheck size={14} />
+                    <span>{editingOrderId ? 'Save Details' : 'Save Order'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleFinalSubmit('design')}
+                    className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                    title="Save and dispatch immediately to Designs Team"
+                  >
+                    <Sparkles size={14} />
+                    <span>Save & Send to Designs</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleFinalSubmit('accounts')}
+                    className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                    title="Save and dispatch immediately to Accounts Team"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>Save & Send to Accounts</span>
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </div>,
@@ -2814,6 +3074,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           onClose={() => setSelectedHubOrder(null)}
           isAdmin={isAdmin}
           onUpdateOrder={onUpdateOrder}
+          onConvertTaskToOrder={handleConvertTaskToOrder}
           onUpdateStatus={(newStatus) => onUpdateOrder(selectedHubOrder.id, { status: newStatus, updatedAt: Date.now() })}
           onEdit={(ord) => {
             setSelectedHubOrder(null);

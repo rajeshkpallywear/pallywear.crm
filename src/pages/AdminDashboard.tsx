@@ -7,7 +7,8 @@ import {
   UserPlus, X, Clock, FileText, CheckCircle2, Mail,
   LogOut, Trash2, Download, ChevronLeft, Menu, Zap, Monitor, Smartphone,
   Edit, Plus, Phone, Flame, Search, CalendarDays, LogIn, LogOut as LogOutIcon, ScanFace, Briefcase,
-  Palette, Truck, Package, ArrowRight, Layers, Scissors
+  Palette, Truck, Package, ArrowRight, Layers, Scissors,
+  RefreshCw, AlertTriangle, Eye, LayoutGrid, List, Sparkles
 } from 'lucide-react';
 import InvoiceFormModal from '../components/InvoiceFormModal';
 import AdminCreateOrderModal from '../components/AdminCreateOrderModal';
@@ -144,7 +145,12 @@ export default function AdminDashboard() {
   const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
   const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'sla-tasks' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance' | 'calendar'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'sla-tasks' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance' | 'calendar'>('overview');
+  const [taskSearchQuery, setTaskSearchQuery] = useState('');
+  const [taskDesignerFilter, setTaskDesignerFilter] = useState('all');
+  const [taskCreatorFilter, setTaskCreatorFilter] = useState('all');
+  const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'overdue' | 'rework'>('all');
+  const [taskViewMode, setTaskViewMode] = useState<'table' | 'cards'>('table');
   const [slaTaskSearch, setSlaTaskSearch] = useState('');
   const [slaDesignerFilter, setSlaDesignerFilter] = useState('all');
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'overdue'>('all');
@@ -734,6 +740,208 @@ export default function AdminDashboard() {
     return Array.from(set);
   }, [orders]);
 
+  const isRaisedTaskOrder = (o: Order) => {
+    return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
+  };
+
+  const allMarketingTasks = useMemo(() => {
+    return orders.filter(isRaisedTaskOrder);
+  }, [orders]);
+
+  const uniqueTaskMarketingCreators = useMemo(() => {
+    const set = new Set<string>();
+    allMarketingTasks.forEach(t => {
+      const name = t.createdByName || t.createdBy || 'Marketing Desk';
+      if (name) set.add(name);
+    });
+    return Array.from(set);
+  }, [allMarketingTasks]);
+
+  const uniqueTaskDesigners = useMemo(() => {
+    const set = new Set<string>();
+    allMarketingTasks.forEach(t => {
+      const des = t.assignedDesigner && t.assignedDesigner !== 'Unassigned' && t.assignedDesigner !== 'Designer assigned'
+        ? t.assignedDesigner
+        : t.claimedByName;
+      if (des) set.add(des);
+    });
+    return Array.from(set);
+  }, [allMarketingTasks]);
+
+  const formatDurationReadable = (ms: number) => {
+    if (!ms || ms <= 0) return '0 min';
+    const totalMinutes = Math.floor(ms / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours === 0) return `${mins}m`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}m`;
+  };
+
+  // Turnaround time and overdue calculation for a task
+  const getTaskMetrics = (task: Order) => {
+    const isCompleted = isOrderDesignCompleted(task) || Boolean(task.designCompleted || task.designSentToMarketing);
+    const isRework = Boolean(task.isRework || task.details?.isRework);
+    const createdAt = Number(task.createdAt || Date.now());
+    const claimedAt = Number(task.claimedAt || task.designClaimedAt || 0);
+    const completedAt = Number(task.designCompletedAt || (isCompleted ? task.updatedAt : 0));
+    
+    // SLA is 120 minutes (2 hours) from claim time (or creation time if unassigned for > 2 hours)
+    const baselineStart = claimedAt > 0 ? claimedAt : createdAt;
+    const slaLimitMs = 120 * 60 * 1000;
+    const deadline = baselineStart + slaLimitMs;
+    
+    let isOverdue = false;
+    let overdueDurationMs = 0;
+    let overdueReason = '';
+
+    if (isCompleted) {
+      const totalTat = Math.max(0, completedAt - createdAt);
+      const designTat = claimedAt > 0 ? Math.max(0, completedAt - claimedAt) : totalTat;
+      if (completedAt > deadline) {
+        isOverdue = true;
+        overdueDurationMs = completedAt - deadline;
+        overdueReason = `Completed in ${formatDurationReadable(designTat)}, exceeded 120m SLA by ${formatDurationReadable(overdueDurationMs)}`;
+      }
+      return {
+        isCompleted: true,
+        isRework,
+        tatMs: totalTat,
+        designTatMs: designTat,
+        tatDisplay: formatDurationReadable(designTat),
+        isOverdue,
+        overdueDurationMs,
+        overdueReason: overdueReason || 'Delivered On-Time within SLA'
+      };
+    } else {
+      const now = Date.now();
+      const elapsedSinceClaim = claimedAt > 0 ? now - claimedAt : 0;
+      const elapsedSinceCreate = now - createdAt;
+      
+      if (claimedAt > 0 && now > deadline) {
+        isOverdue = true;
+        overdueDurationMs = now - deadline;
+        overdueReason = `Exceeded 2-Hour Design Studio SLA by ${formatDurationReadable(overdueDurationMs)}`;
+      } else if (!claimedAt && elapsedSinceCreate > 4 * 60 * 60 * 1000) {
+        isOverdue = true;
+        overdueDurationMs = elapsedSinceCreate - 4 * 60 * 60 * 1000;
+        overdueReason = `Unclaimed in Design Queue for ${formatDurationReadable(elapsedSinceCreate)}`;
+      } else if (isRework) {
+        overdueReason = `In Revision: "${task.reworkNotes || 'Changes requested by Marketing'}"`;
+      }
+
+      return {
+        isCompleted: false,
+        isRework,
+        tatMs: elapsedSinceCreate,
+        designTatMs: elapsedSinceClaim,
+        tatDisplay: claimedAt > 0 ? `${formatDurationReadable(elapsedSinceClaim)} running` : 'Pending claim',
+        isOverdue,
+        overdueDurationMs,
+        overdueReason: overdueReason || (claimedAt > 0 ? 'Within SLA Timer (In Progress)' : 'In Design Queue (Open to Claim)')
+      };
+    }
+  };
+
+  const marketingCreatorsStats = useMemo(() => {
+    const stats: Record<string, { total: number; completed: number; inProgress: number; rework: number; totalTatMs: number; avgTatMs: number }> = {};
+    allMarketingTasks.forEach(task => {
+      const creator = task.createdByName || task.createdBy || 'Marketing Desk';
+      if (!stats[creator]) {
+        stats[creator] = { total: 0, completed: 0, inProgress: 0, rework: 0, totalTatMs: 0, avgTatMs: 0 };
+      }
+      stats[creator].total++;
+      const metrics = getTaskMetrics(task);
+      if (metrics.isCompleted && !metrics.isRework) {
+        stats[creator].completed++;
+        stats[creator].totalTatMs += metrics.tatMs;
+      } else if (metrics.isRework) {
+        stats[creator].rework++;
+      } else {
+        stats[creator].inProgress++;
+      }
+    });
+
+    Object.keys(stats).forEach(k => {
+      if (stats[k].completed > 0) {
+        stats[k].avgTatMs = Math.round(stats[k].totalTatMs / stats[k].completed);
+      }
+    });
+
+    return stats;
+  }, [allMarketingTasks]);
+
+  const designersTaskStats = useMemo(() => {
+    const stats: Record<string, { claimed: number; completed: number; inProgress: number; overdue: number; totalTatMs: number; avgTatMs: number }> = {};
+    allMarketingTasks.forEach(task => {
+      const designer = task.assignedDesigner && task.assignedDesigner !== 'Unassigned' && task.assignedDesigner !== 'Designer assigned'
+        ? task.assignedDesigner
+        : (task.claimedByName || 'Unassigned');
+      
+      if (!stats[designer]) {
+        stats[designer] = { claimed: 0, completed: 0, inProgress: 0, overdue: 0, totalTatMs: 0, avgTatMs: 0 };
+      }
+      if (designer !== 'Unassigned') stats[designer].claimed++;
+      
+      const metrics = getTaskMetrics(task);
+
+      if (metrics.isCompleted && !metrics.isRework) {
+        stats[designer].completed++;
+        stats[designer].totalTatMs += metrics.designTatMs;
+      } else if (!metrics.isCompleted) {
+        stats[designer].inProgress++;
+      }
+      if (metrics.isOverdue) {
+        stats[designer].overdue++;
+      }
+    });
+
+    Object.keys(stats).forEach(k => {
+      if (stats[k].completed > 0) {
+        stats[k].avgTatMs = Math.round(stats[k].totalTatMs / stats[k].completed);
+      }
+    });
+
+    return stats;
+  }, [allMarketingTasks]);
+
+  const filteredMarketingTasks = useMemo(() => {
+    return allMarketingTasks.filter(task => {
+      const metrics = getTaskMetrics(task);
+      
+      if (taskStatusFilter === 'in_progress' && (metrics.isCompleted || metrics.isRework)) return false;
+      if (taskStatusFilter === 'completed' && !metrics.isCompleted) return false;
+      if (taskStatusFilter === 'overdue' && !metrics.isOverdue) return false;
+      if (taskStatusFilter === 'rework' && !metrics.isRework) return false;
+
+      if (taskCreatorFilter !== 'all') {
+        const creator = task.createdByName || task.createdBy || 'Marketing Desk';
+        if (creator !== taskCreatorFilter) return false;
+      }
+
+      if (taskDesignerFilter !== 'all') {
+        const des = task.assignedDesigner && task.assignedDesigner !== 'Unassigned' && task.assignedDesigner !== 'Designer assigned'
+          ? task.assignedDesigner
+          : task.claimedByName;
+        if (des !== taskDesignerFilter) return false;
+      }
+
+      if (taskSearchQuery.trim()) {
+        const q = taskSearchQuery.toLowerCase().trim();
+        const id = String(task.id || '').toLowerCase();
+        const title = String(task.customerInfo?.name || '').toLowerCase();
+        const creator = String(task.createdByName || task.createdBy || '').toLowerCase();
+        const designer = String(task.assignedDesigner || task.claimedByName || '').toLowerCase();
+        const notes = String(task.notes || task.designNotes || task.reworkNotes || '').toLowerCase();
+        if (!id.includes(q) && !title.includes(q) && !creator.includes(q) && !designer.includes(q) && !notes.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [allMarketingTasks, taskStatusFilter, taskCreatorFilter, taskDesignerFilter, taskSearchQuery]);
+
   const filteredSlaTasks = useMemo(() => {
     return allDesignStudioOrders.filter(o => {
       const isCompleted = isOrderDesignCompleted(o);
@@ -1086,21 +1294,21 @@ export default function AdminDashboard() {
               <Zap className="w-4 h-4 flex-shrink-0" /> {(!isSidebarCollapsed || isMobileOpen) && <span>Global Orders</span>}
             </button>
             <button
-              onClick={() => selectTab('sla-tasks')}
+              onClick={() => selectTab('tasks')}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
                 isSidebarCollapsed && "md:justify-center md:px-0",
-                activeTab === 'sla-tasks' ? "bg-white text-purple-700 border-2 border-purple-300 shadow-lg shadow-purple-500/10" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-purple-600"
+                (activeTab === 'tasks' || activeTab === 'sla-tasks') ? "bg-white text-purple-700 border-2 border-purple-300 shadow-lg shadow-purple-500/10" : "bg-white text-gray-400 border border-transparent hover:border-gray-100 hover:text-purple-600"
               )}
-              title={isSidebarCollapsed ? "SLA Task Monitor" : ""}
+              title={isSidebarCollapsed ? "Tasks" : ""}
             >
-              <Clock className="w-4 h-4 flex-shrink-0 text-purple-600" />
+              <Palette className="w-4 h-4 flex-shrink-0 text-purple-600" />
               {(!isSidebarCollapsed || isMobileOpen) && (
                 <div className="flex items-center justify-between w-full">
-                  <span>Designs Task Monitor</span>
-                  {activeAdminDesignOrders.length > 0 && (
+                  <span>Tasks</span>
+                  {allMarketingTasks.length > 0 && (
                     <span className="px-1.5 py-0.5 text-[9px] font-black bg-purple-100 text-purple-700 rounded-full">
-                      {activeAdminDesignOrders.length}
+                      {allMarketingTasks.length}
                     </span>
                   )}
                 </div>
@@ -1759,46 +1967,235 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </>
-            ) : activeTab === 'sla-tasks' ? (
+            ) : (activeTab === 'tasks' || activeTab === 'sla-tasks') ? (
               <div className="space-y-6 text-left">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
                       <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
-                      🎨 Designs Task Monitor
+                      🎨 Marketing Tasks & Design Turnaround Analytics
                     </h2>
                     <p className="text-xs text-gray-500 font-medium mt-0.5">
-                      Real-time SLA countdown (120 minutes per claimed task) for Graphic Designers & Artworks
+                      Real-time monitor of marketing task creation, designer claiming, turnaround time (TAT), and overdue analysis.
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-black rounded-full">
-                      {activeAdminDesignOrders.length} In Progress
-                    </span>
-                    <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black rounded-full">
-                      {allDesignStudioOrders.filter(o => isOrderDesignCompleted(o)).length} Completed
-                    </span>
+                    <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => setTaskViewMode('table')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5",
+                          taskViewMode === 'table' ? "bg-white text-purple-700 shadow-2xs font-black" : "text-gray-500 hover:text-gray-800"
+                        )}
+                      >
+                        <List size={13} /> Table
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskViewMode('cards')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5",
+                          taskViewMode === 'cards' ? "bg-white text-purple-700 shadow-2xs font-black" : "text-gray-500 hover:text-gray-800"
+                        )}
+                      >
+                        <LayoutGrid size={13} /> Cards
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Search & Filter Bar */}
+                {/* 5 Summary KPI Cards */}
+                {(() => {
+                  const totalCount = allMarketingTasks.length;
+                  const completedList = allMarketingTasks.filter(t => (isOrderDesignCompleted(t) || t.designCompleted || t.designSentToMarketing) && !t.isRework);
+                  const inProgressCount = allMarketingTasks.filter(t => !(isOrderDesignCompleted(t) || t.designCompleted || t.designSentToMarketing) && !t.isRework).length;
+                  const overdueCount = allMarketingTasks.filter(t => getTaskMetrics(t).isOverdue).length;
+                  const reworkCount = allMarketingTasks.filter(t => t.isRework || t.details?.isRework).length;
+                  const totalTat = completedList.reduce((acc, t) => acc + getTaskMetrics(t).tatMs, 0);
+                  const avgTatMs = completedList.length > 0 ? Math.round(totalTat / completedList.length) : 0;
+
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Total Created</span>
+                          <Palette size={15} className="text-purple-600" />
+                        </div>
+                        <p className="text-2xl font-black text-gray-900">{totalCount}</p>
+                        <p className="text-[10px] text-gray-500 font-medium">By Marketing Desk</p>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-purple-700">In Design Queue</span>
+                          <Clock size={15} className="text-purple-600" />
+                        </div>
+                        <p className="text-2xl font-black text-purple-900">{inProgressCount}</p>
+                        <p className="text-[10px] text-purple-600 font-medium">Active Studio Work</p>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Completed</span>
+                          <CheckCircle2 size={15} className="text-emerald-600" />
+                        </div>
+                        <p className="text-2xl font-black text-emerald-900">{completedList.length}</p>
+                        <p className="text-[10px] text-emerald-600 font-medium">Art Ready & Delivered</p>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-2xl border border-red-150 shadow-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-red-700">Overdue (SLA)</span>
+                          <AlertTriangle size={15} className="text-red-600" />
+                        </div>
+                        <p className="text-2xl font-black text-red-900">{overdueCount}</p>
+                        <p className="text-[10px] text-red-600 font-medium">&gt; 120m Turnaround SLA</p>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-2xl border border-blue-150 shadow-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">Avg. Turnaround</span>
+                          <Sparkles size={15} className="text-blue-600" />
+                        </div>
+                        <p className="text-2xl font-black text-blue-900">{formatDurationReadable(avgTatMs)}</p>
+                        <p className="text-[10px] text-blue-600 font-medium">Creation to Delivery</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Team Breakdown Accordions/Cards */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Marketing Creators Summary */}
+                  <div className="bg-white p-5 rounded-3xl border border-gray-150 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-purple-600" />
+                        <h4 className="text-xs font-black uppercase text-gray-900 tracking-wider">Marketing Staff Task Output</h4>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400">{Object.keys(marketingCreatorsStats).length} Staff Members</span>
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {Object.keys(marketingCreatorsStats).length === 0 ? (
+                        <p className="text-xs text-gray-400 italic py-2">No marketing tasks logged yet.</p>
+                      ) : (
+                        Object.entries(marketingCreatorsStats).map(([staffName, stat]) => (
+                          <div
+                            key={staffName}
+                            onClick={() => {
+                              setTaskCreatorFilter(taskCreatorFilter === staffName ? 'all' : staffName);
+                            }}
+                            className={cn(
+                              "p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all cursor-pointer",
+                              taskCreatorFilter === staffName
+                                ? "bg-purple-50 border-purple-300 shadow-2xs"
+                                : "bg-gray-50/70 border-gray-100 hover:bg-gray-100/70"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-xl bg-purple-100 text-purple-800 font-black text-xs flex items-center justify-center">
+                                {staffName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-bold text-gray-900 block">{staffName}</span>
+                                <span className="text-[10px] text-gray-400 font-medium">Avg TAT: {formatDurationReadable(stat.avgTatMs)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 font-mono">
+                              <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-bold text-[10px]" title="Total Created">
+                                {stat.total} created
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]" title="Completed">
+                                {stat.completed} done
+                              </span>
+                              {stat.rework > 0 && (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold text-[10px]" title="In Rework">
+                                  {stat.rework} rev
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Design Studio Turnaround Performance */}
+                  <div className="bg-white p-5 rounded-3xl border border-gray-150 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                        <h4 className="text-xs font-black uppercase text-gray-900 tracking-wider">Design Studio Turnaround & Allocation</h4>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400">{Object.keys(designersTaskStats).length} Designers</span>
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {Object.keys(designersTaskStats).length === 0 ? (
+                        <p className="text-xs text-gray-400 italic py-2">No designer claimed tasks yet.</p>
+                      ) : (
+                        Object.entries(designersTaskStats).map(([designerName, stat]) => (
+                          <div
+                            key={designerName}
+                            onClick={() => {
+                              setTaskDesignerFilter(taskDesignerFilter === designerName ? 'all' : designerName);
+                            }}
+                            className={cn(
+                              "p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all cursor-pointer",
+                              taskDesignerFilter === designerName
+                                ? "bg-emerald-50 border-emerald-300 shadow-2xs"
+                                : "bg-gray-50/70 border-gray-100 hover:bg-gray-100/70"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center">
+                                🎨
+                              </div>
+                              <div>
+                                <span className="font-bold text-gray-900 block">{designerName}</span>
+                                <span className="text-[10px] text-gray-400 font-medium">Avg Completion: {formatDurationReadable(stat.avgTatMs)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 font-mono">
+                              <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-bold text-[10px]" title="Claimed">
+                                {stat.claimed} taken
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]" title="Completed">
+                                {stat.completed} done
+                              </span>
+                              {stat.overdue > 0 && (
+                                <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 font-bold text-[10px]" title="Overdue">
+                                  {stat.overdue} overdue
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter & Search Bar */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                    {/* Status filter tabs */}
                     {[
-                      { id: 'all', label: `All Tasks (${allDesignStudioOrders.length})` },
-                      { id: 'in_progress', label: `⚡ In Progress (${activeAdminDesignOrders.length})` },
-                      { id: 'overdue', label: `🚨 Overdue` },
-                      { id: 'completed', label: `✓ Completed` }
+                      { id: 'all', label: `All Tasks (${allMarketingTasks.length})` },
+                      { id: 'in_progress', label: `⚡ In Progress (${allMarketingTasks.filter(t => !(isOrderDesignCompleted(t) || t.designCompleted) && !t.isRework).length})` },
+                      { id: 'completed', label: `✓ Completed (${allMarketingTasks.filter(t => (isOrderDesignCompleted(t) || t.designCompleted) && !t.isRework).length})` },
+                      { id: 'overdue', label: `🚨 Overdue (${allMarketingTasks.filter(t => getTaskMetrics(t).isOverdue).length})` },
+                      { id: 'rework', label: `🔁 In Rework (${allMarketingTasks.filter(t => t.isRework || t.details?.isRework).length})` },
                     ].map(f => (
                       <button
                         key={f.id}
-                        onClick={() => setSlaStatusFilter(f.id as any)}
+                        onClick={() => setTaskStatusFilter(f.id as any)}
                         className={cn(
                           "px-3 py-1.5 rounded-xl text-xs font-black transition-all border-none cursor-pointer",
-                          slaStatusFilter === f.id
+                          taskStatusFilter === f.id
                             ? "bg-purple-600 text-white shadow-sm shadow-purple-500/20"
                             : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         )}
@@ -1808,87 +2205,291 @@ export default function AdminDashboard() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3 w-full md:w-auto">
+                  <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                    {/* Marketing Staff dropdown */}
+                    <select
+                      value={taskCreatorFilter}
+                      onChange={(e) => setTaskCreatorFilter(e.target.value)}
+                      className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none cursor-pointer text-gray-700"
+                    >
+                      <option value="all">All Marketing Staff</option>
+                      {uniqueTaskMarketingCreators.map(c => (
+                        <option key={c} value={c}>👤 {c}</option>
+                      ))}
+                    </select>
+
                     {/* Designer dropdown */}
                     <select
-                      value={slaDesignerFilter}
-                      onChange={(e) => setSlaDesignerFilter(e.target.value)}
+                      value={taskDesignerFilter}
+                      onChange={(e) => setTaskDesignerFilter(e.target.value)}
                       className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none cursor-pointer text-gray-700"
                     >
                       <option value="all">All Designers</option>
-                      {uniqueDesignersList.map(d => (
+                      {uniqueTaskDesigners.map(d => (
                         <option key={d} value={d}>🎨 {d}</option>
                       ))}
                     </select>
 
                     {/* Search box */}
-                    <div className="relative w-full sm:w-64">
+                    <div className="relative w-full sm:w-60">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                       <input
                         type="text"
-                        placeholder="Search order #, client, designer..."
-                        value={slaTaskSearch}
-                        onChange={(e) => setSlaTaskSearch(e.target.value)}
+                        placeholder="Search task #, specs, designer..."
+                        value={taskSearchQuery}
+                        onChange={(e) => setTaskSearchQuery(e.target.value)}
                         className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 font-medium"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* SLA Cards Grid */}
-                {filteredSlaTasks.length === 0 ? (
-                  <div className="bg-white p-12 rounded-3xl border border-gray-150 text-center text-gray-400 font-medium text-xs">
-                    No SLA tasks found matching your filter criteria.
+                {/* Table View */}
+                {taskViewMode === 'table' ? (
+                  <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50/80 text-[9.5px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                            <th className="px-5 py-4">Task ID & Date</th>
+                            <th className="px-5 py-4">Task Title & Requirements</th>
+                            <th className="px-5 py-4">Marketing Creator</th>
+                            <th className="px-5 py-4">Assigned Designer</th>
+                            <th className="px-5 py-4 text-center">Turnaround Time (TAT)</th>
+                            <th className="px-5 py-4">SLA & Overdue Status</th>
+                            <th className="px-5 py-4 text-center">Current Status</th>
+                            <th className="px-5 py-4 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 font-medium">
+                          {filteredMarketingTasks.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="py-12 text-center text-gray-400 italic">
+                                No marketing tasks found matching the selected filter criteria.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredMarketingTasks.map(task => {
+                              const metrics = getTaskMetrics(task);
+                              const creator = task.createdByName || task.createdBy || 'Marketing Desk';
+                              const designer = task.assignedDesigner && task.assignedDesigner !== 'Unassigned' && task.assignedDesigner !== 'Designer assigned'
+                                ? task.assignedDesigner
+                                : (task.claimedByName || 'Unassigned');
+
+                              return (
+                                <tr key={task.id} className="hover:bg-purple-50/20 transition-colors">
+                                  {/* 1. Task ID & Date */}
+                                  <td className="px-5 py-4">
+                                    <div className="flex flex-col">
+                                      <span className="font-mono font-black text-brand-primary">
+                                        #{task.id.slice(-8)}
+                                      </span>
+                                      <span className="text-[10px] text-gray-400 font-mono">
+                                        {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* 2. Title & Specs */}
+                                  <td className="px-5 py-4">
+                                    <div className="flex items-center gap-2.5 max-w-[280px]">
+                                      {((task.staffImages && task.staffImages[0]) || task.marketing_image || task.original_design_file) && (
+                                        <img
+                                          src={task.original_design_file || task.staffImages?.[0] || task.marketing_image}
+                                          alt="thumb"
+                                          className="w-9 h-9 rounded-xl object-cover border border-gray-200 shrink-0"
+                                        />
+                                      )}
+                                      <div className="truncate">
+                                        <p className="font-black text-gray-900 text-xs truncate">
+                                          {task.customerInfo?.name || 'Design Task'}
+                                        </p>
+                                        <p className="text-[10px] text-gray-500 italic truncate" title={task.notes || task.designNotes}>
+                                          {task.notes || task.designNotes || 'No notes'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* 3. Marketing Creator */}
+                                  <td className="px-5 py-4">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black flex items-center justify-center">
+                                        {creator.charAt(0).toUpperCase()}
+                                      </span>
+                                      <span className="text-xs font-bold text-gray-800">{creator}</span>
+                                    </div>
+                                  </td>
+
+                                  {/* 4. Assigned Designer */}
+                                  <td className="px-5 py-4">
+                                    {designer !== 'Unassigned' ? (
+                                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-bold rounded-lg text-[11px] flex items-center gap-1 w-fit">
+                                        🎨 {designer}
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-500 font-medium rounded text-[10px]">
+                                        Unassigned
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 5. Turnaround Time (TAT) */}
+                                  <td className="px-5 py-4 text-center">
+                                    {metrics.isCompleted ? (
+                                      <div className="flex flex-col items-center">
+                                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-mono font-black">
+                                          ⏱️ {metrics.tatDisplay}
+                                        </span>
+                                        <span className="text-[9px] text-gray-400 font-medium mt-0.5">
+                                          Total: {formatDurationReadable(metrics.tatMs)}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="px-2.5 py-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg text-[11px] font-mono font-black">
+                                        ⏳ {metrics.tatDisplay}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 6. SLA & Overdue Reason */}
+                                  <td className="px-5 py-4">
+                                    {metrics.isOverdue ? (
+                                      <div className="flex flex-col max-w-[240px]">
+                                        <span className="px-2 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-md text-[10px] font-black w-fit flex items-center gap-1">
+                                          <AlertTriangle size={11} className="text-red-600" /> Overdue by {formatDurationReadable(metrics.overdueDurationMs)}
+                                        </span>
+                                        <span className="text-[9.5px] text-red-900 font-medium mt-0.5 italic truncate" title={metrics.overdueReason}>
+                                          {metrics.overdueReason}
+                                        </span>
+                                      </div>
+                                    ) : metrics.isRework ? (
+                                      <div className="flex flex-col max-w-[240px]">
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[10px] font-black w-fit flex items-center gap-1">
+                                          <RefreshCw size={10} className="text-amber-700" /> In Rework / Revision
+                                        </span>
+                                        <span className="text-[9.5px] text-amber-900 italic mt-0.5 truncate" title={task.reworkNotes}>
+                                          "{task.reworkNotes || 'Changes requested'}"
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-700 border border-gray-200 rounded-md text-[10px] font-bold">
+                                        ✓ On Time (Within SLA)
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 7. Status */}
+                                  <td className="px-5 py-4 text-center">
+                                    {metrics.isCompleted ? (
+                                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-lg text-[10px] font-black uppercase">
+                                        ✓ Art Ready
+                                      </span>
+                                    ) : metrics.isRework ? (
+                                      <span className="px-2.5 py-1 bg-amber-100 text-amber-950 border border-amber-300 rounded-lg text-[10px] font-black uppercase">
+                                        🔁 Revision
+                                      </span>
+                                    ) : (
+                                      <span className="px-2.5 py-1 bg-purple-100 text-purple-900 border border-purple-200 rounded-lg text-[10px] font-black uppercase">
+                                        ⏳ In Studio
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 8. Action */}
+                                  <td className="px-5 py-4 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedOrderDetail(task)}
+                                      className="px-3 py-1.5 bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-800 font-bold text-xs rounded-xl transition-all border-none cursor-pointer flex items-center gap-1 ml-auto"
+                                    >
+                                      <Eye size={13} /> View
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
+                  /* Cards View */
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredSlaTasks.map(order => {
-                      const isCompleted = isOrderDesignCompleted(order);
-                      return (
-                        <div
-                          key={order.id}
-                          onClick={() => setSelectedOrderDetail(order)}
-                          className="bg-white p-5 rounded-3xl border border-gray-150 hover:border-purple-300 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono font-black text-sm text-brand-primary group-hover:text-purple-700 transition-colors">
-                              #{order.orderNumber || order.id.slice(-8)}
-                            </span>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700 border border-gray-200">
-                              {order.category}
-                            </span>
-                          </div>
+                    {filteredMarketingTasks.length === 0 ? (
+                      <div className="col-span-full bg-white p-12 rounded-3xl border border-gray-150 text-center text-gray-400 font-medium text-xs">
+                        No marketing tasks found matching your filter criteria.
+                      </div>
+                    ) : (
+                      filteredMarketingTasks.map(task => {
+                        const metrics = getTaskMetrics(task);
+                        const creator = task.createdByName || task.createdBy || 'Marketing Desk';
+                        const designer = task.assignedDesigner && task.assignedDesigner !== 'Unassigned' && task.assignedDesigner !== 'Designer assigned'
+                          ? task.assignedDesigner
+                          : (task.claimedByName || 'Unassigned');
 
-                          <div className="space-y-1">
-                            <p className="text-sm font-black text-gray-900 truncate">
-                              {order.customerInfo?.name || (order as any).clientName || 'Customer'}
-                            </p>
-                            <p className="text-[11px] text-gray-500 font-medium truncate">
-                              Created by: <span className="font-bold text-gray-700">{order.createdByName || order.createdBy || 'Staff'}</span>
-                            </p>
-                          </div>
+                        return (
+                          <div
+                            key={task.id}
+                            onClick={() => setSelectedOrderDetail(task)}
+                            className="bg-white p-5 rounded-3xl border border-gray-150 hover:border-purple-300 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-black text-sm text-brand-primary group-hover:text-purple-700 transition-colors">
+                                #{task.id.slice(-8)}
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                                🎨 Design Task
+                              </span>
+                            </div>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
-                            <span className="text-[10px] font-black px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg flex items-center gap-1">
-                              🎨 {order.assignedDesigner || 'Designer'}
-                            </span>
-                            <span className="font-mono font-black text-gray-900">
-                              ₹{(Number(order.financials?.totalAmount) || 0).toLocaleString('en-IN')}
-                            </span>
-                          </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-black text-gray-900 truncate">
+                                {task.customerInfo?.name || 'Design Task'}
+                              </p>
+                              <p className="text-[11px] text-gray-500 font-medium truncate">
+                                Created by: <span className="font-bold text-gray-700">{creator}</span> • {new Date(task.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
 
-                          <div className="pt-2 border-t border-gray-100">
-                            <DesignTaskTimer
-                              claimedAt={order.claimedAt || order.designClaimedAt}
-                              completedAt={order.designCompletedAt}
-                              isCompleted={isCompleted}
-                              variant="bar"
-                              designerName={order.assignedDesigner}
-                            />
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                              <span className="text-[10px] font-black px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg flex items-center gap-1">
+                                🎨 {designer}
+                              </span>
+                              <span className="font-mono font-black text-gray-900">
+                                TAT: {metrics.tatDisplay}
+                              </span>
+                            </div>
+
+                            {/* Overdue alert / reason */}
+                            {metrics.isOverdue && (
+                              <div className="p-2 bg-red-50 rounded-xl border border-red-200 text-[10px] text-red-900 font-bold flex items-center gap-1">
+                                <AlertTriangle size={12} className="text-red-600 shrink-0" />
+                                <span className="truncate">{metrics.overdueReason}</span>
+                              </div>
+                            )}
+
+                            {metrics.isRework && (
+                              <div className="p-2 bg-amber-50 rounded-xl border border-amber-200 text-[10px] text-amber-900 font-bold flex items-center gap-1">
+                                <RefreshCw size={12} className="text-amber-700 shrink-0" />
+                                <span className="truncate">Revision: {task.reworkNotes || 'Changes required'}</span>
+                              </div>
+                            )}
+
+                            <div className="pt-2 border-t border-gray-100">
+                              <DesignTaskTimer
+                                claimedAt={task.claimedAt || task.designClaimedAt}
+                                completedAt={task.designCompletedAt}
+                                isCompleted={metrics.isCompleted}
+                                variant="bar"
+                                designerName={designer}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>

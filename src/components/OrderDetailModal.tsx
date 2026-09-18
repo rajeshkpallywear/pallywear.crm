@@ -16,9 +16,10 @@ interface OrderDetailModalProps {
   onUpdateOrder?: (id: string, updates: Partial<Order>) => Promise<void>;
   isAdmin?: boolean;
   onEdit?: (order: Order) => void;
+  onConvertTaskToOrder?: (task: Order) => void;
 }
 
-export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit }: OrderDetailModalProps) {
+export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit, onConvertTaskToOrder }: OrderDetailModalProps) {
   const { loadOrderAttachments, orders, updateOrder: contextUpdateOrder } = useLeads();
   const effectiveUpdateOrder = onUpdateOrder || contextUpdateOrder;
   const order = initialOrder ? (orders.find(o => o.id === initialOrder.id) || initialOrder) : null;
@@ -335,7 +336,21 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {hasReturnedDesigns && onConvertTaskToOrder && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onConvertTaskToOrder(order);
+                  }}
+                  className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:opacity-95 text-white rounded-xl font-black uppercase tracking-wider text-[10px] transition-all shadow-md flex items-center gap-1.5 border-none cursor-pointer active:scale-95"
+                  title="Convert this completed task into a full customer order"
+                >
+                  <Package size={13} />
+                  <span>🛒 Convert to Order</span>
+                </button>
+              )}
               <button
                 onClick={() => shareOrderToWhatsApp(order)}
                 className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all shadow-sm flex items-center gap-1.5 border-none cursor-pointer"
@@ -624,6 +639,20 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             </div>
 
             <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+              {hasReturnedDesigns && onConvertTaskToOrder && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onConvertTaskToOrder(order);
+                  }}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-md active:scale-95"
+                  title="Convert this completed task into a full customer order"
+                >
+                  <Package size={14} />
+                  <span>🛒 Convert to Order</span>
+                </button>
+              )}
               {hasReturnedDesigns && (
                 <button
                   type="button"

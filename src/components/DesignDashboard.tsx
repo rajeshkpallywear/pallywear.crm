@@ -514,7 +514,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       // Unclaimed tasks are visible to all designers. Once taken/claimed, only visible to claiming designer (or admin)
       baseList = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
     } else if (selectedSection === 'unclaimed') {
-      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder);
+      baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder && !item.isRaisedTask);
     } else if (selectedSection === 'my_tasks') {
       // In My Tasks: strictly show only tasks claimed by THIS logged-in designer
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
@@ -550,7 +550,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Get counters for high-level buttons
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
-    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder).length;
+    const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder && !item.isRaisedTask).length;
     const marketingTasksCount = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold && (isAdmin || isClaimedByMe(item) || isUnclaimedItem(item.assignedDesigner, item.claimedBy))).length;
