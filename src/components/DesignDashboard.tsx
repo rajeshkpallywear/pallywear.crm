@@ -718,8 +718,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 100MB). Please use a smaller file size.");
-      return;
+      console.warn("Large artwork data package detected, proceeding with save.");
     }
 
     setIsProcessing(true);
@@ -786,8 +785,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 100MB). Please use a smaller file size.");
-      return;
+      console.warn("Large artwork data package detected, proceeding with save.");
     }
 
     setIsProcessing(true);
@@ -853,8 +851,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
-      alert("Error: Total order data limit exceeded (Max 100MB). Please use a smaller file size.");
-      return;
+      console.warn("Large artwork data package detected, proceeding with save.");
     }
 
     setIsProcessing(true);

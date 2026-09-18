@@ -18,44 +18,60 @@ import DesignTaskTimer from './DesignTaskTimer';
 import AdminCreateOrderModal from './AdminCreateOrderModal';
 import InvoiceFormModal from './InvoiceFormModal';
 
-// Set of known female names / keywords for marketing staff team separation (Girls Team)
-const FEMALE_NAMES_SET = new Set([
-  'jimla', 'priyanga', 'kavitha', 'priya', 'divya', 'anitha', 'saranya', 'meena',
-  'deepa', 'swetha', 'aarthi', 'pavithra', 'sandhya', 'pooja', 'keerthi', 'lavanya',
-  'monika', 'sneha', 'nisha', 'ramya', 'revathi', 'soundarya', 'suganya', 'geetha',
-  'shanthi', 'kalyani', 'uma', 'lakshmi', 'radha', 'valli', 'sarah', 'mary', 'emily',
-  'jane', 'anna', 'viji', 'devi', 'kavya', 'nandhini', 'gayathri', 'archana', 'bhavani',
-  'dhivya', 'preethi', 'malathi', 'chitra', 'sudha', 'kokila', 'vidhya', 'sangeetha',
-  'abirami', 'kala', 'janani', 'harini', 'akshaya', 'sridevi', 'sowmya', 'subha',
-  'madhavi', 'anu', 'vasuki', 'sita', 'kanmani', 'selvi', 'ponni', 'soundari',
-  'karthika', 'sumathi', 'punitha', 'bhuvaneshwari', 'gayatri', 'hema', 'kamala',
-  'renuka', 'padma', 'padmavathi', 'sharmila', 'yamuna', 'vanitha', 'vijaya', 'rohini'
-]);
+// Official Marketing Staff Lists (Strictly Separated Teams)
+export const OFFICIAL_BOYS_TEAM = [
+  { name: 'Godwin', keys: ['godwin'] },
+  { name: 'Mukesh', keys: ['mukesh'] },
+  { name: 'Saravanan', keys: ['saravanan'] },
+  { name: 'Sakthivel', keys: ['sakthivel', 'sakthi'] }
+];
 
-// Helper to determine if a marketing staff member belongs to the Girls Team (Female) or Boys Team (Male)
-const isFemaleStaff = (name?: string, registeredUsersList?: any[]): boolean => {
-  if (!name || typeof name !== 'string') return false;
-  const cleanName = name.trim().toLowerCase();
-  if (!cleanName) return false;
+export const OFFICIAL_GIRLS_TEAM = [
+  { name: 'Jimla', keys: ['jimla'] },
+  { name: 'Priya', keys: ['priya', 'priyanga'] },
+  { name: 'Sowmiya', keys: ['sowmiya', 'sowmya'] },
+  { name: 'Periyanayagi', keys: ['periyanayagi', 'periyanayaki', 'periya nayagi', 'periya'] }
+];
 
-  // Check in registered users list if gender or team metadata exists
+export const OFFICIAL_MARKETING_STAFF = [
+  ...OFFICIAL_GIRLS_TEAM.map(s => ({ name: s.name, keys: s.keys, isFemale: true, teamName: 'Girls Team' as const })),
+  ...OFFICIAL_BOYS_TEAM.map(s => ({ name: s.name, keys: s.keys, isFemale: false, teamName: 'Boys Team' as const }))
+];
+
+// Helper to match an order creator / invoice creator / user to an official marketing staff
+export const findOfficialMarketingStaff = (name?: string, registeredUsersList?: any[]) => {
+  if (!name || typeof name !== 'string') return null;
+  const clean = name.trim().toLowerCase();
+  if (!clean) return null;
+
+  // Direct match by key
+  for (const staff of OFFICIAL_MARKETING_STAFF) {
+    if (staff.name.toLowerCase() === clean) return staff;
+    if (staff.keys.some(k => clean.includes(k))) return staff;
+  }
+
+  // Check if name exists in registered users and maps to one of them
   if (registeredUsersList && Array.isArray(registeredUsersList) && registeredUsersList.length > 0) {
     const matchedUser = registeredUsersList.find((u: any) =>
-      (u?.name && typeof u.name === 'string' && u.name.trim().toLowerCase() === cleanName) ||
-      (u?.email && typeof u.email === 'string' && u.email.trim().toLowerCase().startsWith(cleanName))
+      (u?.name && typeof u.name === 'string' && u.name.trim().toLowerCase() === clean) ||
+      (u?.email && typeof u.email === 'string' && u.email.trim().toLowerCase().startsWith(clean))
     );
     if (matchedUser) {
-      if (matchedUser.gender === 'female' || matchedUser.gender === 'Female' || matchedUser.team === 'girls' || matchedUser.team === 'Girls') {
-        return true;
-      }
-      if (matchedUser.gender === 'male' || matchedUser.gender === 'Male' || matchedUser.team === 'boys' || matchedUser.team === 'Boys') {
-        return false;
+      const uName = (matchedUser.name || '').trim().toLowerCase();
+      for (const staff of OFFICIAL_MARKETING_STAFF) {
+        if (staff.name.toLowerCase() === uName || staff.keys.some(k => uName.includes(k))) return staff;
       }
     }
   }
 
-  const parts = cleanName.split(/[\s._-]+/);
-  return parts.some(p => FEMALE_NAMES_SET.has(p)) || Array.from(FEMALE_NAMES_SET).some(fn => cleanName.includes(fn));
+  return null;
+};
+
+// Helper to determine if a marketing staff member belongs to the Girls Team (Female) or Boys Team (Male)
+const isFemaleStaff = (name?: string, registeredUsersList?: any[]): boolean => {
+  const staff = findOfficialMarketingStaff(name, registeredUsersList);
+  if (staff) return staff.isFemale;
+  return false;
 };
 
 // Helper: Raised Design Task check
@@ -277,7 +293,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return (invoices || []).filter(inv => inv && filterByDate(inv.createdAt || inv.date));
   }, [invoices, dateFilter]);
 
-  // Group performance metrics by Marketing Executive
+  // Group performance metrics by Marketing Executive (strictly the 8 official staff)
   const executiveMetrics = useMemo(() => {
     const map = new Map<string, {
       name: string;
@@ -302,41 +318,42 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       orders: Order[];
     }>();
 
-    // Group all orders by creator name (excluding Daniel/online team/admin)
+    // Pre-populate with all 8 official marketing staff (4 Girls, 4 Boys)
+    OFFICIAL_MARKETING_STAFF.forEach(staff => {
+      map.set(staff.name, {
+        name: staff.name,
+        isFemale: staff.isFemale,
+        teamName: staff.teamName,
+        tasksShared: 0,
+        designsReturned: 0,
+        reworksCount: 0,
+        reworkReasons: [],
+        ordersConverted: 0,
+        totalOrders: 0,
+        sentToAccounts: 0,
+        sentToDesigns: 0,
+        receivedDesigns: 0,
+        bulkOrders: 0,
+        mixedOrders: 0,
+        giftOrders: 0,
+        totalOrderValue: 0,
+        totalAdvance: 0,
+        invoicesCount: 0,
+        totalInvoicedAmount: 0,
+        orders: []
+      });
+    });
+
+    // Group all filtered orders by matching to official staff
     filteredOrders.forEach(o => {
       if (!o) return;
-      const execName = (o.createdByName || o.createdBy || 'Unknown Executive').trim() || 'Unknown Executive';
-      const lowerName = execName.toLowerCase();
-      if (lowerName.includes('daniel') || (o.createdBy && String(o.createdBy).toLowerCase().includes('daniel'))) {
-        return;
-      }
-      if (!map.has(execName)) {
-        const isFemale = isFemaleStaff(execName, registeredUsers);
-        map.set(execName, {
-          name: execName,
-          isFemale,
-          teamName: isFemale ? 'Girls Team' : 'Boys Team',
-          tasksShared: 0,
-          designsReturned: 0,
-          reworksCount: 0,
-          reworkReasons: [],
-          ordersConverted: 0,
-          totalOrders: 0,
-          sentToAccounts: 0,
-          sentToDesigns: 0,
-          receivedDesigns: 0,
-          bulkOrders: 0,
-          mixedOrders: 0,
-          giftOrders: 0,
-          totalOrderValue: 0,
-          totalAdvance: 0,
-          invoicesCount: 0,
-          totalInvoicedAmount: 0,
-          orders: []
-        });
-      }
+      const creator = (o.createdByName || o.createdBy || '').trim();
+      if (!creator || creator.toLowerCase().includes('daniel')) return;
 
-      const item = map.get(execName)!;
+      const matchedStaff = findOfficialMarketingStaff(creator, registeredUsers);
+      if (!matchedStaff) return; // Only attribute to official marketing staff
+
+      const item = map.get(matchedStaff.name)!;
       item.totalOrders += 1;
       item.orders.push(o);
 
@@ -388,46 +405,23 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       if (!inv) return;
       const invCreator = (inv.createdByName || inv.createdBy || '').trim();
       if (!invCreator || invCreator.toLowerCase().includes('daniel')) return;
-      let matchedExec = invCreator;
+
+      let matchedStaff = findOfficialMarketingStaff(invCreator, registeredUsers);
 
       // If creator isn't direct, check if invoice leadId matches any order of an executive
-      if (!map.has(matchedExec) && inv.leadId) {
+      if (!matchedStaff && inv.leadId) {
         for (const [name, data] of map.entries()) {
           if (data.orders.some(o => o.id === inv.leadId)) {
-            matchedExec = name;
+            matchedStaff = OFFICIAL_MARKETING_STAFF.find(s => s.name === name) || null;
             break;
           }
         }
       }
 
-      if (map.has(matchedExec)) {
-        const item = map.get(matchedExec)!;
+      if (matchedStaff && map.has(matchedStaff.name)) {
+        const item = map.get(matchedStaff.name)!;
         item.invoicesCount += 1;
         item.totalInvoicedAmount += Number(inv.total || inv.netTotal || 0);
-      } else if (invCreator && !invCreator.toLowerCase().includes('daniel')) {
-        const isFemale = isFemaleStaff(invCreator, registeredUsers);
-        map.set(invCreator, {
-          name: invCreator,
-          isFemale,
-          teamName: isFemale ? 'Girls Team' : 'Boys Team',
-          tasksShared: 0,
-          designsReturned: 0,
-          reworksCount: 0,
-          reworkReasons: [],
-          ordersConverted: 0,
-          totalOrders: 0,
-          sentToAccounts: 0,
-          sentToDesigns: 0,
-          receivedDesigns: 0,
-          bulkOrders: 0,
-          mixedOrders: 0,
-          giftOrders: 0,
-          totalOrderValue: 0,
-          totalAdvance: 0,
-          invoicesCount: 1,
-          totalInvoicedAmount: Number(inv.total || inv.netTotal || 0),
-          orders: []
-        });
       }
     });
 
@@ -553,46 +547,40 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return list;
   }, [executiveMetrics, staffTeamFilter, searchTerm]);
 
-  // Unique list of all marketing staff for individual voice filter
+  // Unique list of official marketing staff for the dropdown selector
   const uniqueMarketingStaffList = useMemo(() => {
-    const namesSet = new Set<string>();
-    
-    (executiveMetrics || []).forEach(e => namesSet.add(e.name));
-    
-    (orders || []).forEach(o => {
-      const name = (o.createdByName || o.createdBy || '').trim();
-      if (name && !name.toLowerCase().includes('daniel')) {
-        namesSet.add(name);
-      }
-    });
+    return OFFICIAL_MARKETING_STAFF.map(s => ({
+      name: s.name,
+      isFemale: s.isFemale,
+      teamName: s.teamName
+    }));
+  }, []);
 
-    (registeredUsers || []).forEach((u: any) => {
-      const name = (u?.name || u?.username || '').trim();
-      if (name && !name.toLowerCase().includes('daniel')) {
-        namesSet.add(name);
-      }
-    });
-
-    const list = Array.from(namesSet).sort();
-    return list.map(name => {
-      const isFemale = isFemaleStaff(name, registeredUsers);
-      return {
-        name,
-        isFemale,
-        teamName: isFemale ? ('Girls Team' as const) : ('Boys Team' as const)
-      };
-    });
-  }, [executiveMetrics, orders, registeredUsers]);
-
-  // Classification & Category counts for currently selected Staff/Team
+  // Classification & Category counts for currently selected Staff/Team (strictly official marketing orders)
   const orderClassificationCounts = useMemo(() => {
-    let list = filteredOrders;
+    let list = filteredOrders.filter(o => {
+      const creator = (o.createdByName || o.createdBy || '').trim();
+      return Boolean(findOfficialMarketingStaff(creator, registeredUsers));
+    });
+
     if (selectedExecutive) {
-      list = list.filter(o => (o.createdByName || o.createdBy || '').trim() === selectedExecutive);
+      list = list.filter(o => {
+        const creator = (o.createdByName || o.createdBy || '').trim();
+        const staff = findOfficialMarketingStaff(creator, registeredUsers);
+        return staff && staff.name === selectedExecutive;
+      });
     } else if (orderTeamFilter === 'girls') {
-      list = list.filter(o => isFemaleStaff(o.createdByName || o.createdBy, registeredUsers));
+      list = list.filter(o => {
+        const creator = (o.createdByName || o.createdBy || '').trim();
+        const staff = findOfficialMarketingStaff(creator, registeredUsers);
+        return staff && staff.isFemale;
+      });
     } else if (orderTeamFilter === 'boys') {
-      list = list.filter(o => !isFemaleStaff(o.createdByName || o.createdBy, registeredUsers));
+      list = list.filter(o => {
+        const creator = (o.createdByName || o.createdBy || '').trim();
+        const staff = findOfficialMarketingStaff(creator, registeredUsers);
+        return staff && !staff.isFemale;
+      });
     }
 
     return {
@@ -606,15 +594,31 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
   // Orders for drill-down table with full multi-layer filtering (Staff, Team, Classification, Status, Search)
   const drillDownOrders = useMemo(() => {
-    let list = filteredOrders;
+    // Only include orders created by official marketing staff
+    let list = filteredOrders.filter(o => {
+      const creator = (o.createdByName || o.createdBy || '').trim();
+      return Boolean(findOfficialMarketingStaff(creator, registeredUsers));
+    });
 
     // 1. Marketing Staff Filter
     if (selectedExecutive) {
-      list = list.filter(o => (o.createdByName || o.createdBy || '').trim() === selectedExecutive);
+      list = list.filter(o => {
+        const creator = (o.createdByName || o.createdBy || '').trim();
+        const staff = findOfficialMarketingStaff(creator, registeredUsers);
+        return staff && staff.name === selectedExecutive;
+      });
     } else if (orderTeamFilter === 'girls') {
-      list = list.filter(o => isFemaleStaff(o.createdByName || o.createdBy, registeredUsers));
+      list = list.filter(o => {
+        const creator = (o.createdByName || o.createdBy || '').trim();
+        const staff = findOfficialMarketingStaff(creator, registeredUsers);
+        return staff && staff.isFemale;
+      });
     } else if (orderTeamFilter === 'boys') {
-      list = list.filter(o => !isFemaleStaff(o.createdByName || o.createdBy, registeredUsers));
+      list = list.filter(o => {
+        const creator = (o.createdByName || o.createdBy || '').trim();
+        const staff = findOfficialMarketingStaff(creator, registeredUsers);
+        return staff && !staff.isFemale;
+      });
     }
 
     // 2. Order Classification Filter (Bulk 10+, Mixed 3+, Gift/Other, Standard)

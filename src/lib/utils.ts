@@ -20,22 +20,30 @@ export function getDisplayCategory(order?: any): string {
 
 export function calculateOrderSize(order: any): number {
   try {
-    return encodeURI(JSON.stringify(order)).split(/%..|./).length - 1;
+    if (!order) return 0;
+    const str = typeof order === 'string' ? order : JSON.stringify(order);
+    return str ? str.length : 0;
   } catch (e) {
     return 0;
   }
 }
 
 export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
-  const currentSize = calculateOrderSize(order);
-  const totalSize = currentSize + extraSize;
-  const limit = 100000000; // 100MB MySQL limit
+  try {
+    const currentSize = calculateOrderSize(order);
+    const totalSize = currentSize + extraSize;
+    // Allow up to 500MB for production design archives, vectors, and order assets
+    const limit = 500 * 1024 * 1024;
 
-  if (totalSize > limit) {
-    console.warn(`Order size validation failed: ${(totalSize / 1024).toFixed(0)}KB exceeds ${limit / 1024}KB limit`);
+    if (totalSize > limit) {
+      console.warn(`Order size validation warning: ${(totalSize / (1024 * 1024)).toFixed(1)}MB exceeds limit`);
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    return true;
   }
-
-  return totalSize < limit;
 }
 
 export function shareOrderToWhatsApp(order: Order) {
