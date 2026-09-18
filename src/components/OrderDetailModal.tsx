@@ -1254,19 +1254,6 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 </div>
               </div>
 
-              {Object.keys(order.details || {}).length > 0 && (
-                <div className="bg-gray-50/30 rounded-[20px] sm:rounded-[32px] p-4 sm:p-6 border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Technical Details</p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(order.details).map(([k, v]) => (
-                      <div key={k} className="px-3 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
-                        <span className="text-[10px] font-black text-gray-400 uppercase block">{k}</span>
-                        <span className="text-sm font-bold text-gray-900">{String(v)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="space-y-6">
