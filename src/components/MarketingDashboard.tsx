@@ -210,8 +210,8 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           advancePay: 0,
           balanceAmount: 0
         },
-        accountsAttachments: [],
-        orderManagementAttachments: [],
+        createdBy: user?.id || 'marketing',
+        createdByName: user?.name || 'Marketing Desk',
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -226,6 +226,63 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     } catch (err) {
       console.error('Failed to raise design task:', err);
       showActionToast('Failed to raise design task. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const [reworkModalTask, setReworkModalTask] = useState<Order | null>(null);
+  const [reworkNotesInput, setReworkNotesInput] = useState('');
+
+  const handleSendTaskToRework = async (orderId: string, reworkNotes: string) => {
+    setIsProcessing(true);
+    try {
+      const timestamp = Date.now();
+      const existingOrder = orders.find(o => o.id === orderId);
+      const existingNotes = existingOrder?.notes || '';
+      const appendNote = `[TASK REVISION REQUESTED] ${new Date(timestamp).toLocaleString()}: ${reworkNotes.trim()}`;
+      const nextNotes = existingNotes ? `${existingNotes}\n\n${appendNote}` : appendNote;
+
+      const updates: Partial<Order> = {
+        status: OrderStatus.DESIGN,
+        isRework: true,
+        reworkNotes: reworkNotes.trim(),
+        designCompleted: false,
+        designSentToMarketing: false,
+        notes: nextNotes,
+        designNotes: reworkNotes.trim(),
+        claimedAt: timestamp,
+        designClaimedAt: timestamp,
+        designDeadline: timestamp + 120 * 60 * 1000,
+        designSlaMinutes: 120,
+        updatedAt: timestamp,
+        sentByAccounts: false,
+        details: {
+          ...(existingOrder?.details || {}),
+          isRework: true,
+          reworkNotes: reworkNotes.trim(),
+          designCompleted: false,
+          designSentToMarketing: false,
+          reworkRequestedAt: timestamp,
+        }
+      };
+
+      if (existingOrder?.assignedDesigner && existingOrder.assignedDesigner !== 'Unassigned') {
+        updates.assignedDesigner = existingOrder.assignedDesigner;
+      }
+      if (existingOrder?.claimedBy) {
+        updates.claimedBy = existingOrder.claimedBy;
+        updates.claimedByName = existingOrder.claimedByName;
+      }
+
+      await onUpdateOrder(orderId, updates);
+      showActionToast(`🔁 Task sent back to Design for rework!`);
+      setReworkModalTask(null);
+      setReworkNotesInput('');
+      setSelectedSection('task_process');
+    } catch (e) {
+      console.error(e);
+      showActionToast('Failed to send task for rework.');
     } finally {
       setIsProcessing(false);
     }
@@ -868,6 +925,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const isRaisedTaskCompleted = (o: Order) => {
     if (!isRaisedTaskOrder(o)) return false;
     if (String(o.status || '').toLowerCase() === 'hold') return false;
+    if (o.isRework === true || o.details?.isRework === true) return false;
     return Boolean(
       o.designCompleted ||
       o.details?.designCompleted ||
@@ -1236,10 +1294,37 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                     "{order.designNotes || order.notes}"
                                   </span>
                                 )}
+                                <div className="flex gap-1.5 mt-1 flex-wrap">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedHubOrder(order);
+                                    }}
+                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 flex items-center gap-1 shadow-2xs"
+                                    title="View Artwork & Specs"
+                                  >
+                                    <span>👁️ View Artwork</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReworkModalTask(order);
+                                      setReworkNotesInput('');
+                                    }}
+                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 flex items-center gap-1 shadow-2xs"
+                                    title="Send back to Design Studio for revisions/corrections"
+                                  >
+                                    <span>🔁 Request Changes / Rework</span>
+                                  </button>
+                                </div>
                               </div>
                             ) : (
                               <div className="flex flex-col gap-1">
-                                {order.status === OrderStatus.DESIGN ? (
+                                {order.isRework || order.details?.isRework ? (
+                                  <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-amber-100 text-amber-950 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                                    <RefreshCw size={10} className="text-amber-700 animate-spin" /> 🔁 In Design Rework (Revision)
+                                  </span>
+                                ) : order.status === OrderStatus.DESIGN ? (
                                   <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1">
                                     <Clock size={10} className="text-purple-600 animate-pulse" /> ⏳ In Design Queue
                                   </span>
@@ -1257,9 +1342,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                     🎨 Unassigned
                                   </span>
                                 )}
-                                {order.notes && (
-                                  <span className="text-[8.5px] text-gray-600 italic max-w-[220px] truncate" title={order.notes}>
-                                    "{order.notes}"
+                                {(order.reworkNotes || order.notes) && (
+                                  <span className="text-[8.5px] text-gray-600 italic max-w-[220px] truncate" title={order.reworkNotes || order.notes}>
+                                    "{order.reworkNotes || order.notes}"
                                   </span>
                                 )}
                                 {order.status !== OrderStatus.DESIGN && (
@@ -1482,12 +1567,21 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 Note: "{order.designNotes || order.notes}"
                               </div>
                             )}
-                            <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => setSelectedHubOrder(order)}
-                                className="w-full py-2 bg-emerald-600 text-white rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
+                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center shadow-xs"
                               >
                                 View Artwork & Specs
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setReworkModalTask(order);
+                                  setReworkNotesInput('');
+                                }}
+                                className="w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer text-center shadow-2xs"
+                              >
+                                🔁 Request Changes / Rework
                               </button>
                             </div>
                           </div>
@@ -1495,7 +1589,11 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status:</span>
-                              {order.status === OrderStatus.DESIGN ? (
+                              {order.isRework || order.details?.isRework ? (
+                                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-amber-100 text-amber-950 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                                  <RefreshCw size={10} className="text-amber-700 animate-spin" /> 🔁 In Design Rework (Revision)
+                                </span>
+                              ) : order.status === OrderStatus.DESIGN ? (
                                 <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase w-fit tracking-wider bg-purple-100 text-purple-900 border border-purple-200">
                                   ⏳ In Design Queue
                                 </span>
@@ -1511,9 +1609,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 <span className="text-[10px] text-purple-700 font-bold">🎨 {order.assignedDesigner}</span>
                               </div>
                             )}
-                            {order.notes && (
+                            {(order.reworkNotes || order.notes) && (
                               <div className="text-[9px] text-gray-600 bg-gray-50 p-2 rounded-xl border border-gray-150 italic">
-                                Note: "{order.notes}"
+                                Note: "{order.reworkNotes || order.notes}"
                               </div>
                             )}
                             <div className="grid grid-cols-1 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
@@ -2746,6 +2844,68 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
         onSubmit={handleRaiseTaskSubmit}
         user={user}
       />
+
+      {/* Task Revision / Rework Modal */}
+      {reworkModalTask && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[120] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-gray-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <RefreshCw size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Request Design Changes</h3>
+                  <p className="text-[11px] text-gray-500 font-medium">Task #{reworkModalTask.id.slice(-6)} • {reworkModalTask.customerInfo?.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReworkModalTask(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 border-none bg-transparent cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">
+                Specify Required Modifications & Revisions:
+              </label>
+              <textarea
+                rows={4}
+                value={reworkNotesInput}
+                onChange={(e) => setReworkNotesInput(e.target.value)}
+                placeholder="e.g., Please change font styling, enlarge chest print, adjust mockup color..."
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-gray-800 placeholder:text-gray-400 outline-none focus:border-amber-500 focus:bg-white transition-all resize-none"
+                autoFocus
+              />
+              <p className="text-[10px] text-gray-500 italic">
+                This task will immediately be forwarded back to the Design Studio under the <strong className="text-amber-800 font-bold">DESIGNS REWORK</strong> queue.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setReworkModalTask(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl uppercase tracking-wider border-none cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!reworkNotesInput.trim() || isProcessing}
+                onClick={() => handleSendTaskToRework(reworkModalTask.id, reworkNotesInput)}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-black text-xs rounded-xl uppercase tracking-wider border-none cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                <RefreshCw size={13} /> Send to Design Rework
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -455,6 +455,8 @@ router.get('/orders', async (req, res) => {
         isAdminOrder: r.isAdminOrder === 1 || r.isAdminOrder === true,
         sentByAdmin: r.sentByAdmin === 1 || r.sentByAdmin === true,
         reworkNotes: r.reworkNotes || '',
+        isRaisedTask: details.isRaisedTask === true || details.isRaisedTask === 'true' || r.category === 'Design Task' || false,
+        raisedTaskCategory: details.raisedTaskCategory || (r.category === 'Design Task' ? 'Design Task' : undefined),
         designCompleted: details.designCompleted === true || details.designCompleted === 'true' || false,
         designSentToMarketing: details.designSentToMarketing === true || details.designSentToMarketing === 'true' || false,
         designSentToDigitizer: details.designSentToDigitizer === true || details.designSentToDigitizer === 'true' || false,
@@ -866,7 +868,11 @@ const handleUpdateOrderFields = async (req, res) => {
       updates.designCompleted !== undefined ||
       updates.designSentToDigitizer !== undefined ||
       updates.designSentToMarketing !== undefined ||
-      updates.designCompletedAt !== undefined
+      updates.designCompletedAt !== undefined ||
+      updates.isRaisedTask !== undefined ||
+      updates.raisedTaskCategory !== undefined ||
+      updates.isRework !== undefined ||
+      updates.reworkNotes !== undefined
     ) {
       const existingDetails = safeJSONParse(existing[0]?.details, {});
       detailsObj = {
@@ -876,6 +882,10 @@ const handleUpdateOrderFields = async (req, res) => {
         ...(updates.designSentToDigitizer !== undefined ? { designSentToDigitizer: updates.designSentToDigitizer } : {}),
         ...(updates.designSentToMarketing !== undefined ? { designSentToMarketing: updates.designSentToMarketing } : {}),
         ...(updates.designCompletedAt !== undefined ? { designCompletedAt: updates.designCompletedAt } : {}),
+        ...(updates.isRaisedTask !== undefined ? { isRaisedTask: updates.isRaisedTask } : {}),
+        ...(updates.raisedTaskCategory !== undefined ? { raisedTaskCategory: updates.raisedTaskCategory } : {}),
+        ...(updates.isRework !== undefined ? { isRework: updates.isRework } : {}),
+        ...(updates.reworkNotes !== undefined ? { reworkNotes: updates.reworkNotes } : {}),
       };
     }
     if (detailsObj !== undefined) {

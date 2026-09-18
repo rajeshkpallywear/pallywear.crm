@@ -1,7 +1,7 @@
 
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera, Palette } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera, Palette, RefreshCw } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -28,8 +28,64 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   const [editedOrder, setEditedOrder] = useState<Order | null>(order);
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [showTaskReworkPrompt, setShowTaskReworkPrompt] = useState(false);
+  const [taskReworkReason, setTaskReworkReason] = useState('');
 
   if (!order) return null;
+
+  const handleTaskReworkSubmit = async () => {
+    if (!taskReworkReason.trim() || !effectiveUpdateOrder) return;
+    setIsProcessingAction(true);
+    try {
+      const timestamp = Date.now();
+      const existingNotes = order.notes || '';
+      const appendNote = `[TASK REVISION REQUESTED] ${new Date(timestamp).toLocaleString()}: ${taskReworkReason.trim()}`;
+      const nextNotes = existingNotes ? `${existingNotes}\n\n${appendNote}` : appendNote;
+
+      const updates: Partial<Order> = {
+        status: OrderStatus.DESIGN,
+        isRework: true,
+        reworkNotes: taskReworkReason.trim(),
+        designCompleted: false,
+        designSentToMarketing: false,
+        notes: nextNotes,
+        designNotes: taskReworkReason.trim(),
+        claimedAt: timestamp,
+        designClaimedAt: timestamp,
+        designDeadline: timestamp + 120 * 60 * 1000,
+        designSlaMinutes: 120,
+        updatedAt: timestamp,
+        sentByAccounts: false,
+        details: {
+          ...(order.details || {}),
+          isRework: true,
+          reworkNotes: taskReworkReason.trim(),
+          designCompleted: false,
+          designSentToMarketing: false,
+          reworkRequestedAt: timestamp,
+        }
+      };
+
+      if (order.assignedDesigner && order.assignedDesigner !== 'Unassigned') {
+        updates.assignedDesigner = order.assignedDesigner;
+      }
+      if (order.claimedBy) {
+        updates.claimedBy = order.claimedBy;
+        updates.claimedByName = order.claimedByName;
+      }
+
+      await effectiveUpdateOrder(order.id, updates);
+      alert('✓ Task sent back to Design Studio for rework!');
+      setShowTaskReworkPrompt(false);
+      setTaskReworkReason('');
+      onClose();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to send task for rework.');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
 
   const handleDirectForward = async (target: 'design' | 'accounts') => {
     setIsProcessingAction(true);
@@ -567,7 +623,17 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               <span className="font-bold">{order.customerInfo?.name}</span>
             </div>
 
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+              {hasReturnedDesigns && (
+                <button
+                  type="button"
+                  onClick={() => setShowTaskReworkPrompt(true)}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-xs"
+                  title="Request changes and send back to Design Studio"
+                >
+                  <RefreshCw size={14} /> Request Changes / Rework
+                </button>
+              )}
               <button
                 type="button"
                 onClick={downloadAllAssets}
@@ -584,6 +650,60 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               </button>
             </div>
           </div>
+
+          {/* Task Rework Prompt */}
+          {showTaskReworkPrompt && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-[150] flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200 space-y-4 animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                      <RefreshCw size={18} />
+                    </div>
+                    <h4 className="text-sm font-black text-gray-900 uppercase">Request Design Changes</h4>
+                  </div>
+                  <button
+                    onClick={() => setShowTaskReworkPrompt(false)}
+                    className="p-1 text-gray-400 hover:text-gray-700 rounded-lg border-none bg-transparent cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">
+                    Modifications & Corrections Required:
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={taskReworkReason}
+                    onChange={(e) => setTaskReworkReason(e.target.value)}
+                    placeholder="Describe specific changes needed by the designer..."
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-gray-800 placeholder:text-gray-400 outline-none focus:border-amber-500 focus:bg-white transition-all resize-none"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowTaskReworkPrompt(false)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl uppercase tracking-wider border-none cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!taskReworkReason.trim() || isProcessingAction}
+                    onClick={handleTaskReworkSubmit}
+                    className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-black text-xs rounded-xl uppercase tracking-wider border-none cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={13} /> Return for Rework
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {viewingImage && (
             <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`DesignTask_${order.id}`} />

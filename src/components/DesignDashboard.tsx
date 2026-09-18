@@ -1169,7 +1169,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               { key: 'marketing_tasks', label: '🎨 Marketing Tasks', count: activeStats.marketingTasksCount, color: 'bg-purple-700' },
             ] : []),
             { key: 'my_tasks', label: '⭐ My Claimed Tasks', count: activeStats.myTasksCount, color: 'bg-brand-primary' },
-            { key: 'hold', label: '⏸ On Hold', count: activeStats.holdCount, color: 'bg-brand-primary' },
             { key: 'completed', label: '✓ Done', count: activeStats.completedCount, color: 'bg-brand-primary' },
             ...(activeChannel === 'marketing_queue' ? [
               { key: 'rework', label: '🔁 Designs Rework', count: activeStats.reworkCount, color: 'bg-amber-600' },
