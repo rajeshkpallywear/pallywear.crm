@@ -257,7 +257,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       return {
         id: o.id,
         isOrder: true,
-        isRaisedTask: Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task'),
+        isRaisedTask: Boolean(!(o.isConvertedFromTask || o.details?.isConvertedFromTask) && (o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task')),
         customerName: o.customerInfo?.name || '',
         phone: o.customerInfo?.phone || '',
         category: o.category || 'T-Shirt',
@@ -1739,10 +1739,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       {/* High-Fidelity Interactive Workspace Modal for Selected Order */}
       {selectedOrder && (() => {
         const isSelectedRaisedTask = Boolean(
-          selectedOrder.isRaisedTask ||
-          selectedOrder.details?.isRaisedTask ||
-          selectedOrder.category === 'Design Task' ||
-          selectedOrder.raisedTaskCategory === 'Design Task'
+          !(selectedOrder.isConvertedFromTask || selectedOrder.details?.isConvertedFromTask) &&
+          (selectedOrder.isRaisedTask ||
+           selectedOrder.details?.isRaisedTask ||
+           selectedOrder.category === 'Design Task' ||
+           selectedOrder.raisedTaskCategory === 'Design Task')
         );
 
         return (

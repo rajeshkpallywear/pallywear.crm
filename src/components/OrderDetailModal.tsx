@@ -241,10 +241,11 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   };
 
   const isRaisedTask = Boolean(
-    order.isRaisedTask ||
-    order.details?.isRaisedTask ||
-    order.category === 'Design Task' ||
-    order.raisedTaskCategory === 'Design Task'
+    !(order.isConvertedFromTask || order.details?.isConvertedFromTask) &&
+    (order.isRaisedTask ||
+     order.details?.isRaisedTask ||
+     order.category === 'Design Task' ||
+     order.raisedTaskCategory === 'Design Task')
   );
 
   const marketingImages = [
@@ -756,7 +757,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               <div className="flex items-center gap-3">
                 <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tighter">Order Details</h3>
                 <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-widest ${getStatusStyles(order.status)}`}>
-                  {order.status.replace('_', ' ')}
+                  {String(order.status || '').replace('_', ' ')}
                 </span>
                 {order.isUrgent && (
                   <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase">URGENT</span>

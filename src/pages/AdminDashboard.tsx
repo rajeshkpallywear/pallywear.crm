@@ -741,6 +741,7 @@ export default function AdminDashboard() {
   }, [orders]);
 
   const isRaisedTaskOrder = (o: Order) => {
+    if (o.isConvertedFromTask || o.details?.isConvertedFromTask) return false;
     return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
   };
 
