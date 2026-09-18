@@ -6,7 +6,8 @@ import {
   ArrowUpRight, ChevronRight, Eye, RefreshCw, BarChart2, Shield,
   Phone, User, Sparkles, Building2, Calendar, FileCheck, Layers, Plus,
   MessageSquare, Edit, FileSpreadsheet, Award, UserCheck, Heart,
-  Tag, Box, Gift, Shuffle, Check
+  Tag, Box, Gift, Shuffle, Check, AlertTriangle, RotateCcw,
+  ArrowRightLeft, Send, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
@@ -55,6 +56,36 @@ const isFemaleStaff = (name?: string, registeredUsersList?: any[]): boolean => {
 
   const parts = cleanName.split(/[\s._-]+/);
   return parts.some(p => FEMALE_NAMES_SET.has(p)) || Array.from(FEMALE_NAMES_SET).some(fn => cleanName.includes(fn));
+};
+
+// Helper: Raised Design Task check
+const isRaisedTaskOrder = (o?: Order | null) => {
+  if (!o) return false;
+  if (o.isConvertedFromTask || o.details?.isConvertedFromTask) return false;
+  return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
+};
+
+// Helper: Task converted to confirmed order
+const isConvertedOrder = (o?: Order | null) => {
+  if (!o) return false;
+  return Boolean(o.isConvertedFromTask || o.details?.isConvertedFromTask);
+};
+
+// Helper: Rework / Revision order check
+const isReworkOrder = (o?: Order | null) => {
+  if (!o) return false;
+  return Boolean(
+    o.isRework === true ||
+    o.details?.isRework === true ||
+    (o as any).designRework === true ||
+    (o.reworkNotes && String(o.reworkNotes).trim().length > 0)
+  );
+};
+
+// Helper: Extract rework reason notes
+const getReworkReason = (o?: Order | null) => {
+  if (!o) return '';
+  return o.reworkNotes || o.details?.reworkNotes || o.designNotes || '';
 };
 
 // Helper: 10+ total quantity classified as Bulk Order
@@ -119,11 +150,11 @@ const isSentToDesigns = (o?: Order | null) => {
   );
 };
 
-// Helper to check if order has received completed design files from Design Studio
+// Helper to check if order has received completed design files from Design Studio (Returned / Ready)
 const isReceivedDesignsFile = (o?: Order | null) => {
   if (!o) return false;
   const isCurrentlyInRework = Boolean(
-    (o.isRework === true || o.details?.isRework === true || o.designRework === true || (o.reworkNotes && String(o.reworkNotes).trim().length > 0)) &&
+    (o.isRework === true || o.details?.isRework === true || (o as any).designRework === true || (o.reworkNotes && String(o.reworkNotes).trim().length > 0)) &&
     (String(o.status || '').toLowerCase() === 'design' || o.status === OrderStatus.DESIGN) &&
     !o.designCompleted &&
     !o.designSentToMarketing
@@ -188,6 +219,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const [slaDesignerFilter, setSlaDesignerFilter] = useState<string>('all');
   const [slaSearchTerm, setSlaSearchTerm] = useState('');
 
+  // Rework Reasons Modal State
+  const [showReworkModal, setShowReworkModal] = useState(false);
+  const [selectedReworkExecutive, setSelectedReworkExecutive] = useState<{ execName: string; reworks: any[] } | null>(null);
+
   // Modal states for Create Order & Create Invoice
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
   const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false);
@@ -237,12 +272,22 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return (orders || []).filter(o => o && filterByDate(o.createdAt));
   }, [orders, dateFilter]);
 
+  // Invoices filtered by date
+  const filteredInvoices = useMemo(() => {
+    return (invoices || []).filter(inv => inv && filterByDate(inv.createdAt || inv.date));
+  }, [invoices, dateFilter]);
+
   // Group performance metrics by Marketing Executive
   const executiveMetrics = useMemo(() => {
     const map = new Map<string, {
       name: string;
       isFemale: boolean;
       teamName: 'Girls Team' | 'Boys Team';
+      tasksShared: number;
+      designsReturned: number;
+      reworksCount: number;
+      reworkReasons: { orderId: string; orderNumber: string; client: string; designer: string; reason: string; date: number }[];
+      ordersConverted: number;
       totalOrders: number;
       sentToAccounts: number;
       sentToDesigns: number;
@@ -271,6 +316,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           name: execName,
           isFemale,
           teamName: isFemale ? 'Girls Team' : 'Boys Team',
+          tasksShared: 0,
+          designsReturned: 0,
+          reworksCount: 0,
+          reworkReasons: [],
+          ordersConverted: 0,
           totalOrders: 0,
           sentToAccounts: 0,
           sentToDesigns: 0,
@@ -290,20 +340,51 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       item.totalOrders += 1;
       item.orders.push(o);
 
+      // Tasks Shared / Raised
+      if (isRaisedTaskOrder(o) || isSentToDesigns(o)) {
+        item.tasksShared += 1;
+      }
+
+      // Returned Designs (Artwork ready)
+      if (isReceivedDesignsFile(o)) {
+        item.designsReturned += 1;
+        item.receivedDesigns += 1;
+      }
+
+      // Reworks & Reasons
+      if (isReworkOrder(o)) {
+        item.reworksCount += 1;
+        const reason = getReworkReason(o);
+        if (reason) {
+          item.reworkReasons.push({
+            orderId: o.id,
+            orderNumber: o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A'),
+            client: o.customerInfo?.name || (o as any).clientName || 'Customer',
+            designer: o.assignedDesigner || 'Designer',
+            reason,
+            date: Number(o.updatedAt || o.createdAt || Date.now())
+          });
+        }
+      }
+
+      // Orders Converted from Tasks
+      if (isConvertedOrder(o)) {
+        item.ordersConverted += 1;
+      }
+
       if (isBulkOrder(o)) item.bulkOrders += 1;
       if (isMixedOrder(o)) item.mixedOrders += 1;
       if (isGiftOrOtherOrder(o)) item.giftOrders += 1;
 
       if (isSentToAccounts(o)) item.sentToAccounts += 1;
       if (isSentToDesigns(o)) item.sentToDesigns += 1;
-      if (isReceivedDesignsFile(o)) item.receivedDesigns += 1;
 
       item.totalOrderValue += getOrderAmount(o);
       item.totalAdvance += getAdvanceAmount(o);
     });
 
-    // Match Invoices created by or associated with each executive
-    (invoices || []).forEach(inv => {
+    // Match Invoices created by or associated with each executive (using date-filtered invoices)
+    (filteredInvoices || []).forEach(inv => {
       if (!inv) return;
       const invCreator = (inv.createdByName || inv.createdBy || '').trim();
       if (!invCreator || invCreator.toLowerCase().includes('daniel')) return;
@@ -329,6 +410,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           name: invCreator,
           isFemale,
           teamName: isFemale ? 'Girls Team' : 'Boys Team',
+          tasksShared: 0,
+          designsReturned: 0,
+          reworksCount: 0,
+          reworkReasons: [],
+          ordersConverted: 0,
           totalOrders: 0,
           sentToAccounts: 0,
           sentToDesigns: 0,
@@ -346,7 +432,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     });
 
     return Array.from(map.values()).sort((a, b) => b.totalOrders - a.totalOrders || b.totalOrderValue - a.totalOrderValue);
-  }, [filteredOrders, invoices, registeredUsers]);
+  }, [filteredOrders, filteredInvoices, registeredUsers]);
 
   // Girls Team vs Boys Team Metrics & Totals
   const girlsTeamExecutives = useMemo(() => {
@@ -361,6 +447,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return girlsTeamExecutives.reduce(
       (acc, curr) => ({
         staffCount: acc.staffCount + 1,
+        tasksShared: acc.tasksShared + curr.tasksShared,
+        designsReturned: acc.designsReturned + curr.designsReturned,
+        reworksCount: acc.reworksCount + curr.reworksCount,
+        ordersConverted: acc.ordersConverted + curr.ordersConverted,
         totalOrders: acc.totalOrders + curr.totalOrders,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
         mixedOrders: acc.mixedOrders + curr.mixedOrders,
@@ -373,7 +463,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         invoicesCount: acc.invoicesCount + curr.invoicesCount,
         totalInvoicedAmount: acc.totalInvoicedAmount + curr.totalInvoicedAmount
       }),
-      { staffCount: 0, totalOrders: 0, bulkOrders: 0, mixedOrders: 0, giftOrders: 0, sentToAccounts: 0, sentToDesigns: 0, receivedDesigns: 0, totalOrderValue: 0, totalAdvance: 0, invoicesCount: 0, totalInvoicedAmount: 0 }
+      { staffCount: 0, tasksShared: 0, designsReturned: 0, reworksCount: 0, ordersConverted: 0, totalOrders: 0, bulkOrders: 0, mixedOrders: 0, giftOrders: 0, sentToAccounts: 0, sentToDesigns: 0, receivedDesigns: 0, totalOrderValue: 0, totalAdvance: 0, invoicesCount: 0, totalInvoicedAmount: 0 }
     );
   }, [girlsTeamExecutives]);
 
@@ -381,6 +471,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return boysTeamExecutives.reduce(
       (acc, curr) => ({
         staffCount: acc.staffCount + 1,
+        tasksShared: acc.tasksShared + curr.tasksShared,
+        designsReturned: acc.designsReturned + curr.designsReturned,
+        reworksCount: acc.reworksCount + curr.reworksCount,
+        ordersConverted: acc.ordersConverted + curr.ordersConverted,
         totalOrders: acc.totalOrders + curr.totalOrders,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
         mixedOrders: acc.mixedOrders + curr.mixedOrders,
@@ -393,7 +487,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         invoicesCount: acc.invoicesCount + curr.invoicesCount,
         totalInvoicedAmount: acc.totalInvoicedAmount + curr.totalInvoicedAmount
       }),
-      { staffCount: 0, totalOrders: 0, bulkOrders: 0, mixedOrders: 0, giftOrders: 0, sentToAccounts: 0, sentToDesigns: 0, receivedDesigns: 0, totalOrderValue: 0, totalAdvance: 0, invoicesCount: 0, totalInvoicedAmount: 0 }
+      { staffCount: 0, tasksShared: 0, designsReturned: 0, reworksCount: 0, ordersConverted: 0, totalOrders: 0, bulkOrders: 0, mixedOrders: 0, giftOrders: 0, sentToAccounts: 0, sentToDesigns: 0, receivedDesigns: 0, totalOrderValue: 0, totalAdvance: 0, invoicesCount: 0, totalInvoicedAmount: 0 }
     );
   }, [boysTeamExecutives]);
 
@@ -401,6 +495,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const teamTotals = useMemo(() => {
     return executiveMetrics.reduce(
       (acc, curr) => ({
+        tasksShared: acc.tasksShared + curr.tasksShared,
+        designsReturned: acc.designsReturned + curr.designsReturned,
+        reworksCount: acc.reworksCount + curr.reworksCount,
+        ordersConverted: acc.ordersConverted + curr.ordersConverted,
         totalOrders: acc.totalOrders + curr.totalOrders,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
         mixedOrders: acc.mixedOrders + curr.mixedOrders,
@@ -414,6 +512,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         totalInvoicedAmount: acc.totalInvoicedAmount + curr.totalInvoicedAmount
       }),
       {
+        tasksShared: 0,
+        designsReturned: 0,
+        reworksCount: 0,
+        ordersConverted: 0,
         totalOrders: 0,
         bulkOrders: 0,
         mixedOrders: 0,
@@ -428,6 +530,12 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       }
     );
   }, [executiveMetrics]);
+
+  // Selected individual executive stats
+  const activeExecutiveStats = useMemo(() => {
+    if (!selectedExecutive) return null;
+    return executiveMetrics.find(e => e.name === selectedExecutive) || null;
+  }, [executiveMetrics, selectedExecutive]);
 
   // Filtered executive list based on search and Team Filter (Girls / Boys / All)
   const displayedExecutives = useMemo(() => {
@@ -445,18 +553,36 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return list;
   }, [executiveMetrics, staffTeamFilter, searchTerm]);
 
-  // Unique list of marketing staff for the dropdown selector
+  // Unique list of all marketing staff for individual voice filter
   const uniqueMarketingStaffList = useMemo(() => {
-    const list = Array.from(new Set(executiveMetrics.map(e => e.name))).sort();
+    const namesSet = new Set<string>();
+    
+    (executiveMetrics || []).forEach(e => namesSet.add(e.name));
+    
+    (orders || []).forEach(o => {
+      const name = (o.createdByName || o.createdBy || '').trim();
+      if (name && !name.toLowerCase().includes('daniel')) {
+        namesSet.add(name);
+      }
+    });
+
+    (registeredUsers || []).forEach((u: any) => {
+      const name = (u?.name || u?.username || '').trim();
+      if (name && !name.toLowerCase().includes('daniel')) {
+        namesSet.add(name);
+      }
+    });
+
+    const list = Array.from(namesSet).sort();
     return list.map(name => {
       const isFemale = isFemaleStaff(name, registeredUsers);
       return {
         name,
         isFemale,
-        teamName: isFemale ? 'Girls Team' : 'Boys Team'
+        teamName: isFemale ? ('Girls Team' as const) : ('Boys Team' as const)
       };
     });
-  }, [executiveMetrics, registeredUsers]);
+  }, [executiveMetrics, orders, registeredUsers]);
 
   // Classification & Category counts for currently selected Staff/Team
   const orderClassificationCounts = useMemo(() => {
@@ -594,6 +720,25 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     });
   }, [allDesignStudioOrders, slaStatusFilter, slaDesignerFilter, slaSearchTerm]);
 
+  // All Reworks across filtered period
+  const allFilteredReworks = useMemo(() => {
+    const list: { orderId: string; orderNumber: string; client: string; creator: string; designer: string; reason: string; date: number }[] = [];
+    filteredOrders.forEach(o => {
+      if (isReworkOrder(o)) {
+        list.push({
+          orderId: o.id,
+          orderNumber: o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A'),
+          client: o.customerInfo?.name || (o as any).clientName || 'Customer',
+          creator: o.createdByName || o.createdBy || 'Marketing',
+          designer: o.assignedDesigner || 'Designer',
+          reason: getReworkReason(o) || 'Revision Requested',
+          date: Number(o.updatedAt || o.createdAt || Date.now())
+        });
+      }
+    });
+    return list;
+  }, [filteredOrders]);
+
   // Export currently filtered orders to Excel (.xlsx)
   const handleExportOrdersToExcel = () => {
     if (drillDownOrders.length === 0) {
@@ -605,6 +750,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       const isBulk = isBulkOrder(o);
       const isMixed = isMixedOrder(o);
       const isGift = isGiftOrOtherOrder(o);
+      const isRework = isReworkOrder(o);
+      const isConverted = isConvertedOrder(o);
 
       let classification = 'Standard Order';
       if (isBulk && isMixed) classification = 'Bulk & Mixed (10+ Qty & 3+ Cats)';
@@ -637,6 +784,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         'Shipping Address': o.customerInfo?.address || '-',
         'Category': o.category || '-',
         'Classification': classification,
+        'Converted from Task': isConverted ? 'YES' : 'NO',
         'Total Quantity (pcs)': totalQty,
         'Order Status': String(o.status || '').replace('_', ' ').toUpperCase(),
         'Order Value (₹)': amount,
@@ -645,7 +793,9 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         'Accounts Dispatched': isSentToAccounts(o) ? 'YES' : 'NO',
         'Design Studio Status': isSentToDesigns(o) ? (isReceivedDesignsFile(o) ? 'Artwork Ready' : 'In Design') : 'Pending',
         'Assigned Designer': o.assignedDesigner && o.assignedDesigner !== 'Unassigned' ? o.assignedDesigner : (o.claimedByName || 'Unassigned'),
-        'Artwork Ready': isReceivedDesignsFile(o) ? 'YES' : 'NO',
+        'Artwork Returned Ready': isReceivedDesignsFile(o) ? 'YES' : 'NO',
+        'Is Rework': isRework ? 'YES' : 'NO',
+        'Rework Reason': isRework ? getReworkReason(o) : '',
         'Is Urgent': o.isUrgent ? 'YES' : 'NO',
         'Urgent Reason': o.urgentReason || o.details?.urgentReason || '',
         'Items Breakdown': itemsSummary || '-',
@@ -678,22 +828,27 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
     const exportRows = displayedExecutives.map((e, idx) => {
       const balanceDue = Math.max(0, e.totalOrderValue - e.totalAdvance);
+      const reworkSummary = e.reworkReasons.map(r => `[#${r.orderNumber}]: ${r.reason}`).join('; ');
 
       return {
         'Rank': idx + 1,
         'Executive Name': e.name,
         'Team': e.teamName,
+        'Tasks Shared (Raised)': e.tasksShared,
+        'Designs Returned (Ready)': e.designsReturned,
+        'Reworks Count': e.reworksCount,
+        'Rework Reasons': reworkSummary || '-',
+        'Tasks Converted to Orders': e.ordersConverted,
         'Total Orders Created': e.totalOrders,
         'Bulk Orders (10+ Qty)': e.bulkOrders,
         'Mixed Orders (3+ Cats)': e.mixedOrders,
         'Gift / Other Orders': e.giftOrders,
         'Sent to Accounts': e.sentToAccounts,
         'Sent to Designs': e.sentToDesigns,
-        'Artwork Ready (Designs File)': e.receivedDesigns,
         'Total Order Value (₹)': e.totalOrderValue,
         'Advance Collected (₹)': e.totalAdvance,
         'Balance Due (₹)': balanceDue,
-        'Invoices Created': e.invoicesCount,
+        'Invoices Shared': e.invoicesCount,
         'Total Invoiced Amount (₹)': e.totalInvoicedAmount
       };
     });
@@ -946,77 +1101,167 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       ) : (
         /* STANDARD SALES PERFORMANCE OVERVIEW */
         <>
-          {/* High-Level Team KPI Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-left">
-            {[
-              {
-                title: 'Orders Created',
-                val: teamTotals.totalOrders,
-                sub: `${executiveMetrics.length} Executives`,
-                icon: Package,
-                color: 'text-indigo-600',
-                bg: 'bg-indigo-50',
-                border: 'border-indigo-100'
-              },
-              {
-                title: 'Sent to Accounts',
-                val: teamTotals.sentToAccounts,
-                sub: `${teamTotals.totalOrders > 0 ? Math.round((teamTotals.sentToAccounts / teamTotals.totalOrders) * 100) : 0}% Routed`,
-                icon: CreditCard,
-                color: 'text-amber-600',
-                bg: 'bg-amber-50',
-                border: 'border-amber-100'
-              },
-              {
-                title: 'Sent to Designs',
-                val: teamTotals.sentToDesigns,
-                sub: `${teamTotals.totalOrders > 0 ? Math.round((teamTotals.sentToDesigns / teamTotals.totalOrders) * 100) : 0}% In Studio`,
-                icon: Palette,
-                color: 'text-purple-600',
-                bg: 'bg-purple-50',
-                border: 'border-purple-100'
-              },
-              {
-                title: 'Designs Received',
-                val: teamTotals.receivedDesigns,
-                sub: `${teamTotals.sentToDesigns > 0 ? Math.round((teamTotals.receivedDesigns / teamTotals.sentToDesigns) * 100) : 0}% Art Ready`,
-                icon: FileCheck,
-                color: 'text-emerald-600',
-                bg: 'bg-emerald-50',
-                border: 'border-emerald-100'
-              },
-              {
-                title: 'Total Order Value',
-                val: `₹${teamTotals.totalOrderValue.toLocaleString()}`,
-                sub: `Adv: ₹${teamTotals.totalAdvance.toLocaleString()}`,
-                icon: DollarSign,
-                color: 'text-blue-600',
-                bg: 'bg-blue-50',
-                border: 'border-blue-100'
-              },
-              {
-                title: 'Invoices Created',
-                val: teamTotals.invoicesCount,
-                sub: `₹${teamTotals.totalInvoicedAmount.toLocaleString()}`,
-                icon: FileText,
-                color: 'text-teal-600',
-                bg: 'bg-teal-50',
-                border: 'border-teal-100'
-              }
-            ].map((kpi, idx) => (
-              <div key={idx} className={cn("p-5 rounded-3xl bg-white border shadow-xs flex flex-col justify-between space-y-3", kpi.border)}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">{kpi.title}</span>
-                  <div className={cn("p-2 rounded-xl", kpi.bg, kpi.color)}>
-                    <kpi.icon size={16} />
-                  </div>
+          {/* Active Filter Scope & Quick Controls Bar */}
+          <div className="bg-gradient-to-r from-gray-900 via-slate-900 to-indigo-950 p-4 rounded-3xl text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 text-white flex items-center justify-center font-black">
+                {selectedExecutive ? <User size={20} className="text-pink-300" /> : <BarChart2 size={20} className="text-indigo-300" />}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-wider text-indigo-200">
+                    {dateFilter === 'today' ? '🔴 Today\'s Live Pulse' : dateFilter === 'yesterday' ? 'Yesterday\'s Metrics' : dateFilter === 'week' ? 'This Week\'s Metrics' : dateFilter === 'month' ? 'This Month\'s Metrics' : 'All-Time Performance'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/15 text-white">
+                    {selectedExecutive ? `👤 ${selectedExecutive} (${activeExecutiveStats?.teamName || 'Staff'})` : staffTeamFilter === 'girls' ? '👩 Girls Team' : staffTeamFilter === 'boys' ? '👨 Boys Team' : '👥 All Staff'}
+                  </span>
                 </div>
-                <div>
-                  <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{kpi.val}</div>
-                  <div className="text-[10px] font-bold text-gray-400 mt-0.5 truncate">{kpi.sub}</div>
+                <p className="text-xs text-gray-300 font-medium mt-0.5">
+                  {displayedPulseStats.label} — Live design task sharing, artwork return, reworks & reasons, conversions, invoices & revenue.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Individual Voice Filter Dropdown & Reset */}
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <select
+                value={selectedExecutive || 'all'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedExecutive(val === 'all' ? null : val);
+                }}
+                className="text-xs font-bold bg-white/15 hover:bg-white/20 text-white border border-white/20 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-pink-400 cursor-pointer"
+              >
+                <option value="all" className="text-gray-900">👥 All Staff Performance</option>
+                <optgroup label="👩 Girls Team (Female Staff)" className="text-gray-900 font-bold">
+                  {uniqueMarketingStaffList.filter(s => s.isFemale).map(s => (
+                    <option key={s.name} value={s.name} className="text-gray-900">👩 {s.name} (Girls Team)</option>
+                  ))}
+                </optgroup>
+                <optgroup label="👨 Boys Team (Male Staff)" className="text-gray-900 font-bold">
+                  {uniqueMarketingStaffList.filter(s => !s.isFemale).map(s => (
+                    <option key={s.name} value={s.name} className="text-gray-900">👨 {s.name} (Boys Team)</option>
+                  ))}
+                </optgroup>
+              </select>
+
+              {dateFilter !== 'today' && (
+                <button
+                  onClick={() => setDateFilter('today')}
+                  className="px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1 shadow-xs"
+                >
+                  <Calendar size={13} /> View Today
+                </button>
+              )}
+
+              {selectedExecutive && (
+                <button
+                  onClick={() => setSelectedExecutive(null)}
+                  className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition-all border-none cursor-pointer"
+                >
+                  Clear Individual Filter ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Key Metric Pulse Ribbon (Tasks Shared, Returned Designs, Reworks, Converted Orders, Invoices) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 text-left">
+            {/* 1. Tasks Shared */}
+            <div className="p-4 rounded-3xl bg-white border border-indigo-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-indigo-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">📤 Tasks Shared</span>
+                <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-700">
+                  <Send size={15} />
                 </div>
               </div>
-            ))}
+              <div>
+                <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.tasksShared}</div>
+                <div className="text-[10px] font-bold text-gray-400 mt-0.5">Raised for Design Studio</div>
+              </div>
+            </div>
+
+            {/* 2. Designs Returned (Art Ready) */}
+            <div className="p-4 rounded-3xl bg-white border border-emerald-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-emerald-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">📥 Returned Ready</span>
+                <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700">
+                  <FileCheck size={15} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.designsReturned}</div>
+                <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Artwork Ready / Delivered</div>
+              </div>
+            </div>
+
+            {/* 3. Reworks Requested & Reason */}
+            <div
+              onClick={() => {
+                setSelectedReworkExecutive({
+                  execName: selectedExecutive ? selectedExecutive : (staffTeamFilter === 'girls' ? 'Girls Team' : staffTeamFilter === 'boys' ? 'Boys Team' : 'All Marketing Staff'),
+                  reworks: (displayedPulseStats as any).reworkReasons || []
+                });
+                setShowReworkModal(true);
+              }}
+              className="p-4 rounded-3xl bg-white border border-amber-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-amber-400 cursor-pointer hover:bg-amber-50/20 transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider">🔁 Reworks</span>
+                <div className="p-1.5 rounded-xl bg-amber-50 text-amber-700 group-hover:bg-amber-100 transition-colors">
+                  <RotateCcw size={15} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-amber-900 tracking-tight flex items-center justify-between">
+                  <span>{displayedPulseStats.reworksCount}</span>
+                  <span className="text-[10px] font-black text-amber-700 underline group-hover:text-amber-900">View Reasons →</span>
+                </div>
+                <div className="text-[10px] font-bold text-amber-600 mt-0.5">Click to view rework reasons</div>
+              </div>
+            </div>
+
+            {/* 4. Orders Converted from Tasks */}
+            <div className="p-4 rounded-3xl bg-white border border-purple-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-purple-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-purple-700 tracking-wider">🛒 Converted Orders</span>
+                <div className="p-1.5 rounded-xl bg-purple-50 text-purple-700">
+                  <ArrowRightLeft size={15} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.ordersConverted}</div>
+                <div className="text-[10px] font-bold text-purple-600 mt-0.5">Tasks Converted to Deals</div>
+              </div>
+            </div>
+
+            {/* 5. Invoices Shared */}
+            <div className="p-4 rounded-3xl bg-white border border-teal-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-teal-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider">📄 Invoices Shared</span>
+                <div className="p-1.5 rounded-xl bg-teal-50 text-teal-700">
+                  <FileText size={15} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.invoicesCount}</div>
+                <div className="text-[10px] font-bold text-teal-600 mt-0.5">₹{displayedPulseStats.totalInvoicedAmount.toLocaleString()} Invoiced</div>
+              </div>
+            </div>
+
+            {/* 6. Total Order Value & Advance */}
+            <div className="p-4 rounded-3xl bg-white border border-blue-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-blue-300 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-blue-700 tracking-wider">💰 Total Value</span>
+                <div className="p-1.5 rounded-xl bg-blue-50 text-blue-700">
+                  <DollarSign size={15} />
+                </div>
+              </div>
+              <div>
+                <div className="text-xl font-black text-gray-900 tracking-tight">₹{displayedPulseStats.totalOrderValue.toLocaleString()}</div>
+                <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Adv: ₹{displayedPulseStats.totalAdvance.toLocaleString()}</div>
+              </div>
+            </div>
           </div>
 
           {/* Girls Team vs Boys Team Dedicated Performance Banners */}
@@ -1047,7 +1292,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 font-medium mt-0.5">
-                      Female Marketing Executives & Staff Members
+                      Female Marketing Executives Performance Breakdown
                     </p>
                   </div>
                 </div>
@@ -1060,22 +1305,26 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </span>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 pt-4 mt-4 border-t border-pink-100/80">
-                <div className="bg-white/80 p-2.5 rounded-xl border border-pink-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Orders</span>
-                  <span className="text-base font-black text-gray-900">{girlsTeamTotals.totalOrders}</span>
+              <div className="grid grid-cols-5 gap-2 pt-4 mt-4 border-t border-pink-100/80 text-center">
+                <div className="bg-white/80 p-2 rounded-xl border border-pink-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Tasks Shared</span>
+                  <span className="text-sm font-black text-indigo-700">{girlsTeamTotals.tasksShared}</span>
                 </div>
-                <div className="bg-white/80 p-2.5 rounded-xl border border-pink-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Bulk (10+)</span>
-                  <span className="text-base font-black text-indigo-700">{girlsTeamTotals.bulkOrders}</span>
+                <div className="bg-white/80 p-2 rounded-xl border border-pink-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Returned</span>
+                  <span className="text-sm font-black text-emerald-700">{girlsTeamTotals.designsReturned}</span>
                 </div>
-                <div className="bg-white/80 p-2.5 rounded-xl border border-pink-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Total Value</span>
-                  <span className="text-base font-black text-emerald-700">₹{girlsTeamTotals.totalOrderValue.toLocaleString()}</span>
+                <div className="bg-white/80 p-2 rounded-xl border border-pink-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Reworks</span>
+                  <span className="text-sm font-black text-amber-700">{girlsTeamTotals.reworksCount}</span>
                 </div>
-                <div className="bg-white/80 p-2.5 rounded-xl border border-pink-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Invoiced</span>
-                  <span className="text-base font-black text-blue-700">₹{girlsTeamTotals.totalInvoicedAmount.toLocaleString()}</span>
+                <div className="bg-white/80 p-2 rounded-xl border border-pink-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Converted</span>
+                  <span className="text-sm font-black text-purple-700">{girlsTeamTotals.ordersConverted}</span>
+                </div>
+                <div className="bg-white/80 p-2 rounded-xl border border-pink-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Invoiced</span>
+                  <span className="text-sm font-black text-blue-700">₹{girlsTeamTotals.totalInvoicedAmount.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -1106,7 +1355,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 font-medium mt-0.5">
-                      Male Marketing Executives & Staff Members
+                      Male Marketing Executives Performance Breakdown
                     </p>
                   </div>
                 </div>
@@ -1119,22 +1368,26 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </span>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 pt-4 mt-4 border-t border-indigo-100/80">
-                <div className="bg-white/80 p-2.5 rounded-xl border border-indigo-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Orders</span>
-                  <span className="text-base font-black text-gray-900">{boysTeamTotals.totalOrders}</span>
+              <div className="grid grid-cols-5 gap-2 pt-4 mt-4 border-t border-indigo-100/80 text-center">
+                <div className="bg-white/80 p-2 rounded-xl border border-indigo-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Tasks Shared</span>
+                  <span className="text-sm font-black text-indigo-700">{boysTeamTotals.tasksShared}</span>
                 </div>
-                <div className="bg-white/80 p-2.5 rounded-xl border border-indigo-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Bulk (10+)</span>
-                  <span className="text-base font-black text-indigo-700">{boysTeamTotals.bulkOrders}</span>
+                <div className="bg-white/80 p-2 rounded-xl border border-indigo-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Returned</span>
+                  <span className="text-sm font-black text-emerald-700">{boysTeamTotals.designsReturned}</span>
                 </div>
-                <div className="bg-white/80 p-2.5 rounded-xl border border-indigo-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Total Value</span>
-                  <span className="text-base font-black text-emerald-700">₹{boysTeamTotals.totalOrderValue.toLocaleString()}</span>
+                <div className="bg-white/80 p-2 rounded-xl border border-indigo-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Reworks</span>
+                  <span className="text-sm font-black text-amber-700">{boysTeamTotals.reworksCount}</span>
                 </div>
-                <div className="bg-white/80 p-2.5 rounded-xl border border-indigo-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Invoiced</span>
-                  <span className="text-base font-black text-blue-700">₹{boysTeamTotals.totalInvoicedAmount.toLocaleString()}</span>
+                <div className="bg-white/80 p-2 rounded-xl border border-indigo-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Converted</span>
+                  <span className="text-sm font-black text-purple-700">{boysTeamTotals.ordersConverted}</span>
+                </div>
+                <div className="bg-white/80 p-2 rounded-xl border border-indigo-100">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase block">Invoiced</span>
+                  <span className="text-sm font-black text-blue-700">₹{boysTeamTotals.totalInvoicedAmount.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -1222,7 +1475,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             )}
           </div>
 
-          {/* Main Section: Marketing Individual Executive Performance */}
+          {/* Main Section: Marketing Individual Executive Performance Table */}
           <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden space-y-4 p-6 text-left">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
@@ -1231,12 +1484,36 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   Marketing Individual Executive Performance
                 </h3>
                 <p className="text-xs text-gray-500 font-medium">
-                  Separated Girls Team vs Boys Team breakdown: total orders, bulk deals, design studio tracking, revenue & invoicing.
+                  Track individual tasks shared, designs returned, reworks & reasons, converted orders, invoices, and revenue.
                 </p>
               </div>
 
-              {/* Team Filters & Search */}
+              {/* Individual Voice Dropdown, Team Filters & Search */}
               <div className="flex flex-wrap items-center gap-2.5">
+                {/* Individual Staff Selector Dropdown */}
+                <div className="relative">
+                  <select
+                    value={selectedExecutive || 'all'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedExecutive(val === 'all' ? null : val);
+                    }}
+                    className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-brand-primary/20 text-gray-800 cursor-pointer"
+                  >
+                    <option value="all">👤 Individual Voice Filter (All Staff)</option>
+                    <optgroup label="👩 Girls Team">
+                      {uniqueMarketingStaffList.filter(s => s.isFemale).map(s => (
+                        <option key={s.name} value={s.name}>👩 {s.name} (Girls Team)</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="👨 Boys Team">
+                      {uniqueMarketingStaffList.filter(s => !s.isFemale).map(s => (
+                        <option key={s.name} value={s.name}>👨 {s.name} (Boys Team)</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
                 {/* Team Filter Pills */}
                 <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl border border-gray-200">
                   <button
@@ -1275,7 +1552,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </div>
 
                 {/* Search Input */}
-                <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-2 rounded-2xl border border-gray-200 sm:w-56">
+                <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-2 rounded-2xl border border-gray-200 sm:w-52">
                   <Search size={14} className="text-gray-400" />
                   <input
                     type="text"
@@ -1289,29 +1566,29 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 {selectedExecutive && (
                   <button
                     onClick={() => setSelectedExecutive(null)}
-                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all border-none cursor-pointer"
+                    className="px-3 py-2 bg-pink-50 hover:bg-pink-100 text-pink-700 rounded-xl text-xs font-bold transition-all border border-pink-200 cursor-pointer"
                   >
-                    Clear Filter
+                    Clear Filter ✕
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Executive Table */}
+            {/* Executive Table with Tasks Shared, Returned, Reworks & Reasons, Converted, Invoices */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                     <th className="px-5 py-3.5 rounded-l-xl">Executive & Team</th>
-                    <th className="px-4 py-3.5 text-center">Orders Created</th>
-                    <th className="px-4 py-3.5 text-center">Bulk (10+ Qty)</th>
-                    <th className="px-4 py-3.5 text-center">Sent to Accounts</th>
-                    <th className="px-4 py-3.5 text-center">Sent to Designs</th>
-                    <th className="px-4 py-3.5 text-center">Artwork Ready</th>
+                    <th className="px-4 py-3.5 text-center">📤 Tasks Shared</th>
+                    <th className="px-4 py-3.5 text-center">📥 Returned Ready</th>
+                    <th className="px-4 py-3.5 text-center">🔁 Reworks & Reasons</th>
+                    <th className="px-4 py-3.5 text-center">🛒 Converted</th>
+                    <th className="px-4 py-3.5 text-center">📦 Total Orders</th>
+                    <th className="px-4 py-3.5 text-center">📦 Bulk (10+)</th>
+                    <th className="px-4 py-3.5 text-center">📄 Invoices</th>
                     <th className="px-4 py-3.5 text-right">Total Order Value</th>
                     <th className="px-4 py-3.5 text-right">Advance Collected</th>
-                    <th className="px-4 py-3.5 text-center">Invoices</th>
-                    <th className="px-4 py-3.5 text-right">Invoiced Amount</th>
                     <th className="px-5 py-3.5 text-center rounded-r-xl">Action</th>
                   </tr>
                 </thead>
@@ -1361,9 +1638,54 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                             </div>
                           </td>
 
-                          {/* Orders Created */}
+                          {/* Tasks Shared / Raised */}
                           <td className="px-4 py-4 text-center">
                             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black">
+                              {exec.tasksShared}
+                            </span>
+                          </td>
+
+                          {/* Designs Returned (Ready) */}
+                          <td className="px-4 py-4 text-center">
+                            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black flex items-center justify-center gap-1 w-fit mx-auto">
+                              <CheckCircle2 size={12} /> {exec.designsReturned}
+                            </span>
+                          </td>
+
+                          {/* Reworks & Reasons */}
+                          <td className="px-4 py-4 text-center" onClick={(e) => {
+                            if (exec.reworksCount > 0) {
+                              e.stopPropagation();
+                              setSelectedReworkExecutive({ execName: exec.name, reworks: exec.reworkReasons });
+                              setShowReworkModal(true);
+                            }
+                          }}>
+                            {exec.reworksCount > 0 ? (
+                              <button
+                                className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-[11px] font-black cursor-pointer flex items-center gap-1 mx-auto transition-all shadow-xs"
+                                title="Click to view rework reasons"
+                              >
+                                <RotateCcw size={11} /> {exec.reworksCount} Reworks
+                              </button>
+                            ) : (
+                              <span className="text-gray-300 font-bold">-</span>
+                            )}
+                          </td>
+
+                          {/* Converted Orders */}
+                          <td className="px-4 py-4 text-center">
+                            {exec.ordersConverted > 0 ? (
+                              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-black">
+                                🛒 {exec.ordersConverted}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 font-bold">-</span>
+                            )}
+                          </td>
+
+                          {/* Total Orders Created */}
+                          <td className="px-4 py-4 text-center">
+                            <span className="px-3 py-1 bg-gray-100 text-gray-800 border border-gray-200 rounded-xl text-xs font-black">
                               {exec.totalOrders}
                             </span>
                           </td>
@@ -1371,7 +1693,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                           {/* Bulk Orders (10+ Qty) */}
                           <td className="px-4 py-4 text-center">
                             {exec.bulkOrders > 0 ? (
-                              <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-[11px] font-black">
+                              <span className="px-2.5 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-xl text-[11px] font-black">
                                 📦 {exec.bulkOrders}
                               </span>
                             ) : (
@@ -1379,24 +1701,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                             )}
                           </td>
 
-                          {/* Sent to Accounts */}
+                          {/* Invoices Created / Shared */}
                           <td className="px-4 py-4 text-center">
-                            <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-black">
-                              {exec.sentToAccounts}
-                            </span>
-                          </td>
-
-                          {/* Sent to Designs */}
-                          <td className="px-4 py-4 text-center">
-                            <span className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-black">
-                              {exec.sentToDesigns}
-                            </span>
-                          </td>
-
-                          {/* Artwork Ready */}
-                          <td className="px-4 py-4 text-center">
-                            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black flex items-center justify-center gap-1 w-fit mx-auto">
-                              <CheckCircle2 size={12} /> {exec.receivedDesigns}
+                            <span className="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl text-xs font-black">
+                              {exec.invoicesCount} Invoices
                             </span>
                           </td>
 
@@ -1417,18 +1725,6 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                             <span className="font-black text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
                               ₹{exec.totalAdvance.toLocaleString()}
                             </span>
-                          </td>
-
-                          {/* Invoices Created */}
-                          <td className="px-4 py-4 text-center">
-                            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-black">
-                              {exec.invoicesCount} Invoices
-                            </span>
-                          </td>
-
-                          {/* Total Invoiced Amount */}
-                          <td className="px-4 py-4 text-right font-black text-gray-900">
-                            ₹{exec.totalInvoicedAmount.toLocaleString()}
                           </td>
 
                           {/* Action */}
@@ -1476,7 +1772,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   <span className="text-xs font-bold text-gray-400 lowercase">({drillDownOrders.length} orders)</span>
                 </h4>
                 <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  Filter by marketing staff, Girls/Boys team, Bulk orders (10+ pcs), Mixed orders (3+ categories), Gift items, and export to Excel.
+                  Filter by individual marketing executive, Girls/Boys team, Bulk orders (10+ pcs), Mixed orders (3+ categories), Gift items, and export to Excel.
                 </p>
               </div>
 
@@ -1496,7 +1792,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               {/* Marketing Staff Selector Dropdown */}
               <div>
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-1">
-                  Select Marketing Staff:
+                  Select Marketing Staff (Individual Voice Filter):
                 </label>
                 <div className="relative">
                   <select
@@ -1664,7 +1960,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     <th className="px-4 py-3 text-right">Order Value</th>
                     <th className="px-4 py-3 text-center">Accounts Status</th>
                     <th className="px-4 py-3 text-center">Design Status</th>
-                    <th className="px-4 py-3 text-center">Artwork Ready</th>
+                    <th className="px-4 py-3 text-center">Artwork Returned</th>
                     <th className="px-4 py-3 text-center">Current Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -1675,6 +1971,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       const sentAcc = isSentToAccounts(o);
                       const sentDes = isSentToDesigns(o);
                       const readyDes = isReceivedDesignsFile(o);
+                      const isRework = isReworkOrder(o);
+                      const isConverted = isConvertedOrder(o);
                       const amount = getOrderAmount(o);
                       const adv = getAdvanceAmount(o);
                       const creatorName = (o.createdByName || o.createdBy || 'Marketing').trim();
@@ -1689,6 +1987,9 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                           {/* Order ID */}
                           <td className="px-4 py-3.5">
                             <span className="font-mono font-black text-brand-primary">#{o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A')}</span>
+                            {isConverted && (
+                              <span className="block text-[9px] font-black text-purple-700 mt-0.5">🛒 Converted</span>
+                            )}
                           </td>
 
                           {/* Customer */}
@@ -1732,6 +2033,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                               {isGift && (
                                 <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200">
                                   🎁 Gift / Merch
+                                </span>
+                              )}
+                              {isRework && (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                                  🔁 Rework
                                 </span>
                               )}
                             </div>
@@ -1825,6 +2131,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   const sentAcc = isSentToAccounts(o);
                   const sentDes = isSentToDesigns(o);
                   const readyDes = isReceivedDesignsFile(o);
+                  const isRework = isReworkOrder(o);
+                  const isConverted = isConvertedOrder(o);
                   const amount = getOrderAmount(o);
                   const adv = getAdvanceAmount(o);
                   const creatorName = (o.createdByName || o.createdBy || 'Marketing').trim();
@@ -1876,6 +2184,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
                       {/* Classification Badges */}
                       <div className="flex flex-wrap items-center gap-1">
+                        {isConverted && (
+                          <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                            🛒 Converted Order
+                          </span>
+                        )}
                         {isBulk && (
                           <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-indigo-100 text-indigo-800 border border-indigo-200">
                             📦 Bulk (10+ pcs)
@@ -1889,6 +2202,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                         {isGift && (
                           <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200">
                             🎁 Gift / Merch
+                          </span>
+                        )}
+                        {isRework && (
+                          <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                            🔁 Rework
                           </span>
                         )}
                       </div>
@@ -1968,6 +2286,84 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             </div>
           </div>
         </>
+      )}
+
+      {/* Rework Reasons Details Modal */}
+      {showReworkModal && selectedReworkExecutive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-4 shadow-2xl border border-amber-200 text-left">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+                  <RotateCcw size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900">
+                    Rework & Revision Reasons ({selectedReworkExecutive.reworks.length})
+                  </h3>
+                  <p className="text-xs text-gray-500 font-medium">
+                    {selectedReworkExecutive.execName} — Detailed client & marketing revision requirements
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowReworkModal(false);
+                  setSelectedReworkExecutive(null);
+                }}
+                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center border-none cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {selectedReworkExecutive.reworks.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 italic text-xs">
+                No rework reasons recorded for this selection.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedReworkExecutive.reworks.map((r, i) => (
+                  <div key={i} className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-xs text-brand-primary">#{r.orderNumber}</span>
+                        <span className="font-bold text-gray-900 text-xs">{r.client}</span>
+                        {r.creator && (
+                          <span className="text-[10px] text-gray-500 font-medium">by {r.creator}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md">
+                        🎨 {r.designer}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-amber-200/80 text-xs font-medium text-gray-800 leading-relaxed">
+                      <span className="font-black text-amber-800 block text-[10px] uppercase tracking-wider mb-1">
+                        Revision Requirement / Reason:
+                      </span>
+                      {r.reason}
+                    </div>
+                    <div className="text-[10px] text-gray-400 font-mono">
+                      Recorded: {new Date(r.date).toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowReworkModal(false);
+                  setSelectedReworkExecutive(null);
+                }}
+                className="px-5 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Order Inspect Modal */}
