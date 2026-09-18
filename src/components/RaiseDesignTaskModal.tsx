@@ -267,6 +267,23 @@ export default function RaiseDesignTaskModal({
     }
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      setTitle('');
+      setNotes('');
+      setImages([]);
+      setPdfs([]);
+      setVoiceNote(null);
+      setTitleError(null);
+      setNotesError(null);
+      setSubmitError(null);
+      setIsDraggingOver(false);
+      setPasteFeedback(null);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
   const modalContent = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-150 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
