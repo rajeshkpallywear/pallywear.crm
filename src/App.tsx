@@ -4,19 +4,20 @@
  */
 
 // @ts-nocheck
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeadProvider } from './context/LeadContext';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const Store = lazy(() => import('./pages/Store'));
-const LeadDashboard = lazy(() => import('./pages/LeadDashboard'));
-const FlagshipUpper = lazy(() => import('./pages/FlagshipUpper'));
-const HRDashboard = lazy(() => import('./pages/HRDashboard'));
+const Login = lazyWithRetry(() => import('./pages/Login'));
+const Register = lazyWithRetry(() => import('./pages/Register'));
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/AdminDashboard'));
+const Store = lazyWithRetry(() => import('./pages/Store'));
+const LeadDashboard = lazyWithRetry(() => import('./pages/LeadDashboard'));
+const FlagshipUpper = lazyWithRetry(() => import('./pages/FlagshipUpper'));
+const HRDashboard = lazyWithRetry(() => import('./pages/HRDashboard'));
 
 import { UserRole } from './types';
 
@@ -40,23 +41,75 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('App Error Boundary caught:', error, info);
   }
+
+  handleReload = (forceFresh = false) => {
+    try {
+      sessionStorage.removeItem('lazy_chunk_retry_timestamp');
+      sessionStorage.removeItem('vite_preload_reload_ts');
+      sessionStorage.removeItem('retry-lazy-refreshed');
+      if (forceFresh && 'caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => caches.delete(name));
+        });
+      }
+    } catch (e) {
+      // ignore cache clearing errors
+    }
+
+    if (forceFresh) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('_v', Date.now().toString());
+      window.location.href = url.toString();
+    } else {
+      window.location.reload();
+    }
+  };
+
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || '';
+      const isChunkError =
+        errorMessage.includes('Failed to fetch dynamically imported module') ||
+        errorMessage.includes('error loading dynamically imported module') ||
+        errorMessage.includes('dynamically imported module') ||
+        (this.state.error as any)?.name === 'ChunkLoadError';
+
       return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', padding: '24px', fontFamily: 'sans-serif' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '480px', width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#111827', marginBottom: '8px' }}>Something went wrong</h2>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>An unexpected error occurred. Please reload the page to continue.</p>
-            <p style={{ color: '#ef4444', fontSize: '12px', background: '#fef2f2', borderRadius: '8px', padding: '12px', marginBottom: '24px', wordBreak: 'break-word', textAlign: 'left' }}>
-              {this.state.error?.message}
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '24px', fontFamily: 'sans-serif' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '40px 32px', maxWidth: '480px', width: '100%', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+            <div style={{ fontSize: '44px', marginBottom: '16px' }}>{isChunkError ? '🚀' : '⚠️'}</div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+              {isChunkError ? 'New Update Available' : 'Something went wrong'}
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
+              {isChunkError
+                ? 'A new version of Pallywear CRM was deployed. Please reload to load the latest application update.'
+                : 'An unexpected error occurred while loading this page.'}
             </p>
-            <button
-              onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
-              style={{ background: '#1A0B91', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px 28px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}
-            >
-              Reload Page
-            </button>
+
+            {errorMessage && (
+              <p style={{ color: '#ef4444', fontSize: '12px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '10px 12px', marginBottom: '24px', wordBreak: 'break-word', textAlign: 'left', maxHeight: '100px', overflowY: 'auto' }}>
+                {errorMessage}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => this.handleReload(true)}
+                style={{ background: '#1A0B91', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px 24px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(26,11,145,0.25)' }}
+              >
+                {isChunkError ? 'Update App & Reload' : 'Reload Page'}
+              </button>
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  window.location.href = '/login';
+                }}
+                style={{ background: 'transparent', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '10px 20px', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+              >
+                Go to Login Page
+              </button>
+            </div>
           </div>
         </div>
       );

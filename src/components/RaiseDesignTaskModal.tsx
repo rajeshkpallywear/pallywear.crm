@@ -58,7 +58,7 @@ export default function RaiseDesignTaskModal({
   if (!isOpen) return null;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files: File[] = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setNotesError(null);
@@ -68,12 +68,12 @@ export default function RaiseDesignTaskModal({
       for (const file of files) {
         let processed: File | Blob = file;
         try {
-          processed = await imageCompression(file, {
+          processed = (await imageCompression(file as File, {
             maxSizeMB: 2.5,
             maxWidthOrHeight: 4000,
             initialQuality: 0.95,
             useWebWorker: true,
-          });
+          })) as File | Blob;
         } catch {
           // fallback to original file if compression fails
         }
@@ -85,7 +85,7 @@ export default function RaiseDesignTaskModal({
             }
             resolve();
           };
-          reader.readAsDataURL(processed);
+          reader.readAsDataURL(processed as Blob);
         });
       }
       setImages(prev => [...prev, ...compressedResults]);
@@ -99,17 +99,17 @@ export default function RaiseDesignTaskModal({
   };
 
   const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files: File[] = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    files.forEach(file => {
+    files.forEach((file: File) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (reader.result) {
           setPdfs(prev => [...prev, reader.result as string]);
         }
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(file as Blob);
     });
     if (docInputRef.current) docInputRef.current.value = '';
   };
