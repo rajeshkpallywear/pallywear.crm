@@ -179,6 +179,7 @@ export interface Order {
   financials: Financials;
   status: OrderStatus;
   isUrgent?: boolean;
+  urgentReason?: string;
   notes?: string;
   staffImages: string[];
   staffPdfs: string[];

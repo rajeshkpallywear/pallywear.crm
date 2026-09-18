@@ -760,10 +760,15 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   {String(order.status || '').replace('_', ' ')}
                 </span>
                 {order.isUrgent && (
-                  <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase">URGENT</span>
+                  <span 
+                    title={order.urgentReason || order.details?.urgentReason ? `Urgent Reason: ${order.urgentReason || order.details?.urgentReason}` : 'Marked Urgent'}
+                    className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse uppercase flex items-center gap-1"
+                  >
+                    ⚡ URGENT
+                  </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1">
                 {order.assignedDesigner && order.assignedDesigner !== 'Unassigned' && order.assignedDesigner !== 'Designer assigned' ? (
                   <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
                     🎨 Designer: {order.assignedDesigner}
@@ -771,6 +776,11 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 ) : (
                   <span className="bg-gray-50 text-gray-400 border border-gray-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
                     🎨 Designer: Unassigned
+                  </span>
+                )}
+                {(order.urgentReason || order.details?.urgentReason) && (
+                  <span className="bg-red-50 text-red-750 border border-red-200 text-[10px] font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1 uppercase tracking-wider">
+                    ⚡ Urgent: {order.urgentReason || order.details?.urgentReason}
                   </span>
                 )}
               </div>

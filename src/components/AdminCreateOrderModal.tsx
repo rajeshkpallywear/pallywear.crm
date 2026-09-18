@@ -145,6 +145,7 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
     productionNotes: '',
     voiceNote: '',
     isUrgent: false,
+    urgentReason: '',
     sendToDestination: OrderStatus.PENDING as OrderStatus
   });
 
@@ -190,6 +191,7 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
       productionNotes: '',
       voiceNote: '',
       isUrgent: false,
+      urgentReason: '',
       sendToDestination: OrderStatus.PENDING
     });
     setNoteFeedback(null);
@@ -562,6 +564,11 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
       fields.advancePay = "Advance cannot exceed Total Amount";
     }
 
+    if (formData.isUrgent && (!formData.urgentReason || !formData.urgentReason.trim())) {
+      errors.push("Urgent Reason is mandatory for urgent orders. Please enter a valid reason.");
+      fields.urgentReason = "Please enter reason for urgency";
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -610,6 +617,7 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
       sizeBreakdown: formData.sizeBreakdown,
       quantity: totalQuantity,
       isUrgent: formData.isUrgent,
+      urgentReason: formData.isUrgent ? formData.urgentReason.trim() : undefined,
       notes: formData.notes.trim(),
       designNotes: formData.notes.trim(),
       productionNotes: formData.productionNotes.trim(),
@@ -687,7 +695,21 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
                 type="checkbox"
                 className="w-4 h-4 rounded border-red-300 text-red-650 focus:ring-red-500 cursor-pointer"
                 checked={formData.isUrgent}
-                onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData({ 
+                    ...formData, 
+                    isUrgent: checked,
+                    urgentReason: checked ? formData.urgentReason : ''
+                  });
+                  if (!checked && fieldErrors.urgentReason) {
+                    setFieldErrors(prev => {
+                      const next = { ...prev };
+                      delete next.urgentReason;
+                      return next;
+                    });
+                  }
+                }}
               />
               <span className="text-[9px] font-black text-red-750 uppercase tracking-widest">Mark as Urgent ⚡</span>
             </label>
@@ -702,6 +724,53 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 sm:space-y-8 text-left flex-1">
+          {/* Urgent Reason Mandatory Card */}
+          {formData.isUrgent && (
+            <div className="p-4 bg-gradient-to-r from-red-50 via-rose-50 to-red-50 border-2 border-red-300 rounded-2xl space-y-2 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-red-600 text-white rounded-lg flex items-center justify-center shadow-xs">
+                    <AlertTriangle size={15} className="animate-pulse" />
+                  </span>
+                  <span className="text-xs font-black text-red-900 uppercase tracking-wider">
+                    ⚡ Urgent Order Reason <span className="text-red-600">* (Mandatory)</span>
+                  </span>
+                </div>
+                <span className="text-[10px] font-black text-red-700 uppercase tracking-wider bg-red-100 px-2 py-0.5 rounded-md border border-red-200">
+                  Rush Reason Required
+                </span>
+              </div>
+              <p className="text-[11px] text-red-800 font-semibold">
+                Please provide a valid reason for marking this order as urgent (e.g. VIP client event, tight deadline, same-day production):
+              </p>
+              <input
+                type="text"
+                required
+                value={formData.urgentReason}
+                onChange={(e) => {
+                  setFormData({ ...formData, urgentReason: e.target.value });
+                  if (fieldErrors.urgentReason) {
+                    setFieldErrors(prev => {
+                      const next = { ...prev };
+                      delete next.urgentReason;
+                      return next;
+                    });
+                  }
+                }}
+                placeholder="Enter valuable reason for urgency..."
+                className={cn(
+                  "w-full px-4 py-2.5 rounded-xl text-xs font-bold bg-white border border-red-300 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all shadow-inner",
+                  fieldErrors.urgentReason && "border-red-600 ring-2 ring-red-500 bg-red-50/50"
+                )}
+                autoFocus
+              />
+              {fieldErrors.urgentReason && (
+                <p className="text-[11px] font-black text-red-600 flex items-center gap-1">
+                  <AlertTriangle size={12} /> {fieldErrors.urgentReason}
+                </p>
+              )}
+            </div>
+          )}
           {/* Section 1: Customer Information */}
           <section className="space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2">
