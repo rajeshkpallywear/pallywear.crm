@@ -698,47 +698,6 @@ router.post('/orders', async (req, res) => {
       }
     }
 
-    if (order.status === 'accounts') {
-      const revId = `rev-${order.id}`;
-      const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
-      if (revExisting.length > 0) {
-        await query(
-          'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
-          [
-            financials.totalAmount || 0,
-            customer.name || 'Client',
-            order.category || 'Order',
-            String(order.quantity || 0),
-            order.notes || `Auto-created revenue from Order #${order.id.slice(-6)}`,
-            revId
-          ]
-        );
-      } else {
-        await query(
-          `INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            revId,
-            'revenue',
-            order.createdBy || 'system',
-            order.createdByName || 'System',
-            customer.name || 'Client',
-            order.category || 'Order',
-            String(order.quantity || 0),
-            null,
-            null,
-            financials.totalAmount || 0,
-            new Date().toISOString().split('T')[0],
-            null,
-            order.notes || `Auto-created revenue from Order #${order.id.slice(-6)}`,
-            null,
-            new Date().toLocaleString('en-US', { month: 'long' }),
-            Date.now()
-          ]
-        );
-      }
-    }
-
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error saving order:', error);
@@ -953,8 +912,7 @@ const handleUpdateOrderFields = async (req, res) => {
     if (newId && newId !== id) {
       await Promise.all([
         query('UPDATE invoices SET order_id = ? WHERE order_id = ?', [newId, id]),
-        query('UPDATE notifications SET orderId = ? WHERE orderId = ?', [newId, id]),
-        query('UPDATE expenses SET id = ? WHERE id = ?', [`rev-${newId}`, `rev-${id}`])
+        query('UPDATE notifications SET orderId = ? WHERE orderId = ?', [newId, id])
       ]);
     }
     
@@ -1028,55 +986,6 @@ const handleUpdateOrderFields = async (req, res) => {
           Date.now()
         ]
       ));
-    }
-
-    if (newStatus === 'accounts') {
-      const revId = `rev-${id}`;
-      const revTask = (async () => {
-        const revExisting = await query('SELECT id FROM expenses WHERE id = ?', [revId]) as any[];
-        const totalAmount = existing[0]?.totalAmount || 0;
-        const customerName = existing[0]?.customerName || 'Client';
-        const category = existing[0]?.category || 'Order';
-        const quantity = existing[0]?.quantity || 0;
-        
-        if (revExisting.length > 0) {
-          await query(
-            'UPDATE expenses SET amount = ?, vendorName = ?, productName = ?, qty = ?, notes = ? WHERE id = ?',
-            [
-              totalAmount,
-              customerName,
-              category,
-              String(quantity),
-              updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
-              revId
-            ]
-          );
-        } else {
-          await query(
-            `INSERT INTO expenses (id, type, userId, userName, vendorName, productName, qty, colour, size, amount, date, billFile, notes, recipientName, month, createdAt) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              revId,
-              'revenue',
-              updates.createdBy || 'system',
-              updates.createdByName || 'System',
-              customerName,
-              category,
-              String(quantity),
-              null,
-              null,
-              totalAmount,
-              new Date().toISOString().split('T')[0],
-              null,
-              updates.accountsNotes || updates.notes || `Auto-created revenue from Order #${id.slice(-6)}`,
-              null,
-              new Date().toLocaleString('en-US', { month: 'long' }),
-              Date.now()
-            ]
-          );
-        }
-      })();
-      postTasks.push(revTask);
     }
 
     if (postTasks.length > 0) {

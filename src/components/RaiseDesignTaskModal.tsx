@@ -55,10 +55,10 @@ export default function RaiseDesignTaskModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [pasteFeedback, setPasteFeedback] = useState<string | null>(null);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files: File[] = Array.from(e.target.files || []);
+  const processImageFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
     setNotesError(null);
@@ -89,12 +89,112 @@ export default function RaiseDesignTaskModal({
         });
       }
       setImages(prev => [...prev, ...compressedResults]);
+      setPasteFeedback(`✓ Attached ${compressedResults.length} image(s)!`);
+      setTimeout(() => setPasteFeedback(null), 2500);
     } catch (err) {
-      console.error('Error uploading image:', err);
-      setSubmitError('Failed to upload image. Please try again.');
+      console.error('Error processing image:', err);
+      setSubmitError('Failed to process image. Please try again.');
     } finally {
       setIsCompressing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    await processImageFiles(files);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    const files = Array.from(e.dataTransfer.files || []);
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const docFiles = files.filter(f => !f.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+      await processImageFiles(imageFiles);
+    }
+    if (docFiles.length > 0) {
+      docFiles.forEach((file: File) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            setPdfs(prev => [...prev, reader.result as string]);
+          }
+        };
+        reader.readAsDataURL(file as Blob);
+      });
+      setPasteFeedback(`✓ Attached ${docFiles.length} document(s)!`);
+      setTimeout(() => setPasteFeedback(null), 2500);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDraggingOver) setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  // Clipboard paste listener (Ctrl+V)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalPaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items || items.length === 0) return;
+
+      const pastedImageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) pastedImageFiles.push(file);
+        }
+      }
+
+      if (pastedImageFiles.length > 0) {
+        await processImageFiles(pastedImageFiles);
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [isOpen]);
+
+  const handlePasteFromClipboardClick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const clipboardItems = await navigator.clipboard.read();
+        const imageFiles: File[] = [];
+        for (const item of clipboardItems) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              imageFiles.push(new File([blob], 'pasted_artwork.png', { type }));
+            }
+          }
+        }
+        if (imageFiles.length > 0) {
+          await processImageFiles(imageFiles);
+          return;
+        }
+      }
+      setPasteFeedback("💡 Press Ctrl+V anywhere in this window to paste your screenshot!");
+      setTimeout(() => setPasteFeedback(null), 3000);
+    } catch {
+      setPasteFeedback("💡 Press Ctrl+V anywhere in this window to paste your screenshot!");
+      setTimeout(() => setPasteFeedback(null), 3000);
     }
   };
 
@@ -112,6 +212,8 @@ export default function RaiseDesignTaskModal({
       reader.readAsDataURL(file as Blob);
     });
     if (docInputRef.current) docInputRef.current.value = '';
+    setPasteFeedback(`✓ Attached ${files.length} document(s)!`);
+    setTimeout(() => setPasteFeedback(null), 2500);
   };
 
   const handleStartVoice = () => {
@@ -233,26 +335,73 @@ export default function RaiseDesignTaskModal({
           </div>
 
           {/* 2. Reference Image Uploads */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-gray-700 flex items-center justify-between">
-              <span>Sample Images & Logo References</span>
-              <span className="text-[10px] text-gray-400 font-normal">Supports JPEG, PNG, WEBP</span>
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <span>Sample Images & Logo References</span>
+                {pasteFeedback && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md animate-in fade-in">
+                    {pasteFeedback}
+                  </span>
+                )}
+              </label>
+              <span className="text-[10px] text-gray-400 font-normal">Supports JPEG, PNG, WEBP, PDF</span>
+            </div>
 
-            {/* Drop Zone */}
+            {/* Drop Zone with Drag-and-Drop + Paste Support */}
             <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-purple-200 hover:border-purple-500 bg-purple-50/30 hover:bg-purple-50/70 rounded-2xl p-4 text-center cursor-pointer transition-all group"
+              className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all group ${
+                isDraggingOver
+                  ? 'border-purple-600 bg-purple-100/80 scale-[1.01] shadow-md'
+                  : 'border-purple-200 hover:border-purple-500 bg-purple-50/30 hover:bg-purple-50/70'
+              }`}
             >
               <div className="w-10 h-10 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center mx-auto mb-1.5 group-hover:scale-110 transition-transform">
                 {isCompressing ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
               </div>
               <p className="text-xs font-bold text-purple-900">
-                {isCompressing ? 'Compressing images...' : 'Click or Drag images here to upload reference'}
+                {isCompressing
+                  ? 'Compressing images...'
+                  : isDraggingOver
+                  ? '📥 Drop images or documents here!'
+                  : 'Click to Browse, Drag & Drop files, or Paste (Ctrl+V)'}
               </p>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                Automatically compressed for fast loading
+                Screenshots pasted with <kbd className="px-1.5 py-0.5 bg-gray-200 text-gray-800 rounded font-mono text-[9px]">Ctrl + V</kbd> attach automatically
               </p>
+            </div>
+
+            {/* Quick Action Buttons for Upload / Paste */}
+            <div className="flex items-center gap-2 flex-wrap pt-0.5">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+              >
+                <Upload size={13} />
+                <span>Browse Files</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePasteFromClipboardClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                title="Paste screenshot or copied image from clipboard"
+              >
+                <ImageIcon size={13} />
+                <span>📋 Paste (Ctrl+V)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => docInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+              >
+                <FileText size={13} />
+                <span>+ Add PDF / Doc</span>
+              </button>
             </div>
 
             <input

@@ -623,19 +623,22 @@ export default function ProductionDashboard({ orders, onUpdateOrder, onDeleteOrd
                   )}
                 </div>
 
-                {/* Desk 5: Stitch Files (Digitizer Sent Garage File) */}
+                {/* Desk 5: Stitch Files (Digitizer Sent Garage ZIP File) */}
                 <div className="space-y-2">
-                  <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stitch Files (Garage)</h6>
+                  <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stitch Files (Garage ZIP)</h6>
                   {(selectedOrder.machineFiles || []).map((f, i) => (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => downloadFile(f, `Stitch_Garage_File_${i + 1}_order_${selectedOrder.id}.dst`)}
-                      className="w-full p-2 bg-indigo-50/40 border border-indigo-100 rounded-xl truncate hover:border-indigo-200 transition-colors flex items-center justify-between text-indigo-600 font-bold block cursor-pointer border-none"
-                      title="Click to download garage production file"
+                      onClick={() => downloadFile(f, `Stitch_Garage_File_${i + 1}_Order_${selectedOrder.id}.zip`)}
+                      className="w-full p-2 bg-indigo-50/50 border border-indigo-150 rounded-xl truncate hover:bg-indigo-100 transition-colors flex items-center justify-between text-indigo-700 font-bold block cursor-pointer border-none shadow-2xs"
+                      title="Click to download stitch garage ZIP file"
                     >
-                      <span className="truncate text-[10px]">Stitch_{i + 1}.dst</span>
-                      <Download size={10} className="shrink-0 ml-1" />
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <FolderOpen size={13} className="shrink-0 text-indigo-600" />
+                        <span className="truncate text-[9.5px]">Stitch_Garage_{i + 1}.zip</span>
+                      </div>
+                      <Download size={10} className="shrink-0 ml-1 text-indigo-600" />
                     </button>
                   ))}
                   {(selectedOrder.machineFiles || []).length === 0 && (

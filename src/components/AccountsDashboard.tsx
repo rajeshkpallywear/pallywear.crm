@@ -41,6 +41,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const [gstCalculationType, setGstCalculationType] = useState<'exclusive' | 'inclusive'>('exclusive');
   const [customGstInput, setCustomGstInput] = useState<string>('');
   const [isCustomGst, setIsCustomGst] = useState(false);
+  const [billingOrderIdInput, setBillingOrderIdInput] = useState<string>('');
   const { loadOrderAttachments } = useLeads();
 
   const openGstModal = () => {
@@ -153,6 +154,11 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
 
   useEffect(() => {
     setBillingFiles([]);
+    if (selectedOrder) {
+      setBillingOrderIdInput(selectedOrder.id || '');
+    } else {
+      setBillingOrderIdInput('');
+    }
   }, [selectedOrder?.id]);
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.ACCOUNTS || (o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.ACCOUNTS));
@@ -187,10 +193,26 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
   const handleProcessOrder = async () => {
     if (!selectedOrder || isProcessing) return;
 
+    // 1. Compulsory Order ID Validation
+    const cleanedOrderId = (billingOrderIdInput || selectedOrder.id || '').trim();
+    if (!cleanedOrderId) {
+      alert("⚠️ Compulsory Order ID Required!\nPlease specify the official Order ID before forwarding this order to Design.");
+      return;
+    }
+
+    // 2. Compulsory Billing Invoice / Payment Receipt Validation
+    const existingInvoices = selectedOrder.accountsAttachments || [];
+    const allBillingFiles = billingFiles.length > 0 ? billingFiles : existingInvoices;
+    if (allBillingFiles.length === 0) {
+      alert("⚠️ Compulsory Billing Invoice Required!\nPlease upload and attach the Billing Invoice / Payment Receipt before forwarding this order to Design.");
+      return;
+    }
+
     // Size check on next state
     const nextOrderState = {
       ...selectedOrder,
-      accountsAttachments: billingFiles
+      id: cleanedOrderId,
+      accountsAttachments: allBillingFiles
     };
 
     if (!isOrderSizeValid(nextOrderState)) {
@@ -201,8 +223,10 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
     setIsProcessing(true);
     try {
       const updates: Partial<Order> = {
+        id: cleanedOrderId,
         status: OrderStatus.DESIGN,
-        accountsAttachments: billingFiles,
+        accountsAttachments: allBillingFiles,
+        billingInvoiceAttached: true,
         sentByAccounts: true,
         designCompleted: false,
         designSentToMarketing: false,
@@ -221,7 +245,7 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
       await onUpdateOrder(selectedOrder.id, updates);
       setSelectedOrder(null);
       setBillingFiles([]);
-      alert("Success: Order sent to Design.");
+      alert(`Success: Order #${cleanedOrderId} with verified Billing Invoice forwarded to Design.`);
     } catch (e: any) {
       console.error(e);
       if (e?.message?.includes("exceeds the maximum allowed size")) {
@@ -608,18 +632,6 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                           </span>
                         )}
                       </div>
-
-                      {/* Technical details key-values */}
-                      {selectedOrder.details && Object.keys(selectedOrder.details).length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2.5">
-                          {Object.entries(selectedOrder.details).map(([k, v]) => (
-                            <div key={k} className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-semibold text-gray-700 shadow-2xs">
-                              <span className="text-gray-400 uppercase font-black mr-1">{k}:</span>
-                              <span className="font-bold text-gray-900">{String(v)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -966,22 +978,96 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                 <div className="h-px bg-gray-200" />
 
                 {/* Billing Action Section */}
-                <section className="bg-white p-5 rounded-2xl border border-gray-150 shadow-2xs space-y-4">
-                  <h5 className="text-xs font-black text-gray-800 uppercase tracking-widest flex items-center gap-1.5">
-                    <CreditCard size={14} className="text-amber-600" />
-                    Accounts Billing Action & Document Attachment
-                  </h5>
-                  <FileUpload
-                    key={selectedOrder.id}
-                    label="Attach Billing Invoice / Payment Receipt (PNG, JPG, PDF)"
-                    onFilesSelected={(files) => setBillingFiles(files)}
-                  />
-                  <div className="pt-3 flex flex-wrap gap-3">
+                <section className="bg-white p-6 rounded-3xl border-2 border-brand-primary/20 shadow-md space-y-5">
+                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-150">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                        <CreditCard size={16} />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-black text-gray-900 uppercase tracking-wider">
+                          Accounts Billing Verification & Forward to Design
+                        </h5>
+                        <p className="text-[10.5px] text-gray-500 font-semibold">
+                          Both <span className="text-brand-primary font-bold">Order ID</span> and <span className="text-amber-700 font-bold">Billing Invoice</span> are compulsory before forwarding.
+                        </p>
+                      </div>
+                    </div>
+                    {((selectedOrder.accountsAttachments && selectedOrder.accountsAttachments.length > 0) || billingFiles.length > 0) ? (
+                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 shadow-2xs">
+                        ✓ Invoice Attached ({billingFiles.length > 0 ? billingFiles.length : (selectedOrder.accountsAttachments || []).length})
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 animate-pulse">
+                        ⚠️ Invoice Required
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Compulsory Order ID Input */}
+                  <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                        <span>Official Billing Order ID</span>
+                        <span className="text-red-500 font-black">* (Compulsory)</span>
+                      </label>
+                      <span className="text-[10px] text-gray-500 font-medium">Verify or edit order reference</span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-brand-primary text-sm font-mono">#</span>
+                      <input
+                        type="text"
+                        value={billingOrderIdInput}
+                        onChange={(e) => setBillingOrderIdInput(e.target.value.replace(/^#/, ''))}
+                        placeholder="Enter Order ID (e.g. PW26-ORD-0664)"
+                        className="w-full bg-white border border-gray-300 focus:border-brand-primary rounded-xl pl-8 pr-4 py-2 text-xs font-mono font-bold text-gray-900 outline-none transition-all shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Compulsory Billing Invoice Attachment */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                        <span>Upload Billing Invoice / Payment Receipt</span>
+                        <span className="text-red-500 font-black">* (Compulsory)</span>
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-medium">PNG, JPG, PDF up to 25MB</span>
+                    </div>
+                    <FileUpload
+                      key={selectedOrder.id}
+                      label="Attach official Billing Invoice PDF or Payment Receipt Screenshot"
+                      onFilesSelected={(files) => setBillingFiles(files)}
+                    />
+
+                    {/* Show already attached invoices if available */}
+                    {selectedOrder.accountsAttachments && selectedOrder.accountsAttachments.length > 0 && billingFiles.length === 0 && (
+                      <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl flex items-center justify-between flex-wrap gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <FileText size={16} className="text-brand-primary" />
+                          <span className="font-bold text-gray-800">Existing Invoice Attached:</span>
+                          <span className="text-purple-900 font-mono text-[11px] font-bold">
+                            {selectedOrder.accountsAttachments.length} document(s) on file
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setViewingImage(selectedOrder.accountsAttachments![0])}
+                          className="px-2 py-0.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-[10px] font-black uppercase transition-all border-none cursor-pointer"
+                        >
+                          View Existing Invoice
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions: Hold and Forward */}
+                  <div className="pt-2 flex flex-wrap gap-3">
                     <button
                       onClick={handleHoldOrder}
                       disabled={isProcessing}
                       className={cn(
-                        "px-6 py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70 cursor-pointer border-none",
+                        "px-5 py-3 rounded-2xl font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70 cursor-pointer border-none",
                         selectedOrder.status === OrderStatus.HOLD ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"
                       )}
                     >
@@ -990,8 +1076,13 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                     <button
                       onClick={handleProcessOrder}
                       disabled={isProcessing || selectedOrder.status === OrderStatus.HOLD}
-                      className="flex-1 py-3.5 bg-black text-white rounded-2xl font-black uppercase text-xs tracking-wider hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70 cursor-pointer border-none"
-                      title="Send invoice to Design team for this account"
+                      className={cn(
+                        "flex-1 py-3 px-5 rounded-2xl font-black uppercase text-xs tracking-wider transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60 cursor-pointer border-none",
+                        ((selectedOrder.accountsAttachments && selectedOrder.accountsAttachments.length > 0) || billingFiles.length > 0)
+                          ? "bg-black hover:bg-gray-800 text-white"
+                          : "bg-amber-600 hover:bg-amber-700 text-white"
+                      )}
+                      title="Verify Order ID, attach Billing Invoice and forward to Design"
                     >
                       {isProcessing ? (
                         <>
@@ -1000,17 +1091,12 @@ export default function AccountsDashboard({ orders, onUpdateOrder, onDeleteOrder
                         </>
                       ) : (
                         <>
-                          <span>Forward & Send to Design</span>
+                          <span>Verify Invoice & Forward to Design</span>
                           <ChevronRight size={16} />
                         </>
                       )}
                     </button>
                   </div>
-                  {billingFiles.length === 0 && (
-                    <p className="text-[10px] text-center text-amber-600 font-bold font-mono uppercase tracking-wider">
-                      Notice: You can attach payment receipts or advance invoices before forwarding.
-                    </p>
-                  )}
                 </section>
               </div>
             </motion.div>

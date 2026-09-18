@@ -284,7 +284,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
       ...marketingDocs.map((src, i) => ({ src, name: `Reference_Doc_${i + 1}.pdf` })),
       ...designerReturnedImages.map((src, i) => ({ src, name: `Completed_Mockup_${i + 1}.png` })),
       ...(designerMasterZip ? [{ src: designerMasterZip, name: designerMasterZipName }] : []),
-      ...designerMachineFiles.map((src, i) => ({ src, name: `Embroidery_File_${i + 1}.dst` }))
+      ...designerMachineFiles.map((src, i) => ({ src, name: `Stitch_Garage_File_${i + 1}_Order_${order.id}.zip` }))
     ];
     if (allFiles.length === 0) {
       alert("No attachment files to download.");
@@ -1574,15 +1574,18 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   )}
                   {order.machineFiles?.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-bold text-indigo-500 uppercase mb-2">Machine Language (ZIP)</p>
+                      <p className="text-[10px] font-bold text-indigo-500 uppercase mb-2">Stitch Files (Garage ZIP)</p>
                       <div className="flex flex-wrap gap-2">
                         {order.machineFiles.map((file, i) => (
                           <div
                             key={i}
-                            onClick={() => setViewingImage(file)}
-                            className="w-16 h-16 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center cursor-pointer hover:shadow-md transition-all text-indigo-500"
+                            onClick={() => downloadFile(file, `Stitch_Garage_File_${i + 1}_Order_${order.id}.zip`)}
+                            className="px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-150 flex items-center gap-2 cursor-pointer hover:bg-indigo-100 hover:shadow-xs transition-all text-indigo-700"
+                            title="Download Stitch Garage ZIP File"
                           >
-                            <Download size={24} />
+                            <FolderOpen size={16} className="text-indigo-600" />
+                            <span className="text-xs font-mono font-bold">Stitch_Garage_{i + 1}.zip</span>
+                            <Download size={14} className="text-indigo-600 ml-1" />
                           </div>
                         ))}
                       </div>
