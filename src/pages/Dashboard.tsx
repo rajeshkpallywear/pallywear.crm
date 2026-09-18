@@ -727,6 +727,8 @@ export default function Dashboard() {
             UserRole.INVENTORY_MANAGEMENT,
             UserRole.ORDER_MANAGEMENT,
             UserRole.DELIVERY,
+            UserRole.SALES_HEAD,
+            UserRole.OPERATIONS_HEAD,
             'admin',
             'onlineteam',
             'marketing',
@@ -737,7 +739,9 @@ export default function Dashboard() {
             'accounts',
             'inventory_management',
             'order_management',
-            'delivery'
+            'delivery',
+            'sales_head',
+            'operations_head'
           ].includes(user.role as any)) && (
             <div className="pt-2 space-y-1 border-t border-gray-100 mt-2">
               <p className={cn(

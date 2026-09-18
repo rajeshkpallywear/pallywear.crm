@@ -739,6 +739,72 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return list;
   }, [filteredOrders]);
 
+  // Dynamic displayed pulse stats for Top KPI Ribbon
+  const displayedPulseStats = useMemo(() => {
+    if (activeExecutiveStats) {
+      return {
+        label: `Individual Executive: ${activeExecutiveStats.name} (${activeExecutiveStats.teamName})`,
+        isIndividual: true,
+        tasksShared: activeExecutiveStats.tasksShared || 0,
+        designsReturned: activeExecutiveStats.designsReturned || 0,
+        reworksCount: activeExecutiveStats.reworksCount || 0,
+        reworkReasons: activeExecutiveStats.reworkReasons || [],
+        ordersConverted: activeExecutiveStats.ordersConverted || 0,
+        totalOrders: activeExecutiveStats.totalOrders || 0,
+        invoicesCount: activeExecutiveStats.invoicesCount || 0,
+        totalInvoicedAmount: activeExecutiveStats.totalInvoicedAmount || 0,
+        totalOrderValue: activeExecutiveStats.totalOrderValue || 0,
+        totalAdvance: activeExecutiveStats.totalAdvance || 0
+      };
+    }
+    if (staffTeamFilter === 'girls') {
+      return {
+        label: `Girls Team Totals (${girlsTeamExecutives.length} Staff)`,
+        isIndividual: false,
+        tasksShared: girlsTeamTotals.tasksShared || 0,
+        designsReturned: girlsTeamTotals.designsReturned || 0,
+        reworksCount: girlsTeamTotals.reworksCount || 0,
+        reworkReasons: girlsTeamExecutives.flatMap(e => e.reworkReasons || []),
+        ordersConverted: girlsTeamTotals.ordersConverted || 0,
+        totalOrders: girlsTeamTotals.totalOrders || 0,
+        invoicesCount: girlsTeamTotals.invoicesCount || 0,
+        totalInvoicedAmount: girlsTeamTotals.totalInvoicedAmount || 0,
+        totalOrderValue: girlsTeamTotals.totalOrderValue || 0,
+        totalAdvance: girlsTeamTotals.totalAdvance || 0
+      };
+    }
+    if (staffTeamFilter === 'boys') {
+      return {
+        label: `Boys Team Totals (${boysTeamExecutives.length} Staff)`,
+        isIndividual: false,
+        tasksShared: boysTeamTotals.tasksShared || 0,
+        designsReturned: boysTeamTotals.designsReturned || 0,
+        reworksCount: boysTeamTotals.reworksCount || 0,
+        reworkReasons: boysTeamExecutives.flatMap(e => e.reworkReasons || []),
+        ordersConverted: boysTeamTotals.ordersConverted || 0,
+        totalOrders: boysTeamTotals.totalOrders || 0,
+        invoicesCount: boysTeamTotals.invoicesCount || 0,
+        totalInvoicedAmount: boysTeamTotals.totalInvoicedAmount || 0,
+        totalOrderValue: boysTeamTotals.totalOrderValue || 0,
+        totalAdvance: boysTeamTotals.totalAdvance || 0
+      };
+    }
+    return {
+      label: `All Marketing Staff Combined (${executiveMetrics.length} Staff)`,
+      isIndividual: false,
+      tasksShared: teamTotals.tasksShared || 0,
+      designsReturned: teamTotals.designsReturned || 0,
+      reworksCount: teamTotals.reworksCount || 0,
+      reworkReasons: allFilteredReworks || [],
+      ordersConverted: teamTotals.ordersConverted || 0,
+      totalOrders: teamTotals.totalOrders || 0,
+      invoicesCount: teamTotals.invoicesCount || 0,
+      totalInvoicedAmount: teamTotals.totalInvoicedAmount || 0,
+      totalOrderValue: teamTotals.totalOrderValue || 0,
+      totalAdvance: teamTotals.totalAdvance || 0
+    };
+  }, [activeExecutiveStats, staffTeamFilter, girlsTeamTotals, boysTeamTotals, teamTotals, girlsTeamExecutives, boysTeamExecutives, executiveMetrics, allFilteredReworks]);
+
   // Export currently filtered orders to Excel (.xlsx)
   const handleExportOrdersToExcel = () => {
     if (drillDownOrders.length === 0) {
