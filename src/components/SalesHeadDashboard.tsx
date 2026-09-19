@@ -34,8 +34,8 @@ export const OFFICIAL_GIRLS_TEAM = [
 ];
 
 export const OFFICIAL_MARKETING_STAFF = [
-  ...OFFICIAL_GIRLS_TEAM.map(s => ({ name: s.name, keys: s.keys, isFemale: true, teamName: 'Girls Team' as const })),
-  ...OFFICIAL_BOYS_TEAM.map(s => ({ name: s.name, keys: s.keys, isFemale: false, teamName: 'Boys Team' as const }))
+  ...OFFICIAL_GIRLS_TEAM.map(s => ({ name: s.name, keys: s.keys, isFemale: true, teamName: 'Blossom Team' as const })),
+  ...OFFICIAL_BOYS_TEAM.map(s => ({ name: s.name, keys: s.keys, isFemale: false, teamName: 'Hornet Team' as const }))
 ];
 
 // Helper to match an order creator / invoice creator / user to an official marketing staff
@@ -298,7 +298,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     const map = new Map<string, {
       name: string;
       isFemale: boolean;
-      teamName: 'Girls Team' | 'Boys Team';
+      teamName: 'Blossom Team' | 'Hornet Team';
       tasksShared: number;
       designsReturned: number;
       reworksCount: number;
@@ -763,7 +763,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     }
     if (staffTeamFilter === 'girls') {
       return {
-        label: `Girls Team Totals (${girlsTeamExecutives.length} Staff)`,
+        label: `Blossom Team Totals (${girlsTeamExecutives.length} Staff)`,
         isIndividual: false,
         tasksShared: girlsTeamTotals.tasksShared || 0,
         designsReturned: girlsTeamTotals.designsReturned || 0,
@@ -779,7 +779,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     }
     if (staffTeamFilter === 'boys') {
       return {
-        label: `Boys Team Totals (${boysTeamExecutives.length} Staff)`,
+        label: `Hornet Team Totals (${boysTeamExecutives.length} Staff)`,
         isIndividual: false,
         tasksShared: boysTeamTotals.tasksShared || 0,
         designsReturned: boysTeamTotals.designsReturned || 0,
@@ -831,7 +831,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
       const creator = (o.createdByName || o.createdBy || 'Unknown Staff').trim();
       const isFemale = isFemaleStaff(creator, registeredUsers);
-      const teamName = isFemale ? 'Girls Team' : 'Boys Team';
+      const teamName = isFemale ? 'Blossom Team' : 'Hornet Team';
 
       const itemsSummary = (Array.isArray(o.sizeBreakdown) ? o.sizeBreakdown : [])
         .map(b => `${b?.category || 'Item'} (${b?.size || '-'}): ${b?.quantity || 1}pcs @ ₹${b?.price || 0}`)
@@ -1171,69 +1171,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       ) : (
         /* STANDARD SALES PERFORMANCE OVERVIEW */
         <>
-          {/* Active Filter Scope & Quick Controls Bar */}
-          <div className="bg-gradient-to-r from-gray-900 via-slate-900 to-indigo-950 p-4 rounded-3xl text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/10 text-white flex items-center justify-center font-black">
-                {selectedExecutive ? <User size={20} className="text-pink-300" /> : <BarChart2 size={20} className="text-indigo-300" />}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black uppercase tracking-wider text-indigo-200">
-                    {dateFilter === 'today' ? '🔴 Today\'s Live Pulse' : dateFilter === 'yesterday' ? 'Yesterday\'s Metrics' : dateFilter === 'week' ? 'This Week\'s Metrics' : dateFilter === 'month' ? 'This Month\'s Metrics' : 'All-Time Performance'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/15 text-white">
-                    {selectedExecutive ? `👤 ${selectedExecutive} (${activeExecutiveStats?.teamName || 'Staff'})` : staffTeamFilter === 'girls' ? '👩 Girls Team' : staffTeamFilter === 'boys' ? '👨 Boys Team' : '👥 All Staff'}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-300 font-medium mt-0.5">
-                  {displayedPulseStats.label} — Live design task sharing, artwork return, reworks & reasons, conversions, invoices & revenue.
-                </p>
-              </div>
-            </div>
 
-            {/* Quick Individual Voice Filter Dropdown & Reset */}
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
-              <select
-                value={selectedExecutive || 'all'}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedExecutive(val === 'all' ? null : val);
-                }}
-                className="text-xs font-bold bg-white/15 hover:bg-white/20 text-white border border-white/20 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-pink-400 cursor-pointer"
-              >
-                <option value="all" className="text-gray-900">👥 All Staff Performance</option>
-                <optgroup label="👩 Girls Team (Female Staff)" className="text-gray-900 font-bold">
-                  {uniqueMarketingStaffList.filter(s => s.isFemale).map(s => (
-                    <option key={s.name} value={s.name} className="text-gray-900">👩 {s.name} (Girls Team)</option>
-                  ))}
-                </optgroup>
-                <optgroup label="👨 Boys Team (Male Staff)" className="text-gray-900 font-bold">
-                  {uniqueMarketingStaffList.filter(s => !s.isFemale).map(s => (
-                    <option key={s.name} value={s.name} className="text-gray-900">👨 {s.name} (Boys Team)</option>
-                  ))}
-                </optgroup>
-              </select>
-
-              {dateFilter !== 'today' && (
-                <button
-                  onClick={() => setDateFilter('today')}
-                  className="px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1 shadow-xs"
-                >
-                  <Calendar size={13} /> View Today
-                </button>
-              )}
-
-              {selectedExecutive && (
-                <button
-                  onClick={() => setSelectedExecutive(null)}
-                  className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition-all border-none cursor-pointer"
-                >
-                  Clear Individual Filter ✕
-                </button>
-              )}
-            </div>
-          </div>
 
           {/* Key Metric Pulse Ribbon (Tasks Shared, Returned Designs, Reworks, Converted Orders, Invoices) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 text-left">
@@ -1269,7 +1207,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             <div
               onClick={() => {
                 setSelectedReworkExecutive({
-                  execName: selectedExecutive ? selectedExecutive : (staffTeamFilter === 'girls' ? 'Girls Team' : staffTeamFilter === 'boys' ? 'Boys Team' : 'All Marketing Staff'),
+                  execName: selectedExecutive ? selectedExecutive : (staffTeamFilter === 'girls' ? 'Blossom Team' : staffTeamFilter === 'boys' ? 'Hornet Team' : 'All Marketing Staff'),
                   reworks: (displayedPulseStats as any).reworkReasons || []
                 });
                 setShowReworkModal(true);
@@ -1334,9 +1272,9 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             </div>
           </div>
 
-          {/* Girls Team vs Boys Team Dedicated Performance Banners */}
+          {/* Blossom Team vs Hornet Team Dedicated Performance Banners */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-            {/* Girls Team Card */}
+            {/* Blossom Team Card */}
             <div
               onClick={() => {
                 setStaffTeamFilter(staffTeamFilter === 'girls' ? 'all' : 'girls');
@@ -1352,11 +1290,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-white flex items-center justify-center font-black shadow-md shadow-pink-500/20 text-xl">
-                    👩
+                    🌸
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-base font-black text-gray-900 tracking-tight">Girls Team</h4>
+                      <h4 className="text-base font-black text-gray-900 tracking-tight">Blossom</h4>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-100 text-pink-700 border border-pink-200">
                         {girlsTeamExecutives.length} Staff
                       </span>
@@ -1371,7 +1309,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   "px-3 py-1 rounded-xl text-xs font-bold transition-all",
                   staffTeamFilter === 'girls' ? "bg-pink-600 text-white font-black" : "bg-gray-100 text-gray-600 group-hover:bg-pink-100 group-hover:text-pink-700"
                 )}>
-                  {staffTeamFilter === 'girls' ? '✓ Filtering Girls Team' : 'Click to Filter'}
+                  {staffTeamFilter === 'girls' ? '✓ Filtering Blossom' : 'Click to Filter'}
                 </span>
               </div>
 
@@ -1399,7 +1337,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               </div>
             </div>
 
-            {/* Boys Team Card */}
+            {/* Hornet Team Card */}
             <div
               onClick={() => {
                 setStaffTeamFilter(staffTeamFilter === 'boys' ? 'all' : 'boys');
@@ -1415,11 +1353,11 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center font-black shadow-md shadow-indigo-500/20 text-xl">
-                    👨
+                    🐝
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-base font-black text-gray-900 tracking-tight">Boys Team</h4>
+                      <h4 className="text-base font-black text-gray-900 tracking-tight">Hornet</h4>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 border border-indigo-200">
                         {boysTeamExecutives.length} Staff
                       </span>
@@ -1434,7 +1372,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   "px-3 py-1 rounded-xl text-xs font-bold transition-all",
                   staffTeamFilter === 'boys' ? "bg-indigo-600 text-white font-black" : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-700"
                 )}>
-                  {staffTeamFilter === 'boys' ? '✓ Filtering Boys Team' : 'Click to Filter'}
+                  {staffTeamFilter === 'boys' ? '✓ Filtering Hornet' : 'Click to Filter'}
                 </span>
               </div>
 
@@ -1571,14 +1509,14 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-brand-primary/20 text-gray-800 cursor-pointer"
                   >
                     <option value="all">👤 Individual Voice Filter (All Staff)</option>
-                    <optgroup label="👩 Girls Team">
+                    <optgroup label="🌸 Blossom Team">
                       {uniqueMarketingStaffList.filter(s => s.isFemale).map(s => (
-                        <option key={s.name} value={s.name}>👩 {s.name} (Girls Team)</option>
+                        <option key={s.name} value={s.name}>🌸 {s.name} (Blossom Team)</option>
                       ))}
                     </optgroup>
-                    <optgroup label="👨 Boys Team">
+                    <optgroup label="🐝 Hornet Team">
                       {uniqueMarketingStaffList.filter(s => !s.isFemale).map(s => (
-                        <option key={s.name} value={s.name}>👨 {s.name} (Boys Team)</option>
+                        <option key={s.name} value={s.name}>🐝 {s.name} (Hornet Team)</option>
                       ))}
                     </optgroup>
                   </select>
@@ -1606,7 +1544,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                         : "text-pink-700 hover:bg-pink-50 bg-transparent"
                     )}
                   >
-                    👩 Girls Team ({girlsTeamExecutives.length})
+                    🌸 Blossom ({girlsTeamExecutives.length})
                   </button>
                   <button
                     onClick={() => setStaffTeamFilter('boys')}
@@ -1617,7 +1555,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                         : "text-indigo-700 hover:bg-indigo-50 bg-transparent"
                     )}
                   >
-                    👨 Boys Team ({boysTeamExecutives.length})
+                    🐝 Hornet ({boysTeamExecutives.length})
                   </button>
                 </div>
 
@@ -1696,7 +1634,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                                       ? "bg-pink-100 text-pink-700 border border-pink-200"
                                       : "bg-indigo-100 text-indigo-700 border border-indigo-200"
                                   )}>
-                                    {exec.isFemale ? '👩 Girls Team' : '👨 Boys Team'}
+                                    {exec.isFemale ? '🌸 Blossom' : '🐝 Hornet'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold mt-0.5">
@@ -1835,14 +1773,14 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   {selectedExecutive
                     ? `${selectedExecutive}'s Orders Breakdown`
                     : orderTeamFilter === 'girls'
-                    ? "Girls Team Marketing Orders Flow"
+                    ? "Blossom Team Marketing Orders Flow"
                     : orderTeamFilter === 'boys'
-                    ? "Boys Team Marketing Orders Flow"
+                    ? "Hornet Team Marketing Orders Flow"
                     : 'All Marketing Orders Flow'}
                   <span className="text-xs font-bold text-gray-400 lowercase">({drillDownOrders.length} orders)</span>
                 </h4>
                 <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  Filter by individual marketing executive, Girls/Boys team, Bulk orders (10+ pcs), Mixed orders (3+ categories), Gift items, and export to Excel.
+                  Filter by individual marketing executive, Blossom/Hornet team, Bulk orders (10+ pcs), Mixed orders (3+ categories), Gift items, and export to Excel.
                 </p>
               </div>
 
@@ -1874,14 +1812,14 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     className="w-full text-xs font-bold bg-white border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-brand-primary/20 text-gray-800"
                   >
                     <option value="all">👥 All Marketing Staff ({uniqueMarketingStaffList.length})</option>
-                    <optgroup label="👩 Girls Team (Female Staff)">
+                    <optgroup label="🌸 Blossom Team (Female Staff)">
                       {uniqueMarketingStaffList.filter(s => s.isFemale).map(s => (
-                        <option key={s.name} value={s.name}>👩 {s.name} (Girls Team)</option>
+                        <option key={s.name} value={s.name}>🌸 {s.name} (Blossom Team)</option>
                       ))}
                     </optgroup>
-                    <optgroup label="👨 Boys Team (Male Staff)">
+                    <optgroup label="🐝 Hornet Team (Male Staff)">
                       {uniqueMarketingStaffList.filter(s => !s.isFemale).map(s => (
-                        <option key={s.name} value={s.name}>👨 {s.name} (Boys Team)</option>
+                        <option key={s.name} value={s.name}>🐝 {s.name} (Hornet Team)</option>
                       ))}
                     </optgroup>
                   </select>
@@ -1896,8 +1834,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-gray-200">
                   {[
                     { id: 'all', label: '👥 All Teams' },
-                    { id: 'girls', label: '👩 Girls Team' },
-                    { id: 'boys', label: '👨 Boys Team' }
+                    { id: 'girls', label: '🌸 Blossom Team' },
+                    { id: 'boys', label: '🐝 Hornet Team' }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -2078,7 +2016,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                                 "px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider",
                                 isFemale ? "bg-pink-100 text-pink-700" : "bg-indigo-100 text-indigo-700"
                               )}>
-                                {isFemale ? '👩 Girls' : '👨 Boys'}
+                                {isFemale ? '🌸 Blossom' : '🐝 Hornet'}
                               </span>
                             </div>
                           </td>
@@ -2236,7 +2174,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                               "px-1.5 py-0.2 rounded text-[8.5px] font-black",
                               isFemale ? "bg-pink-100 text-pink-700" : "bg-indigo-100 text-indigo-700"
                             )}>
-                              {isFemale ? '👩 Girls' : '👨 Boys'}
+                              {isFemale ? '🌸 Blossom' : '🐝 Hornet'}
                             </span>
                           </p>
                         </div>
