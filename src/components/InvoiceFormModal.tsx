@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { motion, AnimatePresence } from 'motion/react';
 import { Invoice } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { cn } from '../lib/utils';
 
 interface InvoiceFormModalProps {
     isOpen: boolean;
@@ -300,9 +301,9 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
 
         const invoiceItems = formData.items.map((item, idx) => {
             const itemSubtotal = item.unitPrice * item.quantity;
-            const itemDiscount = item.discountRate * item.quantity;
+            const itemDiscount = (itemSubtotal * (Number(item.discountRate) || 0)) / 100;
             const itemTaxable = Math.max(0, itemSubtotal - itemDiscount);
-            const itemTax = (itemTaxable * item.taxRate) / 100;
+            const itemTax = (itemTaxable * (Number(item.taxRate) || 0)) / 100;
 
             subtotal += itemSubtotal;
             discountTotal += itemDiscount;
@@ -637,7 +638,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                         <div className="space-y-1.5">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">GST / Tax (%)</label>
                                                             <input
@@ -648,17 +649,41 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                             />
                                                         </div>
                                                         <div className="space-y-1.5">
-                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Discount per item (₹)</label>
-                                                            <input
-                                                                type="number"
-                                                                value={item.discountRate}
-                                                                onChange={(e) => handleItemFieldChange(idx, 'discountRate', Number(e.target.value))}
-                                                                className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
-                                                                placeholder="0"
-                                                            />
-                                                            {item.discountRate > 0 && item.quantity > 1 && (
+                                                            <div className="flex items-center justify-between pl-1">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Discount (%)</label>
+                                                                <div className="flex items-center gap-1">
+                                                                    {[0, 10, 20, 30].map(pct => (
+                                                                        <button
+                                                                            key={pct}
+                                                                            type="button"
+                                                                            onClick={() => handleItemFieldChange(idx, 'discountRate', pct)}
+                                                                            className={cn(
+                                                                                "px-2 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer border",
+                                                                                Number(item.discountRate) === pct
+                                                                                    ? "bg-brand-primary text-white border-brand-primary shadow-xs"
+                                                                                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                                                                            )}
+                                                                        >
+                                                                            {pct}%
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max="100"
+                                                                    value={item.discountRate}
+                                                                    onChange={(e) => handleItemFieldChange(idx, 'discountRate', Math.min(100, Math.max(0, Number(e.target.value))))}
+                                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 pr-8 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                                                    placeholder="0"
+                                                                />
+                                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">%</span>
+                                                            </div>
+                                                            {item.discountRate > 0 && (
                                                                 <p className="text-[10px] text-emerald-600 font-black pl-1">
-                                                                    Total discount: ₹{(item.discountRate * item.quantity).toLocaleString()} ({item.quantity} × ₹{item.discountRate})
+                                                                    Discount: ₹{Math.round(((item.unitPrice * item.quantity) * item.discountRate) / 100).toLocaleString()} ({item.discountRate}% off total)
                                                                 </p>
                                                             )}
                                                         </div>

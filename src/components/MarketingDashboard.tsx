@@ -53,7 +53,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [activeShareMenu, setActiveShareMenu] = useState<string | null>(null);
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
-  const { loadOrderAttachments } = useLeads();
+  const { loadOrderAttachments, addLead } = useLeads();
 
   useEffect(() => {
     if (selectedHubOrder) {
@@ -91,6 +91,71 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [newLeadForm, setNewLeadForm] = useState({
+    name: '',
+    number: '',
+    companyName: '',
+    gst: '',
+    leadType: 'Warm' as 'Hot' | 'Warm' | 'Cold',
+    entryDate: new Date().toISOString().split('T')[0],
+    forecastedValue: '' as string | number,
+    totalOrderValue: '' as string | number,
+    convertedValue: '' as string | number,
+    description: '',
+  });
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+
+  const handleSaveLead = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newLeadForm.name.trim()) {
+      alert("Please enter the client / lead name.");
+      return;
+    }
+    if (!newLeadForm.number.trim()) {
+      alert("Please enter the contact phone number.");
+      return;
+    }
+
+    setIsSubmittingLead(true);
+    try {
+      await addLead({
+        name: newLeadForm.name.trim(),
+        number: newLeadForm.number.trim(),
+        companyName: newLeadForm.companyName.trim(),
+        gst: newLeadForm.gst.trim(),
+        leadType: newLeadForm.leadType,
+        entryDate: newLeadForm.entryDate || new Date().toISOString().split('T')[0],
+        forecastedValue: Number(newLeadForm.forecastedValue) || 0,
+        totalOrderValue: Number(newLeadForm.totalOrderValue) || 0,
+        convertedValue: Number(newLeadForm.convertedValue) || 0,
+        description: newLeadForm.description.trim(),
+        status: 'Active',
+        createdBy: user?.id || (user as any)?.uid || 'marketing',
+        createdByName: user?.name || 'Marketing Team',
+      });
+
+      showActionToast("✓ Lead registered and saved successfully!");
+      setIsLeadModalOpen(false);
+      setNewLeadForm({
+        name: '',
+        number: '',
+        companyName: '',
+        gst: '',
+        leadType: 'Warm',
+        entryDate: new Date().toISOString().split('T')[0],
+        forecastedValue: '',
+        totalOrderValue: '',
+        convertedValue: '',
+        description: '',
+      });
+    } catch (err: any) {
+      console.error("Failed to save lead:", err);
+      alert("Failed to save lead: " + (err?.message || "Please check details."));
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
   const [isRaiseTaskModalOpen, setIsRaiseTaskModalOpen] = useState(false);
   const [convertingTask, setConvertingTask] = useState<Order | null>(null);
 
@@ -3235,6 +3300,202 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                 <RefreshCw size={13} /> Send to Design Rework
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Create Lead Modal ── */}
+      {isLeadModalOpen && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-brand-primary to-indigo-900 px-6 py-5 flex items-center justify-between text-white flex-shrink-0">
+              <div>
+                <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Marketing Registration</p>
+                <h3 className="text-lg font-black mt-0.5 flex items-center gap-2">
+                  <User size={18} className="text-purple-300" />
+                  <span>Create & Save New Lead</span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLeadModalOpen(false)}
+                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border-none cursor-pointer text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveLead} className="p-6 space-y-4 text-left overflow-y-auto flex-1 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Client / Lead Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. John Doe / Rahul"
+                    value={newLeadForm.name}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, name: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Phone Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={newLeadForm.number}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, number: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Company / Organization
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Tech Corp / ABC Ltd"
+                    value={newLeadForm.companyName}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, companyName: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    GST Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 33AAAAA0000A1Z5"
+                    value={newLeadForm.gst}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, gst: e.target.value.toUpperCase() })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none uppercase transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Lead Priority / Category
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['Hot', 'Warm', 'Cold'] as const).map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setNewLeadForm({ ...newLeadForm, leadType: type })}
+                        className={cn(
+                          "py-2 rounded-xl text-xs font-black transition-all border cursor-pointer",
+                          newLeadForm.leadType === type
+                            ? type === 'Hot'
+                              ? "bg-red-500 text-white border-red-500 shadow-xs"
+                              : type === 'Warm'
+                              ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                              : "bg-blue-500 text-white border-blue-500 shadow-xs"
+                            : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                        )}
+                      >
+                        {type === 'Hot' ? '🔥 Hot' : type === 'Warm' ? '⚡ Warm' : '❄️ Cold'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Entry Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newLeadForm.entryDate}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, entryDate: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Estimated / Forecast Value (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={newLeadForm.forecastedValue}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, forecastedValue: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                    Total Order Value (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={newLeadForm.totalOrderValue}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, totalOrderValue: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">
+                  Notes / Requirement Scope
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. 500 pcs polo t-shirts with logo embroidery, required by next month..."
+                  value={newLeadForm.description}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, description: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-800 focus:bg-white focus:border-brand-primary outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsLeadModalOpen(false)}
+                  disabled={isSubmittingLead}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 text-xs font-black rounded-xl hover:bg-gray-50 transition-all cursor-pointer bg-transparent uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingLead}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-black rounded-xl border-none cursor-pointer transition-all shadow-md shadow-brand-primary/25 uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmittingLead ? (
+                    <span>Saving Lead...</span>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      <span>Save Lead</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>,
         document.body

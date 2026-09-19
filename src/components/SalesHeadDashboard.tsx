@@ -81,10 +81,15 @@ const isRaisedTaskOrder = (o?: Order | null) => {
   return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
 };
 
-// Helper: Task converted to confirmed order
+// Helper: Order converted (from task, sent to accounts/production, advance paid, or finalized)
 const isConvertedOrder = (o?: Order | null) => {
   if (!o) return false;
-  return Boolean(o.isConvertedFromTask || o.details?.isConvertedFromTask);
+  if (o.isConvertedFromTask || o.details?.isConvertedFromTask || (o as any).isConverted || (o.details && (o.details as any).isConverted)) return true;
+  if (isSentToAccounts(o)) return true;
+  const s = String(o.status || '').toLowerCase();
+  if (['accounts', 'production', 'delivered', 'completed', 'dispatched', 'design'].includes(s)) return true;
+  if (getAdvanceAmount(o) > 0) return true;
+  return false;
 };
 
 // Helper: Rework / Revision order check
@@ -374,6 +379,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       reworksCount: number;
       reworkReasons: { orderId: string; orderNumber: string; client: string; designer: string; reason: string; date: number }[];
       ordersConverted: number;
+      convertedValue: number;
       totalOrders: number;
       totalQuantity: number;
       conversionRate: number;
@@ -401,6 +407,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: 0,
         reworkReasons: [],
         ordersConverted: 0,
+        convertedValue: 0,
         totalOrders: 0,
         totalQuantity: 0,
         conversionRate: 0,
@@ -459,9 +466,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         }
       }
 
-      // Orders Converted from Tasks
+      // Orders Converted from Tasks / In Pipeline
       if (isConvertedOrder(o)) {
         item.ordersConverted += 1;
+        item.convertedValue += getOrderAmount(o);
       }
 
       if (isBulkOrder(o)) item.bulkOrders += 1;
@@ -502,9 +510,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
     // Compute conversion rate for each executive
     map.forEach(item => {
-      item.conversionRate = item.tasksShared > 0
-        ? Math.min(100, Math.round((item.ordersConverted / item.tasksShared) * 100))
-        : (item.totalOrders > 0 ? 100 : 0);
+      const denom = item.totalOrders > 0 ? item.totalOrders : (item.tasksShared > 0 ? item.tasksShared : 0);
+      item.conversionRate = denom > 0
+        ? Math.min(100, Math.round((item.ordersConverted / denom) * 100))
+        : 0;
     });
 
     return Array.from(map.values()).sort((a, b) => b.totalOrders - a.totalOrders || b.totalOrderValue - a.totalOrderValue);
@@ -527,6 +536,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         designsReturned: acc.designsReturned + curr.designsReturned,
         reworksCount: acc.reworksCount + curr.reworksCount,
         ordersConverted: acc.ordersConverted + curr.ordersConverted,
+        convertedValue: acc.convertedValue + curr.convertedValue,
         totalOrders: acc.totalOrders + curr.totalOrders,
         totalQuantity: acc.totalQuantity + curr.totalQuantity,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
@@ -546,6 +556,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         designsReturned: 0,
         reworksCount: 0,
         ordersConverted: 0,
+        convertedValue: 0,
         totalOrders: 0,
         totalQuantity: 0,
         bulkOrders: 0,
@@ -560,9 +571,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         totalInvoicedAmount: 0
       }
     );
-    const conversionRate = acc.tasksShared > 0
-      ? Math.min(100, Math.round((acc.ordersConverted / acc.tasksShared) * 100))
-      : (acc.totalOrders > 0 ? 100 : 0);
+    const denom = acc.totalOrders > 0 ? acc.totalOrders : (acc.tasksShared > 0 ? acc.tasksShared : 0);
+    const conversionRate = denom > 0
+      ? Math.min(100, Math.round((acc.ordersConverted / denom) * 100))
+      : 0;
     return { ...acc, conversionRate };
   }, [girlsTeamExecutives]);
 
@@ -574,6 +586,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         designsReturned: acc.designsReturned + curr.designsReturned,
         reworksCount: acc.reworksCount + curr.reworksCount,
         ordersConverted: acc.ordersConverted + curr.ordersConverted,
+        convertedValue: acc.convertedValue + curr.convertedValue,
         totalOrders: acc.totalOrders + curr.totalOrders,
         totalQuantity: acc.totalQuantity + curr.totalQuantity,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
@@ -593,6 +606,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         designsReturned: 0,
         reworksCount: 0,
         ordersConverted: 0,
+        convertedValue: 0,
         totalOrders: 0,
         totalQuantity: 0,
         bulkOrders: 0,
@@ -607,9 +621,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         totalInvoicedAmount: 0
       }
     );
-    const conversionRate = acc.tasksShared > 0
-      ? Math.min(100, Math.round((acc.ordersConverted / acc.tasksShared) * 100))
-      : (acc.totalOrders > 0 ? 100 : 0);
+    const denom = acc.totalOrders > 0 ? acc.totalOrders : (acc.tasksShared > 0 ? acc.tasksShared : 0);
+    const conversionRate = denom > 0
+      ? Math.min(100, Math.round((acc.ordersConverted / denom) * 100))
+      : 0;
     return { ...acc, conversionRate };
   }, [boysTeamExecutives]);
 
@@ -621,6 +636,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         designsReturned: acc.designsReturned + curr.designsReturned,
         reworksCount: acc.reworksCount + curr.reworksCount,
         ordersConverted: acc.ordersConverted + curr.ordersConverted,
+        convertedValue: acc.convertedValue + curr.convertedValue,
         totalOrders: acc.totalOrders + curr.totalOrders,
         totalQuantity: acc.totalQuantity + curr.totalQuantity,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
@@ -639,6 +655,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         designsReturned: 0,
         reworksCount: 0,
         ordersConverted: 0,
+        convertedValue: 0,
         totalOrders: 0,
         totalQuantity: 0,
         bulkOrders: 0,
@@ -653,9 +670,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         totalInvoicedAmount: 0
       }
     );
-    const conversionRate = acc.tasksShared > 0
-      ? Math.min(100, Math.round((acc.ordersConverted / acc.tasksShared) * 100))
-      : (acc.totalOrders > 0 ? 100 : 0);
+    const denom = acc.totalOrders > 0 ? acc.totalOrders : (acc.tasksShared > 0 ? acc.tasksShared : 0);
+    const conversionRate = denom > 0
+      ? Math.min(100, Math.round((acc.ordersConverted / denom) * 100))
+      : 0;
     return { ...acc, conversionRate };
   }, [executiveMetrics]);
 
@@ -890,6 +908,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: activeExecutiveStats.reworksCount || 0,
         reworkReasons: activeExecutiveStats.reworkReasons || [],
         ordersConverted: activeExecutiveStats.ordersConverted || 0,
+        convertedValue: activeExecutiveStats.convertedValue || 0,
         totalOrders: activeExecutiveStats.totalOrders || 0,
         totalQuantity: activeExecutiveStats.totalQuantity || 0,
         conversionRate: activeExecutiveStats.conversionRate || 0,
@@ -914,6 +933,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: girlsTeamTotals.reworksCount || 0,
         reworkReasons: girlsTeamExecutives.flatMap(e => e.reworkReasons || []),
         ordersConverted: girlsTeamTotals.ordersConverted || 0,
+        convertedValue: girlsTeamTotals.convertedValue || 0,
         totalOrders: girlsTeamTotals.totalOrders || 0,
         totalQuantity: girlsTeamTotals.totalQuantity || 0,
         conversionRate: girlsTeamTotals.conversionRate || 0,
@@ -938,6 +958,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: boysTeamTotals.reworksCount || 0,
         reworkReasons: boysTeamExecutives.flatMap(e => e.reworkReasons || []),
         ordersConverted: boysTeamTotals.ordersConverted || 0,
+        convertedValue: boysTeamTotals.convertedValue || 0,
         totalOrders: boysTeamTotals.totalOrders || 0,
         totalQuantity: boysTeamTotals.totalQuantity || 0,
         conversionRate: boysTeamTotals.conversionRate || 0,
@@ -961,6 +982,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       reworksCount: teamTotals.reworksCount || 0,
       reworkReasons: allFilteredReworks || [],
       ordersConverted: teamTotals.ordersConverted || 0,
+      convertedValue: teamTotals.convertedValue || 0,
       totalOrders: teamTotals.totalOrders || 0,
       totalQuantity: teamTotals.totalQuantity || 0,
       conversionRate: teamTotals.conversionRate || 0,
@@ -975,7 +997,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     };
   }, [activeExecutiveStats, orderTeamFilter, staffTeamFilter, girlsTeamTotals, boysTeamTotals, teamTotals, girlsTeamExecutives, boysTeamExecutives, executiveMetrics, allFilteredReworks]);
 
-  // Export currently filtered orders to Excel (.xlsx)
+  // 1. Export currently filtered orders to Excel (.xlsx)
   const handleExportOrdersToExcel = () => {
     if (drillDownOrders.length === 0) {
       alert("No orders available to export with the currently selected filters.");
@@ -1025,7 +1047,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         'Order Status': String(o.status || '').replace('_', ' ').toUpperCase(),
         'Order Value (₹)': amount,
         'Advance Paid (₹)': advance,
-        'Balance Due (₹)': balance,
+        'Balance to Collect (₹)': balance,
         'Accounts Dispatched': isSentToAccounts(o) ? 'YES' : 'NO',
         'Design Studio Status': isSentToDesigns(o) ? (isReceivedDesignsFile(o) ? 'Artwork Ready' : 'In Design') : 'Pending',
         'Assigned Designer': o.assignedDesigner && o.assignedDesigner !== 'Unassigned' ? o.assignedDesigner : (o.claimedByName || 'Unassigned'),
@@ -1055,7 +1077,83 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     XLSX.writeFile(workbook, fileName);
   };
 
-  // Export Executive Performance summary to Excel (.xlsx)
+  // 2. Export Team-wise (Team Voice) Summary Report to Excel (.xlsx)
+  const handleExportTeamVoiceToExcel = () => {
+    const teamsData = [
+      {
+        'Staff Team': '🌸 Blossom Team (Female Staff)',
+        'Staff Count': girlsTeamExecutives.length,
+        'Staff Members': girlsTeamExecutives.map(e => e.name).join(', '),
+        'Total Sales Deals': girlsTeamTotals.totalOrders,
+        'Total Quantity (pcs)': girlsTeamTotals.totalQuantity,
+        'Converted Deals': girlsTeamTotals.ordersConverted,
+        'Conversion Rate (%)': `${girlsTeamTotals.conversionRate}%`,
+        'Converted Value (₹)': girlsTeamTotals.convertedValue,
+        'Total Order Value (₹)': girlsTeamTotals.totalOrderValue,
+        'Advance Collected (₹)': girlsTeamTotals.totalAdvance,
+        'Balance to Collect (₹)': Math.max(0, girlsTeamTotals.totalOrderValue - girlsTeamTotals.totalAdvance),
+        'Tasks Shared (Raised)': girlsTeamTotals.tasksShared,
+        'Designs Returned (Ready)': girlsTeamTotals.designsReturned,
+        'Reworks Count': girlsTeamTotals.reworksCount,
+        'Bulk Orders (10+ Qty)': girlsTeamTotals.bulkOrders,
+        'Mixed Orders (3+ Cats)': girlsTeamTotals.mixedOrders,
+        'Gift / Other Orders': girlsTeamTotals.giftOrders,
+        'Invoices Shared': girlsTeamTotals.invoicesCount,
+        'Invoiced Amount (₹)': girlsTeamTotals.totalInvoicedAmount
+      },
+      {
+        'Staff Team': '🐝 Hornet Team (Male Staff)',
+        'Staff Count': boysTeamExecutives.length,
+        'Staff Members': boysTeamExecutives.map(e => e.name).join(', '),
+        'Total Sales Deals': boysTeamTotals.totalOrders,
+        'Total Quantity (pcs)': boysTeamTotals.totalQuantity,
+        'Converted Deals': boysTeamTotals.ordersConverted,
+        'Conversion Rate (%)': `${boysTeamTotals.conversionRate}%`,
+        'Converted Value (₹)': boysTeamTotals.convertedValue,
+        'Total Order Value (₹)': boysTeamTotals.totalOrderValue,
+        'Advance Collected (₹)': boysTeamTotals.totalAdvance,
+        'Balance to Collect (₹)': Math.max(0, boysTeamTotals.totalOrderValue - boysTeamTotals.totalAdvance),
+        'Tasks Shared (Raised)': boysTeamTotals.tasksShared,
+        'Designs Returned (Ready)': boysTeamTotals.designsReturned,
+        'Reworks Count': boysTeamTotals.reworksCount,
+        'Bulk Orders (10+ Qty)': boysTeamTotals.bulkOrders,
+        'Mixed Orders (3+ Cats)': boysTeamTotals.mixedOrders,
+        'Gift / Other Orders': boysTeamTotals.giftOrders,
+        'Invoices Shared': boysTeamTotals.invoicesCount,
+        'Invoiced Amount (₹)': boysTeamTotals.totalInvoicedAmount
+      },
+      {
+        'Staff Team': '👥 All Marketing Teams Combined',
+        'Staff Count': executiveMetrics.length,
+        'Staff Members': executiveMetrics.map(e => e.name).join(', '),
+        'Total Sales Deals': teamTotals.totalOrders,
+        'Total Quantity (pcs)': teamTotals.totalQuantity,
+        'Converted Deals': teamTotals.ordersConverted,
+        'Conversion Rate (%)': `${teamTotals.conversionRate}%`,
+        'Converted Value (₹)': teamTotals.convertedValue,
+        'Total Order Value (₹)': teamTotals.totalOrderValue,
+        'Advance Collected (₹)': teamTotals.totalAdvance,
+        'Balance to Collect (₹)': Math.max(0, teamTotals.totalOrderValue - teamTotals.totalAdvance),
+        'Tasks Shared (Raised)': teamTotals.tasksShared,
+        'Designs Returned (Ready)': teamTotals.designsReturned,
+        'Reworks Count': teamTotals.reworksCount,
+        'Bulk Orders (10+ Qty)': teamTotals.bulkOrders,
+        'Mixed Orders (3+ Cats)': teamTotals.mixedOrders,
+        'Gift / Other Orders': teamTotals.giftOrders,
+        'Invoices Shared': teamTotals.invoicesCount,
+        'Invoiced Amount (₹)': teamTotals.totalInvoicedAmount
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(teamsData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Team_Voice_Report');
+    worksheet['!cols'] = Array(Object.keys(teamsData[0]).length).fill({ wch: 24 });
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `Marketing_Team_Voice_Report_${dateStr}.xlsx`);
+  };
+
+  // 3. Export Individual Staff (Indijul) Performance Report to Excel (.xlsx)
   const handleExportExecutiveToExcel = () => {
     if (displayedExecutives.length === 0) {
       alert("No executive performance data to export.");
@@ -1070,20 +1168,23 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         'Rank': idx + 1,
         'Executive Name': e.name,
         'Team': e.teamName,
+        'Total Sales Deals': e.totalOrders,
+        'Total Quantity (pcs)': e.totalQuantity,
+        'Converted Deals': e.ordersConverted,
+        'Conversion Rate (%)': `${e.conversionRate}%`,
+        'Converted Value (₹)': e.convertedValue,
+        'Total Order Value (₹)': e.totalOrderValue,
+        'Advance Collected (₹)': e.totalAdvance,
+        'Balance to Collect (₹)': balanceDue,
         'Tasks Shared (Raised)': e.tasksShared,
         'Designs Returned (Ready)': e.designsReturned,
         'Reworks Count': e.reworksCount,
         'Rework Reasons': reworkSummary || '-',
-        'Tasks Converted to Orders': e.ordersConverted,
-        'Total Orders Created': e.totalOrders,
         'Bulk Orders (10+ Qty)': e.bulkOrders,
         'Mixed Orders (3+ Cats)': e.mixedOrders,
         'Gift / Other Orders': e.giftOrders,
         'Sent to Accounts': e.sentToAccounts,
         'Sent to Designs': e.sentToDesigns,
-        'Total Order Value (₹)': e.totalOrderValue,
-        'Advance Collected (₹)': e.totalAdvance,
-        'Balance Due (₹)': balanceDue,
         'Invoices Shared': e.invoicesCount,
         'Total Invoiced Amount (₹)': e.totalInvoicedAmount
       };
@@ -1091,16 +1192,111 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
     const worksheet = XLSX.utils.json_to_sheet(exportRows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Staff_Performance');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Individual_Staff_Report');
 
     const maxCols = Object.keys(exportRows[0] || {}).length;
     worksheet['!cols'] = Array(maxCols).fill({ wch: 22 });
 
     const teamPrefix = staffTeamFilter !== 'all' ? `${staffTeamFilter.toUpperCase()}_TEAM_` : '';
+    const staffPrefix = selectedExecutive ? `${selectedExecutive}_` : '';
     const dateStr = new Date().toISOString().split('T')[0];
-    const fileName = `Marketing_Staff_Performance_${teamPrefix}${dateStr}.xlsx`;
+    const fileName = `Marketing_Individual_Staff_Report_${staffPrefix}${teamPrefix}${dateStr}.xlsx`;
 
     XLSX.writeFile(workbook, fileName);
+  };
+
+  // 4. Export Master Multi-Sheet Complete Report to Excel (.xlsx)
+  const handleExportMasterReportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+
+    // Sheet 1: Team Voice
+    const teamVoiceRows = [
+      {
+        'Team Name': '🌸 Blossom Team (Female Staff)',
+        'Staff Count': girlsTeamExecutives.length,
+        'Total Sales Deals': girlsTeamTotals.totalOrders,
+        'Total Qty (pcs)': girlsTeamTotals.totalQuantity,
+        'Converted Deals': girlsTeamTotals.ordersConverted,
+        'Conversion Rate (%)': `${girlsTeamTotals.conversionRate}%`,
+        'Converted Value (₹)': girlsTeamTotals.convertedValue,
+        'Total Order Value (₹)': girlsTeamTotals.totalOrderValue,
+        'Advance Collected (₹)': girlsTeamTotals.totalAdvance,
+        'Balance to Collect (₹)': Math.max(0, girlsTeamTotals.totalOrderValue - girlsTeamTotals.totalAdvance),
+        'Invoiced (₹)': girlsTeamTotals.totalInvoicedAmount
+      },
+      {
+        'Team Name': '🐝 Hornet Team (Male Staff)',
+        'Staff Count': boysTeamExecutives.length,
+        'Total Sales Deals': boysTeamTotals.totalOrders,
+        'Total Qty (pcs)': boysTeamTotals.totalQuantity,
+        'Converted Deals': boysTeamTotals.ordersConverted,
+        'Conversion Rate (%)': `${boysTeamTotals.conversionRate}%`,
+        'Converted Value (₹)': boysTeamTotals.convertedValue,
+        'Total Order Value (₹)': boysTeamTotals.totalOrderValue,
+        'Advance Collected (₹)': boysTeamTotals.totalAdvance,
+        'Balance to Collect (₹)': Math.max(0, boysTeamTotals.totalOrderValue - boysTeamTotals.totalAdvance),
+        'Invoiced (₹)': boysTeamTotals.totalInvoicedAmount
+      },
+      {
+        'Team Name': '👥 All Teams Combined',
+        'Staff Count': executiveMetrics.length,
+        'Total Sales Deals': teamTotals.totalOrders,
+        'Total Qty (pcs)': teamTotals.totalQuantity,
+        'Converted Deals': teamTotals.ordersConverted,
+        'Conversion Rate (%)': `${teamTotals.conversionRate}%`,
+        'Converted Value (₹)': teamTotals.convertedValue,
+        'Total Order Value (₹)': teamTotals.totalOrderValue,
+        'Advance Collected (₹)': teamTotals.totalAdvance,
+        'Balance to Collect (₹)': Math.max(0, teamTotals.totalOrderValue - teamTotals.totalAdvance),
+        'Invoiced (₹)': teamTotals.totalInvoicedAmount
+      }
+    ];
+    const ws1 = XLSX.utils.json_to_sheet(teamVoiceRows);
+    ws1['!cols'] = Array(Object.keys(teamVoiceRows[0]).length).fill({ wch: 22 });
+    XLSX.utils.book_append_sheet(workbook, ws1, 'Team_Voice_Summary');
+
+    // Sheet 2: Individual Staff
+    const staffRows = executiveMetrics.map((e, idx) => ({
+      'Rank': idx + 1,
+      'Executive Name': e.name,
+      'Team': e.teamName,
+      'Total Sales Deals': e.totalOrders,
+      'Total Qty (pcs)': e.totalQuantity,
+      'Converted Deals': e.ordersConverted,
+      'Conversion Rate (%)': `${e.conversionRate}%`,
+      'Converted Value (₹)': e.convertedValue,
+      'Total Order Value (₹)': e.totalOrderValue,
+      'Advance Collected (₹)': e.totalAdvance,
+      'Balance to Collect (₹)': Math.max(0, e.totalOrderValue - e.totalAdvance),
+      'Invoiced (₹)': e.totalInvoicedAmount
+    }));
+    const ws2 = XLSX.utils.json_to_sheet(staffRows);
+    ws2['!cols'] = Array(Object.keys(staffRows[0] || {}).length).fill({ wch: 20 });
+    XLSX.utils.book_append_sheet(workbook, ws2, 'Individual_Staff_Performance');
+
+    // Sheet 3: Filtered Orders
+    if (drillDownOrders.length > 0) {
+      const orderRows = drillDownOrders.map(o => ({
+        'Order ID': `#${o.orderNumber || (o.id ? String(o.id).slice(-8) : 'N/A')}`,
+        'Date': o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '-',
+        'Staff': (o.createdByName || o.createdBy || 'Staff').trim(),
+        'Customer': o.customerInfo?.name || (o as any).clientName || '-',
+        'Phone': o.customerInfo?.phone || o.phone || '-',
+        'Category': o.category || '-',
+        'Quantity': Number(o.quantity || (Array.isArray(o.sizeBreakdown) ? o.sizeBreakdown.reduce((s, i) => s + (Number(i?.quantity) || 0), 0) : 0) || 1),
+        'Status': String(o.status || '').toUpperCase(),
+        'Order Value (₹)': getOrderAmount(o),
+        'Advance Paid (₹)': getAdvanceAmount(o),
+        'Balance to Collect (₹)': Math.max(0, getOrderAmount(o) - getAdvanceAmount(o)),
+        'Converted': isConvertedOrder(o) ? 'YES' : 'NO'
+      }));
+      const ws3 = XLSX.utils.json_to_sheet(orderRows);
+      ws3['!cols'] = Array(Object.keys(orderRows[0] || {}).length).fill({ wch: 18 });
+      XLSX.utils.book_append_sheet(workbook, ws3, 'Filtered_Orders');
+    }
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `Sales_Head_Master_Report_${dateStr}.xlsx`);
   };
 
   return (
@@ -1178,19 +1374,35 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           </button>
 
           <button
-            onClick={handleExportOrdersToExcel}
-            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 border-none cursor-pointer"
-            title="Export currently filtered orders to Excel (.xlsx)"
+            onClick={handleExportTeamVoiceToExcel}
+            className="px-3.5 py-2 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            title="Download Team-wise (Blossom vs Hornet vs Combined) Excel report"
           >
-            <FileSpreadsheet size={14} /> Export Orders (.xlsx)
+            <FileSpreadsheet size={14} /> 🌸🐝 Team Voice (.xlsx)
           </button>
 
           <button
             onClick={handleExportExecutiveToExcel}
-            className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 border-none cursor-pointer"
-            title="Export executive performance report to Excel (.xlsx)"
+            className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            title="Download Individual Staff (8 marketing executives) Excel report"
           >
-            <Download size={14} /> Export Staff (.xlsx)
+            <Download size={14} /> 👤 Individual Staff (.xlsx)
+          </button>
+
+          <button
+            onClick={handleExportOrdersToExcel}
+            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 border-none cursor-pointer"
+            title="Export currently filtered orders to Excel (.xlsx)"
+          >
+            <FileSpreadsheet size={14} /> 📋 Orders (.xlsx)
+          </button>
+
+          <button
+            onClick={handleExportMasterReportToExcel}
+            className="px-3.5 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-brand-primary/20 flex items-center gap-1.5 border-none cursor-pointer"
+            title="Download Complete Master Multi-Sheet Excel Report (.xlsx)"
+          >
+            <Download size={14} /> 📊 Master Report (.xlsx)
           </button>
         </div>
       </div>
@@ -1763,6 +1975,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     <th className="px-4 py-3.5 text-center">📄 Invoices</th>
                     <th className="px-4 py-3.5 text-right">Total Order Value</th>
                     <th className="px-4 py-3.5 text-right">Advance Collected</th>
+                    <th className="px-4 py-3.5 text-right">Balance to Collect</th>
                     <th className="px-5 py-3.5 text-center rounded-r-xl">Action</th>
                   </tr>
                 </thead>
@@ -1770,7 +1983,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                   {displayedExecutives.length > 0 ? (
                     displayedExecutives.map((exec, idx) => {
                       const isSelected = selectedExecutive === exec.name;
-                      const balanceDue = exec.totalOrderValue - exec.totalAdvance;
+                      const balanceDue = Math.max(0, exec.totalOrderValue - exec.totalAdvance);
                       return (
                         <tr
                           key={exec.name}
@@ -1849,9 +2062,14 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                           {/* Converted Orders */}
                           <td className="px-4 py-4 text-center">
                             {exec.ordersConverted > 0 ? (
-                              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-black">
-                                🛒 {exec.ordersConverted}
-                              </span>
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-black">
+                                  🛒 {exec.ordersConverted} ({exec.conversionRate}%)
+                                </span>
+                                <span className="text-[10px] font-bold text-purple-600">
+                                  ₹{exec.convertedValue.toLocaleString('en-IN')}
+                                </span>
+                              </div>
                             ) : (
                               <span className="text-gray-300 font-bold">-</span>
                             )}
@@ -1885,20 +2103,28 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                           {/* Total Order Value */}
                           <td className="px-4 py-4 text-right">
                             <div className="font-black text-gray-900 text-sm">
-                              ₹{exec.totalOrderValue.toLocaleString()}
+                              ₹{exec.totalOrderValue.toLocaleString('en-IN')}
                             </div>
-                            {balanceDue > 0 && (
-                              <span className="text-[10px] text-red-500 font-bold">
-                                Due: ₹{balanceDue.toLocaleString()}
-                              </span>
-                            )}
                           </td>
 
                           {/* Advance Collected */}
                           <td className="px-4 py-4 text-right">
                             <span className="font-black text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
-                              ₹{exec.totalAdvance.toLocaleString()}
+                              ₹{exec.totalAdvance.toLocaleString('en-IN')}
                             </span>
+                          </td>
+
+                          {/* Balance to Collect */}
+                          <td className="px-4 py-4 text-right">
+                            {balanceDue > 0 ? (
+                              <span className="font-black text-rose-700 text-xs bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">
+                                ₹{balanceDue.toLocaleString('en-IN')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                                ✓ Settled
+                              </span>
+                            )}
                           </td>
 
                           {/* Action */}
@@ -1920,7 +2146,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     })
                   ) : (
                     <tr>
-                      <td colSpan={11} className="text-center py-12 text-gray-400 font-medium">
+                      <td colSpan={12} className="text-center py-12 text-gray-400 font-medium">
                         No marketing executives found matching this period or search.
                       </td>
                     </tr>
@@ -1956,13 +2182,35 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </p>
               </div>
 
-              {/* Export to Excel Button */}
-              <div className="flex items-center gap-2">
+              {/* Export to Excel Buttons Group */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleExportTeamVoiceToExcel}
+                  className="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-xl text-xs font-black transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  title="Download Team-wise (Blossom vs Hornet vs Combined) Excel report"
+                >
+                  <FileSpreadsheet size={14} /> 🌸🐝 Team Voice (.xlsx)
+                </button>
+                <button
+                  onClick={handleExportExecutiveToExcel}
+                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  title="Download Individual Staff (8 marketing executives) Excel report"
+                >
+                  <Download size={14} /> 👤 Individual Staff (.xlsx)
+                </button>
                 <button
                   onClick={handleExportOrdersToExcel}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2 border-none cursor-pointer"
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center gap-1.5 border-none cursor-pointer"
+                  title="Download Filtered Orders Excel report"
                 >
-                  <FileSpreadsheet size={15} /> 📥 Export to Excel (.xlsx) ({drillDownOrders.length})
+                  <FileSpreadsheet size={14} /> 📋 Orders (.xlsx) ({drillDownOrders.length})
+                </button>
+                <button
+                  onClick={handleExportMasterReportToExcel}
+                  className="px-3.5 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-brand-primary/20 flex items-center gap-1.5 border-none cursor-pointer"
+                  title="Download Complete Master Multi-Sheet Excel Report (.xlsx)"
+                >
+                  <Download size={14} /> 📊 Master Report (.xlsx)
                 </button>
               </div>
             </div>
@@ -2002,24 +2250,27 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
                 <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-pink-200/60">
                   {/* Total Sales */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-pink-100 shadow-xs">
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-pink-100 shadow-xs flex flex-col justify-between">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Total Sales</span>
-                    <span className="text-sm font-black text-gray-900 block">{girlsTeamTotals.totalOrders}</span>
-                    <span className="text-[9px] font-bold text-pink-600">({girlsTeamTotals.totalQuantity} pcs)</span>
+                    <span className="text-sm font-black text-gray-900 block my-0.5">{girlsTeamTotals.totalOrders} Deals</span>
+                    <span className="text-[10px] font-bold text-pink-600">({girlsTeamTotals.totalQuantity} pcs)</span>
                   </div>
 
                   {/* Total Conversion */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-pink-100 shadow-xs">
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-pink-100 shadow-xs flex flex-col justify-between">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Conversion</span>
-                    <span className="text-sm font-black text-purple-700 block">{girlsTeamTotals.ordersConverted}</span>
-                    <span className="text-[9px] font-bold text-purple-600">({girlsTeamTotals.conversionRate}%)</span>
+                    <span className="text-sm font-black text-purple-700 block my-0.5">{girlsTeamTotals.ordersConverted} ({girlsTeamTotals.conversionRate}%)</span>
+                    <span className="text-[10px] font-bold text-purple-600 truncate">₹{girlsTeamTotals.convertedValue.toLocaleString('en-IN')}</span>
                   </div>
 
-                  {/* Total Revenue */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-pink-100 shadow-xs">
-                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Revenue</span>
-                    <span className="text-xs font-black text-emerald-700 block truncate">₹{girlsTeamTotals.totalOrderValue.toLocaleString()}</span>
-                    <span className="text-[9px] font-bold text-emerald-600">Adv: ₹{girlsTeamTotals.totalAdvance.toLocaleString()}</span>
+                  {/* Total Revenue & Collections */}
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-pink-100 shadow-xs flex flex-col justify-between">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Value</span>
+                    <span className="text-xs font-black text-emerald-700 block truncate my-0.5">₹{girlsTeamTotals.totalOrderValue.toLocaleString('en-IN')}</span>
+                    <div className="flex items-center justify-between text-[8px] font-bold mt-0.5 pt-0.5 border-t border-gray-100">
+                      <span className="text-emerald-600">Adv: ₹{girlsTeamTotals.totalAdvance.toLocaleString('en-IN')}</span>
+                      <span className="text-rose-600 font-black">Bal: ₹{Math.max(0, girlsTeamTotals.totalOrderValue - girlsTeamTotals.totalAdvance).toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2057,24 +2308,27 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
                 <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-indigo-200/60">
                   {/* Total Sales */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-indigo-100 shadow-xs">
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100 shadow-xs flex flex-col justify-between">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Total Sales</span>
-                    <span className="text-sm font-black text-gray-900 block">{boysTeamTotals.totalOrders}</span>
-                    <span className="text-[9px] font-bold text-indigo-600">({boysTeamTotals.totalQuantity} pcs)</span>
+                    <span className="text-sm font-black text-gray-900 block my-0.5">{boysTeamTotals.totalOrders} Deals</span>
+                    <span className="text-[10px] font-bold text-indigo-600">({boysTeamTotals.totalQuantity} pcs)</span>
                   </div>
 
                   {/* Total Conversion */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-indigo-100 shadow-xs">
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100 shadow-xs flex flex-col justify-between">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Conversion</span>
-                    <span className="text-sm font-black text-purple-700 block">{boysTeamTotals.ordersConverted}</span>
-                    <span className="text-[9px] font-bold text-purple-600">({boysTeamTotals.conversionRate}%)</span>
+                    <span className="text-sm font-black text-purple-700 block my-0.5">{boysTeamTotals.ordersConverted} ({boysTeamTotals.conversionRate}%)</span>
+                    <span className="text-[10px] font-bold text-purple-600 truncate">₹{boysTeamTotals.convertedValue.toLocaleString('en-IN')}</span>
                   </div>
 
-                  {/* Total Revenue */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-indigo-100 shadow-xs">
-                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Revenue</span>
-                    <span className="text-xs font-black text-emerald-700 block truncate">₹{boysTeamTotals.totalOrderValue.toLocaleString()}</span>
-                    <span className="text-[9px] font-bold text-emerald-600">Adv: ₹{boysTeamTotals.totalAdvance.toLocaleString()}</span>
+                  {/* Total Revenue & Collections */}
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-indigo-100 shadow-xs flex flex-col justify-between">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Value</span>
+                    <span className="text-xs font-black text-emerald-700 block truncate my-0.5">₹{boysTeamTotals.totalOrderValue.toLocaleString('en-IN')}</span>
+                    <div className="flex items-center justify-between text-[8px] font-bold mt-0.5 pt-0.5 border-t border-gray-100">
+                      <span className="text-emerald-600">Adv: ₹{boysTeamTotals.totalAdvance.toLocaleString('en-IN')}</span>
+                      <span className="text-rose-600 font-black">Bal: ₹{Math.max(0, boysTeamTotals.totalOrderValue - boysTeamTotals.totalAdvance).toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2112,24 +2366,27 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
                 <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-gray-200/60">
                   {/* Total Sales */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-gray-200 shadow-xs">
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Total Sales</span>
-                    <span className="text-sm font-black text-gray-900 block">{teamTotals.totalOrders}</span>
-                    <span className="text-[9px] font-bold text-brand-primary">({teamTotals.totalQuantity} pcs)</span>
+                    <span className="text-sm font-black text-gray-900 block my-0.5">{teamTotals.totalOrders} Deals</span>
+                    <span className="text-[10px] font-bold text-brand-primary">({teamTotals.totalQuantity} pcs)</span>
                   </div>
 
                   {/* Total Conversion */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-gray-200 shadow-xs">
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
                     <span className="text-[9px] font-black text-gray-400 uppercase block">Conversion</span>
-                    <span className="text-sm font-black text-purple-700 block">{teamTotals.ordersConverted}</span>
-                    <span className="text-[9px] font-bold text-purple-600">({teamTotals.conversionRate}%)</span>
+                    <span className="text-sm font-black text-purple-700 block my-0.5">{teamTotals.ordersConverted} ({teamTotals.conversionRate}%)</span>
+                    <span className="text-[10px] font-bold text-purple-600 truncate">₹{teamTotals.convertedValue.toLocaleString('en-IN')}</span>
                   </div>
 
-                  {/* Total Revenue */}
-                  <div className="bg-white/90 p-2 rounded-xl border border-gray-200 shadow-xs">
-                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Revenue</span>
-                    <span className="text-xs font-black text-emerald-700 block truncate">₹{teamTotals.totalOrderValue.toLocaleString()}</span>
-                    <span className="text-[9px] font-bold text-emerald-600">Adv: ₹{teamTotals.totalAdvance.toLocaleString()}</span>
+                  {/* Total Revenue & Collections */}
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Value</span>
+                    <span className="text-xs font-black text-emerald-700 block truncate my-0.5">₹{teamTotals.totalOrderValue.toLocaleString('en-IN')}</span>
+                    <div className="flex items-center justify-between text-[8px] font-bold mt-0.5 pt-0.5 border-t border-gray-100">
+                      <span className="text-emerald-600">Adv: ₹{teamTotals.totalAdvance.toLocaleString('en-IN')}</span>
+                      <span className="text-rose-600 font-black">Bal: ₹{Math.max(0, teamTotals.totalOrderValue - teamTotals.totalAdvance).toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2251,11 +2508,13 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             </div>
 
             {/* LIVE KPI PULSE STRIP FOR ACTIVE SELECTION */}
-            <div className="p-3 bg-white rounded-2xl border border-gray-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="p-3.5 bg-gradient-to-r from-white via-gray-50/60 to-white rounded-2xl border border-gray-200 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Active Focus:</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                  <Activity size={12} className="text-brand-primary" /> Active Focus:
+                </span>
                 <span className={cn(
-                  "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                  "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-xs",
                   selectedExecutive
                     ? "bg-purple-100 text-purple-800 border border-purple-200"
                     : orderTeamFilter === 'girls'
@@ -2276,33 +2535,42 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 )}
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap font-bold text-gray-700">
-                <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2.5 flex-wrap font-bold text-gray-700">
+                {/* Sales Deals & Qty */}
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-gray-200 shadow-xs">
                   <span className="text-gray-400 text-[10px] uppercase font-black">Sales:</span>
                   <span className="text-gray-900 font-black">{displayedPulseStats.totalOrders} Deals</span>
-                  <span className="text-gray-400 font-medium">({displayedPulseStats.totalQuantity} pcs)</span>
+                  <span className="text-gray-500 font-medium text-[11px]">({displayedPulseStats.totalQuantity} pcs)</span>
                 </div>
-                <span className="text-gray-200">•</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-400 text-[10px] uppercase font-black">Conversion:</span>
-                  <span className="text-purple-700 font-black">{displayedPulseStats.ordersConverted} Converted</span>
-                  <span className="text-purple-600 font-bold">({displayedPulseStats.conversionRate}%)</span>
+
+                {/* Conversion & Converted Value */}
+                <div className="flex items-center gap-1.5 bg-purple-50 px-2.5 py-1 rounded-xl border border-purple-200 shadow-xs">
+                  <span className="text-purple-600 text-[10px] uppercase font-black">Conversion:</span>
+                  <span className="text-purple-800 font-black">{displayedPulseStats.ordersConverted} Converted</span>
+                  <span className="text-purple-700 font-bold">({displayedPulseStats.conversionRate}%)</span>
+                  <span className="text-purple-300">•</span>
+                  <span className="text-purple-900 font-black">₹{displayedPulseStats.convertedValue.toLocaleString('en-IN')}</span>
                 </div>
-                <span className="text-gray-200">•</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-400 text-[10px] uppercase font-black">Revenue:</span>
-                  <span className="text-emerald-700 font-black">₹{displayedPulseStats.totalOrderValue.toLocaleString()}</span>
-                  <span className="text-emerald-600 text-[10px] font-medium">(Adv: ₹{displayedPulseStats.totalAdvance.toLocaleString()})</span>
+
+                {/* Total Value & Advance */}
+                <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 shadow-xs">
+                  <span className="text-emerald-600 text-[10px] uppercase font-black">Total Value:</span>
+                  <span className="text-emerald-800 font-black">₹{displayedPulseStats.totalOrderValue.toLocaleString('en-IN')}</span>
+                  <span className="text-emerald-600 font-medium text-[11px]">(Adv: ₹{displayedPulseStats.totalAdvance.toLocaleString('en-IN')})</span>
                 </div>
+
+                {/* Balance to Collect */}
+                <div className="flex items-center gap-1.5 bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-200 shadow-xs">
+                  <span className="text-rose-600 text-[10px] uppercase font-black">Balance to Collect:</span>
+                  <span className="text-rose-700 font-black">₹{displayedPulseStats.balanceDue.toLocaleString('en-IN')}</span>
+                </div>
+
                 {displayedPulseStats.invoicesCount > 0 && (
-                  <>
-                    <span className="text-gray-200">•</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400 text-[10px] uppercase font-black">Invoiced:</span>
-                      <span className="text-teal-700 font-black">₹{displayedPulseStats.totalInvoicedAmount.toLocaleString()}</span>
-                      <span className="text-teal-600 text-[10px] font-medium">({displayedPulseStats.invoicesCount})</span>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-1.5 bg-teal-50 px-2.5 py-1 rounded-xl border border-teal-200 shadow-xs">
+                    <span className="text-teal-600 text-[10px] uppercase font-black">Invoiced:</span>
+                    <span className="text-teal-800 font-black">₹{displayedPulseStats.totalInvoicedAmount.toLocaleString('en-IN')}</span>
+                    <span className="text-teal-600 text-[11px] font-medium">({displayedPulseStats.invoicesCount})</span>
+                  </div>
                 )}
               </div>
             </div>

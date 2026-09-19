@@ -196,12 +196,8 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
         return !isCreatorOnlineTeam;
       });
     }
-    // Marketing/staff/other roles: DO NOT show marketing uploaded leads!
-    return filteredLeads.filter(l => {
-      const creator = registeredUsers?.find(u => u.id === l.createdBy || u.uid === l.createdBy || u.name === l.createdByName);
-      const isMarketingCreator = creator?.role === 'marketing' || creator?.role === 'staff' || creator?.role === 'UserRole.MARKETING' || creator?.role === 'UserRole.STAFF';
-      return !isMarketingCreator;
-    });
+    // Marketing/staff/other roles: show leads
+    return filteredLeads;
   }, [leads, user, registeredUsers]);
 
   const filteredLeads = visibleLeads.filter(l => {
@@ -218,8 +214,8 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
   });
 
   const canManage = (lead: Lead) => {
-    if (user?.role === 'admin' || user?.role === 'onlineteam' || user?.role === 'staff') return true;
-    return lead.createdBy === user?.id;
+    if (user?.role === 'admin' || user?.role === 'onlineteam' || user?.role === 'staff' || user?.role === 'marketing') return true;
+    return lead.createdBy === user?.id || lead.createdBy === (user as any)?.uid || lead.createdByName === user?.name;
   };
 
   const searchedStaffInfo = React.useMemo(() => {

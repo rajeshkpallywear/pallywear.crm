@@ -318,7 +318,18 @@ export default function Dashboard() {
 
   const filteredLeads = user?.role === 'admin'
     ? leads
-    : leads.filter(l => l.createdBy === user?.id);
+    : leads.filter(l => {
+        const uId = String(user?.id || (user as any)?.uid || '');
+        const uName = (user?.name || '').toLowerCase().trim();
+        return (
+          l.createdBy === uId ||
+          l.assignedTo === uId ||
+          (l.createdByName && l.createdByName.toLowerCase().trim() === uName) ||
+          (l.assignedToName && l.assignedToName.toLowerCase().trim() === uName) ||
+          user?.role === 'marketing' ||
+          user?.role === 'staff'
+        );
+      });
 
   const handleLogout = () => {
     logout();

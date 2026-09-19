@@ -31,7 +31,7 @@ export const SHIRT_MATERIALS = ['Magic Lovely'];
 export const SHIRT_MODELS = ['Polo', 'Mandarin Collar'];
 export const SHIRT_COLOURS = ['Industrial Blue', 'Grey', 'Pink', 'White', 'Black', 'other'];
 
-export const PRINT_TYPES = ['DTF', 'Embroidery', 'Screen Printing'];
+export const PRINT_TYPES = ['DTF', 'Embroidery', 'Sublimation'];
 
 export const HOODIE_MODELS = ['Zipper', 'Non Zipper'];
 export const HOODIE_COLOURS = ['Black', 'Grey Melange', 'Navy'];

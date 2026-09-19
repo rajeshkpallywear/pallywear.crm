@@ -333,8 +333,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                             <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px]">Description</th>
                                             <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Rate, Cada</th>
                                             <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-center">Qty</th>
-                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Tax</th>
-                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Disc</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Tax (%)</th>
+                                            <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Disc (%)</th>
                                             <th className="px-3 py-3 sm:px-6 sm:py-4 font-black uppercase tracking-wider text-[10px] text-right">Amount, Cada</th>
                                         </tr>
                                     </thead>
@@ -348,7 +348,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-center font-medium">{item.quantity}</td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">{item.tax}%</td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-medium">
-                                                    ₹{item.discount.toLocaleString()}
+                                                    {item.discount ? `${item.discount}%` : '0%'}
                                                 </td>
                                                 <td className="px-3 py-4 sm:px-6 sm:py-6 text-right font-black text-gray-900">₹{item.amount.toLocaleString()}</td>
                                             </tr>
