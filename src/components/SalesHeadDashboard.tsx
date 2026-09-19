@@ -7,7 +7,7 @@ import {
   Phone, User, Sparkles, Building2, Calendar, FileCheck, Layers, Plus,
   MessageSquare, Edit, FileSpreadsheet, Award, UserCheck, Heart,
   Tag, Box, Gift, Shuffle, Check, AlertTriangle, RotateCcw,
-  ArrowRightLeft, Send, X
+  ArrowRightLeft, Send, X, ShoppingBag, Percent, Activity
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLeads } from '../context/LeadContext';
@@ -203,6 +203,27 @@ const getAdvanceAmount = (o?: Order | null) => {
   return isNaN(val) ? 0 : val;
 };
 
+// Helper to extract Order Quantity (Total pcs)
+const getOrderQuantity = (o?: Order | null) => {
+  if (!o) return 0;
+  if (Array.isArray(o.sizeBreakdown) && o.sizeBreakdown.length > 0) {
+    const sum = o.sizeBreakdown.reduce((acc, i) => acc + (Number(i?.quantity) || 0), 0);
+    if (sum > 0) return sum;
+  }
+  const directQty = Number(o.quantity || 0);
+  return directQty > 0 ? directQty : 1;
+};
+
+// Helper to safely extract timestamp from order
+const getOrderTimestamp = (o?: Order | null): number => {
+  if (!o) return 0;
+  const raw = o.createdAt || (o as any).date || o.updatedAt || o.details?.createdAt;
+  if (!raw) return 0;
+  if (typeof raw === 'number') return raw;
+  const parsed = new Date(raw).getTime();
+  return isNaN(parsed) ? Number(raw) || 0 : parsed;
+};
+
 interface SalesHeadDashboardProps {
   orders?: Order[];
   invoices?: Invoice[];
@@ -260,37 +281,86 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     }
   };
 
+  // Helper to format active date filter label
+  const getDateFilterBadge = () => {
+    const now = new Date();
+    switch (dateFilter) {
+      case 'today':
+        return `⚡ Today (${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      case 'yesterday': {
+        const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        return `⏮️ Yesterday (${y.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      }
+      case 'week': {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+        return `🗓️ This Week (from ${start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+      }
+      case 'month':
+        return `📆 This Month (${now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })})`;
+      case 'all':
+      default:
+        return '🌐 All Time History';
+    }
+  };
+
   // Helper to determine if an order matches date filter
   const filterByDate = (timestamp?: number | string) => {
     if (!timestamp || dateFilter === 'all') return true;
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return true;
+    let timeNum: number;
+    if (typeof timestamp === 'number') {
+      timeNum = timestamp;
+    } else if (typeof timestamp === 'string') {
+      const parsed = new Date(timestamp).getTime();
+      timeNum = isNaN(parsed) ? Number(timestamp) || 0 : parsed;
+    } else {
+      return true;
+    }
+    if (!timeNum || isNaN(timeNum) || timeNum <= 0) return true;
+
+    const date = new Date(timeNum);
     const now = new Date();
+
     if (dateFilter === 'today') {
-      return date.toDateString() === now.toDateString();
+      return (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate()
+      );
     }
     if (dateFilter === 'yesterday') {
-      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      return date.toDateString() === yesterday.toDateString();
+      const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      return (
+        date.getFullYear() === yesterday.getFullYear() &&
+        date.getMonth() === yesterday.getMonth() &&
+        date.getDate() === yesterday.getDate()
+      );
     }
     if (dateFilter === 'week') {
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return date >= oneWeekAgo;
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
     }
     if (dateFilter === 'month') {
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      return (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      );
     }
     return true;
   };
 
   // Orders filtered by date
   const filteredOrders = useMemo(() => {
-    return (orders || []).filter(o => o && filterByDate(o.createdAt));
+    return (orders || []).filter(o => o && filterByDate(getOrderTimestamp(o)));
   }, [orders, dateFilter]);
 
   // Invoices filtered by date
   const filteredInvoices = useMemo(() => {
-    return (invoices || []).filter(inv => inv && filterByDate(inv.createdAt || inv.date));
+    return (invoices || []).filter(inv => {
+      if (!inv) return false;
+      const raw = inv.createdAt || inv.date || (inv as any).updatedAt;
+      return filterByDate(raw);
+    });
   }, [invoices, dateFilter]);
 
   // Group performance metrics by Marketing Executive (strictly the 8 official staff)
@@ -305,6 +375,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       reworkReasons: { orderId: string; orderNumber: string; client: string; designer: string; reason: string; date: number }[];
       ordersConverted: number;
       totalOrders: number;
+      totalQuantity: number;
+      conversionRate: number;
       sentToAccounts: number;
       sentToDesigns: number;
       receivedDesigns: number;
@@ -330,6 +402,8 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworkReasons: [],
         ordersConverted: 0,
         totalOrders: 0,
+        totalQuantity: 0,
+        conversionRate: 0,
         sentToAccounts: 0,
         sentToDesigns: 0,
         receivedDesigns: 0,
@@ -355,6 +429,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
       const item = map.get(matchedStaff.name)!;
       item.totalOrders += 1;
+      item.totalQuantity += getOrderQuantity(o);
       item.orders.push(o);
 
       // Tasks Shared / Raised
@@ -425,6 +500,13 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       }
     });
 
+    // Compute conversion rate for each executive
+    map.forEach(item => {
+      item.conversionRate = item.tasksShared > 0
+        ? Math.min(100, Math.round((item.ordersConverted / item.tasksShared) * 100))
+        : (item.totalOrders > 0 ? 100 : 0);
+    });
+
     return Array.from(map.values()).sort((a, b) => b.totalOrders - a.totalOrders || b.totalOrderValue - a.totalOrderValue);
   }, [filteredOrders, filteredInvoices, registeredUsers]);
 
@@ -438,7 +520,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   }, [executiveMetrics]);
 
   const girlsTeamTotals = useMemo(() => {
-    return girlsTeamExecutives.reduce(
+    const acc = girlsTeamExecutives.reduce(
       (acc, curr) => ({
         staffCount: acc.staffCount + 1,
         tasksShared: acc.tasksShared + curr.tasksShared,
@@ -446,6 +528,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: acc.reworksCount + curr.reworksCount,
         ordersConverted: acc.ordersConverted + curr.ordersConverted,
         totalOrders: acc.totalOrders + curr.totalOrders,
+        totalQuantity: acc.totalQuantity + curr.totalQuantity,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
         mixedOrders: acc.mixedOrders + curr.mixedOrders,
         giftOrders: acc.giftOrders + curr.giftOrders,
@@ -457,12 +540,34 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         invoicesCount: acc.invoicesCount + curr.invoicesCount,
         totalInvoicedAmount: acc.totalInvoicedAmount + curr.totalInvoicedAmount
       }),
-      { staffCount: 0, tasksShared: 0, designsReturned: 0, reworksCount: 0, ordersConverted: 0, totalOrders: 0, bulkOrders: 0, mixedOrders: 0, giftOrders: 0, sentToAccounts: 0, sentToDesigns: 0, receivedDesigns: 0, totalOrderValue: 0, totalAdvance: 0, invoicesCount: 0, totalInvoicedAmount: 0 }
+      {
+        staffCount: 0,
+        tasksShared: 0,
+        designsReturned: 0,
+        reworksCount: 0,
+        ordersConverted: 0,
+        totalOrders: 0,
+        totalQuantity: 0,
+        bulkOrders: 0,
+        mixedOrders: 0,
+        giftOrders: 0,
+        sentToAccounts: 0,
+        sentToDesigns: 0,
+        receivedDesigns: 0,
+        totalOrderValue: 0,
+        totalAdvance: 0,
+        invoicesCount: 0,
+        totalInvoicedAmount: 0
+      }
     );
+    const conversionRate = acc.tasksShared > 0
+      ? Math.min(100, Math.round((acc.ordersConverted / acc.tasksShared) * 100))
+      : (acc.totalOrders > 0 ? 100 : 0);
+    return { ...acc, conversionRate };
   }, [girlsTeamExecutives]);
 
   const boysTeamTotals = useMemo(() => {
-    return boysTeamExecutives.reduce(
+    const acc = boysTeamExecutives.reduce(
       (acc, curr) => ({
         staffCount: acc.staffCount + 1,
         tasksShared: acc.tasksShared + curr.tasksShared,
@@ -470,6 +575,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: acc.reworksCount + curr.reworksCount,
         ordersConverted: acc.ordersConverted + curr.ordersConverted,
         totalOrders: acc.totalOrders + curr.totalOrders,
+        totalQuantity: acc.totalQuantity + curr.totalQuantity,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
         mixedOrders: acc.mixedOrders + curr.mixedOrders,
         giftOrders: acc.giftOrders + curr.giftOrders,
@@ -481,19 +587,42 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         invoicesCount: acc.invoicesCount + curr.invoicesCount,
         totalInvoicedAmount: acc.totalInvoicedAmount + curr.totalInvoicedAmount
       }),
-      { staffCount: 0, tasksShared: 0, designsReturned: 0, reworksCount: 0, ordersConverted: 0, totalOrders: 0, bulkOrders: 0, mixedOrders: 0, giftOrders: 0, sentToAccounts: 0, sentToDesigns: 0, receivedDesigns: 0, totalOrderValue: 0, totalAdvance: 0, invoicesCount: 0, totalInvoicedAmount: 0 }
+      {
+        staffCount: 0,
+        tasksShared: 0,
+        designsReturned: 0,
+        reworksCount: 0,
+        ordersConverted: 0,
+        totalOrders: 0,
+        totalQuantity: 0,
+        bulkOrders: 0,
+        mixedOrders: 0,
+        giftOrders: 0,
+        sentToAccounts: 0,
+        sentToDesigns: 0,
+        receivedDesigns: 0,
+        totalOrderValue: 0,
+        totalAdvance: 0,
+        invoicesCount: 0,
+        totalInvoicedAmount: 0
+      }
     );
+    const conversionRate = acc.tasksShared > 0
+      ? Math.min(100, Math.round((acc.ordersConverted / acc.tasksShared) * 100))
+      : (acc.totalOrders > 0 ? 100 : 0);
+    return { ...acc, conversionRate };
   }, [boysTeamExecutives]);
 
   // Overall Team Summary Totals
   const teamTotals = useMemo(() => {
-    return executiveMetrics.reduce(
+    const acc = executiveMetrics.reduce(
       (acc, curr) => ({
         tasksShared: acc.tasksShared + curr.tasksShared,
         designsReturned: acc.designsReturned + curr.designsReturned,
         reworksCount: acc.reworksCount + curr.reworksCount,
         ordersConverted: acc.ordersConverted + curr.ordersConverted,
         totalOrders: acc.totalOrders + curr.totalOrders,
+        totalQuantity: acc.totalQuantity + curr.totalQuantity,
         bulkOrders: acc.bulkOrders + curr.bulkOrders,
         mixedOrders: acc.mixedOrders + curr.mixedOrders,
         giftOrders: acc.giftOrders + curr.giftOrders,
@@ -511,6 +640,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         reworksCount: 0,
         ordersConverted: 0,
         totalOrders: 0,
+        totalQuantity: 0,
         bulkOrders: 0,
         mixedOrders: 0,
         giftOrders: 0,
@@ -523,6 +653,10 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         totalInvoicedAmount: 0
       }
     );
+    const conversionRate = acc.tasksShared > 0
+      ? Math.min(100, Math.round((acc.ordersConverted / acc.tasksShared) * 100))
+      : (acc.totalOrders > 0 ? 100 : 0);
+    return { ...acc, conversionRate };
   }, [executiveMetrics]);
 
   // Selected individual executive stats
@@ -743,71 +877,103 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
     return list;
   }, [filteredOrders]);
 
-  // Dynamic displayed pulse stats for Top KPI Ribbon
+  // Dynamic displayed pulse stats for Top KPI Ribbon & Orders Flow Section
   const displayedPulseStats = useMemo(() => {
     if (activeExecutiveStats) {
       return {
-        label: `Individual Executive: ${activeExecutiveStats.name} (${activeExecutiveStats.teamName})`,
+        label: `Executive: ${activeExecutiveStats.name} (${activeExecutiveStats.teamName})`,
+        teamName: activeExecutiveStats.teamName,
         isIndividual: true,
+        staffCount: 1,
         tasksShared: activeExecutiveStats.tasksShared || 0,
         designsReturned: activeExecutiveStats.designsReturned || 0,
         reworksCount: activeExecutiveStats.reworksCount || 0,
         reworkReasons: activeExecutiveStats.reworkReasons || [],
         ordersConverted: activeExecutiveStats.ordersConverted || 0,
         totalOrders: activeExecutiveStats.totalOrders || 0,
+        totalQuantity: activeExecutiveStats.totalQuantity || 0,
+        conversionRate: activeExecutiveStats.conversionRate || 0,
+        bulkOrders: activeExecutiveStats.bulkOrders || 0,
+        mixedOrders: activeExecutiveStats.mixedOrders || 0,
+        giftOrders: activeExecutiveStats.giftOrders || 0,
         invoicesCount: activeExecutiveStats.invoicesCount || 0,
         totalInvoicedAmount: activeExecutiveStats.totalInvoicedAmount || 0,
         totalOrderValue: activeExecutiveStats.totalOrderValue || 0,
-        totalAdvance: activeExecutiveStats.totalAdvance || 0
+        totalAdvance: activeExecutiveStats.totalAdvance || 0,
+        balanceDue: Math.max(0, (activeExecutiveStats.totalOrderValue || 0) - (activeExecutiveStats.totalAdvance || 0))
       };
     }
-    if (staffTeamFilter === 'girls') {
+    if (orderTeamFilter === 'girls' || staffTeamFilter === 'girls') {
       return {
-        label: `Blossom Team Totals (${girlsTeamExecutives.length} Staff)`,
+        label: `Blossom Team Totals (${girlsTeamExecutives.length} Female Staff)`,
+        teamName: 'Blossom Team',
         isIndividual: false,
+        staffCount: girlsTeamExecutives.length,
         tasksShared: girlsTeamTotals.tasksShared || 0,
         designsReturned: girlsTeamTotals.designsReturned || 0,
         reworksCount: girlsTeamTotals.reworksCount || 0,
         reworkReasons: girlsTeamExecutives.flatMap(e => e.reworkReasons || []),
         ordersConverted: girlsTeamTotals.ordersConverted || 0,
         totalOrders: girlsTeamTotals.totalOrders || 0,
+        totalQuantity: girlsTeamTotals.totalQuantity || 0,
+        conversionRate: girlsTeamTotals.conversionRate || 0,
+        bulkOrders: girlsTeamTotals.bulkOrders || 0,
+        mixedOrders: girlsTeamTotals.mixedOrders || 0,
+        giftOrders: girlsTeamTotals.giftOrders || 0,
         invoicesCount: girlsTeamTotals.invoicesCount || 0,
         totalInvoicedAmount: girlsTeamTotals.totalInvoicedAmount || 0,
         totalOrderValue: girlsTeamTotals.totalOrderValue || 0,
-        totalAdvance: girlsTeamTotals.totalAdvance || 0
+        totalAdvance: girlsTeamTotals.totalAdvance || 0,
+        balanceDue: Math.max(0, (girlsTeamTotals.totalOrderValue || 0) - (girlsTeamTotals.totalAdvance || 0))
       };
     }
-    if (staffTeamFilter === 'boys') {
+    if (orderTeamFilter === 'boys' || staffTeamFilter === 'boys') {
       return {
-        label: `Hornet Team Totals (${boysTeamExecutives.length} Staff)`,
+        label: `Hornet Team Totals (${boysTeamExecutives.length} Male Staff)`,
+        teamName: 'Hornet Team',
         isIndividual: false,
+        staffCount: boysTeamExecutives.length,
         tasksShared: boysTeamTotals.tasksShared || 0,
         designsReturned: boysTeamTotals.designsReturned || 0,
         reworksCount: boysTeamTotals.reworksCount || 0,
         reworkReasons: boysTeamExecutives.flatMap(e => e.reworkReasons || []),
         ordersConverted: boysTeamTotals.ordersConverted || 0,
         totalOrders: boysTeamTotals.totalOrders || 0,
+        totalQuantity: boysTeamTotals.totalQuantity || 0,
+        conversionRate: boysTeamTotals.conversionRate || 0,
+        bulkOrders: boysTeamTotals.bulkOrders || 0,
+        mixedOrders: boysTeamTotals.mixedOrders || 0,
+        giftOrders: boysTeamTotals.giftOrders || 0,
         invoicesCount: boysTeamTotals.invoicesCount || 0,
         totalInvoicedAmount: boysTeamTotals.totalInvoicedAmount || 0,
         totalOrderValue: boysTeamTotals.totalOrderValue || 0,
-        totalAdvance: boysTeamTotals.totalAdvance || 0
+        totalAdvance: boysTeamTotals.totalAdvance || 0,
+        balanceDue: Math.max(0, (boysTeamTotals.totalOrderValue || 0) - (boysTeamTotals.totalAdvance || 0))
       };
     }
     return {
-      label: `All Marketing Staff Combined (${executiveMetrics.length} Staff)`,
+      label: `All Marketing Teams Combined (${executiveMetrics.length} Staff)`,
+      teamName: 'All Teams',
       isIndividual: false,
+      staffCount: executiveMetrics.length,
       tasksShared: teamTotals.tasksShared || 0,
       designsReturned: teamTotals.designsReturned || 0,
       reworksCount: teamTotals.reworksCount || 0,
       reworkReasons: allFilteredReworks || [],
       ordersConverted: teamTotals.ordersConverted || 0,
       totalOrders: teamTotals.totalOrders || 0,
+      totalQuantity: teamTotals.totalQuantity || 0,
+      conversionRate: teamTotals.conversionRate || 0,
+      bulkOrders: teamTotals.bulkOrders || 0,
+      mixedOrders: teamTotals.mixedOrders || 0,
+      giftOrders: teamTotals.giftOrders || 0,
       invoicesCount: teamTotals.invoicesCount || 0,
       totalInvoicedAmount: teamTotals.totalInvoicedAmount || 0,
       totalOrderValue: teamTotals.totalOrderValue || 0,
-      totalAdvance: teamTotals.totalAdvance || 0
+      totalAdvance: teamTotals.totalAdvance || 0,
+      balanceDue: Math.max(0, (teamTotals.totalOrderValue || 0) - (teamTotals.totalAdvance || 0))
     };
-  }, [activeExecutiveStats, staffTeamFilter, girlsTeamTotals, boysTeamTotals, teamTotals, girlsTeamExecutives, boysTeamExecutives, executiveMetrics, allFilteredReworks]);
+  }, [activeExecutiveStats, orderTeamFilter, staffTeamFilter, girlsTeamTotals, boysTeamTotals, teamTotals, girlsTeamExecutives, boysTeamExecutives, executiveMetrics, allFilteredReworks]);
 
   // Export currently filtered orders to Excel (.xlsx)
   const handleExportOrdersToExcel = () => {
@@ -1766,21 +1932,27 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
 
           {/* Section: Orders Flow & Breakdown with Full Multi-Layer Filtering (Staff, Team, Bulk, Mixed, Gift, Status) */}
           <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-6 space-y-5 text-left">
+            {/* Header: Title, Active Timeframe Badge, and Excel Export */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
-                <h4 className="text-base font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                  <Layers className="text-brand-primary" size={18} />
-                  {selectedExecutive
-                    ? `${selectedExecutive}'s Orders Breakdown`
-                    : orderTeamFilter === 'girls'
-                    ? "Blossom Team Marketing Orders Flow"
-                    : orderTeamFilter === 'boys'
-                    ? "Hornet Team Marketing Orders Flow"
-                    : 'All Marketing Orders Flow'}
-                  <span className="text-xs font-bold text-gray-400 lowercase">({drillDownOrders.length} orders)</span>
-                </h4>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  Filter by individual marketing executive, Blossom/Hornet team, Bulk orders (10+ pcs), Mixed orders (3+ categories), Gift items, and export to Excel.
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-base font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                    <Layers className="text-brand-primary" size={18} />
+                    {selectedExecutive
+                      ? `${selectedExecutive}'s Orders Breakdown`
+                      : orderTeamFilter === 'girls'
+                      ? "🌸 Blossom Team Marketing Orders Flow"
+                      : orderTeamFilter === 'boys'
+                      ? "🐝 Hornet Team Marketing Orders Flow"
+                      : 'All Marketing Orders Flow'}
+                    <span className="text-xs font-bold text-gray-400 lowercase">({drillDownOrders.length} orders)</span>
+                  </h4>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                    {getDateFilterBadge()}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 font-medium mt-1">
+                  Team-wise live performance, total sales volume, conversions, revenue collection, and detailed order pipelines.
                 </p>
               </div>
 
@@ -1792,6 +1964,210 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 >
                   <FileSpreadsheet size={15} /> 📥 Export to Excel (.xlsx) ({drillDownOrders.length})
                 </button>
+              </div>
+            </div>
+
+            {/* TEAM-WISE ("team voice") TOTAL SALES, TOTAL CONVERSION & TOTAL REVENUE SUMMARY CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {/* Card 1: Blossom Team (Girls) */}
+              <div
+                onClick={() => {
+                  setOrderTeamFilter(orderTeamFilter === 'girls' && !selectedExecutive ? 'all' : 'girls');
+                  setSelectedExecutive(null);
+                }}
+                className={cn(
+                  "p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden space-y-3 group",
+                  orderTeamFilter === 'girls' && !selectedExecutive
+                    ? "bg-gradient-to-br from-pink-500/10 via-rose-50 to-pink-100/70 border-pink-400 shadow-md ring-2 ring-pink-400/40"
+                    : "bg-pink-50/30 hover:bg-pink-50/60 border-pink-200/80 shadow-xs"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🌸</span>
+                    <div>
+                      <h5 className="text-xs font-black text-gray-900 uppercase tracking-tight">Blossom Team</h5>
+                      <span className="text-[10px] font-bold text-pink-700">4 Staff (Jimla, Priya, Sowmiya, Periyanayagi)</span>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
+                    orderTeamFilter === 'girls' && !selectedExecutive
+                      ? "bg-pink-600 text-white shadow-xs"
+                      : "bg-pink-100 text-pink-700 group-hover:bg-pink-200"
+                  )}>
+                    {orderTeamFilter === 'girls' && !selectedExecutive ? '✓ Active Filter' : 'Filter Team'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-pink-200/60">
+                  {/* Total Sales */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-pink-100 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Sales</span>
+                    <span className="text-sm font-black text-gray-900 block">{girlsTeamTotals.totalOrders}</span>
+                    <span className="text-[9px] font-bold text-pink-600">({girlsTeamTotals.totalQuantity} pcs)</span>
+                  </div>
+
+                  {/* Total Conversion */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-pink-100 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Conversion</span>
+                    <span className="text-sm font-black text-purple-700 block">{girlsTeamTotals.ordersConverted}</span>
+                    <span className="text-[9px] font-bold text-purple-600">({girlsTeamTotals.conversionRate}%)</span>
+                  </div>
+
+                  {/* Total Revenue */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-pink-100 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Revenue</span>
+                    <span className="text-xs font-black text-emerald-700 block truncate">₹{girlsTeamTotals.totalOrderValue.toLocaleString()}</span>
+                    <span className="text-[9px] font-bold text-emerald-600">Adv: ₹{girlsTeamTotals.totalAdvance.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Hornet Team (Boys) */}
+              <div
+                onClick={() => {
+                  setOrderTeamFilter(orderTeamFilter === 'boys' && !selectedExecutive ? 'all' : 'boys');
+                  setSelectedExecutive(null);
+                }}
+                className={cn(
+                  "p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden space-y-3 group",
+                  orderTeamFilter === 'boys' && !selectedExecutive
+                    ? "bg-gradient-to-br from-indigo-500/10 via-blue-50 to-indigo-100/70 border-indigo-400 shadow-md ring-2 ring-indigo-400/40"
+                    : "bg-indigo-50/30 hover:bg-indigo-50/60 border-indigo-200/80 shadow-xs"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🐝</span>
+                    <div>
+                      <h5 className="text-xs font-black text-gray-900 uppercase tracking-tight">Hornet Team</h5>
+                      <span className="text-[10px] font-bold text-indigo-700">4 Staff (Godwin, Mukesh, Saravanan, Sakthivel)</span>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
+                    orderTeamFilter === 'boys' && !selectedExecutive
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "bg-indigo-100 text-indigo-700 group-hover:bg-indigo-200"
+                  )}>
+                    {orderTeamFilter === 'boys' && !selectedExecutive ? '✓ Active Filter' : 'Filter Team'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-indigo-200/60">
+                  {/* Total Sales */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-indigo-100 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Sales</span>
+                    <span className="text-sm font-black text-gray-900 block">{boysTeamTotals.totalOrders}</span>
+                    <span className="text-[9px] font-bold text-indigo-600">({boysTeamTotals.totalQuantity} pcs)</span>
+                  </div>
+
+                  {/* Total Conversion */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-indigo-100 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Conversion</span>
+                    <span className="text-sm font-black text-purple-700 block">{boysTeamTotals.ordersConverted}</span>
+                    <span className="text-[9px] font-bold text-purple-600">({boysTeamTotals.conversionRate}%)</span>
+                  </div>
+
+                  {/* Total Revenue */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-indigo-100 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Revenue</span>
+                    <span className="text-xs font-black text-emerald-700 block truncate">₹{boysTeamTotals.totalOrderValue.toLocaleString()}</span>
+                    <span className="text-[9px] font-bold text-emerald-600">Adv: ₹{boysTeamTotals.totalAdvance.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: All Marketing Teams Combined */}
+              <div
+                onClick={() => {
+                  setOrderTeamFilter('all');
+                  setSelectedExecutive(null);
+                }}
+                className={cn(
+                  "p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden space-y-3 group",
+                  orderTeamFilter === 'all' && !selectedExecutive
+                    ? "bg-gradient-to-br from-brand-primary/10 via-purple-50 to-indigo-100/70 border-brand-primary shadow-md ring-2 ring-brand-primary/40"
+                    : "bg-gray-50/60 hover:bg-gray-100/70 border-gray-200 shadow-xs"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">👥</span>
+                    <div>
+                      <h5 className="text-xs font-black text-gray-900 uppercase tracking-tight">All Teams Combined</h5>
+                      <span className="text-[10px] font-bold text-gray-500">8 Marketing Staff (Blossom & Hornet)</span>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
+                    orderTeamFilter === 'all' && !selectedExecutive
+                      ? "bg-brand-primary text-white shadow-xs"
+                      : "bg-gray-200 text-gray-700 group-hover:bg-gray-300"
+                  )}>
+                    {orderTeamFilter === 'all' && !selectedExecutive ? '✓ Active Filter' : 'Show All'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-gray-200/60">
+                  {/* Total Sales */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-gray-200 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Sales</span>
+                    <span className="text-sm font-black text-gray-900 block">{teamTotals.totalOrders}</span>
+                    <span className="text-[9px] font-bold text-brand-primary">({teamTotals.totalQuantity} pcs)</span>
+                  </div>
+
+                  {/* Total Conversion */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-gray-200 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Conversion</span>
+                    <span className="text-sm font-black text-purple-700 block">{teamTotals.ordersConverted}</span>
+                    <span className="text-[9px] font-bold text-purple-600">({teamTotals.conversionRate}%)</span>
+                  </div>
+
+                  {/* Total Revenue */}
+                  <div className="bg-white/90 p-2 rounded-xl border border-gray-200 shadow-xs">
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Total Revenue</span>
+                    <span className="text-xs font-black text-emerald-700 block truncate">₹{teamTotals.totalOrderValue.toLocaleString()}</span>
+                    <span className="text-[9px] font-bold text-emerald-600">Adv: ₹{teamTotals.totalAdvance.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* DATE FILTER BUTTON BAR (Today, Yesterday, This Week, This Month, All Time) */}
+            <div className="p-3 bg-gradient-to-r from-gray-50 via-slate-50 to-gray-50 rounded-2xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                  <Calendar size={13} className="text-brand-primary" /> Filter Date Period:
+                </span>
+                <span className="text-xs font-bold text-gray-700 bg-white px-2.5 py-0.5 rounded-lg border border-gray-200 shadow-xs">
+                  {getDateFilterBadge()}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap bg-white p-1 rounded-xl border border-gray-200 shadow-xs">
+                {[
+                  { id: 'all', label: 'All Time', icon: '🌐' },
+                  { id: 'today', label: 'Today', icon: '⚡' },
+                  { id: 'yesterday', label: 'Yesterday', icon: '⏮️' },
+                  { id: 'week', label: 'This Week', icon: '🗓️' },
+                  { id: 'month', label: 'This Month', icon: '📆' }
+                ].map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => setDateFilter(d.id as any)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer flex items-center gap-1",
+                      dateFilter === d.id
+                        ? "bg-brand-primary text-white shadow-xs"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 bg-transparent"
+                    )}
+                  >
+                    <span>{d.icon}</span>
+                    <span>{d.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1809,7 +2185,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       const val = e.target.value;
                       setSelectedExecutive(val === 'all' ? null : val);
                     }}
-                    className="w-full text-xs font-bold bg-white border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-brand-primary/20 text-gray-800"
+                    className="w-full text-xs font-bold bg-white border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-brand-primary/20 text-gray-800 cursor-pointer"
                   >
                     <option value="all">👥 All Marketing Staff ({uniqueMarketingStaffList.length})</option>
                     <optgroup label="🌸 Blossom Team (Female Staff)">
@@ -1871,6 +2247,63 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                     className="w-full text-xs font-medium bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-brand-primary/20 text-gray-800"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* LIVE KPI PULSE STRIP FOR ACTIVE SELECTION */}
+            <div className="p-3 bg-white rounded-2xl border border-gray-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Active Focus:</span>
+                <span className={cn(
+                  "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                  selectedExecutive
+                    ? "bg-purple-100 text-purple-800 border border-purple-200"
+                    : orderTeamFilter === 'girls'
+                    ? "bg-pink-100 text-pink-700 border border-pink-200"
+                    : orderTeamFilter === 'boys'
+                    ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                    : "bg-gray-100 text-gray-800 border border-gray-200"
+                )}>
+                  {displayedPulseStats.label}
+                </span>
+                {selectedExecutive && (
+                  <button
+                    onClick={() => setSelectedExecutive(null)}
+                    className="text-[10px] font-bold text-pink-600 hover:text-pink-800 bg-transparent border-none cursor-pointer underline"
+                  >
+                    Clear Staff Filter ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap font-bold text-gray-700">
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400 text-[10px] uppercase font-black">Sales:</span>
+                  <span className="text-gray-900 font-black">{displayedPulseStats.totalOrders} Deals</span>
+                  <span className="text-gray-400 font-medium">({displayedPulseStats.totalQuantity} pcs)</span>
+                </div>
+                <span className="text-gray-200">•</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400 text-[10px] uppercase font-black">Conversion:</span>
+                  <span className="text-purple-700 font-black">{displayedPulseStats.ordersConverted} Converted</span>
+                  <span className="text-purple-600 font-bold">({displayedPulseStats.conversionRate}%)</span>
+                </div>
+                <span className="text-gray-200">•</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400 text-[10px] uppercase font-black">Revenue:</span>
+                  <span className="text-emerald-700 font-black">₹{displayedPulseStats.totalOrderValue.toLocaleString()}</span>
+                  <span className="text-emerald-600 text-[10px] font-medium">(Adv: ₹{displayedPulseStats.totalAdvance.toLocaleString()})</span>
+                </div>
+                {displayedPulseStats.invoicesCount > 0 && (
+                  <>
+                    <span className="text-gray-200">•</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-400 text-[10px] uppercase font-black">Invoiced:</span>
+                      <span className="text-teal-700 font-black">₹{displayedPulseStats.totalInvoicedAmount.toLocaleString()}</span>
+                      <span className="text-teal-600 text-[10px] font-medium">({displayedPulseStats.invoicesCount})</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
