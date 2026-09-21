@@ -2,6 +2,7 @@
     Header always set Access-Control-Allow-Origin "*"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
 
     # Disable caching for index.html so users always get fresh chunk references
     <FilesMatch "index\.html$">

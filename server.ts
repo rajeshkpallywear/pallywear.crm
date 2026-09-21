@@ -35,6 +35,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "100mb", extended: true }));
 
   app.use((req, res, next) => {
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
     console.log(`[HTTP Request] ${req.method} ${req.url}`);
     next();
   });
