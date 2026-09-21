@@ -1973,52 +1973,68 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
                     {/* Reference Attachments from Marketing / Customer */}
                     <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                        <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
-                          <Paperclip size={13} />
-                          Sales Reference Attachments ({(selectedOrder.staffImages || []).length + (selectedOrder.marketing_image ? 1 : 0) + (selectedOrder.staffPdfs || []).length + (selectedOrder.accountsAttachments || []).length})
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                        {/* Reference Images */}
-                        {[
+                      {(() => {
+                        const referenceImages = Array.from(new Set([
                           ...(selectedOrder.staffImages || []),
                           ...(selectedOrder.marketing_image ? [selectedOrder.marketing_image] : []),
                           ...(selectedOrder.accountsAttachments || []).filter(f => typeof f === 'string' && (f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
-                        ].map((imgUrl, i) => (
-                          <div
-                            key={i}
-                            onClick={() => setViewingImage(imgUrl)}
-                            className="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-white cursor-pointer shadow-xs hover:shadow-md transition-all"
-                          >
-                            <img src={imgUrl} alt="Ref" className="w-full h-full object-cover group-hover:scale-105 transition-all" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                              <ZoomIn size={16} />
-                            </div>
-                          </div>
-                        ))}
+                        ].filter((v): v is string => typeof v === 'string' && Boolean(v.trim()))));
 
-                        {/* Reference PDFs / Docs */}
-                        {[
+                        const referencePdfs = Array.from(new Set([
                           ...(selectedOrder.staffPdfs || []),
                           ...(selectedOrder.accountsAttachments || []).filter(f => typeof f === 'string' && !(f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
-                        ].map((docUrl, i) => {
-                          const docName = `Reference_Document_${i + 1}`;
-                          return (
-                            <div
-                              key={`pdf-${i}`}
-                              onClick={() => downloadFile(docUrl, `${docName}.pdf`)}
-                              className="group relative aspect-square rounded-xl overflow-hidden border border-indigo-200 bg-indigo-50/50 p-2 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-100 transition-all shadow-xs"
-                              title="Click to download reference document"
-                            >
-                              <FileText size={24} className="text-indigo-600 mb-1" />
-                              <span className="text-[9px] font-bold text-indigo-900 truncate w-full px-1">{docName}</span>
-                              <span className="text-[8px] text-indigo-600 font-extrabold uppercase mt-0.5">Download</span>
+                        ].filter((v): v is string => typeof v === 'string' && Boolean(v.trim()))));
+
+                        const totalRefCount = referenceImages.length + referencePdfs.length;
+
+                        return (
+                          <>
+                            <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                              <h4 className="text-[10.5px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1.5">
+                                <Paperclip size={13} />
+                                Sales Reference Attachments ({totalRefCount})
+                              </h4>
                             </div>
-                          );
-                        })}
-                      </div>
+
+                            {totalRefCount === 0 ? (
+                              <p className="text-xs text-gray-400 font-semibold italic py-2 text-center">No reference attachments provided.</p>
+                            ) : (
+                              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                                {/* Reference Images */}
+                                {referenceImages.map((imgUrl, i) => (
+                                  <div
+                                    key={`ref-img-${i}`}
+                                    onClick={() => setViewingImage(imgUrl)}
+                                    className="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-white cursor-pointer shadow-xs hover:shadow-md transition-all"
+                                  >
+                                    <img src={imgUrl} alt={`Reference ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                      <ZoomIn size={16} />
+                                    </div>
+                                  </div>
+                                ))}
+
+                                {/* Reference PDFs / Docs */}
+                                {referencePdfs.map((docUrl, i) => {
+                                  const docName = `Reference_Document_${i + 1}`;
+                                  return (
+                                    <div
+                                      key={`pdf-${i}`}
+                                      onClick={() => downloadFile(docUrl, `${docName}.pdf`)}
+                                      className="group relative aspect-square rounded-xl overflow-hidden border border-indigo-200 bg-indigo-50/50 p-2 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-indigo-100 transition-all shadow-xs"
+                                      title="Click to download reference document"
+                                    >
+                                      <FileText size={24} className="text-indigo-600 mb-1" />
+                                      <span className="text-[9px] font-bold text-indigo-900 truncate w-full px-1">{docName}</span>
+                                      <span className="text-[8px] text-indigo-600 font-extrabold uppercase mt-0.5">Download</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </section>
                   </div>
 
