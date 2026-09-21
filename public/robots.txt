@@ -1,3 +1,4 @@
 # Block all search engines from crawling and indexing this private CRM application
 User-agent: *
 Disallow: /
+Allow: /google11ddf86b302ab914.html
