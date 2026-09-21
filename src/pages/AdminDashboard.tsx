@@ -855,6 +855,10 @@ export default function AdminDashboard() {
         tatMs: totalTat,
         designTatMs: designTat,
         tatDisplay: formatDurationReadable(designTat),
+        initialTaskTatMs: task.initialTaskDurationMs || designTat,
+        initialTaskTatDisplay: formatDurationReadable(task.initialTaskDurationMs || designTat),
+        reworkTatMs: task.reworkDurationMs,
+        reworkTatDisplay: task.reworkDurationMs ? formatDurationReadable(task.reworkDurationMs) : undefined,
         isOverdue,
         overdueDurationMs,
         overdueReason: overdueReason || 'Delivered On-Time within SLA'
@@ -863,6 +867,7 @@ export default function AdminDashboard() {
       const now = Date.now();
       const elapsedSinceClaim = claimedAt > 0 ? now - claimedAt : 0;
       const elapsedSinceCreate = now - createdAt;
+      const reworkElapsed = task.reworkAcceptedAt ? Math.max(0, now - task.reworkAcceptedAt) : (task.reworkRequestedAt ? Math.max(0, now - task.reworkRequestedAt) : 0);
       
       if (claimedAt > 0 && now > deadline) {
         isOverdue = true;
@@ -882,6 +887,10 @@ export default function AdminDashboard() {
         tatMs: elapsedSinceCreate,
         designTatMs: elapsedSinceClaim,
         tatDisplay: claimedAt > 0 ? `${formatDurationReadable(elapsedSinceClaim)} running` : 'Pending claim',
+        initialTaskTatMs: task.initialTaskDurationMs,
+        initialTaskTatDisplay: task.initialTaskDurationMs ? formatDurationReadable(task.initialTaskDurationMs) : undefined,
+        reworkTatMs: isRework ? reworkElapsed : task.reworkDurationMs,
+        reworkTatDisplay: isRework ? (task.reworkAccepted ? `${formatDurationReadable(reworkElapsed)} running` : 'Awaiting acceptance') : (task.reworkDurationMs ? formatDurationReadable(task.reworkDurationMs) : undefined),
         isOverdue,
         overdueDurationMs,
         overdueReason: overdueReason || (claimedAt > 0 ? 'Within SLA Timer (In Progress)' : 'In Design Queue (Open to Claim)')
@@ -2470,9 +2479,23 @@ export default function AdminDashboard() {
                               <span className="text-[10px] font-black px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg flex items-center gap-1">
                                 🎨 {designer}
                               </span>
-                              <span className="font-mono font-black text-gray-900">
-                                TAT: {metrics.tatDisplay}
-                              </span>
+                              <div className="flex flex-col items-end">
+                                {metrics.initialTaskTatDisplay && (
+                                  <span className="font-mono text-[10px] font-bold text-purple-700">
+                                    ⏱️ Task: {metrics.initialTaskTatDisplay}
+                                  </span>
+                                )}
+                                {metrics.reworkTatDisplay && (
+                                  <span className="font-mono text-[10px] font-bold text-amber-700">
+                                    🔁 Rework: {metrics.reworkTatDisplay}
+                                  </span>
+                                )}
+                                {!metrics.initialTaskTatDisplay && !metrics.reworkTatDisplay && (
+                                  <span className="font-mono font-black text-gray-900">
+                                    TAT: {metrics.tatDisplay}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Overdue alert / reason */}
@@ -2484,20 +2507,50 @@ export default function AdminDashboard() {
                             )}
 
                             {metrics.isRework && (
-                              <div className="p-2 bg-amber-50 rounded-xl border border-amber-200 text-[10px] text-amber-900 font-bold flex items-center gap-1">
-                                <RefreshCw size={12} className="text-amber-700 shrink-0" />
-                                <span className="truncate">Revision: {task.reworkNotes || 'Changes required'}</span>
+                              <div className="p-2 bg-amber-50 rounded-xl border border-amber-200 text-[10px] text-amber-900 font-bold flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1 truncate">
+                                  <RefreshCw size={12} className="text-amber-700 shrink-0" />
+                                  <span className="truncate">Revision: {task.reworkNotes || 'Changes required'}</span>
+                                </div>
+                                {!task.reworkAccepted && (
+                                  <span className="px-1.5 py-0.5 rounded bg-orange-200 text-orange-900 text-[8px] font-black uppercase shrink-0 animate-pulse">
+                                    Awaiting Acceptance
+                                  </span>
+                                )}
                               </div>
                             )}
 
-                            <div className="pt-2 border-t border-gray-100">
-                              <DesignTaskTimer
-                                claimedAt={task.claimedAt || task.designClaimedAt}
-                                completedAt={task.designCompletedAt}
-                                isCompleted={metrics.isCompleted}
-                                variant="bar"
-                                designerName={designer}
-                              />
+                            <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                              {metrics.isRework ? (
+                                task.reworkAccepted ? (
+                                  <div>
+                                    <span className="text-[9.5px] font-black uppercase text-amber-900 block mb-1">🔁 2-Hour Rework SLA Timer:</span>
+                                    <DesignTaskTimer
+                                      claimedAt={task.reworkAcceptedAt || task.claimedAt}
+                                      completedAt={task.reworkCompletedAt}
+                                      isCompleted={Boolean(task.reworkCompletedAt)}
+                                      variant="bar"
+                                      designerName={designer}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="p-2 bg-orange-50 rounded-xl border border-orange-200 text-orange-900 text-[11px] font-black flex items-center justify-between">
+                                    <span>🔁 Rework Status:</span>
+                                    <span>Awaiting Designer Acceptance</span>
+                                  </div>
+                                )
+                              ) : (
+                                <div>
+                                  <span className="text-[9.5px] font-black uppercase text-purple-900 block mb-1">⏱️ 2-Hour Task SLA Timer:</span>
+                                  <DesignTaskTimer
+                                    claimedAt={task.claimedAt || task.designClaimedAt}
+                                    completedAt={task.designCompletedAt}
+                                    isCompleted={metrics.isCompleted}
+                                    variant="bar"
+                                    designerName={designer}
+                                  />
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

@@ -279,6 +279,14 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         isHold: o.status === OrderStatus.HOLD && o.previousStatus === OrderStatus.DESIGN,
         isCompleted: isCompleted,
         isRework: isRework,
+        reworkAccepted: Boolean(o.reworkAccepted || o.details?.reworkAccepted),
+        reworkRequestedAt: o.reworkRequestedAt || o.details?.reworkRequestedAt,
+        reworkAcceptedAt: o.reworkAcceptedAt || o.details?.reworkAcceptedAt,
+        reworkCompletedAt: o.reworkCompletedAt || o.details?.reworkCompletedAt,
+        reworkDurationMs: o.reworkDurationMs || o.details?.reworkDurationMs,
+        initialTaskClaimedAt: o.initialTaskClaimedAt || o.details?.initialTaskClaimedAt,
+        initialTaskCompletedAt: o.initialTaskCompletedAt || o.details?.initialTaskCompletedAt,
+        initialTaskDurationMs: o.initialTaskDurationMs || o.details?.initialTaskDurationMs,
         isAdminOrder: isItemAdminOrder(o),
         reworkNotes: o.reworkNotes,
         createdAt: o.createdAt || Date.now(),
@@ -671,6 +679,59 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     }
   };
 
+  const handleAcceptRework = async (item: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsProcessing(true);
+    try {
+      const now = Date.now();
+      await onUpdateOrder(item.id, {
+        reworkAccepted: true,
+        reworkAcceptedAt: now,
+        claimedAt: now,
+        designClaimedAt: now,
+        designDeadline: now + 120 * 60 * 1000,
+        designSlaMinutes: 120,
+        assignedDesigner: designerName,
+        claimedBy: user?.id || user?.uid,
+        claimedByName: designerName,
+        updatedAt: now,
+        details: {
+          ...(item.details || {}),
+          reworkAccepted: true,
+          reworkAcceptedAt: now
+        }
+      });
+      alert(`✓ Rework Request Accepted! A 2-Hour SLA Timer has started. Opening Workspace...`);
+      const fullOrder = orders.find(o => o.id === item.id);
+      if (fullOrder) {
+        setSelectedOrder({
+          ...fullOrder,
+          reworkAccepted: true,
+          reworkAcceptedAt: now,
+          claimedAt: now,
+          designClaimedAt: now,
+          designDeadline: now + 120 * 60 * 1000,
+          designSlaMinutes: 120,
+          assignedDesigner: designerName,
+          claimedBy: user?.id || user?.uid,
+          claimedByName: designerName
+        });
+        setDesignFiles(fullOrder.designAttachments || []);
+        setMachineFiles(fullOrder.machineFiles || []);
+        setDesignNotesText(fullOrder.notes || fullOrder.designNotes || '');
+        setOriginalFile(fullOrder.original_design_file || '');
+        setOriginalFilename(fullOrder.original_design_filename || '');
+        setDesignZipFile(fullOrder.original_design_zip || '');
+        setDesignZipFilename(fullOrder.original_design_zip_filename || '');
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to accept rework request.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleOpenWorkspace = (item: any) => {
     if (item.status === OrderStatus.DELIVERED) {
       return;
@@ -724,19 +785,48 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     setIsProcessing(true);
     setProcessingAction('marketing');
     try {
+      const now = Date.now();
+      const isRework = Boolean(selectedOrder.isRework || selectedOrder.reworkRequestedAt);
+      
+      let reworkCompletedAt: number | undefined;
+      let reworkDurationMs: number | undefined;
+      let initialTaskClaimedAt = selectedOrder.initialTaskClaimedAt;
+      let initialTaskCompletedAt = selectedOrder.initialTaskCompletedAt;
+      let initialTaskDurationMs = selectedOrder.initialTaskDurationMs;
+
+      if (isRework) {
+        reworkCompletedAt = now;
+        const reworkStart = Number(selectedOrder.reworkAcceptedAt || selectedOrder.reworkRequestedAt || selectedOrder.claimedAt || now);
+        reworkDurationMs = Math.max(0, now - reworkStart);
+      } else {
+        initialTaskClaimedAt = initialTaskClaimedAt || selectedOrder.claimedAt || selectedOrder.designClaimedAt || selectedOrder.createdAt || now;
+        initialTaskCompletedAt = now;
+        initialTaskDurationMs = Math.max(0, now - Number(initialTaskClaimedAt));
+      }
+
       await onUpdateOrder(selectedOrder.id, {
         status: OrderStatus.PENDING,
         designCompleted: true,
         designSentToMarketing: true,
-        designCompletedAt: Date.now(),
+        designCompletedAt: now,
         isRework: false,
         reworkNotes: '',
+        reworkCompletedAt: isRework ? reworkCompletedAt : selectedOrder.reworkCompletedAt,
+        reworkDurationMs: isRework ? reworkDurationMs : selectedOrder.reworkDurationMs,
+        initialTaskClaimedAt,
+        initialTaskCompletedAt,
+        initialTaskDurationMs,
         details: {
           ...(selectedOrder.details || {}),
           designCompleted: true,
           designSentToMarketing: true,
-          designCompletedAt: Date.now(),
-          isRework: false
+          designCompletedAt: now,
+          isRework: false,
+          reworkCompletedAt: isRework ? reworkCompletedAt : selectedOrder.reworkCompletedAt,
+          reworkDurationMs: isRework ? reworkDurationMs : selectedOrder.reworkDurationMs,
+          initialTaskClaimedAt,
+          initialTaskCompletedAt,
+          initialTaskDurationMs,
         },
         original_design_file: originalFile,
         original_design_filename: originalFilename,
@@ -745,7 +835,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         designAttachments: designFiles,
         machineFiles: machineFiles,
         designNotes: designNotesText,
-        updatedAt: Date.now()
+        updatedAt: now
       });
       setSelectedOrder(null);
       setDesignFiles([]);
@@ -758,7 +848,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       alert("Success: Artwork completed and sent back to Marketing Dashboard (Designs Received section).");
     } catch (e) {
       console.error(e);
-      alert("An error occurred while moving the order.");
+      alert("Failed to send artwork to Marketing.");
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
@@ -1466,6 +1556,16 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               Review Assets
                             </button>
                           </div>
+                        ) : item.isRework && !item.reworkAccepted ? (
+                          <button
+                            disabled={isProcessing}
+                            onClick={(e) => handleAcceptRework(item, e)}
+                            className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:opacity-95 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-md cursor-pointer border-none flex items-center gap-1.5 ml-auto animate-pulse"
+                            title="Accept rework request and start 2-Hour SLA timer"
+                          >
+                            <RefreshCw size={12} />
+                            <span>⚡ Accept Rework</span>
+                          </button>
                         ) : isUnclaimed ? (
                           <button
                             disabled={isProcessing}
@@ -1682,6 +1782,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         >
                           Review Assets
                         </button>
+                      ) : item.isRework && !item.reworkAccepted ? (
+                        <button
+                          disabled={isProcessing}
+                          onClick={(e) => handleAcceptRework(item, e)}
+                          className="col-span-2 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-md flex items-center justify-center gap-2 animate-pulse"
+                        >
+                          <RefreshCw size={14} />
+                          <span>⚡ Accept Rework Request</span>
+                        </button>
                       ) : isUnclaimed ? (
                         <button
                           disabled={isProcessing}
@@ -1800,6 +1909,46 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                     variant="bar"
                     designerName={selectedOrder.assignedDesigner}
                   />
+                )}
+
+                {/* Rework Alert & Acceptance Banner */}
+                {selectedOrder.isRework && (
+                  <div className={cn(
+                    "p-5 rounded-2xl flex items-start justify-between gap-4 text-left border shadow-xs transition-all",
+                    selectedOrder.reworkAccepted 
+                      ? "bg-amber-50/70 border-amber-200 text-amber-950" 
+                      : "bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100 border-amber-300 text-amber-950"
+                  )}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                        <RefreshCw size={20} className={selectedOrder.reworkAccepted ? "" : "animate-spin-slow"} />
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-black uppercase tracking-wider text-amber-900 flex items-center gap-2">
+                          <span>Revision / Rework Requested by Marketing</span>
+                          {selectedOrder.reworkAccepted ? (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-md">✓ Active 2h Rework SLA Running</span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-[9px] font-black rounded-md animate-pulse">Awaiting Designer Acceptance</span>
+                          )}
+                        </h5>
+                        <p className="text-xs font-bold text-amber-900 mt-1 bg-white/70 p-2.5 rounded-xl border border-amber-200/60 leading-relaxed">
+                          "{selectedOrder.reworkNotes || selectedOrder.notes || 'Please make required modifications.'}"
+                        </p>
+                      </div>
+                    </div>
+
+                    {!selectedOrder.reworkAccepted && (
+                      <button
+                        disabled={isProcessing}
+                        onClick={(e) => handleAcceptRework(selectedOrder, e)}
+                        className="px-5 py-3 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-700 hover:opacity-95 text-white rounded-xl font-black text-xs uppercase tracking-wider border-none cursor-pointer shadow-md shrink-0 flex items-center gap-2 active:scale-95 animate-pulse"
+                      >
+                        <RefreshCw size={14} />
+                        <span>⚡ Accept Rework & Start SLA</span>
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Hold Alert Notification Banner */}

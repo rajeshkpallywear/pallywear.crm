@@ -2771,21 +2771,53 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                             )}
                           </td>
 
-                          {/* Design Sent & 2-Hour SLA Timer */}
+                          {/* Design Sent, Task Time & Rework Time */}
                           <td className="px-4 py-3.5 text-center">
                             {sentDes ? (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                                  ✓ In Studio
+                              <div className="flex flex-col items-center gap-1.5">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border shadow-2xs",
+                                  isRework ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-purple-50 text-purple-700 border-purple-200"
+                                )}>
+                                  {isRework ? '🔁 In Rework' : '✓ In Studio'}
                                 </span>
-                                {(o.claimedAt || o.designClaimedAt || o.assignedDesigner) && (
+
+                                {/* 1. Initial Task Time */}
+                                {o.initialTaskDurationMs ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200" title="Initial artwork delivery duration">
+                                    ⏱️ Task: {Math.floor(o.initialTaskDurationMs / 60000)}m (Done)
+                                  </span>
+                                ) : !isRework && (o.claimedAt || o.designClaimedAt || o.assignedDesigner) ? (
                                   <DesignTaskTimer
                                     claimedAt={o.claimedAt || o.designClaimedAt}
                                     completedAt={o.designCompletedAt}
                                     isCompleted={readyDes || Boolean(o.designCompleted)}
                                     designerName={o.assignedDesigner}
                                   />
-                                )}
+                                ) : null}
+
+                                {/* 2. Rework Time (Separated) */}
+                                {isRework ? (
+                                  o.reworkAccepted ? (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      <span className="text-[8.5px] font-extrabold text-amber-700">Rework SLA:</span>
+                                      <DesignTaskTimer
+                                        claimedAt={o.reworkAcceptedAt || o.claimedAt}
+                                        completedAt={o.reworkCompletedAt}
+                                        isCompleted={Boolean(o.reworkCompletedAt)}
+                                        designerName={o.assignedDesigner}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase bg-orange-100 text-orange-800 border border-orange-200 animate-pulse">
+                                      ⏳ Awaiting Acceptance
+                                    </span>
+                                  )
+                                ) : o.reworkDurationMs ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-amber-50 text-amber-800 border border-amber-200" title="Rework revision turnaround time">
+                                    🔁 Rework: {Math.floor(o.reworkDurationMs / 60000)}m (Done)
+                                  </span>
+                                ) : null}
                               </div>
                             ) : (
                               <span className="text-[10px] text-gray-400">-</span>
@@ -2940,14 +2972,46 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                       </div>
 
                       {(sentDes || o.assignedDesigner) && (
-                        <div className="pt-1">
-                          <DesignTaskTimer
-                            claimedAt={o.claimedAt || o.designClaimedAt}
-                            completedAt={o.designCompletedAt}
-                            isCompleted={readyDes || Boolean(o.designCompleted)}
-                            variant="bar"
-                            designerName={o.assignedDesigner}
-                          />
+                        <div className="pt-1 space-y-1.5">
+                          {o.initialTaskDurationMs ? (
+                            <div className="p-2 bg-purple-50/80 rounded-xl border border-purple-200 text-purple-900 text-xs flex items-center justify-between font-bold">
+                              <span>⏱️ Initial Task Time:</span>
+                              <span className="font-black text-purple-800">{Math.floor(o.initialTaskDurationMs / 60000)} mins (Done)</span>
+                            </div>
+                          ) : !isRework ? (
+                            <DesignTaskTimer
+                              claimedAt={o.claimedAt || o.designClaimedAt}
+                              completedAt={o.designCompletedAt}
+                              isCompleted={readyDes || Boolean(o.designCompleted)}
+                              variant="bar"
+                              designerName={o.assignedDesigner}
+                            />
+                          ) : null}
+
+                          {isRework ? (
+                            o.reworkAccepted ? (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">🔁 Rework SLA Timer:</span>
+                                <DesignTaskTimer
+                                  claimedAt={o.reworkAcceptedAt || o.claimedAt}
+                                  completedAt={o.reworkCompletedAt}
+                                  isCompleted={Boolean(o.reworkCompletedAt)}
+                                  variant="bar"
+                                  designerName={o.assignedDesigner}
+                                />
+                              </div>
+                            ) : (
+                              <div className="p-2.5 bg-orange-50 rounded-xl border border-orange-200 text-orange-900 text-xs font-black flex items-center justify-between animate-pulse">
+                                <span>🔁 Rework Status:</span>
+                                <span>Awaiting Designer Acceptance</span>
+                              </div>
+                            )
+                          ) : o.reworkDurationMs ? (
+                            <div className="p-2 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-bold">
+                              <span>🔁 Rework Revision Time:</span>
+                              <span className="font-black text-amber-800">{Math.floor(o.reworkDurationMs / 60000)} mins (Done)</span>
+                            </div>
+                          ) : null}
                         </div>
                       )}
 

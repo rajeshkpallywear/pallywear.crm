@@ -234,6 +234,14 @@ export interface Order {
   raisedTaskCategory?: string;
   isConvertedFromTask?: boolean;
   billingInvoiceAttached?: boolean;
+  initialTaskClaimedAt?: number;
+  initialTaskCompletedAt?: number;
+  initialTaskDurationMs?: number;
+  reworkRequestedAt?: number;
+  reworkAccepted?: boolean;
+  reworkAcceptedAt?: number;
+  reworkCompletedAt?: number;
+  reworkDurationMs?: number;
 }
 
 export interface InventoryMovement {

@@ -50,10 +50,22 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
       const appendNote = `[TASK REVISION REQUESTED] ${new Date(timestamp).toLocaleString()}: ${trimmed}`;
       const nextNotes = existingNotes ? `${existingNotes}\n\n${appendNote}` : appendNote;
 
+      const existingClaimedAt = Number(order.claimedAt || order.designClaimedAt || order.createdAt || timestamp);
+      const existingCompletedAt = Number(order.designCompletedAt || timestamp);
+      const initialDuration = Math.max(0, existingCompletedAt - existingClaimedAt);
+
       const updates: Partial<Order> = {
         status: OrderStatus.DESIGN,
         isRework: true,
         reworkNotes: trimmed,
+        reworkRequestedAt: timestamp,
+        reworkAccepted: false,
+        reworkAcceptedAt: undefined,
+        reworkCompletedAt: undefined,
+        reworkDurationMs: undefined,
+        initialTaskClaimedAt: order.initialTaskClaimedAt || existingClaimedAt,
+        initialTaskCompletedAt: order.initialTaskCompletedAt || existingCompletedAt,
+        initialTaskDurationMs: order.initialTaskDurationMs || initialDuration,
         designCompleted: false,
         designSentToMarketing: false,
         notes: nextNotes,
@@ -68,9 +80,11 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
           ...(order.details || {}),
           isRework: true,
           reworkNotes: trimmed,
+          reworkRequestedAt: timestamp,
+          reworkAccepted: false,
           designCompleted: false,
           designSentToMarketing: false,
-          reworkRequestedAt: timestamp,
+          initialTaskDurationMs: order.initialTaskDurationMs || initialDuration,
         }
       };
 

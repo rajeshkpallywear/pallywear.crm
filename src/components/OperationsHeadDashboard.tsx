@@ -949,14 +949,46 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                         </span>
                       </div>
 
-                      <div className="pt-2 border-t border-gray-100">
-                        <DesignTaskTimer
-                          claimedAt={order.claimedAt || order.designClaimedAt}
-                          completedAt={order.designCompletedAt}
-                          isCompleted={isCompleted}
-                          variant="bar"
-                          designerName={order.assignedDesigner}
-                        />
+                      <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                        {order.initialTaskDurationMs ? (
+                          <div className="p-2 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-xs flex items-center justify-between font-bold">
+                            <span>⏱️ Initial Task Time:</span>
+                            <span className="font-black text-purple-800">{Math.floor(order.initialTaskDurationMs / 60000)}m (Done)</span>
+                          </div>
+                        ) : !order.isRework ? (
+                          <DesignTaskTimer
+                            claimedAt={order.claimedAt || order.designClaimedAt}
+                            completedAt={order.designCompletedAt}
+                            isCompleted={isCompleted}
+                            variant="bar"
+                            designerName={order.assignedDesigner}
+                          />
+                        ) : null}
+
+                        {order.isRework ? (
+                          order.reworkAccepted ? (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase text-amber-900 block">🔁 Rework SLA Timer:</span>
+                              <DesignTaskTimer
+                                claimedAt={order.reworkAcceptedAt || order.claimedAt}
+                                completedAt={order.reworkCompletedAt}
+                                isCompleted={Boolean(order.reworkCompletedAt)}
+                                variant="bar"
+                                designerName={order.assignedDesigner}
+                              />
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-orange-50 rounded-xl border border-orange-200 text-orange-900 text-xs font-black flex items-center justify-between animate-pulse">
+                              <span>🔁 Rework Status:</span>
+                              <span>Awaiting Designer Acceptance</span>
+                            </div>
+                          )
+                        ) : order.reworkDurationMs ? (
+                          <div className="p-2 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-bold">
+                            <span>🔁 Rework Revision Time:</span>
+                            <span className="font-black text-amber-800">{Math.floor(order.reworkDurationMs / 60000)}m (Done)</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -1040,16 +1072,25 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                           <td className="px-4 py-3.5 text-center">
                             {isRework ? (
                               <div className="flex flex-col items-center gap-1">
-                                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
+                                <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-md text-[10px] font-black inline-flex items-center gap-1">
                                   <RefreshCw className="w-2.5 h-2.5 animate-spin-slow" /> Rework
                                 </span>
-                                {(o.claimedAt || o.designClaimedAt || o.assignedDesigner) && (
+                                {o.initialTaskDurationMs ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                    ⏱️ Task: {Math.floor(o.initialTaskDurationMs / 60000)}m
+                                  </span>
+                                ) : null}
+                                {o.reworkAccepted ? (
                                   <DesignTaskTimer
-                                    claimedAt={o.claimedAt || o.designClaimedAt}
-                                    completedAt={o.designCompletedAt}
-                                    isCompleted={false}
+                                    claimedAt={o.reworkAcceptedAt || o.claimedAt}
+                                    completedAt={o.reworkCompletedAt}
+                                    isCompleted={Boolean(o.reworkCompletedAt)}
                                     designerName={o.assignedDesigner}
                                   />
+                                ) : (
+                                  <span className="text-[8.5px] font-black text-orange-700 uppercase animate-pulse">
+                                    ⏳ Awaiting Acceptance
+                                  </span>
                                 )}
                               </div>
                             ) : designDone ? (
@@ -1057,14 +1098,23 @@ export default function OperationsHeadDashboard({ orders: propOrders, user: prop
                                 <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-black inline-flex items-center gap-1">
                                   <CheckCheck className="w-2.5 h-2.5" /> Done
                                 </span>
-                                {o.designCompletedAt && (o.claimedAt || o.designClaimedAt) && (
+                                {o.initialTaskDurationMs ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                    ⏱️ Task: {Math.floor(o.initialTaskDurationMs / 60000)}m
+                                  </span>
+                                ) : o.designCompletedAt && (o.claimedAt || o.designClaimedAt) ? (
                                   <DesignTaskTimer
                                     claimedAt={o.claimedAt || o.designClaimedAt}
                                     completedAt={o.designCompletedAt}
                                     isCompleted={true}
                                     designerName={o.assignedDesigner}
                                   />
-                                )}
+                                ) : null}
+                                {o.reworkDurationMs ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    🔁 Rework: {Math.floor(o.reworkDurationMs / 60000)}m
+                                  </span>
+                                ) : null}
                               </div>
                             ) : (
                               <div className="flex flex-col items-center gap-1">
