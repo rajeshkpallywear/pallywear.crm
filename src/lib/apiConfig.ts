@@ -9,7 +9,7 @@ export const getApiBaseUrl = (): string => {
   if (savedUrl) {
     savedUrl = savedUrl.trim().replace(/\/$/, ''); // strip trailing slash
 
-    // Auto-fix common typo: dot before port number (e.g. 118.139.167.81.3000 -> 118.139.167.81:3000)
+    // Auto-fix common typo: dot before port number (e.g. 37.148.202.137.3000 -> 37.148.202.137:3000)
     savedUrl = savedUrl.replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{4,5})/, '$1:$2');
 
     // Auto-add protocol if missing

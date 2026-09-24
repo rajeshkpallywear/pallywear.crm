@@ -17,9 +17,9 @@ if (file_exists($envFile)) {
 }
 
 $db_host = isset($env['DB_HOST']) ? $env['DB_HOST'] : 'localhost';
-$db_user = isset($env['DB_USER']) ? $env['DB_USER'] : 'pallywearcrm_pallywearcrm';
+$db_user = isset($env['DB_USER']) ? $env['DB_USER'] : 'crm_pallywearcrm';
 $db_pass = isset($env['DB_PASSWORD']) ? $env['DB_PASSWORD'] : 'Pallywear@24';
-$db_name = isset($env['DB_NAME']) ? $env['DB_NAME'] : 'pallywearcrm_pallywearcrm';
+$db_name = isset($env['DB_NAME']) ? $env['DB_NAME'] : 'crm_pallywearcrm';
 $db_port = isset($env['DB_PORT']) ? intval($env['DB_PORT']) : 3306;
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name, $db_port);
@@ -40,7 +40,7 @@ $nodeRes127 = curl_exec($ch);
 $nodeErr127 = curl_error($ch);
 curl_close($ch);
 
-$ch2 = curl_init('http://118.139.167.81:3000/api/users');
+$ch2 = curl_init('http://37.148.202.137:3000/api/users');
 curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch2, CURLOPT_TIMEOUT, 3);
 $nodeResPublic = curl_exec($ch2);

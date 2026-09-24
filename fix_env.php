@@ -23,10 +23,10 @@ echo "<pre style='background:#f4f4f4; padding:15px; border-radius:5px;'>" . html
 $changed = false;
 
 // 1. Fix DB_HOST (change public IP to localhost)
-if (strpos($content, 'DB_HOST=118.139.167.81') !== false) {
-    $content = str_replace('DB_HOST=118.139.167.81', 'DB_HOST=localhost', $content);
+if (strpos($content, 'DB_HOST=37.148.202.137') !== false || strpos($content, 'DB_HOST=118.139.167.81') !== false) {
+    $content = str_replace(['DB_HOST=37.148.202.137', 'DB_HOST=118.139.167.81'], 'DB_HOST=localhost', $content);
     $changed = true;
-    echo "<p style='color:green; font-weight:bold;'>✓ DB_HOST updated from 118.139.167.81 to localhost</p>";
+    echo "<p style='color:green; font-weight:bold;'>✓ DB_HOST updated to localhost</p>";
 }
 
 // 2. Write back to .env if changed

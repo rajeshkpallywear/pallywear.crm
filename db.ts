@@ -6,9 +6,9 @@ dotenv.config({ override: true });
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'pallywearuser',
+  user: process.env.DB_USER || 'crm_pallywearcrm',
   password: process.env.DB_PASSWORD || 'Pallywear@24',
-  database: process.env.DB_NAME || 'pallywearcrm',
+  database: process.env.DB_NAME || 'crm_pallywearcrm',
   waitForConnections: true,
   connectionLimit: 15,
   maxIdle: 10,

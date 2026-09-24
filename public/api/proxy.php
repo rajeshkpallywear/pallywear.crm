@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $route = isset($_GET['route']) ? $_GET['route'] : '';
 
 // The target URL of the Node.js server running on your VPS
-$targetUrl = 'http://118.139.167.81:3000/api/' . $route;
+$targetUrl = 'http://37.148.202.137:3000/api/' . $route;
 
 // Only forward the Content-Type request header to protect against header clash or double gzip issues
 $headers = [];

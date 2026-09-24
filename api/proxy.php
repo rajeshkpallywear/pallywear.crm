@@ -28,7 +28,7 @@ foreach (explode('&', $rawQuery) as $param) {
 }
 
 // The target URLs to try (127.0.0.1 local loopback IPv4 first, then localhost, then public IP)
-$targetHosts = ['http://127.0.0.1:3000', 'http://localhost:3000', 'http://118.139.167.81:3000'];
+$targetHosts = ['http://127.0.0.1:3000', 'http://localhost:3000', 'http://37.148.202.137:3000'];
 
 // Only forward the Content-Type request header to protect against header clash or double gzip issues
 $headers = [];

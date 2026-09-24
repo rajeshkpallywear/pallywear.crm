@@ -27,7 +27,7 @@ export default function Login() {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
       }
-      if (url.includes('118.139.167.81')) {
+      if (url.includes('37.148.202.137')) {
         url = url.replace('https://', 'http://');
       }
       localStorage.setItem('pallywear_api_url', url);

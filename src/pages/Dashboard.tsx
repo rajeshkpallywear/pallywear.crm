@@ -140,7 +140,7 @@ export default function Dashboard() {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
       }
-      if (url.includes('118.139.167.81')) {
+      if (url.includes('37.148.202.137')) {
         url = url.replace('https://', 'http://');
       }
       localStorage.setItem('pallywear_api_url', url);
@@ -1361,7 +1361,7 @@ export default function Dashboard() {
                     type="text"
                     value={tempApiUrl}
                     onChange={(e) => setTempApiUrl(e.target.value)}
-                    placeholder="e.g. http://118.139.167.81:3000"
+                    placeholder="e.g. http://37.148.202.137:3000"
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>

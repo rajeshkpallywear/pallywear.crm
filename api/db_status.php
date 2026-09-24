@@ -12,10 +12,10 @@ if (file_exists($envFile)) {
     }
 }
 
-$db_host = isset($env['DB_HOST']) ? $env['DB_HOST'] : '118.139.167.81';
-$db_user = isset($env['DB_USER']) ? $env['DB_USER'] : 'pallywearcrm_pallywearcrm';
+$db_host = isset($env['DB_HOST']) ? $env['DB_HOST'] : 'localhost';
+$db_user = isset($env['DB_USER']) ? $env['DB_USER'] : 'crm_pallywearcrm';
 $db_pass = isset($env['DB_PASSWORD']) ? $env['DB_PASSWORD'] : 'Pallywear@24';
-$db_name = isset($env['DB_NAME']) ? $env['DB_NAME'] : 'pallywearcrm_pallywearcrm';
+$db_name = isset($env['DB_NAME']) ? $env['DB_NAME'] : 'crm_pallywearcrm';
 $db_port = isset($env['DB_PORT']) ? intval($env['DB_PORT']) : 3306;
 
 echo "<h2>Database Status Check</h2>";
@@ -42,7 +42,7 @@ echo "</table>";
 
 echo "<h3>Node.js Backend Connection Test</h3>";
 
-$testUrls = ['http://127.0.0.1:3000/api/users', 'http://118.139.167.81:3000/api/users'];
+$testUrls = ['http://127.0.0.1:3000/api/users', 'http://37.148.202.137:3000/api/users'];
 foreach ($testUrls as $u) {
     $ch = curl_init($u);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
