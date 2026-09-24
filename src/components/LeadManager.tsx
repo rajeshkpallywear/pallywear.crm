@@ -23,6 +23,7 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
   const { user, registeredUsers } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -151,21 +152,29 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const { discountAmount, netTotal } = calculateFinancials(formData.totalOrderValue, formData.discountCode);
     const finalData = { ...formData, discountAmount, netTotal };
 
-    if (editingLead) {
-      updateLead(editingLead.id, finalData);
-    } else {
-      addLead({
-        ...finalData,
-        createdBy: user?.id || 'unknown',
-        createdByName: user?.name || 'Unknown',
-      });
+    try {
+      if (editingLead) {
+        await updateLead(editingLead.id, finalData);
+      } else {
+        await addLead({
+          ...finalData,
+          createdBy: user?.id || 'unknown',
+          createdByName: user?.name || 'Unknown',
+        });
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Error saving lead:', err);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsModalOpen(false);
   };
 
   const handleExport = () => {
@@ -791,9 +800,16 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-gray-100">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="flex-[2] shadow-lg shadow-brand-primary/20">
-                    {editingLead ? 'Update Lead Information' : 'Confirm Registration'}
+                  <Button type="button" variant="outline" disabled={isSubmitting} className="flex-1" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting} className="flex-[2] shadow-lg shadow-brand-primary/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75">
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>{editingLead ? 'Updating...' : 'Registering...'}</span>
+                      </>
+                    ) : (
+                      <span>{editingLead ? 'Update Lead Information' : 'Confirm Registration'}</span>
+                    )}
                   </Button>
                 </div>
               </form>

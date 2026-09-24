@@ -118,15 +118,47 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-const PageLoader = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen dashboard-page-bg">
-    <div className="relative w-16 h-16">
-      <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20"></div>
-      <div className="absolute inset-0 rounded-full border-4 border-t-brand-primary border-r-brand-primary animate-spin"></div>
+const PageLoader = () => {
+  const [showFailsafe, setShowFailsafe] = React.useState(false);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShowFailsafe(true), 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen dashboard-page-bg">
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20"></div>
+        <div className="absolute inset-0 rounded-full border-4 border-t-brand-primary border-r-brand-primary animate-spin"></div>
+      </div>
+      <p className="mt-4 text-brand-dark font-medium animate-pulse">Loading Pallywear CRM...</p>
+      {showFailsafe && (
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <p className="text-xs text-gray-500 font-medium">Taking longer than expected?</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                sessionStorage.clear();
+                window.location.reload();
+              }}
+              className="px-3.5 py-1.5 bg-brand-primary text-white text-xs font-bold rounded-xl shadow-sm hover:opacity-90 transition-all cursor-pointer border-none"
+            >
+              Refresh Application
+            </button>
+            <button
+              onClick={() => {
+                window.location.href = '/login';
+              }}
+              className="px-3.5 py-1.5 bg-white text-gray-700 text-xs font-bold rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all cursor-pointer"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-    <p className="mt-4 text-brand-dark font-medium animate-pulse">Loading Pallywear CRM...</p>
-  </div>
-);
+  );
+};
 
 const ProtectedRoute = ({
   children,

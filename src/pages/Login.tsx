@@ -13,6 +13,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login, googleLogin, user: authUser, adminOnlyRegistration } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,22 +64,30 @@ export default function Login() {
   }, [location, authUser, navigate]);
 
   const handleGoogleLogin = async () => {
+    if (isLoading) return;
     setError('');
-    const result = await googleLogin();
-    if (result.success) {
-      navigate(getDestinationRoute(result.user));
-    } else {
-      let message = result.message || 'Google login failed';
-      if (message.includes('auth/operation-not-allowed')) {
-        message = 'Google sign-in is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
+    setIsLoading(true);
+    try {
+      const result = await googleLogin();
+      if (result.success) {
+        navigate(getDestinationRoute(result.user));
+      } else {
+        let message = result.message || 'Google login failed';
+        if (message.includes('auth/operation-not-allowed')) {
+          message = 'Google sign-in is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
+        }
+        setError(message);
       }
-      setError(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setError('');
+    setIsLoading(true);
 
     try {
       const result = await login(email.trim(), password);
@@ -107,6 +116,8 @@ export default function Login() {
         errMsg = 'Connection to custom server failed. Reset connection to default (https://pallywear.in). Please tap Sign In again.';
       }
       setError(errMsg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -145,8 +156,9 @@ export default function Login() {
             <input
               type="text"
               value={email}
+              disabled={isLoading}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all shadow-sm text-xs"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all shadow-sm text-xs disabled:bg-gray-50 disabled:cursor-not-allowed"
               placeholder="name@company.com"
               required
             />
@@ -160,8 +172,9 @@ export default function Login() {
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
+                disabled={isLoading}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all pr-12 shadow-sm text-xs"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all pr-12 shadow-sm text-xs disabled:bg-gray-50 disabled:cursor-not-allowed"
                 placeholder="••••••••"
                 required
               />
@@ -183,8 +196,19 @@ export default function Login() {
             <a href="#" className="font-bold text-brand-primary hover:underline">Forgot password?</a>
           </div>
 
-          <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-brand-primary/20">
-            Sign in
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-11 text-base shadow-lg shadow-brand-primary/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <span>Sign in</span>
+            )}
           </Button>
 
           <div className="relative my-4">
@@ -198,8 +222,9 @@ export default function Login() {
 
           <button
             type="button"
+            disabled={isLoading}
             onClick={handleGoogleLogin}
-            className="w-full py-2.5 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-gray-700 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+            className="w-full py-2.5 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-gray-700 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" /> Sign in with Google
           </button>

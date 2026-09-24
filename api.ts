@@ -92,10 +92,17 @@ router.post('/auth/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'This email is already registered.' });
     }
 
-    await query(
-      'INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)',
-      [userId, normalizedEmail, password, name, role || 'user']
-    );
+    try {
+      await query(
+        'INSERT INTO users (id, email, password, name, role, status, isBlocked) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [userId, normalizedEmail, password, name, role || 'user', 'Active', 0]
+      );
+    } catch (_) {
+      await query(
+        'INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)',
+        [userId, normalizedEmail, password, name, role || 'user']
+      );
+    }
 
     if (inviteId) {
       await query('UPDATE invitations SET status = ? WHERE id = ?', ['accepted', inviteId]);

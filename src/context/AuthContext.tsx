@@ -20,9 +20,10 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   registeredUsers: User[];
+  refreshUsers: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; user?: User | null }>;
   googleLogin: () => Promise<{ success: boolean; message?: string; user?: User | null }>;
-  register: (name: string, email: string, password: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
+  register: (name: string, email: string, password: string, role?: UserRole, inviteId?: string) => Promise<{ success: boolean; message?: string }>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
@@ -172,6 +173,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true, user: nextUser };
   };
 
+  const refreshUsers = async () => {
+    try {
+      const usersList = await mockDataService.getUsers(true);
+      setRegisteredUsers(usersList.map(profileToUser));
+    } catch (error) {
+      console.error('Error refreshing registered users:', error);
+    }
+  };
+
   const register = async (name: string, email: string, password: string, role?: UserRole, inviteId?: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const users = await mockDataService.getUsers();
@@ -189,7 +199,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inviteId
     };
 
-    await mockDataService.register(newUserProfile);
+    const regResult = await mockDataService.register(newUserProfile);
+    if (regResult && regResult.success === false) {
+      return regResult;
+    }
+
+    // Instantly refresh users in state so new user is visible right away!
+    try {
+      const updatedList = await mockDataService.getUsers(true);
+      setRegisteredUsers(updatedList.map(profileToUser));
+    } catch (_) {}
+
     return { success: true };
   };
 
@@ -262,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user,
       registeredUsers,
+      refreshUsers,
       login,
       googleLogin,
       register,

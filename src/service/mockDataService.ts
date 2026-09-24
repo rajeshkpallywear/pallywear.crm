@@ -55,6 +55,25 @@ interface CacheEntry<T> {
 
 const memoryCache = new Map<string, CacheEntry<any>>();
 
+/**
+ * Fetch wrapper with timeout using AbortController.
+ * Prevents requests from hanging indefinitely on slow or dead connections.
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 7000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+
 function getCached<T>(key: string, maxAgeMs = 15000): T | null {
   const mem = memoryCache.get(key);
   if (mem && (Date.now() - mem.timestamp < maxAgeMs)) {
@@ -147,7 +166,7 @@ export const mockDataService = {
       const cached = getCached<Order[]>('orders', 12000);
       if (cached && cached.length > 0) {
         // Return cached immediately and refresh in background
-        fetch(getApiUrl('/api/orders'))
+        fetchWithTimeout(getApiUrl('/api/orders'), {}, 5000)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data && Array.isArray(data)) setCache('orders', data);
@@ -156,7 +175,7 @@ export const mockDataService = {
         return cached;
       }
     }
-    const res = await fetch(getApiUrl('/api/orders'));
+    const res = await fetchWithTimeout(getApiUrl('/api/orders'), {}, 6000);
     if (!res.ok) {
       const fallback = getCached<Order[]>('orders', 86400000);
       if (fallback) return fallback;
@@ -172,7 +191,7 @@ export const mockDataService = {
     const cached = getCached<any>(cacheKey, 60000);
     if (cached) return cached;
 
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}/attachments`));
+    const res = await fetchWithTimeout(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}/attachments`), {}, 8000);
     if (!res.ok) throw new Error('Failed to fetch order attachments');
     const data = await res.json();
     setCache(cacheKey, data);
@@ -188,11 +207,11 @@ export const mockDataService = {
     }
     invalidateCache(`att_${sanitizeId(id)}`);
 
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
+    const res = await fetchWithTimeout(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
-    });
+    }, 10000);
     if (!res.ok) {
       invalidateCache('orders');
       const errText = await res.text();
@@ -216,11 +235,11 @@ export const mockDataService = {
       setCache('orders', updated);
     }
     invalidateCache(`att_${sanitizeId(order.id)}`);
-    const res = await fetch(getApiUrl('/api/orders'), {
+    const res = await fetchWithTimeout(getApiUrl('/api/orders'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order)
-    });
+    }, 12000);
     if (!res.ok) {
       invalidateCache('orders');
       throw new Error('Failed to save order');
@@ -229,7 +248,7 @@ export const mockDataService = {
   },
 
   createOrder: async (orderData: Partial<Order>): Promise<Order> => {
-    const id = Math.random().toString(36).substr(2, 9).toUpperCase();
+    const id = orderData.id || Math.random().toString(36).substr(2, 9).toUpperCase();
     const newOrder: Order = {
       id,
       customerInfo: {
@@ -287,7 +306,7 @@ export const mockDataService = {
     if (!forceFresh) {
       const cached = getCached<Lead[]>('leads', 12000);
       if (cached && cached.length > 0) {
-        fetch(getApiUrl('/api/leads'))
+        fetchWithTimeout(getApiUrl('/api/leads'), {}, 5000)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data && Array.isArray(data)) setCache('leads', data);
@@ -296,7 +315,7 @@ export const mockDataService = {
         return cached;
       }
     }
-    const res = await fetch(getApiUrl('/api/leads'));
+    const res = await fetchWithTimeout(getApiUrl('/api/leads'), {}, 6000);
     if (!res.ok) {
       const fallback = getCached<Lead[]>('leads', 86400000);
       if (fallback) return fallback;
@@ -314,11 +333,11 @@ export const mockDataService = {
       const updatedList = idx >= 0 ? existingLeads.map(l => l.id === lead.id ? lead : l) : [lead, ...existingLeads];
       setCache('leads', updatedList);
     }
-    const res = await fetch(getApiUrl('/api/leads'), {
+    const res = await fetchWithTimeout(getApiUrl('/api/leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(lead)
-    });
+    }, 10000);
     if (!res.ok) {
       invalidateCache('leads');
       throw new Error('Failed to add lead');
@@ -332,11 +351,11 @@ export const mockDataService = {
       const updatedList = existingLeads.map(l => l.id === id ? { ...l, ...updates } : l);
       setCache('leads', updatedList);
     }
-    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
+    const res = await fetchWithTimeout(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
-    });
+    }, 10000);
     if (!res.ok) {
       invalidateCache('leads');
       throw new Error('Failed to update lead');
@@ -346,18 +365,18 @@ export const mockDataService = {
 
   deleteLead: async (id: string): Promise<void> => {
     invalidateCache('leads');
-    const res = await fetch(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
+    const res = await fetchWithTimeout(getApiUrl(`/api/leads/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
-    });
+    }, 8000);
     if (!res.ok) throw new Error('Failed to delete lead');
     notifyUpdate();
   },
 
   clearLeads: async (): Promise<void> => {
     invalidateCache('leads');
-    const res = await fetch(getApiUrl('/api/leads/clear'), {
+    const res = await fetchWithTimeout(getApiUrl('/api/leads/clear'), {
       method: 'POST'
-    });
+    }, 8000);
     if (!res.ok) throw new Error('Failed to clear leads');
     notifyUpdate();
   },
@@ -366,7 +385,7 @@ export const mockDataService = {
     if (!forceFresh) {
       const cached = getCached<Invoice[]>('invoices', 12000);
       if (cached && cached.length > 0) {
-        fetch(getApiUrl('/api/invoices'))
+        fetchWithTimeout(getApiUrl('/api/invoices'), {}, 5000)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data && Array.isArray(data)) setCache('invoices', data);
@@ -375,7 +394,7 @@ export const mockDataService = {
         return cached;
       }
     }
-    const res = await fetch(getApiUrl('/api/invoices'));
+    const res = await fetchWithTimeout(getApiUrl('/api/invoices'), {}, 6000);
     if (!res.ok) {
       const fallback = getCached<Invoice[]>('invoices', 86400000);
       if (fallback) return fallback;
@@ -387,32 +406,48 @@ export const mockDataService = {
   },
 
   addInvoice: async (invoice: Invoice): Promise<void> => {
-    invalidateCache('invoices');
-    const res = await fetch(getApiUrl('/api/invoices'), {
+    // ⚡ Optimistically update cache immediately for 0ms latency
+    const cached = getCached<Invoice[]>('invoices', 60000);
+    if (cached && Array.isArray(cached)) {
+      const idx = cached.findIndex(i => i.id === invoice.id);
+      const updated = idx >= 0 ? cached.map(i => i.id === invoice.id ? invoice : i) : [invoice, ...cached];
+      setCache('invoices', updated);
+    }
+    const res = await fetchWithTimeout(getApiUrl('/api/invoices'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(invoice)
-    });
-    if (!res.ok) throw new Error('Failed to add invoice');
+    }, 10000);
+    if (!res.ok) {
+      invalidateCache('invoices');
+      throw new Error('Failed to add invoice');
+    }
     notifyUpdate();
   },
 
   updateInvoice: async (id: string, updates: Partial<Invoice>): Promise<void> => {
-    invalidateCache('invoices');
-    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
+    const cached = getCached<Invoice[]>('invoices', 60000);
+    if (cached && Array.isArray(cached)) {
+      const updated = cached.map(i => i.id === id ? { ...i, ...updates } : i);
+      setCache('invoices', updated);
+    }
+    const res = await fetchWithTimeout(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
-    });
-    if (!res.ok) throw new Error('Failed to update invoice');
+    }, 10000);
+    if (!res.ok) {
+      invalidateCache('invoices');
+      throw new Error('Failed to update invoice');
+    }
     notifyUpdate();
   },
 
   deleteInvoice: async (id: string): Promise<void> => {
     invalidateCache('invoices');
-    const res = await fetch(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
+    const res = await fetchWithTimeout(getApiUrl(`/api/invoices/${encodeURIComponent(sanitizeId(id))}`), {
       method: 'DELETE'
-    });
+    }, 8000);
     if (!res.ok) throw new Error('Failed to delete invoice');
     notifyUpdate();
   },
@@ -493,7 +528,7 @@ export const mockDataService = {
       const cached = getCached<UserProfile[]>('users', 30000);
       if (cached && cached.length > 0) {
         const filteredCached = cached.filter(u => u.email?.toLowerCase() !== 'daniel.smpallywear@gmail.com');
-        fetch(getApiUrl('/api/users'))
+        fetchWithTimeout(getApiUrl('/api/users'), {}, 5000)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data && Array.isArray(data) && data.length > 0) {
@@ -505,7 +540,7 @@ export const mockDataService = {
       }
     }
     try {
-      const res = await fetch(getApiUrl('/api/users'));
+      const res = await fetchWithTimeout(getApiUrl('/api/users'), {}, 5000);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -520,44 +555,51 @@ export const mockDataService = {
     return loadLocalUsers();
   },
 
-  register: async (user: UserProfile): Promise<void> => {
+  register: async (user: UserProfile): Promise<{ success: boolean; message?: string }> => {
     try {
-      const res = await fetch(getApiUrl('/api/auth/register'), {
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(user)
-      });
+      }, 7000);
       if (!res.ok) {
-        const err = await res.json();
-        console.warn('Backend API register returned error:', err);
+        let err: any = {};
+        try { err = await res.json(); } catch (_) {}
+        const message = err.message || 'Server rejected registration.';
+        console.warn('Backend API register returned error:', message);
+        return { success: false, message };
       }
     } catch (e: any) {
       console.warn('Backend API register unreachable, saving locally:', e);
     }
     const localUsers = loadLocalUsers();
-    const existingIndex = localUsers.findIndex(u => u.email === user.email);
+    const existingIndex = localUsers.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
     if (existingIndex === -1) {
       localUsers.push(user);
     } else {
       localUsers[existingIndex] = { ...localUsers[existingIndex], ...user };
     }
     saveLocalUsers(localUsers);
+    // Invalidate users cache so fresh list is loaded immediately
+    invalidateCache('users');
+    setCache('users', localUsers);
     notifyUpdate();
+    return { success: true };
   },
 
   login: async (email: string, password: string): Promise<UserProfile | null> => {
     try {
-      const res = await fetch(getApiUrl('/api/auth/login'), {
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
-      });
+      }, 4500);
       if (res.ok) {
         const data = await res.json();
         if (data.user) return data.user;
       }
     } catch (e) {
-      console.warn('Backend API login unreachable, checking local database:', e);
+      console.warn('Backend API login unreachable or timed out, checking local database:', e);
     }
     const localUsers = loadLocalUsers();
     const matched = localUsers.find(u => u.email.toLowerCase().trim() === email.toLowerCase().trim());

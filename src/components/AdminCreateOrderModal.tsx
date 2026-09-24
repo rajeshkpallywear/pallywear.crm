@@ -1404,7 +1404,11 @@ export default function AdminCreateOrderModal({ isOpen, onClose, onSubmitSuccess
               disabled={isProcessing}
               className="flex-1 px-4 sm:px-6 py-3 sm:py-3.5 bg-brand-primary hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2 text-center"
             >
-              <CheckCircle2 size={16} />
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <CheckCircle2 size={16} />
+              )}
               <span>{isProcessing ? 'Submitting Order...' : 'Submit Order'}</span>
             </button>
           </div>

@@ -19,8 +19,18 @@ export default function Register() {
   const [error, setError] = useState('');
   const [inviteId, setInviteId] = useState('');
   const [isInviteLocked, setIsInviteLocked] = useState(false);
-  const { register, googleLogin, logout } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { register, googleLogin, logout, user: currentUser } = useAuth();
   const navigate = useNavigate();
+
+  const isAdminLoggedIn = Boolean(
+    currentUser && (
+      currentUser.role === UserRole.ADMIN ||
+      currentUser.role === 'admin' ||
+      currentUser.email?.toLowerCase().startsWith('admin') ||
+      currentUser.email?.toLowerCase().startsWith('ceo')
+    )
+  );
 
   const [showSettings, setShowSettings] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
@@ -76,6 +86,7 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError('');
 
     if (password !== confirmPassword) {
@@ -88,11 +99,17 @@ export default function Register() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const result = await register(name, email, password, role, inviteId);
       if (result.success) {
-        await logout();
-        navigate('/login', { state: { message: `Successfully registered ${email}! Please sign in with the new credentials.` } });
+        if (isAdminLoggedIn) {
+          // Keep Admin logged in! Navigate smoothly back to admin panel
+          navigate('/admin', { state: { message: `✓ User ${email} successfully registered!` } });
+        } else {
+          await logout();
+          navigate('/login', { state: { message: `Successfully registered ${email}! Please sign in with the new credentials.` } });
+        }
       } else {
         let message = result.message || 'Registration failed';
         if (message.includes('auth/email-already-in-use')) {
@@ -106,6 +123,8 @@ export default function Register() {
         message = 'This email is already registered. Please sign in instead.';
       }
       setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -232,13 +251,31 @@ export default function Register() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-brand-primary/20">
-            Create Staff Account
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full h-11 text-base shadow-lg shadow-brand-primary/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Registering Account...</span>
+              </>
+            ) : (
+              <span>Create Staff Account</span>
+            )}
           </Button>
 
-          <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl text-amber-700 text-[10px] font-medium leading-relaxed">
-            Note: For technical reasons, registering a new user will sign you out as admin. You will need to log back in.
-          </div>
+          {isAdminLoggedIn ? (
+            <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-emerald-700 text-[11px] font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Admin Mode: You will remain logged in after registering this team member.</span>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-100 p-2.5 rounded-xl text-blue-700 text-[10px] font-medium text-center">
+              New user credentials will be activated immediately upon registration.
+            </div>
+          )}
         </form>
 
         <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-center gap-3">

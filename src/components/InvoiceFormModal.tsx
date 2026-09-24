@@ -106,6 +106,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
     });
 
     const [formData, setFormData] = useState(getInitialData());
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (invoice) {
@@ -375,7 +376,13 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
             designNotes: formData.designNotes,
         };
 
-        await onSubmit(nextInvoice);
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await onSubmit(nextInvoice);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -780,13 +787,25 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                 </div>
 
                                 <div className="pt-2 flex flex-col gap-3 flex-shrink-0">
-                                    <Button type="submit" className="w-full py-4 text-white bg-brand-primary rounded-2xl font-black text-base shadow-xl shadow-brand-primary/30 hover:scale-[1.02] active:scale-95 transition-all outline-none">
-                                        {invoice ? 'Save Changes' : 'Generate & Save Invoice'}
+                                    <Button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="w-full py-4 text-white bg-brand-primary rounded-2xl font-black text-base shadow-xl shadow-brand-primary/30 hover:scale-[1.02] active:scale-95 transition-all outline-none flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <span>{invoice ? 'Saving Invoice...' : 'Generating Invoice...'}</span>
+                                            </>
+                                        ) : (
+                                            <span>{invoice ? 'Save Changes' : 'Generate & Save Invoice'}</span>
+                                        )}
                                     </Button>
                                     <button
                                         type="button"
+                                        disabled={isSubmitting}
                                         onClick={onClose}
-                                        className="w-full py-3 text-[11px] font-black uppercase text-gray-400 tracking-widest hover:text-gray-600 transition-colors border-none bg-transparent cursor-pointer"
+                                        className="w-full py-3 text-[11px] font-black uppercase text-gray-400 tracking-widest hover:text-gray-600 transition-colors border-none bg-transparent cursor-pointer disabled:opacity-50"
                                     >
                                         Dismiss Form
                                     </button>

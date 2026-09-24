@@ -2808,8 +2808,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                   disabled={isProcessing}
                   className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-brand-primary hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-2 text-center"
                 >
-                  <CheckCircle2 size={16} />
-                  <span>{editingOrderId ? 'Update Order Details' : 'Submit Order Details'}</span>
+                  {isProcessing ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={16} />
+                  )}
+                  <span>{isProcessing ? 'Processing Details...' : (editingOrderId ? 'Update Order Details' : 'Submit Order Details')}</span>
                 </button>
               </div>
             </form>
@@ -3151,8 +3155,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
                     title="Save order as draft/pending into Recent Orders list"
                   >
-                    <ShieldCheck size={14} />
-                    <span>Save to Recent List</span>
+                    {isProcessing ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <ShieldCheck size={14} />
+                    )}
+                    <span>{isProcessing ? 'Saving...' : 'Save to Recent List'}</span>
                   </button>
                   <button
                     type="button"
@@ -3161,8 +3169,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
                     title="Save converted order and forward directly to Accounts Queue"
                   >
-                    <CheckCircle2 size={14} />
-                    <span>💳 Save & Send to Accounts</span>
+                    {isProcessing ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={14} />
+                    )}
+                    <span>{isProcessing ? 'Processing...' : '💳 Save & Send to Accounts'}</span>
                   </button>
                 </>
               ) : (
@@ -3173,8 +3185,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     onClick={() => handleFinalSubmit()}
                     className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
                   >
-                    <ShieldCheck size={14} />
-                    <span>{editingOrderId ? 'Save Details' : 'Save Order'}</span>
+                    {isProcessing ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <ShieldCheck size={14} />
+                    )}
+                    <span>{isProcessing ? 'Saving...' : (editingOrderId ? 'Save Details' : 'Save Order')}</span>
                   </button>
                   <button
                     type="button"
@@ -3183,8 +3199,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
                     title="Save and dispatch immediately to Designs Team"
                   >
-                    <Sparkles size={14} />
-                    <span>Save & Send to Designs</span>
+                    {isProcessing ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles size={14} />
+                    )}
+                    <span>{isProcessing ? 'Dispatching...' : 'Save & Send to Designs'}</span>
                   </button>
                   <button
                     type="button"
@@ -3193,8 +3213,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                     className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs uppercase shadow-md active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer flex items-center justify-center gap-1.5 text-center"
                     title="Save and dispatch immediately to Accounts Team"
                   >
-                    <CheckCircle2 size={14} />
-                    <span>Save & Send to Accounts</span>
+                    {isProcessing ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={14} />
+                    )}
+                    <span>{isProcessing ? 'Forwarding...' : 'Save & Send to Accounts'}</span>
                   </button>
                 </>
               )}

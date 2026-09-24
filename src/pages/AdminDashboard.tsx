@@ -142,10 +142,54 @@ const isOrderInventoryCompleted = (o: Order) => {
 
 
 export default function AdminDashboard() {
-  const { user, logout, registeredUsers, deleteUser, updateUserRole, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
+  const { user, logout, registeredUsers, deleteUser, updateUserRole, register, loading: authLoading, adminOnlyRegistration, setAdminOnlyRegistration } = useAuth();
   const { leads, invoices, orders, addLead, addOrder, updateOrder, deleteOrder, deleteLead, deleteInvoice, updateInvoice } = useLeads();
   const navigate = useNavigate();
   const [showAddLeadConvert, setShowAddLeadConvert] = useState(false);
+
+  // Quick Register User Modal State (instant in-dashboard creation)
+  const [showQuickRegisterModal, setShowQuickRegisterModal] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickEmail, setQuickEmail] = useState('');
+  const [quickPassword, setQuickPassword] = useState('');
+  const [quickRole, setQuickRole] = useState<string>('marketing');
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickError, setQuickError] = useState('');
+  const [quickSuccess, setQuickSuccess] = useState('');
+
+  const handleQuickRegisterUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickSubmitting) return;
+    setQuickError('');
+    setQuickSuccess('');
+
+    if (quickPassword.length < 6) {
+      setQuickError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setQuickSubmitting(true);
+    try {
+      const res = await register(quickName.trim(), quickEmail.trim(), quickPassword, quickRole as any);
+      if (res && res.success) {
+        setQuickSuccess(`✓ User ${quickEmail} registered successfully!`);
+        setQuickName('');
+        setQuickEmail('');
+        setQuickPassword('');
+        setTimeout(() => {
+          setShowQuickRegisterModal(false);
+          setQuickSuccess('');
+        }, 1200);
+      } else {
+        setQuickError((res && res.message) || 'Registration failed.');
+      }
+    } catch (err: any) {
+      setQuickError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setQuickSubmitting(false);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'sla-tasks' | 'users' | 'orders' | 'invoices' | 'logs' | 'security' | 'user-logs' | 'online-leads' | 'attendance' | 'calendar'>('overview');
   const [taskSearchQuery, setTaskSearchQuery] = useState('');
   const [taskDesignerFilter, setTaskDesignerFilter] = useState('all');
@@ -1653,7 +1697,7 @@ export default function AdminDashboard() {
                 }}>
                   <Mail className="w-3.5 h-3.5" /> Invite User
                 </Button>
-                <Button variant="secondary" size="sm" className="shadow-xs text-xs whitespace-nowrap" onClick={() => navigate('/register')}>
+                <Button variant="secondary" size="sm" className="shadow-xs text-xs whitespace-nowrap cursor-pointer font-bold" onClick={() => setShowQuickRegisterModal(true)}>
                   <UserPlus className="w-3.5 h-3.5 mr-1" /> Register User
                 </Button>
               </div>
@@ -2677,10 +2721,17 @@ export default function AdminDashboard() {
             ) : activeTab === 'users' ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden h-fit">
-                  <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                  <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
                     <h3 className="font-bold text-gray-800">Platform Registered Users</h3>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <span className="px-3 py-1 bg-brand-secondary text-brand-primary rounded-full text-[10px] font-bold uppercase">Total Users: {registeredUsers.length}</span>
+                      <button
+                        onClick={() => setShowQuickRegisterModal(true)}
+                        className="px-3 py-1.5 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Add User</span>
+                      </button>
                     </div>
                   </div>
                   {layoutMode === 'mobile' ? (
@@ -5027,6 +5078,155 @@ export default function AdminDashboard() {
                   >
                     Save Changes
                   </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* QUICK REGISTER USER MODAL (Instant In-Dashboard Registration) */}
+      <AnimatePresence>
+        {showQuickRegisterModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!quickSubmitting) setShowQuickRegisterModal(false);
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-gray-100 z-10"
+            >
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-brand-primary/5 via-transparent to-brand-primary/5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-brand-primary text-white flex items-center justify-center shadow-sm">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">Register New User</h3>
+                    <p className="text-[11px] text-gray-400">Add a staff member with full CRM access</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={quickSubmitting}
+                  onClick={() => setShowQuickRegisterModal(false)}
+                  className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400 transition-colors border-none bg-transparent cursor-pointer disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleQuickRegisterUser} className="p-6 space-y-4 text-left">
+                {quickError && (
+                  <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{quickError}</span>
+                  </div>
+                )}
+                {quickSuccess && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>{quickSuccess}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={quickSubmitting}
+                    value={quickName}
+                    onChange={(e) => setQuickName(e.target.value)}
+                    placeholder="e.g. Sarah Jenkins"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    disabled={quickSubmitting}
+                    value={quickEmail}
+                    onChange={(e) => setQuickEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">Temporary Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    disabled={quickSubmitting}
+                    value={quickPassword}
+                    onChange={(e) => setQuickPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">Assign Platform Role</label>
+                  <select
+                    disabled={quickSubmitting}
+                    value={quickRole}
+                    onChange={(e) => setQuickRole(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all disabled:opacity-60 cursor-pointer"
+                  >
+                    <option value="marketing">Marketing (Leads & Orders)</option>
+                    <option value="staff">Staff (Core Operations)</option>
+                    <option value="accounts">Accounts (Billing & Finance)</option>
+                    <option value="designer">Designer (Apparel & Artworks)</option>
+                    <option value="order_management">Order Management (Pipeline)</option>
+                    <option value="production">Production (Factory Execution)</option>
+                    <option value="digitizer">Digitizer (Embroidery Design)</option>
+                    <option value="delivery">Delivery (Shipping & Logistics)</option>
+                    <option value="sales_head">Sales Head (Sales Pipeline)</option>
+                    <option value="operations_head">Operations Head (Full Ops)</option>
+                    <option value="hr">HR (Human Resources & Attendance)</option>
+                    <option value="admin">Administrator (Full System Control)</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-2.5 pt-3">
+                  <button
+                    type="button"
+                    disabled={quickSubmitting}
+                    onClick={() => setShowQuickRegisterModal(false)}
+                    className="flex-1 py-3 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all border-none cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={quickSubmitting}
+                    className="flex-[2] py-3 text-xs font-black uppercase text-white bg-brand-primary hover:opacity-95 rounded-xl shadow-lg shadow-brand-primary/25 transition-all border-none cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {quickSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Registering...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        <span>Create Account</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </form>
             </motion.div>
