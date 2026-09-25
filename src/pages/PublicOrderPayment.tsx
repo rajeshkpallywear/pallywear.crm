@@ -2,19 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
   CreditCard,
-  Building,
   CheckCircle,
-  Copy,
-  Check,
   ShieldCheck,
   ArrowRight,
-  ExternalLink,
-  QrCode,
   Sparkles,
   Phone,
   AlertCircle,
-  RefreshCw,
-  Clock
+  RefreshCw
 } from 'lucide-react';
 
 declare global {
@@ -63,9 +57,6 @@ export default function PublicOrderPayment() {
   const [isProcessingRazorpay, setIsProcessingRazorpay] = useState<boolean>(false);
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
   const [txnDetails, setTxnDetails] = useState<any>(null);
-
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [showQrModal, setShowQrModal] = useState<boolean>(false);
 
   // Load Razorpay Script
   useEffect(() => {
@@ -215,15 +206,12 @@ export default function PublicOrderPayment() {
       rzp.open();
     } catch (err: any) {
       console.error('Razorpay Error:', err);
-      alert(err.message || 'Failed to open payment gateway. You can use direct Bank Transfer / UPI below.');
+      alert(err.message || 'Failed to open payment gateway. Please try again.');
       setIsProcessingRazorpay(false);
     }
   };
 
-  const cleanUpi = merchant?.upiId || 'vyapar.174560971939@hdfcbank';
   const cleanOrderDisplay = order?.id ? (order.id.startsWith('#') ? order.id : `#${order.id}`) : '#ORD';
-  const upiIntentUrl = `upi://pay?pa=${encodeURIComponent(cleanUpi)}&pn=${encodeURIComponent(merchant?.accountName || 'Pallywear')}&am=${currentAmount}&cu=INR&tn=${encodeURIComponent(`Order ${cleanOrderDisplay}`)}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiIntentUrl)}`;
 
   if (loading) {
     return (
@@ -332,9 +320,9 @@ export default function PublicOrderPayment() {
           </div>
         ) : (
           /* Payment Selection & Checkout */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left Column: Order Summary & Amount Selection */}
-            <div className="lg:col-span-7 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto items-start">
+            {/* Left Column: Order Summary */}
+            <div className="space-y-6">
               {/* Order Info Card */}
               <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-xl">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-4">
@@ -379,90 +367,40 @@ export default function PublicOrderPayment() {
                     <span className="text-indigo-400 text-sm">₹{order.balanceAmount.toLocaleString()}</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Step 1: Select Payment Amount (50% or 100%) */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-xl">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                  <Clock size={14} className="text-indigo-400" />
-                  Select Payment Option
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* 50% Advance Option */}
-                  <div
-                    onClick={() => setPaymentType('50')}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all relative ${
-                      paymentType === '50'
-                        ? 'border-indigo-500 bg-indigo-950/40 shadow-lg shadow-indigo-500/10'
-                        : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-black uppercase text-indigo-400 tracking-wider">
-                        50% Advance
-                      </span>
-                      {paymentType === '50' && (
-                        <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center">
-                          <Check size={12} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-2xl font-black text-white mb-1">
-                      ₹{order.halfAmount.toLocaleString()}
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-tight">
-                      To begin design & start production
-                    </p>
+                {/* Selected Payment Tag */}
+                <div className="mt-4 p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider block">
+                      {paymentType === '50' ? '50% Advance Payment' : '100% Full Payment'}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {paymentType === '50' ? 'To begin design & start production' : 'Clear entire order value upfront'}
+                    </span>
                   </div>
-
-                  {/* 100% Full Payment Option */}
-                  <div
-                    onClick={() => setPaymentType('100')}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all relative ${
-                      paymentType === '100'
-                        ? 'border-emerald-500 bg-emerald-950/40 shadow-lg shadow-emerald-500/10'
-                        : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-black uppercase text-emerald-400 tracking-wider">
-                        100% Full Payment
-                      </span>
-                      {paymentType === '100' && (
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
-                          <Check size={12} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-2xl font-black text-white mb-1">
-                      ₹{order.fullAmount.toLocaleString()}
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-tight">
-                      Clear entire order value upfront
-                    </p>
-                  </div>
+                  <span className="text-lg font-black text-emerald-400">
+                    ₹{currentAmount.toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Payment Methods */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* Method 1: Instant Razorpay Online Checkout */}
-              <div className="bg-gradient-to-b from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 backdrop-blur-xl shadow-xl relative overflow-hidden">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl">
-                    <CreditCard size={20} />
+            {/* Right Column: Instant Razorpay Online Checkout */}
+            <div className="space-y-6">
+              <div className="bg-gradient-to-b from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 sm:p-7 backdrop-blur-xl shadow-xl relative overflow-hidden">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="p-2.5 bg-indigo-500/20 text-indigo-400 rounded-xl">
+                    <CreditCard size={22} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-white">Instant Online Payment</h4>
-                    <p className="text-[11px] text-slate-400">Cards, UPI, NetBanking, Wallets</p>
+                    <h4 className="text-base font-black text-white">Instant Online Payment</h4>
+                    <p className="text-xs text-slate-400">Cards, UPI, NetBanking, Wallets</p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 rounded-xl p-3 mb-5 border border-slate-800 text-xs flex justify-between items-center">
-                  <span className="text-slate-400">Paying Now:</span>
-                  <span className="text-xl font-black text-emerald-400">₹{currentAmount.toLocaleString()}</span>
+                <div className="bg-slate-950/70 rounded-2xl p-4 mb-5 border border-slate-800 text-xs flex justify-between items-center">
+                  <span className="text-slate-400 font-medium">Paying Now:</span>
+                  <span className="text-2xl font-black text-emerald-400">₹{currentAmount.toLocaleString()}</span>
                 </div>
 
                 <button
@@ -484,116 +422,14 @@ export default function PublicOrderPayment() {
                   )}
                 </button>
 
-                <div className="flex items-center justify-center gap-3 mt-3 text-[10px] text-slate-400">
+                <div className="flex items-center justify-center gap-3 mt-4 text-[10px] text-slate-400">
                   <span>Google Pay</span> • <span>PhonePe</span> • <span>Paytm</span> • <span>Credit/Debit Cards</span>
                 </div>
-              </div>
 
-              {/* Method 2: Official Bank Transfer & UPI Details */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-slate-800 text-slate-300 rounded-xl">
-                      <Building size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-white">Direct Bank & UPI Details</h4>
-                      <p className="text-[10px] text-slate-400">NEFT / RTGS / IMPS / UPI</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowQrModal(true)}
-                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-lg text-xs font-bold flex items-center gap-1 border border-slate-700 cursor-pointer"
-                  >
-                    <QrCode size={14} /> Scan QR
-                  </button>
-                </div>
-
-                <div className="space-y-2.5 text-xs font-mono">
-                  {/* Account Name */}
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">Beneficiary Name</span>
-                    <span className="text-slate-200 font-bold break-words">{merchant?.accountName || 'PALLYWEAR GIFTING SOLUTIONS PRIVATE LIMITED'}</span>
-                  </div>
-
-                  {/* Bank & Branch */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">Bank</span>
-                      <span className="text-slate-200 font-bold">{merchant?.bankName || 'HDFC Bank'}</span>
-                    </div>
-                    <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">Branch</span>
-                      <span className="text-slate-200 font-bold">{merchant?.branch || 'KANDIGAI'}</span>
-                    </div>
-                  </div>
-
-                  {/* Account Number */}
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">Account Number</span>
-                      <span className="text-white font-black text-sm tracking-wider">{merchant?.accountNumber || '50200110682524'}</span>
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard(merchant?.accountNumber || '50200110682524', 'acc')}
-                      className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                      title="Copy Account Number"
-                    >
-                      {copiedField === 'acc' ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-                    </button>
-                  </div>
-
-                  {/* IFSC Code */}
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">IFSC Code</span>
-                      <span className="text-white font-bold">{merchant?.ifsc || 'HDFC0008964'}</span>
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard(merchant?.ifsc || 'HDFC0008964', 'ifsc')}
-                      className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                      title="Copy IFSC"
-                    >
-                      {copiedField === 'ifsc' ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-                    </button>
-                  </div>
-
-                  {/* UPI ID */}
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">UPI ID</span>
-                      <span className="text-emerald-400 font-bold">{cleanUpi}</span>
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard(cleanUpi, 'upi')}
-                      className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                      title="Copy UPI ID"
-                    >
-                      {copiedField === 'upi' ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-                    </button>
-                  </div>
+                <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-center gap-2 text-[11px] text-emerald-400/90 font-medium">
+                  <ShieldCheck size={14} /> 100% Secure 256-Bit SSL Encrypted Payment powered by Razorpay
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* QR Code Modal */}
-        {showQrModal && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center relative shadow-2xl">
-              <h4 className="text-base font-black text-white mb-1">Scan & Pay via any UPI App</h4>
-              <p className="text-xs text-slate-400 mb-4">Amount: ₹{currentAmount.toLocaleString()}</p>
-              <div className="bg-white p-3 rounded-2xl inline-block shadow-lg mb-4">
-                <img src={qrCodeUrl} alt="UPI Payment QR" className="w-56 h-56 mx-auto" />
-              </div>
-              <p className="text-[11px] text-slate-400 mb-4 font-mono">{cleanUpi}</p>
-              <button
-                onClick={() => setShowQrModal(false)}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-slate-700 cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
         )}

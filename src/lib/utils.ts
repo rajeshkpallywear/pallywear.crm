@@ -49,27 +49,42 @@ export function isOrderSizeValid(order: any, extraSize: number = 0): boolean {
 export function shareOrderToWhatsApp(order: Order) {
   try {
     const customer = (order.customerInfo || {}) as any;
-    const defaultPhone = (customer.phone || order.customerPhone || '').trim();
-    
-    const phoneInput = prompt(
-      "Enter the WhatsApp phone number (with country code, e.g. 919876543210) to share this order.\n\nLeave empty to pick any contact directly inside WhatsApp:",
-      defaultPhone
-    );
+    let phone = (customer.phone || order.customerPhone || (order as any).phone || '').toString().trim();
 
-    if (phoneInput === null) return; // User cancelled
+    // If phone is missing, prompt user for number
+    if (!phone) {
+      const phoneInput = prompt(
+        "Enter the customer's WhatsApp phone number (with country code, e.g. 919876543210):\n\nLeave empty to pick contact inside WhatsApp:",
+        ""
+      );
+      if (phoneInput === null) return; // User cancelled
+      phone = phoneInput.trim();
+    }
 
-    const phone = phoneInput.trim();
     const sizeLines = order.sizeBreakdown && order.sizeBreakdown.length > 0
-      ? order.sizeBreakdown.map(s => `• ${s.category || 'Item'}: ${s.size || 'Standard'} (Qty: ${s.quantity || 1}) - ₹${((s.price || 0) * (s.quantity || 1)).toLocaleString('en-IN')}${s.colour ? ` | ${s.colour}` : ''}${s.printType ? ` | ${s.printType}` : ''}`).join('\n')
+      ? order.sizeBreakdown.map(s => `• ${s.category || order.category || 'Item'}: ${s.size || 'Standard'} (Qty: ${s.quantity || 1}) - ₹${((s.price || 0) * (s.quantity || 1)).toLocaleString('en-IN')}${s.colour ? ` | ${s.colour}` : ''}${s.printType ? ` | ${s.printType}` : ''}`).join('\n')
       : `• ${order.category || 'Order'} - Qty: ${order.quantity || 1}`;
 
-    const totalAmt = order.financials?.totalAmount ?? (order as any).totalAmount ?? 0;
-    const advance = order.financials?.advancePay ?? (order as any).advancePay ?? 0;
-    const balance = order.financials?.balanceAmount ?? (order as any).balanceAmount ?? (totalAmt - advance);
+    const totalAmt = Number(order.financials?.totalAmount ?? (order as any).totalAmount ?? 0);
+    const advance = Number(order.financials?.advancePay ?? (order as any).advancePay ?? 0);
+    const balance = Number(order.financials?.balanceAmount ?? (order as any).balanceAmount ?? Math.max(0, totalAmt - advance));
 
-    const message = `Hello *${customer.name || 'Valued Customer'}*,\n\n` +
+    const halfAmt = Math.round(totalAmt * 0.5);
+    const fullAmt = totalAmt;
+
+    const rawId = String(order.id || '').replace(/^#/, '');
+    const cleanId = rawId.trim();
+    const displayOrderId = cleanId.length > 6 ? cleanId.slice(-6).toUpperCase() : cleanId.toUpperCase();
+
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://pallywear.com';
+    const payLink50 = `${origin}/pay/${encodeURIComponent(cleanId)}?pct=50`;
+    const payLink100 = `${origin}/pay/${encodeURIComponent(cleanId)}?pct=100`;
+
+    const customerDisplayName = customer.name || (order as any).customerName || customer.contactPerson || 'Valued Customer';
+
+    const message = `Hello *${customerDisplayName}*,\n\n` +
       `Thank you for your order with *Pallywear*!\n\n` +
-      `📦 *Order Details:* #${String(order.id).slice(-6).toUpperCase()}\n` +
+      `📦 *Order Details:* #${displayOrderId}\n` +
       `━━━━━━━━━━━━━━━━━━━\n` +
       `• *Category:* ${order.category || 'Apparel'}\n` +
       `• *Total Quantity:* ${order.quantity || 1} units\n` +
@@ -78,9 +93,12 @@ export function shareOrderToWhatsApp(order: Order) {
       `📋 *Items / Breakdown:*\n${sizeLines}\n` +
       `━━━━━━━━━━━━━━━━━━━\n` +
       `💰 *Financial Summary:*\n` +
-      `• Total Amount: ₹${Number(totalAmt).toLocaleString('en-IN')}\n` +
-      (advance > 0 ? `• Advance Paid: ₹${Number(advance).toLocaleString('en-IN')}\n` : '') +
-      `• Balance Due: ₹${Number(balance).toLocaleString('en-IN')}\n` +
+      `• Total Amount: ₹${totalAmt.toLocaleString('en-IN')}\n` +
+      `• 50% : ₹${halfAmt.toLocaleString('en-IN')}\n` +
+      `👉 Pay 50% Online: ${payLink50}\n\n` +
+      `• 100 %: ₹${fullAmt.toLocaleString('en-IN')}\n` +
+      `👉 Pay 100% Online: ${payLink100}\n` +
+      (advance > 0 ? `\n• Paid Amount: ₹${advance.toLocaleString('en-IN')}\n• Pending Pay: ₹${balance.toLocaleString('en-IN')}\n` : '') +
       `━━━━━━━━━━━━━━━━━━━\n\n` +
       `We are processing your order. For any queries, feel free to reply directly to this message.`;
 

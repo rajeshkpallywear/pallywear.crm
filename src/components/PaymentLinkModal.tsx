@@ -59,12 +59,6 @@ export default function PaymentLinkModal({ order, onClose }: PaymentLinkModalPro
       `💳 *${label}: ₹${amt.toLocaleString('en-IN')}*\n\n` +
       `🔗 *Click here to Pay securely online via Razorpay (UPI / GPay / PhonePe / Card / NetBanking):*\n` +
       `${link}\n\n` +
-      `🏦 *Direct Bank Transfer / UPI:*\n` +
-      `• Bank: HDFC Bank (KANDIGAI)\n` +
-      `• A/C Name: PALLYWEAR GIFTING SOLUTIONS PRIVATE LIMITED\n` +
-      `• A/C No: 50200110682524\n` +
-      `• IFSC: HDFC0008964\n` +
-      `• UPI ID: ${merchantUpi}\n\n` +
       `Please let us know once the payment is completed. Thank you! 🙏`;
   };
 
@@ -299,18 +293,7 @@ export default function PaymentLinkModal({ order, onClose }: PaymentLinkModalPro
             )}
           </div>
 
-          {/* Official Bank Transfer Details */}
-          <div className="bg-slate-950/60 rounded-2xl p-4 border border-slate-800 text-xs space-y-1.5">
-            <div className="flex items-center gap-1.5 text-slate-400 font-bold mb-2">
-              <Building size={14} /> Official Merchant Bank & UPI
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-              <div>Bank: <span className="font-semibold text-white">HDFC Bank (KANDIGAI)</span></div>
-              <div>A/C No: <span className="font-mono font-semibold text-white">50200110682524</span></div>
-              <div>IFSC: <span className="font-mono font-semibold text-white">HDFC0008964</span></div>
-              <div>UPI: <span className="font-mono font-semibold text-emerald-400">{merchantUpi}</span></div>
-            </div>
-          </div>
+
         </div>
 
         {/* Footer */}
