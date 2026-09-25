@@ -6,6 +6,7 @@ import fs from "fs";
 import cors from "cors"; // 1. Imported CORS package
 import compression from "compression"; // Fast gzip/brotli response compression
 import { initDB } from "./db";
+import { initMongoDB } from "./mongodb";
 import apiRouter from "./api";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +15,20 @@ const __dirname = path.dirname(__filename);
 process.env.NODE_ENV = process.env.NODE_ENV || "development";
 
 async function startServer() {
-  await initDB();
+  // Initialize primary database (cPanel MySQL)
+  try {
+    await initDB();
+    console.log('[cPanel MySQL] Connected and initialized successfully.');
+  } catch (mysqlErr: any) {
+    console.warn('[cPanel MySQL] Database init notice:', mysqlErr.message);
+  }
+
+  // Initialize secondary database (MongoDB)
+  try {
+    await initMongoDB();
+  } catch (mongoErr: any) {
+    console.warn('[MongoDB] Database init notice:', mongoErr.message);
+  }
 
   const app = express();
 

@@ -1,9 +1,11 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
+import { syncSqlWriteToMongo } from './mongoSync';
+
 dotenv.config({ override: true });
 
-const pool = mysql.createPool({
+export const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'crm_pallywearcrm',
@@ -22,6 +24,10 @@ const pool = mysql.createPool({
 export async function query(sql: string, params?: any[]) {
   const sanitizedParams = params ? params.map(p => p === undefined ? null : p) : undefined;
   const [rows] = await pool.execute(sql, sanitizedParams);
+
+  // Non-blocking asynchronous sync to MongoDB (dual-database write)
+  syncSqlWriteToMongo(sql, sanitizedParams, rows).catch(() => {});
+
   return rows;
 }
 

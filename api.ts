@@ -1,5 +1,6 @@
 import express from 'express';
-import { query } from './db';
+import { query, pool } from './db';
+import { getMongoStatus, syncAllFromMySQL } from './mongodb';
 
 const router = express.Router();
 
@@ -1921,6 +1922,55 @@ router.post('/hr/attendance/bulk', async (req, res) => {
   } catch (error: any) {
     console.error('Error in bulk attendance:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ----------------------------------------------------
+// DUAL-DATABASE SYNC & HEALTH STATUS ENDPOINTS
+// ----------------------------------------------------
+
+router.get('/db-status', async (_req, res) => {
+  let mysqlOk = false;
+  let mysqlError: string | null = null;
+  let mysqlTables: string[] = [];
+
+  try {
+    const [rows] = await pool.execute('SHOW TABLES') as any[];
+    mysqlOk = true;
+    mysqlTables = rows.map((r: any) => Object.values(r)[0]);
+  } catch (err: any) {
+    mysqlError = err.message;
+  }
+
+  const mongoStatus = await getMongoStatus();
+
+  res.json({
+    success: true,
+    databases: {
+      cpanel_mysql: {
+        connected: mysqlOk,
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'crm_pallywearcrm',
+        error: mysqlError,
+        tablesCount: mysqlTables.length,
+      },
+      mongodb: {
+        connected: mongoStatus.connected,
+        database: mongoStatus.database,
+        error: mongoStatus.error,
+        collections: mongoStatus.counts || {},
+      },
+    },
+    dualWriteActive: true,
+  });
+});
+
+router.post('/sync/mysql-to-mongodb', async (_req, res) => {
+  try {
+    const result = await syncAllFromMySQL(query);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
