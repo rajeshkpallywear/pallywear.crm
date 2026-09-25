@@ -49,6 +49,41 @@ const isDeliveredStatus = (status?: string) => {
   return s === 'delivered' || s === OrderStatus.DELIVERED;
 };
 
+const isRaisedTaskOrder = (o: Order) => {
+  if (o.isConvertedFromTask || o.details?.isConvertedFromTask) return false;
+  return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
+};
+
+// 10+ quantity classified as Bulk Order
+const isBulkOrder = (o: Order) => {
+  const qty = Number(o.quantity || (o.sizeBreakdown ? o.sizeBreakdown.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0));
+  return qty >= 10;
+};
+
+// 3 or more distinct product categories classified as Mixed Order
+const isMixedOrder = (o: Order) => {
+  if (o.category === 'Mixed Order' || (o.category && o.category.toLowerCase().includes('mixed'))) return true;
+  if (o.sizeBreakdown && o.sizeBreakdown.length > 0) {
+    const distinctCats = new Set(o.sizeBreakdown.map(i => (i.category || '').trim().toLowerCase()).filter(Boolean));
+    return distinctCats.size >= 3;
+  }
+  return false;
+};
+
+// Gift item or other specialized merchandise categories
+const isGiftOrOtherOrder = (o: Order) => {
+  const giftKeywords = ['gift', 'memento', 'trophy', 'mug', 'cap', 'bag', 'bottle', 'keychain', 'merch', 'other'];
+  const cat = (o.category || '').toLowerCase();
+  if (giftKeywords.some(k => cat.includes(k))) return true;
+  if (o.sizeBreakdown && o.sizeBreakdown.length > 0) {
+    return o.sizeBreakdown.some(i => {
+      const icat = (i.category || '').toLowerCase();
+      return giftKeywords.some(k => icat.includes(k));
+    });
+  }
+  return false;
+};
+
 const getEffectiveStatus = (o: Order) => {
   return o.status === OrderStatus.HOLD ? (o.previousStatus || OrderStatus.PENDING) : o.status;
 };
@@ -790,40 +825,6 @@ export default function AdminDashboard() {
     return Array.from(set);
   }, [orders]);
 
-  const isRaisedTaskOrder = (o: Order) => {
-    if (o.isConvertedFromTask || o.details?.isConvertedFromTask) return false;
-    return Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
-  };
-
-  // 10+ quantity classified as Bulk Order
-  const isBulkOrder = (o: Order) => {
-    const qty = Number(o.quantity || (o.sizeBreakdown ? o.sizeBreakdown.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0));
-    return qty >= 10;
-  };
-
-  // 3 or more distinct product categories classified as Mixed Order
-  const isMixedOrder = (o: Order) => {
-    if (o.category === 'Mixed Order' || (o.category && o.category.toLowerCase().includes('mixed'))) return true;
-    if (o.sizeBreakdown && o.sizeBreakdown.length > 0) {
-      const distinctCats = new Set(o.sizeBreakdown.map(i => (i.category || '').trim().toLowerCase()).filter(Boolean));
-      return distinctCats.size >= 3;
-    }
-    return false;
-  };
-
-  // Gift item or other specialized merchandise categories
-  const isGiftOrOtherOrder = (o: Order) => {
-    const giftKeywords = ['gift', 'memento', 'trophy', 'mug', 'cap', 'bag', 'bottle', 'keychain', 'merch', 'other'];
-    const cat = (o.category || '').toLowerCase();
-    if (giftKeywords.some(k => cat.includes(k))) return true;
-    if (o.sizeBreakdown && o.sizeBreakdown.length > 0) {
-      return o.sizeBreakdown.some(i => {
-        const icat = (i.category || '').toLowerCase();
-        return giftKeywords.some(k => icat.includes(k));
-      });
-    }
-    return false;
-  };
 
   const uniqueMarketingStaff = useMemo(() => {
     const staffSet = new Set<string>();
