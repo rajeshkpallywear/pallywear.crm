@@ -1,10 +1,10 @@
-
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera, Palette, RefreshCw, Edit } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera, Palette, RefreshCw, Edit, CreditCard } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
+import PaymentLinkModal from './PaymentLinkModal';
 import { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { cn, shareOrderToWhatsApp, downloadFile } from '../lib/utils';
@@ -40,6 +40,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   const [taskEditNotes, setTaskEditNotes] = useState(order?.notes || order?.designNotes || order?.marketing_notes || '');
   const [taskEditUrgent, setTaskEditUrgent] = useState(Boolean(order?.isUrgent));
   const [taskEditUrgentReason, setTaskEditUrgentReason] = useState(order?.urgentReason || order?.details?.urgentReason || '');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     if (order) {
@@ -468,6 +469,14 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                 title="Share Task info to WhatsApp"
               >
                 <MessageSquare size={13} /> WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(true)}
+                className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all shadow-sm flex items-center gap-1.5 border-none cursor-pointer"
+                title="Generate & Send Razorpay Payment Link (50% or 100%)"
+              >
+                <CreditCard size={13} /> Payment Link (50% / 100%)
               </button>
               {order.status !== OrderStatus.DESIGN && !isEditingTask && (
                 <button
@@ -925,6 +934,14 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               )}
               <button
                 type="button"
+                onClick={() => setShowPaymentModal(true)}
+                className="flex-1 sm:flex-initial px-4 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-md active:scale-95"
+                title="Generate & Send Razorpay Payment Link (50% or 100%)"
+              >
+                <CreditCard size={14} /> 💳 Payment Link (50% / 100%)
+              </button>
+              <button
+                type="button"
                 onClick={downloadAllAssets}
                 className="flex-1 sm:flex-initial px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 border-none cursor-pointer"
               >
@@ -1343,6 +1360,14 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                             </span>
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowPaymentModal(true)}
+                          className="w-full mt-3 py-2.5 px-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md border-none cursor-pointer transition-all active:scale-98"
+                        >
+                          <CreditCard size={14} /> Send Payment Link (50% / 100%)
+                        </button>
                       </>
                     )}
                   </div>
@@ -2034,6 +2059,10 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             Close Report
           </button>
         </div>
+
+        {showPaymentModal && order && (
+          <PaymentLinkModal order={order} onClose={() => setShowPaymentModal(false)} />
+        )}
 
         {viewingImage && (
           <ImageViewer src={viewingImage} onClose={() => setViewingImage(null)} fileName={`Order_${order.id}`} />

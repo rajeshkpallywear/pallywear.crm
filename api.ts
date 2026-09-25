@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import { query, pool } from './db';
 import { getMongoStatus, syncAllFromMySQL } from './mongodb';
 
@@ -20,14 +21,43 @@ function sanitizeId(id: string): string {
   return (id || '').replace(/#/g, '');
 }
 
-// Look up the ACTUAL id stored in DB, trying both with and without # prefix.
-// Existing orders may be stored as '#PW26-ORD-0664' in DB while frontend sends 'PW26-ORD-0664'.
-async function resolveOrderId(rawId: string): Promise<string | null> {
+// Helper to determine if an order/task payload belongs in the separate 'tasks' table
+export function isTaskRecord(order: any): boolean {
+  if (!order) return false;
+  const details = typeof order.details === 'string' ? safeJSONParse(order.details, {}) : (order.details || {});
+  const isConverted = Boolean(order.isConvertedFromTask || details.isConvertedFromTask);
+  if (isConverted) return false;
+  return Boolean(
+    order.isRaisedTask === true ||
+    order.isRaisedTask === 'true' ||
+    order.category === 'Design Task' ||
+    order.raisedTaskCategory === 'Design Task' ||
+    details.isRaisedTask === true ||
+    details.isRaisedTask === 'true' ||
+    details.raisedTaskCategory === 'Design Task'
+  );
+}
+
+// Look up the ACTUAL id and table ('orders' | 'tasks') stored in DB, trying both with and without # prefix.
+async function resolveEntity(rawId: string): Promise<{ id: string; table: 'orders' | 'tasks' } | null> {
   const clean = sanitizeId(rawId);
-  // Try without # first
-  const rows = await query('SELECT id FROM orders WHERE id = ? OR id = ?', [clean, '#' + clean]) as any[];
-  if (rows.length > 0) return rows[0].id; // return the actual stored ID
+  const withHash = '#' + clean;
+
+  // Check tasks table first
+  const taskRows = await query('SELECT id FROM tasks WHERE id = ? OR id = ? LIMIT 1', [clean, withHash]) as any[];
+  if (taskRows.length > 0) return { id: taskRows[0].id, table: 'tasks' };
+
+  // Check orders table
+  const orderRows = await query('SELECT id FROM orders WHERE id = ? OR id = ? LIMIT 1', [clean, withHash]) as any[];
+  if (orderRows.length > 0) return { id: orderRows[0].id, table: 'orders' };
+
   return null;
+}
+
+// Backward-compatible resolveOrderId
+async function resolveOrderId(rawId: string): Promise<string | null> {
+  const entity = await resolveEntity(rawId);
+  return entity ? entity.id : null;
 }
 
 // ----------------------------------------------------
@@ -391,20 +421,23 @@ router.patch('/leads/:id', async (req, res) => {
 
 router.get('/orders', async (req, res) => {
   try {
-    const rows = await query(`
-      SELECT id, customerName, customerCompany, customerPhone, customerAddress, 
+    const orderCols = `id, customerName, customerCompany, customerPhone, customerAddress, 
              category, quantity, details, sizeBreakdown, totalAmount, advancePay, 
              balanceAmount, gstAmount, discountAmount, shippingCharges, status, 
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
              original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes, productionNotes, voiceNote,
-             isRework, isAdminOrder, sentByAdmin, reworkNotes
-      FROM orders
-    `) as any[];
+             isRework, isAdminOrder, sentByAdmin, reworkNotes`;
 
-    const mapped = rows.map(r => {
+    const [orderRows, taskRows] = await Promise.all([
+      query(`SELECT ${orderCols} FROM orders`).catch(() => []) as Promise<any[]>,
+      query(`SELECT ${orderCols} FROM tasks`).catch(() => []) as Promise<any[]>
+    ]);
+
+    const mapEntity = (r: any, isFromTaskTable: boolean) => {
       const details = safeJSONParse(r.details, {});
+      const isTask = isFromTaskTable || details.isRaisedTask === true || details.isRaisedTask === 'true' || r.category === 'Design Task' || false;
       return {
         id: r.id,
         customerInfo: {
@@ -463,15 +496,18 @@ router.get('/orders', async (req, res) => {
         isAdminOrder: r.isAdminOrder === 1 || r.isAdminOrder === true,
         sentByAdmin: r.sentByAdmin === 1 || r.sentByAdmin === true,
         reworkNotes: r.reworkNotes || '',
-        isRaisedTask: details.isRaisedTask === true || details.isRaisedTask === 'true' || r.category === 'Design Task' || false,
+        isRaisedTask: isTask,
         raisedTaskCategory: details.raisedTaskCategory || (r.category === 'Design Task' ? 'Design Task' : undefined),
         designCompleted: details.designCompleted === true || details.designCompleted === 'true' || false,
         designSentToMarketing: details.designSentToMarketing === true || details.designSentToMarketing === 'true' || false,
         designSentToDigitizer: details.designSentToDigitizer === true || details.designSentToDigitizer === 'true' || false,
         designCompletedAt: details.designCompletedAt ? Number(details.designCompletedAt) : null,
       };
-    });
-    res.json(mapped);
+    };
+
+    const mappedOrders = (Array.isArray(orderRows) ? orderRows : []).map(r => mapEntity(r, false));
+    const mappedTasks = (Array.isArray(taskRows) ? taskRows : []).map(r => mapEntity(r, true));
+    res.json([...mappedOrders, ...mappedTasks]);
   } catch (error: any) {
     console.error('Error fetching orders:', error);
     res.status(500).json({ error: error.message });
@@ -479,19 +515,21 @@ router.get('/orders', async (req, res) => {
 });
 
 router.get('/orders/:id/attachments', async (req, res) => {
-  const id = (await resolveOrderId(req.params.id)) || sanitizeId(req.params.id);
+  const entity = await resolveEntity(req.params.id);
+  const targetTable = entity?.table || 'orders';
+  const id = entity?.id || sanitizeId(req.params.id);
   try {
     const rows = await query(
       `SELECT staffImages, staffPdfs, staffAttachments, accountsAttachments, 
               orderManagementAttachments, designAttachments, machineFiles, 
               original_design_file, original_design_filename, original_design_zip, original_design_zip_filename, 
               marketing_image, digitizer_file, invoice_file, voiceNote 
-       FROM orders WHERE id = ?`,
+       FROM \`${targetTable}\` WHERE id = ?`,
       [id]
     ) as any[];
     
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ error: 'Order or Task not found' });
     }
     
     const r = rows[0];
@@ -526,15 +564,27 @@ router.post('/orders', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Order ID is required.' });
   }
 
+  const isTask = isTaskRecord(order);
+  const targetTable = isTask ? 'tasks' : 'orders';
+
   try {
-    const existing = await query('SELECT id, status, original_design_file, customerName, category, quantity, createdByName FROM orders WHERE id = ?', [order.id]) as any[];
+    // If saving an order that was converted from a task, ensure the original task is cleared from tasks table
+    if (!isTask && (order.isConvertedFromTask || order.details?.isConvertedFromTask || order.details?.convertedFromTaskId)) {
+      const fromTaskId = order.details?.convertedFromTaskId || order.id;
+      await query('DELETE FROM tasks WHERE id = ? OR id = ?', [fromTaskId, '#' + fromTaskId]).catch(() => {});
+    } else if (isTask) {
+      // If saving as task, ensure no duplicate in orders table
+      await query('DELETE FROM orders WHERE id = ? OR id = ?', [order.id, '#' + order.id]).catch(() => {});
+    }
+
+    const existing = await query(`SELECT id, status, original_design_file, customerName, category, quantity, createdByName FROM \`${targetTable}\` WHERE id = ?`, [order.id]) as any[];
     let oldStatus = null;
     let oldDesignFile = null;
     if (existing.length > 0) {
       oldStatus = existing[0].status;
       oldDesignFile = existing[0].original_design_file;
       await query(
-        `UPDATE orders SET customerName=?, customerCompany=?, customerPhone=?, customerAddress=?, 
+        `UPDATE \`${targetTable}\` SET customerName=?, customerCompany=?, customerPhone=?, customerAddress=?, 
         category=?, quantity=?, details=?, sizeBreakdown=?, totalAmount=?, advancePay=?, balanceAmount=?, 
         gstAmount=?, discountAmount=?, shippingCharges=?, status=?, isUrgent=?, notes=?, staffImages=?, 
         staffPdfs=?, accountsAttachments=?, orderManagementAttachments=?, designAttachments=?, machineFiles=?,
@@ -606,8 +656,8 @@ router.post('/orders', async (req, res) => {
             [
               `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
               role,
-              `Order ${orderIdDisplay} (${clientName})`,
-              `Order ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) has been moved to ${statusUpper}${byText}`,
+              `${isTask ? 'Task' : 'Order'} ${orderIdDisplay} (${clientName})`,
+              `${isTask ? 'Task' : 'Order'} ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) has been moved to ${statusUpper}${byText}`,
               order.id,
               0,
               Date.now()
@@ -627,7 +677,7 @@ router.post('/orders', async (req, res) => {
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             'digitizer',
             `Design Ready: ${orderIdDisplay}`,
-            `Original design file for Order ${orderIdDisplay} (${clientName}) is ready in Digitizing queue.`,
+            `Original design file for ${isTask ? 'Task' : 'Order'} ${orderIdDisplay} (${clientName}) is ready in Digitizing queue.`,
             order.id,
             0,
             Date.now()
@@ -637,7 +687,7 @@ router.post('/orders', async (req, res) => {
 
     } else {
       await query(
-        `INSERT INTO orders (id, customerName, customerCompany, customerPhone, customerAddress, 
+        `INSERT INTO \`${targetTable}\` (id, customerName, customerCompany, customerPhone, customerAddress, 
         category, quantity, details, sizeBreakdown, totalAmount, advancePay, balanceAmount, 
         gstAmount, discountAmount, shippingCharges, status, isUrgent, notes, staffImages, 
         staffPdfs, accountsAttachments, orderManagementAttachments, designAttachments, machineFiles,
@@ -695,8 +745,8 @@ router.post('/orders', async (req, res) => {
           notifParams.push(
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             role,
-            `New Order ${orderIdDisplay} (${clientName})`,
-            `Order ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) created in ${createdIn}${byText}`,
+            `New ${isTask ? 'Task' : 'Order'} ${orderIdDisplay} (${clientName})`,
+            `${isTask ? 'Task' : 'Order'} ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) created in ${createdIn}${byText}`,
             order.id,
             0,
             Date.now()
@@ -708,18 +758,21 @@ router.post('/orders', async (req, res) => {
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error saving order:', error);
+    console.error('Error saving order/task:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 router.delete('/orders/:id', async (req, res) => {
-  const id = (await resolveOrderId(req.params.id)) || sanitizeId(req.params.id);
+  const rawId = sanitizeId(req.params.id);
   try {
-    await query('DELETE FROM orders WHERE id = ? OR id = ?', [id, '#' + id]);
+    await Promise.all([
+      query('DELETE FROM orders WHERE id = ? OR id = ?', [rawId, '#' + rawId]),
+      query('DELETE FROM tasks WHERE id = ? OR id = ?', [rawId, '#' + rawId])
+    ]);
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error deleting order:', error);
+    console.error('Error deleting order/task:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -729,24 +782,43 @@ const handleUpdateOrderFields = async (req, res) => {
   const updates = req.body;
   
   if (!rawId) {
-    return res.status(400).json({ success: false, message: 'Order ID is required.' });
+    return res.status(400).json({ success: false, message: 'ID is required.' });
   }
   
   try {
-    // Resolve the actual ID stored in DB (handles both #ID and ID forms)
-    const id = await resolveOrderId(rawId);
-    if (!id) {
-      return res.status(404).json({ success: false, message: 'Order not found.' });
+    const entity = await resolveEntity(rawId);
+    if (!entity) {
+      return res.status(404).json({ success: false, message: 'Order or Task not found.' });
     }
-    const existing = await query('SELECT status, original_design_file, details, totalAmount, customerName, category, quantity, createdByName FROM orders WHERE id = ?', [id]) as any[];
+    const { id, table: currentTable } = entity;
+    const existing = await query(`SELECT status, original_design_file, details, totalAmount, customerName, category, quantity, createdByName FROM \`${currentTable}\` WHERE id = ?`, [id]) as any[];
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Record not found.' });
+    }
     const oldStatus = existing[0].status;
     const oldDesignFile = existing[0].original_design_file;
     
     const newId = updates.id;
     if (newId && newId !== id) {
-      const collision = await query('SELECT id FROM orders WHERE id = ?', [newId]) as any[];
+      const collision = await query('SELECT id FROM orders WHERE id = ? UNION SELECT id FROM tasks WHERE id = ?', [newId, newId]) as any[];
       if (collision.length > 0) {
-        return res.status(400).json({ success: false, message: `An order with ID "${newId}" already exists.` });
+        return res.status(400).json({ success: false, message: `An item with ID "${newId}" already exists.` });
+      }
+    }
+
+    // Check if task is converted to order
+    const isConverted = Boolean(updates.isConvertedFromTask || updates.details?.isConvertedFromTask);
+    const targetTable = (currentTable === 'tasks' && isConverted) ? 'orders' : currentTable;
+
+    if (currentTable === 'tasks' && targetTable === 'orders') {
+      const fullTask = (await query('SELECT * FROM tasks WHERE id = ?', [id]) as any[])[0];
+      if (fullTask) {
+        const cols = Object.keys(fullTask);
+        const colList = cols.map(c => `\`${c}\``).join(', ');
+        const placeholders = cols.map(() => '?').join(', ');
+        const values = cols.map(c => fullTask[c]);
+        await query(`INSERT IGNORE INTO orders (${colList}) VALUES (${placeholders})`, values);
+        await query('DELETE FROM tasks WHERE id = ?', [id]);
       }
     }
     
@@ -913,7 +985,7 @@ const handleUpdateOrderFields = async (req, res) => {
     
     params.push(id);
     
-    const sql = `UPDATE orders SET ${fields.join(', ')} WHERE id = ?`;
+    const sql = `UPDATE \`${targetTable}\` SET ${fields.join(', ')} WHERE id = ?`;
     await query(sql, params);
 
     // Cascade ID updates in parallel to other referencing tables
@@ -967,8 +1039,8 @@ const handleUpdateOrderFields = async (req, res) => {
           notifParams.push(
             `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             role,
-            `Order ${orderIdDisplay} (${clientName})`,
-            `Order ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) has been moved to ${statusUpper}${byText}`,
+            `${targetTable === 'tasks' ? 'Task' : 'Order'} ${orderIdDisplay} (${clientName})`,
+            `${targetTable === 'tasks' ? 'Task' : 'Order'} ${orderIdDisplay} for ${clientName} (${categoryName} • ${qtyNum} pcs) has been moved to ${statusUpper}${byText}`,
             id,
             0,
             Date.now()
@@ -988,7 +1060,7 @@ const handleUpdateOrderFields = async (req, res) => {
           `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
           'digitizer',
           `Design Ready: ${orderIdDisplay}`,
-          `Artwork for Order ${orderIdDisplay} (${clientName}) is ready in the Digitizing queue.`,
+          `Artwork for ${targetTable === 'tasks' ? 'Task' : 'Order'} ${orderIdDisplay} (${clientName}) is ready in the Digitizing queue.`,
           id,
           0,
           Date.now()
@@ -1002,7 +1074,7 @@ const handleUpdateOrderFields = async (req, res) => {
     
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error patching/updating order:', error);
+    console.error('Error patching/updating order/task:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1014,39 +1086,144 @@ router.post('/orders/:id/claim', async (req, res) => {
   const rawId = sanitizeId(req.params.id);
   const { userId, userName, action } = req.body;
   try {
-    const id = await resolveOrderId(rawId);
-    if (!id) {
-      return res.status(404).json({ success: false, message: 'Order not found.' });
+    const entity = await resolveEntity(rawId);
+    if (!entity) {
+      return res.status(404).json({ success: false, message: 'Item not found.' });
     }
-    const existing = await query('SELECT id, claimedBy, claimedByName, createdBy, createdByName FROM orders WHERE id = ?', [id]) as any[];
+    const { id, table } = entity;
+    const existing = await query(`SELECT id, claimedBy, claimedByName, createdBy, createdByName FROM \`${table}\` WHERE id = ?`, [id]) as any[];
     if (existing.length === 0) {
-      return res.status(404).json({ success: false, message: 'Order not found.' });
+      return res.status(404).json({ success: false, message: 'Item not found.' });
     }
     const currentOrder = existing[0];
     if (action === 'claim') {
       if (currentOrder.claimedBy && currentOrder.claimedBy !== userId) {
         return res.status(400).json({
           success: false,
-          message: `This order is already claimed by ${currentOrder.claimedByName || 'another team member'}.`
+          message: `This item is already claimed by ${currentOrder.claimedByName || 'another team member'}.`
         });
       }
       await query(
-        'UPDATE orders SET claimedBy = ?, claimedByName = ?, claimedAt = ?, updatedAt = ? WHERE id = ?',
+        `UPDATE \`${table}\` SET claimedBy = ?, claimedByName = ?, claimedAt = ?, updatedAt = ? WHERE id = ?`,
         [userId, userName, Date.now(), Date.now(), id]
       );
-      return res.json({ success: true, message: 'Order claimed successfully.' });
+      return res.json({ success: true, message: 'Item claimed successfully.' });
     } else if (action === 'release') {
       await query(
-        'UPDATE orders SET claimedBy = NULL, claimedByName = NULL, claimedAt = NULL, updatedAt = ? WHERE id = ?',
+        `UPDATE \`${table}\` SET claimedBy = NULL, claimedByName = NULL, claimedAt = NULL, updatedAt = ? WHERE id = ?`,
         [Date.now(), id]
       );
-      return res.json({ success: true, message: 'Order released to queue.' });
+      return res.json({ success: true, message: 'Item released to queue.' });
     } else {
       return res.status(400).json({ success: false, message: 'Invalid claim action.' });
     }
   } catch (error: any) {
     console.error('Error in /orders/:id/claim:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ----------------------------------------------------
+// DEDICATED TASKS ENDPOINTS
+// ----------------------------------------------------
+
+router.get('/tasks', async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT id, customerName, customerCompany, customerPhone, customerAddress, 
+             category, quantity, details, sizeBreakdown, totalAmount, advancePay, 
+             balanceAmount, gstAmount, discountAmount, shippingCharges, status, 
+             isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
+             designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
+             previousStatus, createdBy, createdByName, accountsNotes, 
+             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes, productionNotes, voiceNote,
+             isRework, isAdminOrder, sentByAdmin, reworkNotes
+      FROM tasks
+    `) as any[];
+
+    const mapped = (Array.isArray(rows) ? rows : []).map(r => {
+      const details = safeJSONParse(r.details, {});
+      return {
+        id: r.id,
+        customerInfo: {
+          name: r.customerName,
+          phone: r.customerPhone,
+          address: r.customerAddress,
+          company: r.customerCompany,
+        },
+        category: r.category || 'Design Task',
+        quantity: r.quantity,
+        details: details,
+        sizeBreakdown: safeJSONParse(r.sizeBreakdown, []),
+        financials: {
+          totalAmount: Number(r.totalAmount || 0),
+          advancePay: Number(r.advancePay || 0),
+          balanceAmount: Number(r.balanceAmount || 0),
+          gstAmount: Number(r.gstAmount || 0),
+          discountAmount: Number(r.discountAmount || 0),
+          shippingCharges: Number(r.shippingCharges || 0),
+        },
+        status: r.status,
+        isUrgent: r.isUrgent === 1,
+        notes: r.notes,
+        staffImages: [],
+        staffPdfs: [],
+        accountsAttachments: [],
+        orderManagementAttachments: [],
+        designAttachments: [],
+        machineFiles: [],
+        marketing_image: '',
+        marketing_notes: r.marketing_notes || '',
+        productionNotes: r.productionNotes || '',
+        voiceNote: r.voiceNote || '',
+        createdAt: Number(r.createdAt || 0),
+        updatedAt: Number(r.updatedAt || 0),
+        designName: r.designName || '',
+        designAmount: Number(r.designAmount || 0),
+        designGst: Number(r.designGst || 0),
+        designDiscount: Number(r.designDiscount || 0),
+        designNotes: r.designNotes || '',
+        assignedDesigner: r.assignedDesigner || 'Unassigned',
+        holdReason: r.holdReason || '',
+        previousStatus: r.previousStatus || '',
+        createdBy: r.createdBy || '',
+        createdByName: r.createdByName || '',
+        accountsNotes: r.accountsNotes || '',
+        original_design_file: '',
+        original_design_filename: r.original_design_filename || '',
+        original_design_zip: '',
+        original_design_zip_filename: r.original_design_zip_filename || '',
+        sentByAccounts: r.sentByAccounts === 1,
+        claimedBy: r.claimedBy || '',
+        claimedByName: r.claimedByName || '',
+        claimedAt: Number(r.claimedAt || 0),
+        isRework: r.isRework === 1 || r.isRework === true,
+        isAdminOrder: r.isAdminOrder === 1 || r.isAdminOrder === true,
+        sentByAdmin: r.sentByAdmin === 1 || r.sentByAdmin === true,
+        reworkNotes: r.reworkNotes || '',
+        isRaisedTask: true,
+        raisedTaskCategory: details.raisedTaskCategory || 'Design Task',
+        designCompleted: details.designCompleted === true || details.designCompleted === 'true' || false,
+        designSentToMarketing: details.designSentToMarketing === true || details.designSentToMarketing === 'true' || false,
+        designSentToDigitizer: details.designSentToDigitizer === true || details.designSentToDigitizer === 'true' || false,
+        designCompletedAt: details.designCompletedAt ? Number(details.designCompletedAt) : null,
+      };
+    });
+    res.json(mapped);
+  } catch (error: any) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/tasks/:id', async (req, res) => {
+  const rawId = sanitizeId(req.params.id);
+  try {
+    await query('DELETE FROM tasks WHERE id = ? OR id = ?', [rawId, '#' + rawId]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -1965,11 +2142,255 @@ router.get('/db-status', async (_req, res) => {
   });
 });
 
-router.post('/sync/mysql-to-mongodb', async (_req, res) => {
+// ----------------------------------------------------
+// RAZORPAY PAYMENT GATEWAY & PUBLIC ORDER ENDPOINTS
+// ----------------------------------------------------
+
+// Public order summary for customer payment page (accessible without login)
+router.get('/public/orders/:id', async (req, res) => {
+  const rawId = sanitizeId(req.params.id);
   try {
-    const result = await syncAllFromMySQL(query);
-    res.json(result);
+    const entity = await resolveEntity(rawId);
+    if (!entity) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    const { id, table } = entity;
+    const rows = await query(
+      `SELECT id, customerName, customerCompany, customerPhone, category, quantity, 
+              totalAmount, advancePay, balanceAmount, gstAmount, discountAmount, 
+              status, createdAt FROM \`${table}\` WHERE id = ?`,
+      [id]
+    ) as any[];
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const r = rows[0];
+    const totalAmount = Number(r.totalAmount || 0);
+    const advancePay = Number(r.advancePay || 0);
+    const balanceAmount = Number(r.balanceAmount || Math.max(0, totalAmount - advancePay));
+
+    const halfAmount = Math.round(totalAmount * 0.5);
+    const fullAmount = balanceAmount > 0 ? balanceAmount : totalAmount;
+
+    res.json({
+      success: true,
+      order: {
+        id: r.id,
+        customerName: r.customerName,
+        customerCompany: r.customerCompany || '',
+        customerPhone: r.customerPhone,
+        category: r.category,
+        quantity: r.quantity,
+        totalAmount,
+        advancePay,
+        balanceAmount,
+        halfAmount: halfAmount > 0 ? halfAmount : Math.round(totalAmount * 0.5),
+        fullAmount: fullAmount > 0 ? fullAmount : totalAmount,
+        status: r.status,
+        createdAt: r.createdAt,
+      },
+      merchant: {
+        bankName: process.env.MERCHANT_BANK_NAME || 'HDFC Bank',
+        branch: process.env.MERCHANT_BANK_BRANCH || 'KANDIGAI',
+        accountName: process.env.MERCHANT_ACC_NAME || 'PALLYWEAR GIFTING SOLUTIONS PRIVATE LIMITED',
+        accountNumber: process.env.MERCHANT_ACC_NUMBER || '50200110682524',
+        ifsc: process.env.MERCHANT_IFSC || 'HDFC0008964',
+        upiId: process.env.MERCHANT_UPI_ID || 'vyapar.174560971939@hdfcbank',
+      },
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TZuzF0u3WoDpEh',
+    });
   } catch (err: any) {
+    console.error('Error fetching public order:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Create Razorpay Order for Checkout
+router.post('/payments/razorpay/create-order', async (req, res) => {
+  const { orderId, amount, paymentType, customerName, customerPhone } = req.body;
+  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TZuzF0u3WoDpEh';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || 'wnFrxmfTcvit84K6U6jTYmOR';
+
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+  }
+
+  try {
+    const amountInPaise = Math.round(Number(amount) * 100);
+    const authString = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const cleanReceipt = sanitizeId(orderId || 'ord').slice(-30);
+
+    const rzpResponse = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${authString}`
+      },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: cleanReceipt,
+        notes: {
+          orderId: orderId || '',
+          paymentType: paymentType || 'custom',
+          customerName: customerName || '',
+          customerPhone: customerPhone || ''
+        }
+      })
+    });
+
+    const data = await rzpResponse.json() as any;
+    if (!rzpResponse.ok) {
+      console.error('Razorpay Order API error:', data);
+      return res.status(400).json({ success: false, message: data.error?.description || 'Failed to create Razorpay order' });
+    }
+
+    res.json({
+      success: true,
+      razorpayOrderId: data.id,
+      amount: data.amount,
+      currency: data.currency,
+      keyId
+    });
+  } catch (err: any) {
+    console.error('Razorpay order creation error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Create Direct Razorpay Payment Link
+router.post('/payments/razorpay/create-payment-link', async (req, res) => {
+  const { orderId, amount, paymentType, customerName, customerPhone, description } = req.body;
+  const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TZuzF0u3WoDpEh';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || 'wnFrxmfTcvit84K6U6jTYmOR';
+
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+  }
+
+  try {
+    const amountInPaise = Math.round(Number(amount) * 100);
+    const authString = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const cleanId = sanitizeId(orderId || 'ord');
+    const desc = description || `Payment for Pallywear Order #${cleanId} (${paymentType === '50' ? '50% Advance' : 'Full Payment'})`;
+
+    const payload: any = {
+      amount: amountInPaise,
+      currency: 'INR',
+      accept_partial: false,
+      description: desc,
+      customer: {
+        name: customerName || 'Valued Customer',
+        contact: customerPhone ? customerPhone.replace(/[^0-9]/g, '').slice(-10) : undefined
+      },
+      notify: {
+        sms: false,
+        email: false
+      },
+      reference_id: `PW-${cleanId}-${paymentType}-${Date.now().toString().slice(-6)}`,
+      notes: {
+        orderId: orderId,
+        paymentType: paymentType
+      }
+    };
+
+    const rzpResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${authString}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await rzpResponse.json() as any;
+    if (!rzpResponse.ok) {
+      console.warn('Razorpay payment link API notice:', data);
+      return res.status(400).json({ success: false, message: data.error?.description || 'Could not generate Razorpay payment link' });
+    }
+
+    res.json({
+      success: true,
+      paymentLink: data.short_url || data.url,
+      id: data.id
+    });
+  } catch (err: any) {
+    console.error('Razorpay link generation error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Verify & Record Razorpay Payment
+router.post('/payments/razorpay/verify', async (req, res) => {
+  const {
+    orderId,
+    razorpayPaymentId,
+    razorpayOrderId,
+    razorpaySignature,
+    amountPaid,
+    paymentType
+  } = req.body;
+
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || 'wnFrxmfTcvit84K6U6jTYmOR';
+
+  try {
+    // 1. Verify signature if razorpayOrderId and razorpaySignature are present
+    if (razorpayOrderId && razorpaySignature) {
+      const generatedSignature = crypto
+        .createHmac('sha256', keySecret)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest('hex');
+
+      if (generatedSignature !== razorpaySignature) {
+        return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+      }
+    }
+
+    // 2. Update order in database
+    const entity = await resolveEntity(orderId);
+    if (entity) {
+      const { id, table } = entity;
+      const rows = await query(`SELECT totalAmount, advancePay, balanceAmount, accountsNotes FROM \`${table}\` WHERE id = ?`, [id]) as any[];
+      if (rows.length > 0) {
+        const cur = rows[0];
+        const prevAdvance = Number(cur.advancePay || 0);
+        const total = Number(cur.totalAmount || 0);
+        const paid = Number(amountPaid || 0);
+        const newAdvance = prevAdvance + paid;
+        const newBalance = Math.max(0, total - newAdvance);
+
+        const timestampStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const paymentNote = `[Online Payment Received] ₹${paid} via Razorpay (Txn ID: ${razorpayPaymentId || 'N/A'}) on ${timestampStr}. Type: ${paymentType === '50' ? '50% Advance' : 'Full Payment'}.`;
+        const nextAccountsNotes = cur.accountsNotes ? `${cur.accountsNotes}\n${paymentNote}` : paymentNote;
+
+        await query(
+          `UPDATE \`${table}\` SET advancePay = ?, balanceAmount = ?, accountsNotes = ?, updatedAt = ? WHERE id = ?`,
+          [newAdvance, newBalance, nextAccountsNotes, Date.now(), id]
+        );
+
+        // Notify accounts, admin, marketing
+        await Promise.all(['accounts', 'admin', 'marketing'].map(role =>
+          query(
+            'INSERT INTO notifications (id, userRole, title, message, orderId, isRead, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+              `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+              role,
+              `Payment Received: Order #${sanitizeId(id)}`,
+              `₹${paid} received online via Razorpay (${paymentType === '50' ? '50% Advance' : 'Full'}) for Order #${sanitizeId(id)}. Txn: ${razorpayPaymentId || 'Completed'}`,
+              id,
+              0,
+              Date.now()
+            ]
+          ).catch(() => {})
+        ));
+      }
+    }
+
+    res.json({ success: true, message: 'Payment verified and recorded successfully!' });
+  } catch (err: any) {
+    console.error('Error verifying payment:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

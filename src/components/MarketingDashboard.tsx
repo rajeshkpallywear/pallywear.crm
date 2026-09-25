@@ -17,6 +17,7 @@ import {
 import { Order, OrderStatus, SizeBreakdown, UserRole } from '../types';
 import { mockDataService } from '../service/mockDataService';
 import OrderDetailModal from './OrderDetailModal';
+import PaymentLinkModal from './PaymentLinkModal';
 import { useLeads } from '../context/LeadContext';
 import {
   CATEGORIES, JERSEY_MATERIALS, JERSEY_MODELS, SLEEVE_OPTIONS,
@@ -53,6 +54,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [activeShareMenu, setActiveShareMenu] = useState<string | null>(null);
   const [selectedHubOrder, setSelectedHubOrder] = useState<Order | null>(null);
+  const [selectedPaymentOrder, setSelectedPaymentOrder] = useState<Order | null>(null);
   const { loadOrderAttachments, addLead } = useLeads();
 
   useEffect(() => {
@@ -1669,6 +1671,16 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                       </button>
                                     </>
                                   )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedPaymentOrder(order);
+                                    }}
+                                    className="text-[9px] font-black rounded px-2.5 py-1 transition-all cursor-pointer uppercase tracking-wider text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 shadow-xs flex items-center gap-1 border-none active:scale-95"
+                                    title="Generate & Send Razorpay Payment Link (50% or 100%)"
+                                  >
+                                    <span>💳 Payment Link</span>
+                                  </button>
                                 </div>
                               ) : null}
                             </>
@@ -1979,6 +1991,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                                 </>
                               )}
                               <button
+                                onClick={() => setSelectedPaymentOrder(order)}
+                                className="col-span-2 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white rounded-xl font-black text-xs transition-all uppercase cursor-pointer border-none text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                              >
+                                <span>💳 Share Payment Link (50% / 100%)</span>
+                              </button>
+                              <button
                                 onClick={() => setSelectedHubOrder(order)}
                                 className="col-span-2 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
                               >
@@ -1986,7 +2004,13 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
                               </button>
                             </div>
                           ) : (
-                            <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                            <div className="mt-1 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setSelectedPaymentOrder(order)}
+                                className="w-full py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white rounded-xl font-black text-xs transition-all uppercase cursor-pointer border-none text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                              >
+                                <span>💳 Share Payment Link (50% / 100%)</span>
+                              </button>
                               <button
                                 onClick={() => setSelectedHubOrder(order)}
                                 className="w-full py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-black text-xs transition-colors uppercase cursor-pointer border-none text-center"
@@ -3220,6 +3244,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
             setSelectedHubOrder(null);
             startEdit(ord);
           }}
+        />
+      )}
+
+      {/* Razorpay Payment Link Modal (50% / 100%) */}
+      {selectedPaymentOrder && (
+        <PaymentLinkModal
+          order={selectedPaymentOrder}
+          onClose={() => setSelectedPaymentOrder(null)}
         />
       )}
 

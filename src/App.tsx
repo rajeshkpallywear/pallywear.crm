@@ -18,6 +18,7 @@ const Store = lazyWithRetry(() => import('./pages/Store'));
 const LeadDashboard = lazyWithRetry(() => import('./pages/LeadDashboard'));
 const FlagshipUpper = lazyWithRetry(() => import('./pages/FlagshipUpper'));
 const HRDashboard = lazyWithRetry(() => import('./pages/HRDashboard'));
+const PublicOrderPayment = lazyWithRetry(() => import('./pages/PublicOrderPayment'));
 
 import { UserRole } from './types';
 
@@ -229,6 +230,10 @@ function AppRoutes() {
           <Route path="/store" element={<Navigate to="/Pallywear" replace />} />
           <Route path="/flagship-upper" element={<FlagshipUpper />} />
           <Route path="/flagship" element={<FlagshipUpper />} />
+
+          {/* Client-Facing Public Payment Gateway */}
+          <Route path="/pay/:id" element={<PublicOrderPayment />} />
+          <Route path="/payment/:id" element={<PublicOrderPayment />} />
 
           {/* Auth */}
           <Route path="/login" element={<Login />} />

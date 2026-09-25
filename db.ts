@@ -167,6 +167,94 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     `);
 
+    // 3.5. Create tasks table if not exists (separate table for design/marketing tasks)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`tasks\` (
+        \`id\` varchar(50) NOT NULL,
+        \`customerName\` varchar(100) NOT NULL,
+        \`customerCompany\` varchar(100) DEFAULT NULL,
+        \`customerPhone\` varchar(50) NOT NULL,
+        \`customerAddress\` text NOT NULL,
+        \`category\` varchar(50) NOT NULL,
+        \`quantity\` int NOT NULL,
+        \`details\` text NOT NULL,
+        \`sizeBreakdown\` text NOT NULL,
+        \`totalAmount\` decimal(15,2) DEFAULT NULL,
+        \`advancePay\` decimal(15,2) DEFAULT NULL,
+        \`balanceAmount\` decimal(15,2) DEFAULT NULL,
+        \`gstAmount\` decimal(15,2) DEFAULT NULL,
+        \`discountAmount\` decimal(15,2) DEFAULT NULL,
+        \`shippingCharges\` decimal(15,2) DEFAULT NULL,
+        \`status\` varchar(100) DEFAULT 'Design',
+        \`isUrgent\` tinyint(1) DEFAULT '0',
+        \`notes\` text,
+        \`staffImages\` text,
+        \`staffPdfs\` text,
+        \`staffAttachments\` text,
+        \`accountsAttachments\` text,
+        \`orderManagementAttachments\` text,
+        \`designAttachments\` text,
+        \`machineFiles\` text,
+        \`createdAt\` bigint NOT NULL,
+        \`updatedAt\` bigint NOT NULL,
+        \`holdReason\` text,
+        \`holdByUserId\` varchar(50) DEFAULT NULL,
+        \`holdByUserName\` varchar(100) DEFAULT NULL,
+        \`previousStatus\` varchar(50) DEFAULT NULL,
+        \`assignedDesigner\` varchar(50) DEFAULT NULL,
+        \`createdBy\` varchar(50) DEFAULT NULL,
+        \`createdByName\` varchar(100) DEFAULT NULL,
+        \`accountsNotes\` text DEFAULT NULL,
+        \`lastUpdatedBy\` varchar(50) DEFAULT NULL,
+        \`vendorName\` varchar(100) DEFAULT NULL,
+        \`vendorNumber\` varchar(50) DEFAULT NULL,
+        \`vendorCompany\` varchar(100) DEFAULT NULL,
+        \`vendorSize\` varchar(50) DEFAULT NULL,
+        \`vendorQty\` int DEFAULT NULL,
+        \`vendorHub\` varchar(50) DEFAULT NULL,
+        \`vendorMaterial\` varchar(100) DEFAULT NULL,
+        \`vendorModel\` varchar(100) DEFAULT NULL,
+        \`vendorSleeve\` varchar(50) DEFAULT NULL,
+        \`vendorPocket\` varchar(50) DEFAULT NULL,
+        \`vendorColor\` varchar(50) DEFAULT NULL,
+        \`vendorInstructions\` text,
+        \`vendorDeliveryName\` varchar(100) DEFAULT NULL,
+        \`vendorDeliveryPhone\` varchar(50) DEFAULT NULL,
+        \`vendorDeliveryVehicle\` varchar(100) DEFAULT NULL,
+        \`vendorDeliveryCourier\` varchar(100) DEFAULT NULL,
+        \`vendorDeliveryTransportType\` varchar(100) DEFAULT NULL,
+        \`vendorDeliveryQty\` int DEFAULT NULL,
+        \`marketing_image\` longtext,
+        \`marketing_notes\` text,
+        \`productionNotes\` longtext DEFAULT NULL,
+        \`voiceNote\` longtext DEFAULT NULL,
+        \`invoice_file\` longtext,
+        \`invoice_file_name\` varchar(255) DEFAULT NULL,
+        \`original_design_file\` longtext,
+        \`original_design_filename\` varchar(255) DEFAULT NULL,
+        \`original_design_zip\` longtext,
+        \`original_design_zip_filename\` varchar(255) DEFAULT NULL,
+        \`digitizer_file\` longtext,
+        \`digitizer_filename\` varchar(255) DEFAULT NULL,
+        \`is_hold\` tinyint DEFAULT '0',
+        \`balance_received_notes\` text,
+        \`sentByAccounts\` tinyint(1) DEFAULT '0',
+        \`isRework\` tinyint(1) DEFAULT '0',
+        \`isAdminOrder\` tinyint(1) DEFAULT '0',
+        \`sentByAdmin\` tinyint(1) DEFAULT '0',
+        \`reworkNotes\` text DEFAULT NULL,
+        \`claimedBy\` varchar(50) DEFAULT NULL,
+        \`claimedByName\` varchar(100) DEFAULT NULL,
+        \`claimedAt\` bigint DEFAULT NULL,
+        \`designName\` varchar(255) DEFAULT NULL,
+        \`designAmount\` decimal(15,2) DEFAULT 0.00,
+        \`designGst\` decimal(15,2) DEFAULT 0.00,
+        \`designDiscount\` decimal(15,2) DEFAULT 0.00,
+        \`designNotes\` text DEFAULT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    `);
+
     // 4. Create invoices table if not exists
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS \`invoices\` (
@@ -542,6 +630,38 @@ export async function initDB() {
       "ALTER TABLE `orders` MODIFY COLUMN `voiceNote` LONGTEXT DEFAULT NULL",
       "ALTER TABLE `orders` MODIFY COLUMN `designNotes` LONGTEXT DEFAULT NULL",
       "ALTER TABLE `orders` MODIFY COLUMN `customerAddress` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `details` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `sizeBreakdown` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `staffImages` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `staffPdfs` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `staffAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `accountsAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `orderManagementAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `designAttachments` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `machineFiles` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `notes` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `marketing_notes` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `productionNotes` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `voiceNote` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `designNotes` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` MODIFY COLUMN `customerAddress` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `original_design_file` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `original_design_filename` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `original_design_zip` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `original_design_zip_filename` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `digitizer_file` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `digitizer_filename` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `marketing_image` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `voiceNote` LONGTEXT DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `claimedBy` varchar(50) DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `claimedByName` varchar(100) DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `claimedAt` bigint DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `isRework` tinyint(1) DEFAULT 0",
+      "ALTER TABLE `tasks` ADD COLUMN `reworkNotes` text DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `designName` varchar(255) DEFAULT NULL",
+      "ALTER TABLE `tasks` ADD COLUMN `designAmount` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `tasks` ADD COLUMN `designGst` decimal(15,2) DEFAULT 0.00",
+      "ALTER TABLE `tasks` ADD COLUMN `designDiscount` decimal(15,2) DEFAULT 0.00",
       "ALTER TABLE `users` ADD COLUMN `first_login` bigint DEFAULT NULL",
       "ALTER TABLE `users` ADD COLUMN `last_logout` bigint DEFAULT NULL",
       "ALTER TABLE `users` ADD COLUMN `login_count` int DEFAULT 0",
@@ -565,6 +685,12 @@ export async function initDB() {
       "CREATE INDEX idx_orders_created ON `orders` (`createdAt`)",
       "CREATE INDEX idx_orders_updated ON `orders` (`updatedAt`)",
       "CREATE INDEX idx_orders_sentByAccounts ON `orders` (`sentByAccounts`)",
+      "CREATE INDEX idx_tasks_status ON `tasks` (`status`)",
+      "CREATE INDEX idx_tasks_assigned ON `tasks` (`assignedDesigner`)",
+      "CREATE INDEX idx_tasks_phone ON `tasks` (`customerPhone`)",
+      "CREATE INDEX idx_tasks_name ON `tasks` (`customerName`)",
+      "CREATE INDEX idx_tasks_created ON `tasks` (`createdAt`)",
+      "CREATE INDEX idx_tasks_updated ON `tasks` (`updatedAt`)",
       "CREATE INDEX idx_leads_status ON `leads` (`status`)",
       "CREATE INDEX idx_leads_number ON `leads` (`number`)",
       "CREATE INDEX idx_leads_assigned ON `leads` (`assignedTo`)",
@@ -593,6 +719,29 @@ export async function initDB() {
       } catch (_) {
         // Index already exists, ignore
       }
+    }
+
+    // 10. Automatic one-time migration: separate unconverted tasks from orders table into tasks table
+    try {
+      const [existingTaskRows] = await pool.execute(`
+        SELECT * FROM \`orders\` 
+        WHERE (category = 'Design Task' OR details LIKE '%"isRaisedTask":true%' OR details LIKE '%"isRaisedTask":"true"%')
+          AND (details NOT LIKE '%"isConvertedFromTask":true%')
+      `);
+      if (Array.isArray(existingTaskRows) && existingTaskRows.length > 0) {
+        console.log(`[DB Migration] Migrating ${existingTaskRows.length} tasks from orders table to tasks table...`);
+        for (const row of existingTaskRows as any[]) {
+          const keys = Object.keys(row);
+          const colList = keys.map(k => `\`${k}\``).join(', ');
+          const valPlaceholders = keys.map(() => '?').join(', ');
+          const vals = keys.map(k => row[k]);
+          await pool.execute(`INSERT IGNORE INTO \`tasks\` (${colList}) VALUES (${valPlaceholders})`, vals);
+          await pool.execute('DELETE FROM `orders` WHERE `id` = ?', [row.id]);
+        }
+        console.log(`[DB Migration] Successfully migrated ${existingTaskRows.length} tasks to separate tasks table.`);
+      }
+    } catch (migErr: any) {
+      console.warn('[DB Migration] Notice during task separation migration:', migErr.message);
     }
 
     console.log('Database initialization completed successfully.');

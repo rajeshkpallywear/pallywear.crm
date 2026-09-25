@@ -22,6 +22,7 @@ export const CRM_TABLES = [
   'users',
   'leads',
   'orders',
+  'tasks',
   'invoices',
   'inventory_movements',
   'leaves',
