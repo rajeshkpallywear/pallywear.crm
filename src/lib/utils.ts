@@ -122,6 +122,9 @@ export function shareOrderToWhatsApp(order: Order) {
   }
 }
 
+export const DEFAULT_INVOICE_TERMS_AND_CONDITIONS =
+  "Quotation price is final with 50% advance required to confirm the order and the remaining 50% payable before shipment. The customer must verify and approve the Pallywear Order Confirmation, including all details and final mockup via Email or WhatsApp before payment and production, as the customer is responsible for confirming size, quantity, colour, design, spelling, print details, and mockup (Pallywear is not responsible for customer-approved errors). Due to fabric, printing, and production limitations, Jersey and Embroidery output may be approximately 80% similar to the approved design/mockup and 100% exact reproduction cannot be guaranteed, while errors caused by Pallywear will be reviewed and resolved appropriately. Production commences upon approval and advance payment with a tentative delivery timeline of 7–10 working days subject to production and logistics, and for bulk orders, one sample piece will be confirmed and approved by the customer before bulk production.";
+
 export function shareInvoiceToWhatsApp(invoice: Invoice) {
   try {
     const defaultPhone = (invoice.billToPhone || invoice.customerPhoneNumber || '').trim();
@@ -140,6 +143,7 @@ export function shareInvoiceToWhatsApp(invoice: Invoice) {
     
     const total = Number(invoice.total || 0);
     const dueDateStr = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN') : 'On Demand';
+    const termsText = (invoice.termsAndConditions || DEFAULT_INVOICE_TERMS_AND_CONDITIONS).trim();
 
     const message = `Hello *${invoice.billToName || 'Customer'}*,\n\n` +
         `This is a message from *${invoice.fromName || 'Pallywear Gifting Solutions'}*.\n\n` +
@@ -149,6 +153,9 @@ export function shareInvoiceToWhatsApp(invoice: Invoice) {
         `• *Due Date:* ${dueDateStr}\n` +
         `• *Payment Method:* ${invoice.paymentMethod || 'GPay'}\n` +
         (itemsList ? `━━━━━━━━━━━━━━━━━━━\n• *Items:*\n${itemsList}\n` : '') +
+        `━━━━━━━━━━━━━━━━━━━\n` +
+        `📜 *TERMS & CONDITIONS:*\n` +
+        `${termsText}\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
         `Please proceed with the payment. Thank you for choosing Pallywear!`;
 

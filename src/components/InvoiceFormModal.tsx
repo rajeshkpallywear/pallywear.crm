@@ -4,7 +4,7 @@ import { Button } from './Button';
 import { motion, AnimatePresence } from 'motion/react';
 import { Invoice } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { cn } from '../lib/utils';
+import { cn, DEFAULT_INVOICE_TERMS_AND_CONDITIONS } from '../lib/utils';
 
 interface InvoiceFormModalProps {
     isOpen: boolean;
@@ -103,6 +103,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
         designGst: 0,
         designDiscount: 0,
         designNotes: '',
+        termsAndConditions: DEFAULT_INVOICE_TERMS_AND_CONDITIONS,
     });
 
     const [formData, setFormData] = useState(getInitialData());
@@ -183,6 +184,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                 designGst: invoice.designGst || 0,
                 designDiscount: invoice.designDiscount || 0,
                 designNotes: invoice.designNotes || '',
+                termsAndConditions: invoice.termsAndConditions || DEFAULT_INVOICE_TERMS_AND_CONDITIONS,
             });
         } else {
             setFormData(getInitialData());
@@ -356,6 +358,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
             amountPaid: invoice?.amountPaid || 0,
             balanceDue: total - (invoice?.amountPaid || 0),
             notes: formData.notes,
+            termsAndConditions: formData.termsAndConditions || DEFAULT_INVOICE_TERMS_AND_CONDITIONS,
             paymentMethod: formData.paymentMethod,
             productType: formData.items[0]?.productType || 'tshirt',
             productSubCategory: formData.items[0]?.productSubCategory || '',
@@ -781,6 +784,23 @@ export default function InvoiceFormModal({ isOpen, onClose, invoice, onSubmit }:
                                                 value={formData.dueDate}
                                                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                                                 className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-bold focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none"
+                                            />
+                                        </div>
+
+                                        {/* Terms & Conditions Section */}
+                                        <div className="space-y-1.5 col-span-2 pt-1">
+                                            <div className="flex items-center justify-between pl-1">
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                    <span>📋</span> Terms & Conditions
+                                                </label>
+                                                <span className="text-[9px] font-bold text-brand-primary">Included on Invoice & Share</span>
+                                            </div>
+                                            <textarea
+                                                value={formData.termsAndConditions}
+                                                onChange={(e) => setFormData({ ...formData, termsAndConditions: e.target.value })}
+                                                rows={3}
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5 text-xs font-medium text-gray-700 focus:bg-white focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none resize-none leading-relaxed"
+                                                placeholder="Enter terms and conditions..."
                                             />
                                         </div>
                                     </div>

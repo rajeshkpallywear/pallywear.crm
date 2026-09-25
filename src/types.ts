@@ -60,6 +60,7 @@ export interface Invoice {
   amountPaid: number;
   balanceDue: number;
   notes?: string;
+  termsAndConditions?: string;
   paymentInstructions?: string;
   paymentMethod?: 'GPay' | 'PhonePay' | 'Cash' | 'Account' | 'UPI';
   productType?: string;

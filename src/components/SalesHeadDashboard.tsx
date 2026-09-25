@@ -255,6 +255,19 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
 
+  // Top Key Metric Pulse Ribbon Filter (Tasks Shared, Returned Ready, Reworks, Converted Orders, Invoices Shared, Total Value)
+  const [pulseMetricFilter, setPulseMetricFilter] = useState<'all' | 'tasks_shared' | 'returned_ready' | 'reworks' | 'converted' | 'invoices' | 'total_value'>('all');
+
+  const handlePulseMetricClick = (metric: 'tasks_shared' | 'returned_ready' | 'reworks' | 'converted' | 'invoices' | 'total_value') => {
+    setPulseMetricFilter(prev => prev === metric ? 'all' : metric);
+    setTimeout(() => {
+      const el = document.getElementById('orders-drilldown-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  };
+
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
   const [activeViewTab, setActiveViewTab] = useState<'overview' | 'sla_monitor'>('overview');
   const [slaStatusFilter, setSlaStatusFilter] = useState<'all' | 'in_progress' | 'overdue' | 'completed'>('all');
@@ -810,8 +823,33 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
       );
     }
 
+    // 5. Pulse Metric Ribbon Filter (Tasks Shared, Returned Ready, Reworks, Converted Orders, Invoices, Total Value)
+    if (pulseMetricFilter === 'tasks_shared') {
+      list = list.filter(o => isRaisedTaskOrder(o) || isSentToDesigns(o) || o.status === OrderStatus.DESIGN);
+    } else if (pulseMetricFilter === 'returned_ready') {
+      list = list.filter(isReceivedDesignsFile);
+    } else if (pulseMetricFilter === 'reworks') {
+      list = list.filter(isReworkOrder);
+    } else if (pulseMetricFilter === 'converted') {
+      list = list.filter(isConvertedOrder);
+    } else if (pulseMetricFilter === 'invoices') {
+      list = list.filter(o => {
+        const hasDirectInvoice = (filteredInvoices || []).some(inv => 
+          (inv.leadId && String(inv.leadId) === String(o.id)) ||
+          (inv.orderId && String(inv.orderId) === String(o.id)) ||
+          (inv.leadNumber && (String(inv.leadNumber) === String(o.orderNumber) || String(inv.leadNumber) === String(o.id))) ||
+          (inv.invoiceNumber && String(o.invoiceNumber) === String(inv.invoiceNumber)) ||
+          (inv.clientName && o.customerInfo?.name && inv.clientName.toLowerCase().trim() === o.customerInfo.name.toLowerCase().trim())
+        );
+        const orderHasInvoiceFlag = Boolean(o.invoiceNumber || o.isInvoiced || o.invoiceStatus === 'invoiced' || (o as any).invoiceShared);
+        return hasDirectInvoice || orderHasInvoiceFlag;
+      });
+    } else if (pulseMetricFilter === 'total_value') {
+      list = list.filter(o => getOrderAmount(o) > 0);
+    }
+
     return list;
-  }, [filteredOrders, selectedExecutive, orderTeamFilter, orderClassificationFilter, statusFilter, orderSearchTerm, registeredUsers]);
+  }, [filteredOrders, selectedExecutive, orderTeamFilter, orderClassificationFilter, statusFilter, orderSearchTerm, registeredUsers, pulseMetricFilter, filteredInvoices]);
 
   // All orders with design studio activity
   const allDesignStudioOrders = useMemo(() => {
@@ -1504,10 +1542,19 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
         <>
 
 
-          {/* Key Metric Pulse Ribbon (Tasks Shared, Returned Designs, Reworks, Converted Orders, Invoices) */}
+          {/* Key Metric Pulse Ribbon (Tasks Shared, Returned Designs, Reworks, Converted Orders, Invoices, Total Value) - Clickable to Filter & View List */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 text-left">
             {/* 1. Tasks Shared */}
-            <div className="p-4 rounded-3xl bg-white border border-indigo-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-indigo-300 transition-all">
+            <div
+              onClick={() => handlePulseMetricClick('tasks_shared')}
+              className={cn(
+                "p-4 rounded-3xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] select-none",
+                pulseMetricFilter === 'tasks_shared'
+                  ? "bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/50"
+                  : "bg-white border-indigo-150 hover:border-indigo-300"
+              )}
+              title="Click to filter and show Tasks Shared in table below"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">📤 Tasks Shared</span>
                 <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-700">
@@ -1516,12 +1563,29 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               </div>
               <div>
                 <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.tasksShared}</div>
-                <div className="text-[10px] font-bold text-gray-400 mt-0.5">Raised for Design Studio</div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-bold text-gray-400">Raised for Studio</span>
+                  <span className={cn(
+                    "text-[9px] font-black transition-colors",
+                    pulseMetricFilter === 'tasks_shared' ? "text-indigo-700 underline" : "text-indigo-500 hover:underline"
+                  )}>
+                    {pulseMetricFilter === 'tasks_shared' ? '✓ Showing' : 'Click to view →'}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* 2. Designs Returned (Art Ready) */}
-            <div className="p-4 rounded-3xl bg-white border border-emerald-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-emerald-300 transition-all">
+            <div
+              onClick={() => handlePulseMetricClick('returned_ready')}
+              className={cn(
+                "p-4 rounded-3xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] select-none",
+                pulseMetricFilter === 'returned_ready'
+                  ? "bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/50"
+                  : "bg-white border-emerald-150 hover:border-emerald-300"
+              )}
+              title="Click to filter and show Returned Ready tasks in table below"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">📥 Returned Ready</span>
                 <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700">
@@ -1530,20 +1594,28 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               </div>
               <div>
                 <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.designsReturned}</div>
-                <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Artwork Ready / Delivered</div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-bold text-emerald-600">Artwork Delivered</span>
+                  <span className={cn(
+                    "text-[9px] font-black transition-colors",
+                    pulseMetricFilter === 'returned_ready' ? "text-emerald-800 underline" : "text-emerald-600 hover:underline"
+                  )}>
+                    {pulseMetricFilter === 'returned_ready' ? '✓ Showing' : 'Click to view →'}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* 3. Reworks Requested & Reason */}
             <div
-              onClick={() => {
-                setSelectedReworkExecutive({
-                  execName: selectedExecutive ? selectedExecutive : (staffTeamFilter === 'girls' ? 'Blossom Team' : staffTeamFilter === 'boys' ? 'Hornet Team' : 'All Marketing Staff'),
-                  reworks: (displayedPulseStats as any).reworkReasons || []
-                });
-                setShowReworkModal(true);
-              }}
-              className="p-4 rounded-3xl bg-white border border-amber-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-amber-400 cursor-pointer hover:bg-amber-50/20 transition-all group"
+              onClick={() => handlePulseMetricClick('reworks')}
+              className={cn(
+                "p-4 rounded-3xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition-all group hover:shadow-md hover:scale-[1.01] select-none",
+                pulseMetricFilter === 'reworks'
+                  ? "bg-amber-50/70 border-amber-500 ring-2 ring-amber-500/50"
+                  : "bg-white border-amber-150 hover:border-amber-400 hover:bg-amber-50/20"
+              )}
+              title="Click to filter and show Rework tasks in table below"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider">🔁 Reworks</span>
@@ -1554,14 +1626,43 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               <div>
                 <div className="text-2xl font-black text-amber-900 tracking-tight flex items-center justify-between">
                   <span>{displayedPulseStats.reworksCount}</span>
-                  <span className="text-[10px] font-black text-amber-700 underline group-hover:text-amber-900">View Reasons →</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedReworkExecutive({
+                        execName: selectedExecutive ? selectedExecutive : (staffTeamFilter === 'girls' ? 'Blossom Team' : staffTeamFilter === 'boys' ? 'Hornet Team' : 'All Marketing Staff'),
+                        reworks: (displayedPulseStats as any).reworkReasons || []
+                      });
+                      setShowReworkModal(true);
+                    }}
+                    className="text-[10px] font-black text-amber-700 underline hover:text-amber-900 bg-transparent border-none cursor-pointer"
+                  >
+                    View Reasons →
+                  </button>
                 </div>
-                <div className="text-[10px] font-bold text-amber-600 mt-0.5">Click to view rework reasons</div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-bold text-amber-600">Revision Requests</span>
+                  <span className={cn(
+                    "text-[9px] font-black transition-colors",
+                    pulseMetricFilter === 'reworks' ? "text-amber-800 underline" : "text-amber-600 hover:underline"
+                  )}>
+                    {pulseMetricFilter === 'reworks' ? '✓ Showing' : 'Click to view →'}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* 4. Orders Converted from Tasks */}
-            <div className="p-4 rounded-3xl bg-white border border-purple-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-purple-300 transition-all">
+            <div
+              onClick={() => handlePulseMetricClick('converted')}
+              className={cn(
+                "p-4 rounded-3xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] select-none",
+                pulseMetricFilter === 'converted'
+                  ? "bg-purple-50/70 border-purple-500 ring-2 ring-purple-500/50"
+                  : "bg-white border-purple-150 hover:border-purple-300"
+              )}
+              title="Click to filter and show Converted Orders in table below"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-purple-700 tracking-wider">🛒 Converted Orders</span>
                 <div className="p-1.5 rounded-xl bg-purple-50 text-purple-700">
@@ -1570,12 +1671,29 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               </div>
               <div>
                 <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.ordersConverted}</div>
-                <div className="text-[10px] font-bold text-purple-600 mt-0.5">Tasks Converted to Deals</div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-bold text-purple-600">Tasks to Deals</span>
+                  <span className={cn(
+                    "text-[9px] font-black transition-colors",
+                    pulseMetricFilter === 'converted' ? "text-purple-800 underline" : "text-purple-600 hover:underline"
+                  )}>
+                    {pulseMetricFilter === 'converted' ? '✓ Showing' : 'Click to view →'}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* 5. Invoices Shared */}
-            <div className="p-4 rounded-3xl bg-white border border-teal-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-teal-300 transition-all">
+            <div
+              onClick={() => handlePulseMetricClick('invoices')}
+              className={cn(
+                "p-4 rounded-3xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] select-none",
+                pulseMetricFilter === 'invoices'
+                  ? "bg-teal-50/70 border-teal-500 ring-2 ring-teal-500/50"
+                  : "bg-white border-teal-150 hover:border-teal-300"
+              )}
+              title="Click to filter and show Invoices Shared in table below"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider">📄 Invoices Shared</span>
                 <div className="p-1.5 rounded-xl bg-teal-50 text-teal-700">
@@ -1584,12 +1702,29 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               </div>
               <div>
                 <div className="text-2xl font-black text-gray-900 tracking-tight">{displayedPulseStats.invoicesCount}</div>
-                <div className="text-[10px] font-bold text-teal-600 mt-0.5">₹{displayedPulseStats.totalInvoicedAmount.toLocaleString()} Invoiced</div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-bold text-teal-600">₹{displayedPulseStats.totalInvoicedAmount.toLocaleString()} Invoiced</span>
+                  <span className={cn(
+                    "text-[9px] font-black transition-colors",
+                    pulseMetricFilter === 'invoices' ? "text-teal-800 underline" : "text-teal-600 hover:underline"
+                  )}>
+                    {pulseMetricFilter === 'invoices' ? '✓ Showing' : 'Click to view →'}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* 6. Total Order Value & Advance */}
-            <div className="p-4 rounded-3xl bg-white border border-blue-150 shadow-xs flex flex-col justify-between space-y-2 hover:border-blue-300 transition-all">
+            <div
+              onClick={() => handlePulseMetricClick('total_value')}
+              className={cn(
+                "p-4 rounded-3xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] select-none",
+                pulseMetricFilter === 'total_value'
+                  ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/50"
+                  : "bg-white border-blue-150 hover:border-blue-300"
+              )}
+              title="Click to filter and show Revenue Orders in table below"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-blue-700 tracking-wider">💰 Total Value</span>
                 <div className="p-1.5 rounded-xl bg-blue-50 text-blue-700">
@@ -1598,93 +1733,17 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
               </div>
               <div>
                 <div className="text-xl font-black text-gray-900 tracking-tight">₹{displayedPulseStats.totalOrderValue.toLocaleString()}</div>
-                <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Adv: ₹{displayedPulseStats.totalAdvance.toLocaleString()}</div>
-              </div>
-            </div>
-          </div>
-
-
-
-          {/* Active Design Studio Tasks (2-Hour SLA Monitor Preview) */}
-          <div className="bg-white rounded-3xl border border-gray-150 shadow-xs overflow-hidden space-y-4 p-6 text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
-                  <Palette size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                    Designs Task Monitor
-                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded-full">
-                      {activeDesignClaimedOrders.length} In Studio
-                    </span>
-                  </h3>
-                  <p className="text-xs text-gray-500 font-medium">
-                    Live countdown tracking for all claimed and in-progress design tasks
-                  </p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-bold text-emerald-600">Adv: ₹{displayedPulseStats.totalAdvance.toLocaleString()}</span>
+                  <span className={cn(
+                    "text-[9px] font-black transition-colors",
+                    pulseMetricFilter === 'total_value' ? "text-blue-800 underline" : "text-blue-600 hover:underline"
+                  )}>
+                    {pulseMetricFilter === 'total_value' ? '✓ Showing' : 'Click to view →'}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-bold text-gray-400">
-                  Standard SLA: 120 mins / task
-                </span>
-                <button
-                  onClick={() => setActiveViewTab('sla_monitor')}
-                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-black transition-all border border-purple-200 cursor-pointer"
-                >
-                  Open Designs Task Monitor →
-                </button>
-              </div>
             </div>
-
-            {activeDesignClaimedOrders.length === 0 ? (
-              <div className="py-8 text-center text-gray-400 italic text-xs font-medium bg-gray-50/50 rounded-2xl border border-gray-100">
-                No active design tasks claimed in the design studio at this moment.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {activeDesignClaimedOrders.slice(0, 6).map(order => {
-                  const isCompleted = isReceivedDesignsFile(order);
-                  return (
-                    <div
-                      key={order.id}
-                      onClick={() => setSelectedOrderForModal(order)}
-                      className="p-4 bg-gray-50/80 rounded-2xl border border-gray-150 space-y-2 hover:bg-gray-50 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-black text-xs text-brand-primary">#{order.orderNumber || (order.id ? String(order.id).slice(-8) : 'N/A')}</span>
-                        <span className="text-[10px] font-bold text-gray-500 capitalize">{order.category}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-gray-900 truncate max-w-[140px]">{order.customerInfo?.name || 'Customer'}</span>
-                        <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md">
-                          🎨 {order.assignedDesigner || 'Designer'}
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400 font-medium">2-Hour SLA:</span>
-                        <DesignTaskTimer
-                          claimedAt={order.claimedAt || order.designClaimedAt}
-                          completedAt={order.designCompletedAt}
-                          isCompleted={isCompleted}
-                          designerName={order.assignedDesigner}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {activeDesignClaimedOrders.length > 6 && (
-              <div className="pt-2 text-center">
-                <button
-                  onClick={() => setActiveViewTab('sla_monitor')}
-                  className="text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline bg-transparent border-none cursor-pointer"
-                >
-                  View all {activeDesignClaimedOrders.length} active design tasks →
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Main Section: Marketing Individual Executive Performance Table */}
@@ -1983,7 +2042,7 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
           </div>
 
           {/* Section: Orders Flow & Breakdown with Full Multi-Layer Filtering (Staff, Team, Bulk, Mixed, Gift, Status) */}
-          <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-6 space-y-5 text-left">
+          <div id="orders-drilldown-section" className="bg-white rounded-3xl border border-gray-150 shadow-xs p-6 space-y-5 text-left">
             {/* Header: Title, Active Timeframe Badge, and Excel Export */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
@@ -2336,28 +2395,39 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
             {/* LIVE KPI PULSE STRIP FOR ACTIVE SELECTION */}
             <div className="p-3.5 bg-gradient-to-r from-white via-gray-50/60 to-white rounded-2xl border border-gray-200 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                  <Activity size={12} className="text-brand-primary" /> Active Focus:
-                </span>
-                <span className={cn(
-                  "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-xs",
-                  selectedExecutive
-                    ? "bg-purple-100 text-purple-800 border border-purple-200"
-                    : orderTeamFilter === 'girls'
-                    ? "bg-pink-100 text-pink-700 border border-pink-200"
-                    : orderTeamFilter === 'boys'
-                    ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
-                    : "bg-gray-100 text-gray-800 border border-gray-200"
-                )}>
-                  {displayedPulseStats.label}
-                </span>
+                {pulseMetricFilter !== 'all' && (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-primary text-white shadow-xs flex items-center gap-1.5">
+                    <span>
+                      Filtered: {
+                        pulseMetricFilter === 'tasks_shared' ? '📤 Tasks Shared' :
+                        pulseMetricFilter === 'returned_ready' ? '📥 Returned Ready' :
+                        pulseMetricFilter === 'reworks' ? '🔁 Reworks' :
+                        pulseMetricFilter === 'converted' ? '🛒 Converted Orders' :
+                        pulseMetricFilter === 'invoices' ? '📄 Invoices Shared' :
+                        '💰 Total Value Orders'
+                      }
+                    </span>
+                    <button
+                      onClick={() => setPulseMetricFilter('all')}
+                      className="ml-1 text-white hover:text-gray-200 bg-transparent border-none cursor-pointer font-black text-xs"
+                      title="Clear Filter"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
                 {selectedExecutive && (
-                  <button
-                    onClick={() => setSelectedExecutive(null)}
-                    className="text-[10px] font-bold text-pink-600 hover:text-pink-800 bg-transparent border-none cursor-pointer underline"
-                  >
-                    Clear Staff Filter ✕
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shadow-xs">
+                      👤 {selectedExecutive}
+                    </span>
+                    <button
+                      onClick={() => setSelectedExecutive(null)}
+                      className="text-[10px] font-bold text-pink-600 hover:text-pink-800 bg-transparent border-none cursor-pointer underline"
+                    >
+                      Clear Staff Filter ✕
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -2482,6 +2552,60 @@ export default function SalesHeadDashboard({ orders: propOrders, invoices: propI
                 </button>
               ))}
             </div>
+
+            {/* Invoices List Display when Invoices Shared Filter is active */}
+            {pulseMetricFilter === 'invoices' && (filteredInvoices || []).length > 0 && (
+              <div className="p-4 bg-teal-50/50 rounded-2xl border border-teal-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-black uppercase tracking-wider text-teal-900 flex items-center gap-1.5">
+                    <FileText size={15} className="text-teal-700" />
+                    Invoices Shared ({filteredInvoices.length} Invoices • Total: ₹{displayedPulseStats.totalInvoicedAmount.toLocaleString('en-IN')})
+                  </h5>
+                  <button
+                    onClick={() => setPulseMetricFilter('all')}
+                    className="text-[10px] font-black text-teal-700 hover:text-teal-900 underline bg-transparent border-none cursor-pointer"
+                  >
+                    Clear Filter ✕
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                      <tr className="text-[10px] font-black uppercase text-teal-800 border-b border-teal-200 bg-teal-100/50">
+                        <th className="py-2.5 px-3">Invoice #</th>
+                        <th className="py-2.5 px-3">Customer</th>
+                        <th className="py-2.5 px-3">Creator Executive</th>
+                        <th className="py-2.5 px-3">Invoice Date</th>
+                        <th className="py-2.5 px-3 text-right">Invoiced Amount</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-teal-100 font-medium text-gray-800 bg-white">
+                      {filteredInvoices.map((inv: any) => (
+                        <tr key={inv.id} className="hover:bg-teal-50/30 transition-colors">
+                          <td className="py-2.5 px-3 font-mono font-black text-teal-900">{inv.invoiceNumber || 'INV-N/A'}</td>
+                          <td className="py-2.5 px-3 font-bold text-gray-900">{inv.clientName || 'Customer'}</td>
+                          <td className="py-2.5 px-3">{inv.createdByName || inv.createdBy || 'Marketing'}</td>
+                          <td className="py-2.5 px-3 text-gray-500">{inv.date || (inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-IN') : '-')}</td>
+                          <td className="py-2.5 px-3 text-right font-black text-teal-900">₹{Number(inv.total || inv.netTotal || 0).toLocaleString('en-IN')}</td>
+                          <td className="py-2.5 px-3 text-right">
+                            <button
+                              onClick={() => {
+                                setEditingInvoice(inv);
+                                setIsInvoiceFormOpen(true);
+                              }}
+                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-[10px] font-black cursor-pointer shadow-2xs"
+                            >
+                              View / Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Desktop View (Table) */}
             <div className="overflow-x-auto hidden md:block">

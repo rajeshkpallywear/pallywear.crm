@@ -5,7 +5,7 @@ import { Invoice } from '../types';
 import Logo from './Logo';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
-import { shareInvoiceToWhatsApp } from '../lib/utils';
+import { shareInvoiceToWhatsApp, DEFAULT_INVOICE_TERMS_AND_CONDITIONS } from '../lib/utils';
 import { getApiUrl } from '../lib/apiConfig';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -424,8 +424,18 @@ export default function InvoiceModal({ invoice, isOpen, onClose, autoShare = fal
                                 </div>
                             </div>
 
+                            {/* Terms & Conditions Section (Single Paragraph) */}
+                            <div className="mt-8 pt-4 border-t border-gray-100 text-left">
+                                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                                    <span>📋</span> Terms & Conditions
+                                </h3>
+                                <p className="text-[9.5px] sm:text-[10px] text-gray-600 font-medium leading-relaxed text-justify">
+                                    {invoice.termsAndConditions || DEFAULT_INVOICE_TERMS_AND_CONDITIONS}
+                                </p>
+                            </div>
+
                             {/* Signature area (matching image) */}
-                            <div className="mt-12 sm:mt-20 flex flex-col sm:flex-row justify-between items-center sm:items-end px-4 gap-8">
+                            <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row justify-between items-center sm:items-end px-4 gap-8">
                                 {/* Seal on the left */}
                                 <div className="relative w-32 h-32 sm:w-48 sm:h-48 opacity-80 pointer-events-none rotate-[-8deg] mb-2 sm:mb-8">
                                     <img
