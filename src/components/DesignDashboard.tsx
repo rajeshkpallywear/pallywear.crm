@@ -60,8 +60,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   // Primary Tabs: 'marketing_queue' for Marketing pipeline, 'accounts_queue' for Accounts pipeline
   const [activeChannel, setActiveChannel] = useState<'marketing_queue' | 'accounts_queue'>('marketing_queue');
 
-  // Subsection filters: 'unclaimed', 'my_tasks', 'marketing_tasks', 'hold', 'completed', 'completed_om', 'completed_digitizer', 'rework', 'admin_order'
-  const [selectedSection, setSelectedSection] = useState<'unclaimed' | 'my_tasks' | 'marketing_tasks' | 'hold' | 'completed' | 'completed_om' | 'completed_digitizer' | 'rework' | 'admin_order'>('unclaimed');
+  // Subsection filters: 'marketing_tasks', 'my_tasks', 'hold', 'completed', 'completed_om', 'completed_digitizer', 'rework', 'admin_order'
+  const [selectedSection, setSelectedSection] = useState<'marketing_tasks' | 'my_tasks' | 'unclaimed' | 'hold' | 'completed' | 'completed_om' | 'completed_digitizer' | 'rework' | 'admin_order'>('marketing_tasks');
 
   // Searching/Filtering
   const [searchTerm, setSearchTerm] = useState('');
@@ -192,11 +192,32 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
 
   // Helper to detect rework / corrections
   const isItemRework = (o: any) => {
-    if (o?.isRework === false) return false;
-    if (o?.isRework === true) return true;
+    // If artwork completed was finished after rework requested, it is no longer pending rework
+    if (o?.reworkCompletedAt && !o?.reworkRequestedAt) return false;
+    if (o?.reworkCompletedAt && o?.reworkRequestedAt && Number(o.reworkCompletedAt) >= Number(o.reworkRequestedAt)) return false;
+
+    if (o?.isRework === true || o?.details?.isRework === true) return true;
+    if (o?.reworkRequestedAt || o?.details?.reworkRequestedAt) return true;
     if (o?.reworkNotes && String(o.reworkNotes).trim().length > 0) return true;
+    if (o?.details?.reworkNotes && String(o.details.reworkNotes).trim().length > 0) return true;
+    if (o?.designRework === true || o?.details?.designRework === true) return true;
+
+    const statusStr = String(o?.status || '').toLowerCase();
+    if (statusStr === 'rework' || statusStr.includes('rework')) return true;
+
     const notesStr = String(o?.notes || o?.designNotes || '').toLowerCase();
-    if (notesStr.includes('[rework') || notesStr.includes('correction requested') || notesStr.includes('sent back from marketing')) return true;
+    if (
+      notesStr.includes('[task revision') ||
+      notesStr.includes('[task rework') ||
+      notesStr.includes('[rework') ||
+      notesStr.includes('revision requested') ||
+      notesStr.includes('rework requested') ||
+      notesStr.includes('correction requested') ||
+      notesStr.includes('sent back from marketing') ||
+      notesStr.includes('sent back for rework')
+    ) {
+      return true;
+    }
     return false;
   };
 
@@ -239,12 +260,13 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     .filter(o => {
       const statusLower = String(o.status || '').toLowerCase();
       const prevStatusLower = String(o.previousStatus || '').toLowerCase();
+      const isRework = isItemRework(o);
       const isDesignDone = isOrderDesignDone(o);
       const isCompletedDesign = statusLower === 'delivered' || isDesignDone;
-      const isDesignPhase = statusLower === 'design';
+      const isDesignPhase = statusLower === 'design' || statusLower === 'rework' || isRework;
       const isHoldFromDesign = statusLower === 'hold' && prevStatusLower === 'design';
       const isMarketing = !o.sentByAccounts;
-      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isMarketing;
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign || isRework) && isMarketing;
     })
     .map(o => {
       const isRework = isItemRework(o);
@@ -288,7 +310,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         initialTaskCompletedAt: o.initialTaskCompletedAt || o.details?.initialTaskCompletedAt,
         initialTaskDurationMs: o.initialTaskDurationMs || o.details?.initialTaskDurationMs,
         isAdminOrder: isItemAdminOrder(o),
-        reworkNotes: o.reworkNotes,
+        reworkNotes: o.reworkNotes || o.details?.reworkNotes || '',
         createdAt: o.createdAt || Date.now(),
         staffImages: o.staffImages || [],
         staffPdfs: o.staffPdfs || [],
@@ -359,12 +381,13 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
     .filter(o => {
       const statusLower = String(o.status || '').toLowerCase();
       const prevStatusLower = String(o.previousStatus || '').toLowerCase();
+      const isRework = isItemRework(o);
       const isDesignDone = isOrderDesignDone(o);
       const isCompletedDesign = statusLower === 'delivered' || isDesignDone;
-      const isDesignPhase = statusLower === 'design';
+      const isDesignPhase = statusLower === 'design' || statusLower === 'rework' || isRework;
       const isHoldFromDesign = statusLower === 'hold' && (prevStatusLower === 'design' || prevStatusLower === 'accounts');
       const isAccounts = Boolean(o.sentByAccounts);
-      return (isDesignPhase || isHoldFromDesign || isCompletedDesign) && isAccounts;
+      return (isDesignPhase || isHoldFromDesign || isCompletedDesign || isRework) && isAccounts;
     })
     .map(o => {
       const chatKey = `pallywear_om_chats_designer_${o.id}`;
@@ -401,7 +424,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         isCompleted: isCompleted,
         isRework: isRework,
         isAdminOrder: isItemAdminOrder(o),
-        reworkNotes: o.reworkNotes,
+        reworkNotes: o.reworkNotes || o.details?.reworkNotes || '',
         createdAt: o.createdAt || Date.now(),
         hasOmChat: hasOmChat,
         staffImages: o.staffImages || [],
@@ -521,14 +544,15 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       baseList = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item) && (isAdmin || isClaimedByMe(item)));
     } else if (selectedSection === 'marketing_tasks') {
       // Unclaimed tasks are visible to all designers. Once taken/claimed, only visible to claiming designer (or admin)
-      baseList = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
+      baseList = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && !item.isRework && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
     } else if (selectedSection === 'unclaimed') {
       baseList = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder && !item.isRaisedTask);
     } else if (selectedSection === 'my_tasks') {
       // In My Tasks: strictly show only tasks claimed by THIS logged-in designer
       baseList = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'rework') {
-      baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
+      // ALL rework tasks and orders that need revision
+      baseList = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold);
     } else if (selectedSection === 'admin_order') {
       baseList = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item)));
     }
@@ -560,11 +584,11 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
   const getChannelStats = (channel: 'marketing_queue' | 'accounts_queue') => {
     const baseList = channel === 'marketing_queue' ? marketingCombinedList : accountsOrderItems;
     const unclaimedCount = baseList.filter(item => isUnclaimedItem(item.assignedDesigner, item.claimedBy) && !item.isCompleted && !item.isHold && !item.isRework && !item.isAdminOrder && !item.isRaisedTask).length;
-    const marketingTasksCount = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
+    const marketingTasksCount = baseList.filter(item => item.isRaisedTask && !item.isCompleted && !item.isHold && !item.isRework && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
     const myTasksCount = baseList.filter(item => isClaimedByMe(item) && !item.isCompleted && !item.isHold).length;
     const holdCount = baseList.filter(item => item.isHold && (isAdmin || isClaimedByMe(item) || isUnclaimedItem(item.assignedDesigner, item.claimedBy))).length;
     const completedCount = baseList.filter(item => item.isCompleted && (isAdmin || isClaimedByMe(item))).length;
-    const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
+    const reworkCount = baseList.filter(item => item.isRework && !item.isCompleted && !item.isHold).length;
     const adminOrderCount = baseList.filter(item => item.isAdminOrder && !item.isCompleted && !item.isHold && !item.isRework && (isAdmin || isUnclaimedItem(item.assignedDesigner, item.claimedBy) || isClaimedByMe(item))).length;
     const digitizerSentCount = baseList.filter(item => item.isCompleted && isItemSentToDigitizer(item)).length;
     const omSentCount = baseList.filter(item => item.isCompleted && isItemSentToOrderManagement(item)).length;
@@ -1155,7 +1179,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         <button
           onClick={() => {
             setActiveChannel('marketing_queue');
-            setSelectedSection('unclaimed');
+            setSelectedSection('marketing_tasks');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
@@ -1164,17 +1188,12 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          📢 Marketing Sent ({getChannelStats('marketing_queue').unclaimedCount})
+          📢 Marketing Sent ({getChannelStats('marketing_queue').marketingTasksCount + getChannelStats('marketing_queue').reworkCount})
         </button>
         <button
           onClick={() => {
             setActiveChannel('accounts_queue');
-            const stats = getChannelStats('accounts_queue');
-            if (stats.myTasksCount > 0 && stats.unclaimedCount === 0) {
-              setSelectedSection('my_tasks');
-            } else {
-              setSelectedSection('unclaimed');
-            }
+            setSelectedSection('my_tasks');
           }}
           className={cn(
             "flex-1 sm:flex-initial px-2.5 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-2 border-none truncate min-w-0",
@@ -1183,7 +1202,7 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
               : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           )}
         >
-          💳 Accounts Sent ({getChannelStats('accounts_queue').unclaimedCount})
+          💳 Accounts Sent ({getChannelStats('accounts_queue').myTasksCount + getChannelStats('accounts_queue').completedCount})
         </button>
       </div>
 
@@ -1263,7 +1282,6 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
         {/* Section Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {([
-            { key: 'unclaimed', label: '⚡ Open to Claim', count: activeStats.unclaimedCount, color: 'bg-brand-primary' },
             ...(activeChannel === 'marketing_queue' ? [
               { key: 'marketing_tasks', label: '🎨 Marketing Tasks', count: activeStats.marketingTasksCount, color: 'bg-purple-700' },
             ] : []),
@@ -1556,16 +1574,26 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                               Review Assets
                             </button>
                           </div>
-                        ) : item.isRework && !item.reworkAccepted ? (
-                          <button
-                            disabled={isProcessing}
-                            onClick={(e) => handleAcceptRework(item, e)}
-                            className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:opacity-95 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-md cursor-pointer border-none flex items-center gap-1.5 ml-auto animate-pulse"
-                            title="Accept rework request and start 2-Hour SLA timer"
-                          >
-                            <RefreshCw size={12} />
-                            <span>⚡ Accept Rework</span>
-                          </button>
+                        ) : item.isRework ? (
+                          !item.reworkAccepted ? (
+                            <button
+                              disabled={isProcessing}
+                              onClick={(e) => handleAcceptRework(item, e)}
+                              className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:opacity-95 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-md cursor-pointer border-none flex items-center gap-1.5 ml-auto animate-pulse"
+                              title="Accept rework request and start 2-Hour SLA timer"
+                            >
+                              <RefreshCw size={12} />
+                              <span>⚡ Accept Rework</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenWorkspace(item)}
+                              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border-none shadow-xs flex items-center gap-1 ml-auto"
+                            >
+                              <span>Rework Workspace</span>
+                              <ChevronRight size={12} />
+                            </button>
+                          )
                         ) : isUnclaimed ? (
                           <button
                             disabled={isProcessing}
@@ -1782,15 +1810,25 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
                         >
                           Review Assets
                         </button>
-                      ) : item.isRework && !item.reworkAccepted ? (
-                        <button
-                          disabled={isProcessing}
-                          onClick={(e) => handleAcceptRework(item, e)}
-                          className="col-span-2 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-md flex items-center justify-center gap-2 animate-pulse"
-                        >
-                          <RefreshCw size={14} />
-                          <span>⚡ Accept Rework Request</span>
-                        </button>
+                      ) : item.isRework ? (
+                        !item.reworkAccepted ? (
+                          <button
+                            disabled={isProcessing}
+                            onClick={(e) => handleAcceptRework(item, e)}
+                            className="col-span-2 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-md flex items-center justify-center gap-2 animate-pulse"
+                          >
+                            <RefreshCw size={14} />
+                            <span>⚡ Accept Rework Request</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenWorkspace(item)}
+                            className="col-span-2 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-md flex items-center justify-center gap-1"
+                          >
+                            <span>Rework Workspace</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        )
                       ) : isUnclaimed ? (
                         <button
                           disabled={isProcessing}
