@@ -1,7 +1,7 @@
 
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera, Palette, RefreshCw } from 'lucide-react';
+import { X, User, Phone, MapPin, FileText, Globe, Clock, AlertCircle, CheckCircle, Download, ZoomIn, ExternalLink, Sparkles, FolderOpen, Mic, MessageSquare, Factory, Truck, Package, Camera, Palette, RefreshCw, Edit } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import ImageViewer from './ImageViewer';
 import WorkflowVisualizer from './WorkflowVisualizer';
@@ -32,6 +32,57 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
   const [showTaskReworkPrompt, setShowTaskReworkPrompt] = useState(false);
   const [taskReworkReason, setTaskReworkReason] = useState('');
   const [taskReworkError, setTaskReworkError] = useState('');
+
+  // Task Edit State
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [taskEditName, setTaskEditName] = useState(order?.customerInfo?.name || '');
+  const [taskEditPhone, setTaskEditPhone] = useState(order?.customerInfo?.phone || '');
+  const [taskEditNotes, setTaskEditNotes] = useState(order?.notes || order?.designNotes || order?.marketing_notes || '');
+  const [taskEditUrgent, setTaskEditUrgent] = useState(Boolean(order?.isUrgent));
+  const [taskEditUrgentReason, setTaskEditUrgentReason] = useState(order?.urgentReason || order?.details?.urgentReason || '');
+
+  useEffect(() => {
+    if (order) {
+      setTaskEditName(order.customerInfo?.name || '');
+      setTaskEditPhone(order.customerInfo?.phone || '');
+      setTaskEditNotes(order.notes || order.designNotes || order.marketing_notes || '');
+      setTaskEditUrgent(Boolean(order.isUrgent));
+      setTaskEditUrgentReason(order.urgentReason || order.details?.urgentReason || '');
+    }
+  }, [order]);
+
+  const handleSaveTaskEdit = async () => {
+    if (!effectiveUpdateOrder || !order) return;
+    setIsSaving(true);
+    try {
+      const updates: Partial<Order> = {
+        customerInfo: {
+          ...(order.customerInfo || {}),
+          name: taskEditName.trim() || order.customerInfo?.name || 'Customer',
+          phone: taskEditPhone.trim() || order.customerInfo?.phone || ''
+        },
+        notes: taskEditNotes.trim(),
+        designNotes: taskEditNotes.trim(),
+        marketing_notes: taskEditNotes.trim(),
+        isUrgent: taskEditUrgent,
+        urgentReason: taskEditUrgent ? (taskEditUrgentReason || 'Urgent priority') : '',
+        details: {
+          ...(order.details || {}),
+          designNotes: taskEditNotes.trim(),
+          urgentReason: taskEditUrgent ? (taskEditUrgentReason || 'Urgent priority') : ''
+        },
+        updatedAt: Date.now()
+      };
+      await effectiveUpdateOrder(order.id, updates);
+      setIsEditingTask(false);
+      alert('✓ Task updated successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update task.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!order) return null;
 
@@ -360,7 +411,44 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             </div>
 
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              {hasReturnedDesigns && onConvertTaskToOrder && (
+              {!isEditingTask ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTask(true)}
+                  className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all shadow-sm flex items-center gap-1.5 border border-purple-400/40 cursor-pointer"
+                  title="Edit Task Details & Instructions"
+                >
+                  <Edit size={13} /> Edit Task
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={handleSaveTaskEdit}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all shadow-sm flex items-center gap-1.5 border-none cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle size={13} /> {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingTask(false);
+                      if (order) {
+                        setTaskEditName(order.customerInfo?.name || '');
+                        setTaskEditPhone(order.customerInfo?.phone || '');
+                        setTaskEditNotes(order.notes || order.designNotes || order.marketing_notes || '');
+                        setTaskEditUrgent(Boolean(order.isUrgent));
+                        setTaskEditUrgentReason(order.urgentReason || order.details?.urgentReason || '');
+                      }
+                    }}
+                    className="px-3 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all border border-white/20 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {hasReturnedDesigns && onConvertTaskToOrder && !isEditingTask && (
                 <button
                   type="button"
                   onClick={() => {
@@ -381,7 +469,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
               >
                 <MessageSquare size={13} /> WhatsApp
               </button>
-              {order.status !== OrderStatus.DESIGN && (
+              {order.status !== OrderStatus.DESIGN && !isEditingTask && (
                 <button
                   disabled={isProcessingAction}
                   onClick={() => {
@@ -430,24 +518,127 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                     <span className="text-[10px] font-black uppercase tracking-widest text-purple-700 flex items-center gap-1.5">
                       <FileText size={14} /> Design Instructions
                     </span>
-                    <span className="text-[10px] text-gray-400 font-bold">
-                      Marketing Desk
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {!isEditingTask && (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingTask(true)}
+                          className="text-[10px] text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200 cursor-pointer"
+                        >
+                          <Edit size={11} /> Edit
+                        </button>
+                      )}
+                      <span className="text-[10px] text-gray-400 font-bold">
+                        Marketing Desk
+                      </span>
+                    </div>
                   </div>
-                  <div className="bg-purple-50/40 p-3.5 rounded-xl border border-purple-100 text-xs text-gray-800 font-medium whitespace-pre-wrap leading-relaxed">
-                    {order.notes || order.designNotes || order.marketing_notes || 'No written instructions provided.'}
-                  </div>
-
-                  {order.voiceNote && (
-                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                        <Mic size={16} />
+                  {isEditingTask ? (
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-gray-500 tracking-wider mb-1">
+                          Customer / Task Title
+                        </label>
+                        <input
+                          type="text"
+                          value={taskEditName}
+                          onChange={e => setTaskEditName(e.target.value)}
+                          placeholder="Customer or task title"
+                          className="w-full text-xs font-bold border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                        />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-800">Voice Instructions Attached</p>
-                        <p className="text-[10px] text-gray-500 truncate">{order.voiceNote}</p>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-gray-500 tracking-wider mb-1">
+                          Customer Phone
+                        </label>
+                        <input
+                          type="text"
+                          value={taskEditPhone}
+                          onChange={e => setTaskEditPhone(e.target.value)}
+                          placeholder="Phone number"
+                          className="w-full text-xs border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-purple-700 tracking-wider mb-1">
+                          Design Instructions & Notes
+                        </label>
+                        <textarea
+                          rows={6}
+                          value={taskEditNotes}
+                          onChange={e => setTaskEditNotes(e.target.value)}
+                          placeholder="Write detailed design requirements..."
+                          className="w-full text-xs border border-purple-200 rounded-xl p-3 bg-purple-50/30 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="checkbox"
+                          id="task-urgent-edit"
+                          checked={taskEditUrgent}
+                          onChange={e => setTaskEditUrgent(e.target.checked)}
+                          className="rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor="task-urgent-edit" className="text-xs font-bold text-rose-600 cursor-pointer">
+                          🔥 Mark as Urgent Priority
+                        </label>
+                      </div>
+                      {taskEditUrgent && (
+                        <div>
+                          <input
+                            type="text"
+                            value={taskEditUrgentReason}
+                            onChange={e => setTaskEditUrgentReason(e.target.value)}
+                            placeholder="Reason for urgency"
+                            className="w-full text-xs border border-rose-200 rounded-xl p-2 bg-rose-50/40 focus:bg-white"
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={handleSaveTaskEdit}
+                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none shadow-sm disabled:opacity-50"
+                        >
+                          {isSaving ? 'Saving...' : '✓ Save Changes'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingTask(false);
+                            if (order) {
+                              setTaskEditName(order.customerInfo?.name || '');
+                              setTaskEditPhone(order.customerInfo?.phone || '');
+                              setTaskEditNotes(order.notes || order.designNotes || order.marketing_notes || '');
+                              setTaskEditUrgent(Boolean(order.isUrgent));
+                              setTaskEditUrgentReason(order.urgentReason || order.details?.urgentReason || '');
+                            }
+                          }}
+                          className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer border-none"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <div className="bg-purple-50/40 p-3.5 rounded-xl border border-purple-100 text-xs text-gray-800 font-medium whitespace-pre-wrap leading-relaxed">
+                        {order.notes || order.designNotes || order.marketing_notes || 'No written instructions provided.'}
+                      </div>
+
+                      {order.voiceNote && (
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                            <Mic size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-800">Voice Instructions Attached</p>
+                            <p className="text-[10px] text-gray-500 truncate">{order.voiceNote}</p>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -676,7 +867,39 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
             </div>
 
             <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
-              {hasReturnedDesigns && onConvertTaskToOrder && (
+              {!isEditingTask ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTask(true)}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-xs"
+                  title="Edit Task Details & Instructions"
+                >
+                  <Edit size={14} /> Edit Task
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={handleSaveTaskEdit}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  <CheckCircle size={14} /> {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              )}
+              {onEdit && !isEditingTask && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onEdit(order);
+                  }}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 border-none cursor-pointer shadow-xs"
+                  title="Open in full form editor"
+                >
+                  <Edit size={14} /> Edit Form
+                </button>
+              )}
+              {hasReturnedDesigns && onConvertTaskToOrder && !isEditingTask && (
                 <button
                   type="button"
                   onClick={() => {
@@ -690,7 +913,7 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
                   <span>🛒 Convert to Order</span>
                 </button>
               )}
-              {hasReturnedDesigns && (
+              {hasReturnedDesigns && !isEditingTask && (
                 <button
                   type="button"
                   onClick={() => setShowTaskReworkPrompt(true)}

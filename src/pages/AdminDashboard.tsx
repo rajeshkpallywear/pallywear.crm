@@ -46,7 +46,7 @@ const MOCK_LOGS = [
 const isDeliveredStatus = (status?: string) => {
   if (!status) return false;
   const s = String(status).toLowerCase().trim();
-  return s === 'delivery' || s === 'delivered' || s === OrderStatus.DELIVERY || s === OrderStatus.DELIVERED;
+  return s === 'delivered' || s === OrderStatus.DELIVERED;
 };
 
 const getEffectiveStatus = (o: Order) => {
@@ -393,7 +393,7 @@ export default function AdminDashboard() {
   };
   const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory'>('all');
   const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
-  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'orders' | 'tasks'>('all');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'orders' | 'tasks'>('orders');
   const [orderClassificationFilter, setOrderClassificationFilter] = useState<'all' | 'bulk' | 'mixed' | 'gift' | 'standard'>('all');
   const [orderStaffSearch, setOrderStaffSearch] = useState('');
   const [orderStaffFilter, setOrderStaffFilter] = useState('all');
@@ -637,7 +637,7 @@ export default function AdminDashboard() {
 
   const totalDeliveredOrdersRevenue = useMemo(() => {
     return orders
-      .filter(o => isDeliveredStatus(o.status))
+      .filter(o => !isRaisedTaskOrder(o) && isDeliveredStatus(o.status))
       .reduce((sum, o) => {
         const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
         return sum + (isNaN(amt) ? 0 : amt);
@@ -645,10 +645,12 @@ export default function AdminDashboard() {
   }, [orders]);
 
   const totalAllOrdersValue = useMemo(() => {
-    return orders.reduce((sum, o) => {
-      const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
-      return sum + (isNaN(amt) ? 0 : amt);
-    }, 0);
+    return orders
+      .filter(o => !isRaisedTaskOrder(o))
+      .reduce((sum, o) => {
+        const amt = Number(o.financials?.totalAmount ?? o.financials?.balanceAmount ?? (o as any).totalAmount ?? 0);
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
   }, [orders]);
 
   const totalConvertedLeadsValue = useMemo(() => {
@@ -659,16 +661,17 @@ export default function AdminDashboard() {
   }, [leads]);
 
   const aggregateTotal = useMemo(() => {
-    if (totalDeliveredOrdersRevenue > 0) return totalDeliveredOrdersRevenue;
-    return totalAllOrdersValue + totalConvertedLeadsValue;
-  }, [totalDeliveredOrdersRevenue, totalAllOrdersValue, totalConvertedLeadsValue]);
+    // Only show value after order delivery (no fallback to undelivered orders/leads)
+    return totalDeliveredOrdersRevenue;
+  }, [totalDeliveredOrdersRevenue]);
 
   const globalDeliveredOrdersChartData = useMemo(() => {
-    if (!orders || orders.length === 0) {
+    const realOrders = orders.filter(o => !isRaisedTaskOrder(o));
+    if (!realOrders || realOrders.length === 0) {
       return [{ name: 'No Orders', deliveredRevenue: 0, totalOrders: 0 }];
     }
 
-    const sorted = [...orders].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+    const sorted = [...realOrders].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
 
     let cumDeliveredRevenue = 0;
     let cumTotalOrders = 0;
@@ -689,7 +692,7 @@ export default function AdminDashboard() {
 
       acc.push({
         name: dateStr,
-        deliveredRevenue: cumDeliveredRevenue > 0 ? cumDeliveredRevenue : (cumTotalOrders * 1000),
+        deliveredRevenue: cumDeliveredRevenue,
         totalOrders: cumTotalOrders,
         orderId: `#${o.id.slice(-6)}`,
         client: o.customerInfo?.name || (o as any).clientName || 'Client',
@@ -1706,20 +1709,68 @@ export default function AdminDashboard() {
             {activeTab === 'overview' ? (
               <>
                 {/* Overview Stats - Ultra-Compact Mobile Responsive Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
                   {[
-                    { label: 'Aggregate Value', val: `₹${Math.round(Number(aggregateTotal) || 0).toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-white', bg: 'bg-green-500', fullRowOnMobile: true },
-                    { label: 'Global Orders', val: orders.length, icon: Zap, color: 'text-white', bg: 'bg-orange-500' },
-                    { label: 'Registered Team', val: registeredUsers.length, icon: Shield, color: 'text-white', bg: 'bg-brand-dark' },
-                    { label: 'Invoices', val: invoices.length, icon: BarChart3, color: 'text-white', bg: 'bg-brand-primary' },
+                    { 
+                      label: 'Aggregate Value', 
+                      val: `₹${Math.round(Number(aggregateTotal) || 0).toLocaleString('en-IN')}`, 
+                      subLabel: totalDeliveredOrdersRevenue > 0 ? 'Delivered Revenue' : 'Delivered Orders Only',
+                      icon: DollarSign, 
+                      color: 'text-white', 
+                      bg: 'bg-green-500', 
+                      fullRowOnMobile: true 
+                    },
+                    { 
+                      label: 'Global Orders', 
+                      val: orders.filter(o => !isRaisedTaskOrder(o)).length, 
+                      subLabel: 'Production Orders',
+                      icon: Zap, 
+                      color: 'text-white', 
+                      bg: 'bg-orange-500',
+                      onClick: () => {
+                        setOrderTypeFilter('orders');
+                        selectTab('orders');
+                      }
+                    },
+                    { 
+                      label: 'Tasks', 
+                      val: orders.filter(isRaisedTaskOrder).length, 
+                      subLabel: 'Marketing Tasks',
+                      icon: Palette, 
+                      color: 'text-white', 
+                      bg: 'bg-purple-600',
+                      onClick: () => {
+                        selectTab('tasks');
+                      }
+                    },
+                    { 
+                      label: 'Registered Team', 
+                      val: registeredUsers.length, 
+                      subLabel: 'Active Users',
+                      icon: Shield, 
+                      color: 'text-white', 
+                      bg: 'bg-brand-dark',
+                      onClick: () => selectTab('users')
+                    },
+                    { 
+                      label: 'Invoices', 
+                      val: invoices.length, 
+                      subLabel: 'Billing Invoices',
+                      icon: BarChart3, 
+                      color: 'text-white', 
+                      bg: 'bg-brand-primary',
+                      onClick: () => selectTab('invoices')
+                    },
                   ].map((stat, i) => (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
                       key={i}
+                      onClick={stat.onClick}
                       className={cn(
                         "bg-white p-2.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-xs flex flex-row sm:flex-col items-center sm:items-start justify-start sm:justify-between gap-3 sm:gap-0 hover:shadow-md transition-all",
+                        stat.onClick ? "cursor-pointer" : "",
                         stat.fullRowOnMobile ? "col-span-2 sm:col-span-1" : ""
                       )}
                     >
@@ -1729,6 +1780,9 @@ export default function AdminDashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate">{stat.label}</p>
                         <p className="text-sm sm:text-xl font-black text-gray-900 mt-0.5 truncate">{stat.val}</p>
+                        {stat.subLabel && (
+                          <p className="text-[9px] text-gray-400 font-semibold truncate mt-0.5 hidden sm:block">{stat.subLabel}</p>
+                        )}
                       </div>
                     </motion.div>
                   ))}

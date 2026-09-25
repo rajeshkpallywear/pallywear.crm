@@ -87,7 +87,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     urgentReason: ''
   });
 
-  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'design_received' | 'task_process' | 'task_completed' | 'hold' | 'completed'>('recent');
+  const [selectedSection, setSelectedSection] = useState<'recent' | 'process' | 'task_process' | 'task_completed' | 'hold' | 'completed'>('recent');
 
   const [isDesignSidebarOpen, setIsDesignSidebarOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -1200,7 +1200,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     const s = String(o.status || '').toLowerCase();
     if (s === 'hold') return false;
     const isPendingOrDraft = s === 'pending' || s === 'draft';
-    return isPendingOrDraft && !isReturnedFromDesign(o);
+    return isPendingOrDraft;
   };
 
   const isProcessOrder = (o: Order) => {
@@ -1237,9 +1237,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       if (selectedSection === 'task_completed') {
         return isRaisedTaskCompleted(o);
       }
-      if (selectedSection === 'design_received') {
-        return isReturnedFromDesign(o);
-      }
       if (selectedSection === 'hold') {
         return isHoldOrder(o);
       }
@@ -1249,7 +1246,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       if (selectedSection === 'process') {
         return isProcessOrder(o);
       }
-      // 'recent': newly created orders that have NOT yet returned from designs
+      // 'recent': newly created orders and active pending orders
       return isRecentOrder(o);
     });
   }, [orders, debouncedSearchTerm, selectedSection]);
@@ -1257,7 +1254,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   const recentOrdersCount = useMemo(() => orders.filter(isRecentOrder).length, [orders]);
   const taskProcessCount = useMemo(() => orders.filter(isRaisedTaskInProcess).length, [orders]);
   const taskCompletedCount = useMemo(() => orders.filter(isRaisedTaskCompleted).length, [orders]);
-  const designReceivedOrdersCount = useMemo(() => orders.filter(isReturnedFromDesign).length, [orders]);
   const processOrdersCount = useMemo(() => orders.filter(isProcessOrder).length, [orders]);
   const holdOrdersCount = useMemo(() => orders.filter(isHoldOrder).length, [orders]);
   const completedOrdersCount = useMemo(() => orders.filter(isDoneOrder).length, [orders]);
@@ -1339,23 +1335,6 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
           )}
         >
           Processing ({processOrdersCount})
-        </button>
-        <button
-          onClick={() => setSelectedSection('design_received')}
-          className={cn(
-            "flex-1 sm:flex-initial px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-none cursor-pointer text-center truncate min-w-0 flex items-center justify-center gap-1.5",
-            selectedSection === 'design_received'
-              ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
-              : "text-purple-700 bg-purple-50/80 hover:bg-purple-100 hover:text-purple-900"
-          )}
-        >
-          <span>🎨 Designs Received</span>
-          <span className={cn(
-            "px-1.5 py-0.2 rounded-full text-[9px] font-black",
-            selectedSection === 'design_received' ? "bg-white/20 text-white" : "bg-purple-200/80 text-purple-900"
-          )}>
-            {designReceivedOrdersCount}
-          </span>
         </button>
         <button
           onClick={() => setSelectedSection('task_process')}
