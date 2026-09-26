@@ -22,7 +22,35 @@ interface OrderDetailModalProps {
 export default function OrderDetailModal({ order: initialOrder, onClose, onUpdateStatus, onUpdateOrder, isAdmin, onEdit, onConvertTaskToOrder }: OrderDetailModalProps) {
   const { loadOrderAttachments, orders, updateOrder: contextUpdateOrder } = useLeads();
   const effectiveUpdateOrder = onUpdateOrder || contextUpdateOrder;
-  const order = initialOrder ? (orders.find(o => o.id === initialOrder.id) || initialOrder) : null;
+  // Use contextOrder only for status/non-attachment fields so we get live updates,
+  // but ALWAYS keep initialOrder as the source of attachments (images etc.)
+  // because the GET /api/orders list strips images for performance.
+  const contextOrder = initialOrder ? orders.find(o => o.id === initialOrder.id) : null;
+  const order = initialOrder
+    ? {
+        ...(contextOrder || initialOrder),
+        // Always prefer initialOrder's image fields (which may have been populated by loadOrderAttachments)
+        staffImages: initialOrder.staffImages?.length ? initialOrder.staffImages : (contextOrder?.staffImages || []),
+        staffPdfs: initialOrder.staffPdfs?.length ? initialOrder.staffPdfs : (contextOrder?.staffPdfs || []),
+        staffAttachments: initialOrder.staffAttachments?.length ? initialOrder.staffAttachments : (contextOrder?.staffAttachments || []),
+        accountsAttachments: initialOrder.accountsAttachments?.length ? initialOrder.accountsAttachments : (contextOrder?.accountsAttachments || []),
+        designAttachments: initialOrder.designAttachments?.length ? initialOrder.designAttachments : (contextOrder?.designAttachments || []),
+        machineFiles: initialOrder.machineFiles?.length ? initialOrder.machineFiles : (contextOrder?.machineFiles || []),
+        marketing_image: initialOrder.marketing_image || contextOrder?.marketing_image || '',
+        original_design_file: initialOrder.original_design_file || contextOrder?.original_design_file || '',
+        original_design_zip: initialOrder.original_design_zip || contextOrder?.original_design_zip || '',
+      }
+    : null;
+
+  // Separately load attachments from API for tasks/orders not having images pre-loaded
+  const [loadedAttachments, setLoadedAttachments] = useState<any>(null);
+  useEffect(() => {
+    if (initialOrder?.id) {
+      loadOrderAttachments(initialOrder.id).then(att => {
+        if (att && typeof att === 'object') setLoadedAttachments(att);
+      }).catch(() => {});
+    }
+  }, [initialOrder?.id]);
 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -322,26 +350,27 @@ export default function OrderDetailModal({ order: initialOrder, onClose, onUpdat
      order.raisedTaskCategory === 'Design Task')
   );
 
+  // Merge API-loaded attachments so images always display (API /attachments returns full base64)
   const marketingImages = [
-    ...(order.staffImages || []),
-    ...(order.marketing_image ? [order.marketing_image] : []),
+    ...(loadedAttachments?.staffImages?.length ? loadedAttachments.staffImages : (order.staffImages || [])),
+    ...((loadedAttachments?.marketing_image || order.marketing_image) ? [loadedAttachments?.marketing_image || order.marketing_image] : []),
     ...(order.staffAttachments || []).filter(f => typeof f === 'string' && (f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
   ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
 
   const marketingDocs = [
-    ...(order.staffPdfs || []),
+    ...(loadedAttachments?.staffPdfs?.length ? loadedAttachments.staffPdfs : (order.staffPdfs || [])),
     ...(order.staffAttachments || []).filter(f => typeof f === 'string' && !(f.startsWith('data:image/') || f.includes('.png') || f.includes('.jpg') || f.includes('.jpeg') || f.includes('.webp')))
   ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
 
   const designerReturnedImages = [
-    ...(order.designAttachments || []),
-    ...(order.original_design_file ? [order.original_design_file] : [])
+    ...(loadedAttachments?.designAttachments?.length ? loadedAttachments.designAttachments : (order.designAttachments || [])),
+    ...((loadedAttachments?.original_design_file || order.original_design_file) ? [loadedAttachments?.original_design_file || order.original_design_file] : [])
   ].filter((v, i, a) => typeof v === 'string' && v.trim() && a.indexOf(v) === i);
 
-  const designerMasterZip = order.original_design_zip || '';
-  const designerMasterZipName = order.original_design_zip_filename || 'Master_Vector_Assets.zip';
-  const designerMasterFilename = order.original_design_filename || '';
-  const designerMachineFiles = order.machineFiles || [];
+  const designerMasterZip = loadedAttachments?.original_design_zip || order.original_design_zip || '';
+  const designerMasterZipName = loadedAttachments?.original_design_zip_filename || order.original_design_zip_filename || 'Master_Vector_Assets.zip';
+  const designerMasterFilename = loadedAttachments?.original_design_filename || order.original_design_filename || '';
+  const designerMachineFiles = loadedAttachments?.machineFiles?.length ? loadedAttachments.machineFiles : (order.machineFiles || []);
 
   const hasReturnedDesigns = Boolean(
     order.designCompleted ||

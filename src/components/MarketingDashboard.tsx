@@ -1198,10 +1198,12 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   };
 
   const isRecentOrder = (o: Order) => {
-    if (isRaisedTaskOrder(o)) return false;
     const s = String(o.status || '').toLowerCase();
     if (s === 'hold') return false;
-    const isPendingOrDraft = s === 'pending' || s === 'draft';
+    const isPendingOrDraft = s === 'pending' || s === 'draft' || s === '';
+    // Raised tasks: show them in Recent if they are newly created (pending or draft = not yet sent to design)
+    if (isRaisedTaskOrder(o)) return isPendingOrDraft;
+    // Regular orders: show if pending/draft
     return isPendingOrDraft;
   };
 
@@ -3255,7 +3257,7 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       {/* Global detailed view modal */}
       {selectedHubOrder && (
         <OrderDetailModal
-          order={orders.find(o => o.id === selectedHubOrder.id) || selectedHubOrder}
+          order={selectedHubOrder}
           onClose={() => setSelectedHubOrder(null)}
           isAdmin={isAdmin}
           onUpdateOrder={onUpdateOrder}
