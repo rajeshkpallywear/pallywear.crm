@@ -372,6 +372,18 @@ export async function initDB() {
     try {
       await pool.execute('ALTER TABLE `orders` ADD COLUMN `reworkNotes` text DEFAULT NULL');
     } catch (_) {}
+    try {
+      await pool.execute("UPDATE orders SET marketing_image = JSON_UNQUOTE(JSON_EXTRACT(staffImages, '$[0]')) WHERE (marketing_image IS NULL OR marketing_image = '') AND staffImages IS NOT NULL AND staffImages LIKE '[%\\"data:image%'");
+    } catch (_) {}
+    try {
+      await pool.execute("UPDATE tasks SET marketing_image = JSON_UNQUOTE(JSON_EXTRACT(staffImages, '$[0]')) WHERE (marketing_image IS NULL OR marketing_image = '') AND staffImages IS NOT NULL AND staffImages LIKE '[%\\"data:image%'");
+    } catch (_) {}
+    try {
+      await pool.execute("UPDATE orders SET marketing_image = original_design_file WHERE (marketing_image IS NULL OR marketing_image = '') AND original_design_file IS NOT NULL AND original_design_file LIKE 'data:image/%'");
+    } catch (_) {}
+    try {
+      await pool.execute("UPDATE tasks SET marketing_image = original_design_file WHERE (marketing_image IS NULL OR marketing_image = '') AND original_design_file IS NOT NULL AND original_design_file LIKE 'data:image/%'");
+    } catch (_) {}
 
 
     // 6. Create leaves table if not exists

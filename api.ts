@@ -442,7 +442,7 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             staffImages, original_design_file, original_design_filename, original_design_zip, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes, productionNotes, voiceNote,
+             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes, productionNotes, voiceNote,
              isRework, isAdminOrder, sentByAdmin, reworkNotes`;
 
     const [orderRows, taskRows] = await Promise.all([
@@ -479,7 +479,7 @@ router.get('/orders', async (req, res) => {
         status: r.status,
         isUrgent: r.isUrgent === 1,
         notes: r.notes,
-        staffImages: resolvedStaffImages,
+        staffImages: previewImg ? [previewImg] : [],
         staffPdfs: [],
         accountsAttachments: [],
         orderManagementAttachments: [],
@@ -502,9 +502,9 @@ router.get('/orders', async (req, res) => {
         createdBy: r.createdBy || '',
         createdByName: r.createdByName || '',
         accountsNotes: r.accountsNotes || '',
-        original_design_file: r.original_design_file || '',
+        original_design_file: '',
         original_design_filename: r.original_design_filename || '',
-        original_design_zip: r.original_design_zip || '',
+        original_design_zip: '',
         original_design_zip_filename: r.original_design_zip_filename || '',
         sentByAccounts: r.sentByAccounts === 1,
         claimedBy: r.claimedBy || '',
@@ -580,6 +580,14 @@ router.post('/orders', async (req, res) => {
 
   if (!order.id) {
     return res.status(400).json({ success: false, message: 'Order ID is required.' });
+  }
+
+  if (!order.marketing_image) {
+    if (Array.isArray(order.staffImages) && order.staffImages.length > 0 && typeof order.staffImages[0] === 'string') {
+      order.marketing_image = order.staffImages[0];
+    } else if (order.original_design_file) {
+      order.marketing_image = order.original_design_file;
+    }
   }
 
   const isTask = isTaskRecord(order);
@@ -1161,7 +1169,7 @@ router.get('/tasks', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             staffImages, original_design_file, original_design_filename, original_design_zip, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes, productionNotes, voiceNote,
+             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes, productionNotes, voiceNote,
              isRework, isAdminOrder, sentByAdmin, reworkNotes
       FROM tasks
     `) as any[];
@@ -1194,7 +1202,7 @@ router.get('/tasks', async (req, res) => {
         status: r.status,
         isUrgent: r.isUrgent === 1,
         notes: r.notes,
-        staffImages: resolvedStaffImages,
+        staffImages: previewImg ? [previewImg] : [],
         staffPdfs: [],
         accountsAttachments: [],
         orderManagementAttachments: [],

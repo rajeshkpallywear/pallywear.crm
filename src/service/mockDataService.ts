@@ -168,7 +168,7 @@ export const mockDataService = {
       const cached = getCached<Order[]>('orders', 12000);
       if (cached && cached.length > 0) {
         // Return cached immediately and refresh in background
-        fetchWithTimeout(getApiUrl('/api/orders'), {}, 5000)
+        fetchWithTimeout(getApiUrl('/api/orders'), {}, 12000)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data && Array.isArray(data)) setCache('orders', data);
@@ -177,7 +177,7 @@ export const mockDataService = {
         return cached;
       }
     }
-    const res = await fetchWithTimeout(getApiUrl('/api/orders'), {}, 6000);
+    const res = await fetchWithTimeout(getApiUrl('/api/orders'), {}, 15000);
     if (!res.ok) {
       const fallback = getCached<Order[]>('orders', 86400000);
       if (fallback) return fallback;
