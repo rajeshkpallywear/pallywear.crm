@@ -1198,12 +1198,9 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
   };
 
   const isRecentOrder = (o: Order) => {
+    if (isRaisedTaskOrder(o)) return false;
     const s = String(o.status || '').toLowerCase();
     if (s === 'hold') return false;
-    if (isRaisedTaskOrder(o)) {
-      // Show active design tasks in Recent tab so marketing users immediately see them
-      return !isRaisedTaskCompleted(o);
-    }
     const isPendingOrDraft = s === 'pending' || s === 'draft';
     return isPendingOrDraft;
   };
