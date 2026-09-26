@@ -442,7 +442,7 @@ router.get('/orders', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes, productionNotes, voiceNote,
+             staffImages, original_design_file, original_design_filename, original_design_zip, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes, productionNotes, voiceNote,
              isRework, isAdminOrder, sentByAdmin, reworkNotes`;
 
     const [orderRows, taskRows] = await Promise.all([
@@ -453,6 +453,9 @@ router.get('/orders', async (req, res) => {
     const mapEntity = (r: any, isFromTaskTable: boolean) => {
       const details = safeJSONParse(r.details, {});
       const isTask = isFromTaskTable || details.isRaisedTask === true || details.isRaisedTask === 'true' || r.category === 'Design Task' || false;
+      const parsedStaffImages = safeJSONParse(r.staffImages, []);
+      const previewImg = r.marketing_image || (Array.isArray(parsedStaffImages) && parsedStaffImages[0]) || r.original_design_file || '';
+      const resolvedStaffImages = Array.isArray(parsedStaffImages) && parsedStaffImages.length > 0 ? parsedStaffImages : (previewImg ? [previewImg] : []);
       return {
         id: r.id,
         customerInfo: {
@@ -476,13 +479,13 @@ router.get('/orders', async (req, res) => {
         status: r.status,
         isUrgent: r.isUrgent === 1,
         notes: r.notes,
-        staffImages: [],
+        staffImages: resolvedStaffImages,
         staffPdfs: [],
         accountsAttachments: [],
         orderManagementAttachments: [],
         designAttachments: [],
         machineFiles: [],
-        marketing_image: '',
+        marketing_image: previewImg,
         marketing_notes: r.marketing_notes || '',
         productionNotes: r.productionNotes || '',
         voiceNote: r.voiceNote || '',
@@ -499,9 +502,9 @@ router.get('/orders', async (req, res) => {
         createdBy: r.createdBy || '',
         createdByName: r.createdByName || '',
         accountsNotes: r.accountsNotes || '',
-        original_design_file: '',
+        original_design_file: r.original_design_file || '',
         original_design_filename: r.original_design_filename || '',
-        original_design_zip: '',
+        original_design_zip: r.original_design_zip || '',
         original_design_zip_filename: r.original_design_zip_filename || '',
         sentByAccounts: r.sentByAccounts === 1,
         claimedBy: r.claimedBy || '',
@@ -778,8 +781,11 @@ router.post('/orders', async (req, res) => {
   }
 });
 
-router.delete('/orders/:id', async (req, res) => {
-  const rawId = sanitizeId(req.params.id);
+const handleDeleteOrderRoute = async (req: any, res: any) => {
+  const rawId = sanitizeId(req.params.id || req.body?.id || '');
+  if (!rawId) {
+    return res.status(400).json({ success: false, message: 'Order ID is required' });
+  }
   try {
     await Promise.all([
       query('DELETE FROM orders WHERE id = ? OR id = ?', [rawId, '#' + rawId]),
@@ -790,7 +796,11 @@ router.delete('/orders/:id', async (req, res) => {
     console.error('Error deleting order/task:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+router.delete('/orders/:id', handleDeleteOrderRoute);
+router.post('/orders/:id/delete', handleDeleteOrderRoute);
+router.post('/orders/delete', handleDeleteOrderRoute);
 
 const handleUpdateOrderFields = async (req, res) => {
   const rawId = sanitizeId(req.params.id);
@@ -1151,13 +1161,16 @@ router.get('/tasks', async (req, res) => {
              isUrgent, notes, createdAt, updatedAt, designName, designAmount, 
              designGst, designDiscount, designNotes, assignedDesigner, holdReason, 
              previousStatus, createdBy, createdByName, accountsNotes, 
-             original_design_filename, original_design_zip_filename, sentByAccounts, marketing_notes, productionNotes, voiceNote,
+             staffImages, original_design_file, original_design_filename, original_design_zip, original_design_zip_filename, sentByAccounts, marketing_image, marketing_notes, productionNotes, voiceNote,
              isRework, isAdminOrder, sentByAdmin, reworkNotes
       FROM tasks
     `) as any[];
 
     const mapped = (Array.isArray(rows) ? rows : []).map(r => {
       const details = safeJSONParse(r.details, {});
+      const parsedStaffImages = safeJSONParse(r.staffImages, []);
+      const previewImg = r.marketing_image || (Array.isArray(parsedStaffImages) && parsedStaffImages[0]) || r.original_design_file || '';
+      const resolvedStaffImages = Array.isArray(parsedStaffImages) && parsedStaffImages.length > 0 ? parsedStaffImages : (previewImg ? [previewImg] : []);
       return {
         id: r.id,
         customerInfo: {
@@ -1181,13 +1194,13 @@ router.get('/tasks', async (req, res) => {
         status: r.status,
         isUrgent: r.isUrgent === 1,
         notes: r.notes,
-        staffImages: [],
+        staffImages: resolvedStaffImages,
         staffPdfs: [],
         accountsAttachments: [],
         orderManagementAttachments: [],
         designAttachments: [],
         machineFiles: [],
-        marketing_image: '',
+        marketing_image: previewImg,
         marketing_notes: r.marketing_notes || '',
         productionNotes: r.productionNotes || '',
         voiceNote: r.voiceNote || '',
@@ -1204,9 +1217,9 @@ router.get('/tasks', async (req, res) => {
         createdBy: r.createdBy || '',
         createdByName: r.createdByName || '',
         accountsNotes: r.accountsNotes || '',
-        original_design_file: '',
+        original_design_file: r.original_design_file || '',
         original_design_filename: r.original_design_filename || '',
-        original_design_zip: '',
+        original_design_zip: r.original_design_zip || '',
         original_design_zip_filename: r.original_design_zip_filename || '',
         sentByAccounts: r.sentByAccounts === 1,
         claimedBy: r.claimedBy || '',
@@ -1231,16 +1244,26 @@ router.get('/tasks', async (req, res) => {
   }
 });
 
-router.delete('/tasks/:id', async (req, res) => {
-  const rawId = sanitizeId(req.params.id);
+const handleDeleteTaskRoute = async (req: any, res: any) => {
+  const rawId = sanitizeId(req.params.id || req.body?.id || '');
+  if (!rawId) {
+    return res.status(400).json({ success: false, message: 'Task ID is required' });
+  }
   try {
-    await query('DELETE FROM tasks WHERE id = ? OR id = ?', [rawId, '#' + rawId]);
+    await Promise.all([
+      query('DELETE FROM tasks WHERE id = ? OR id = ?', [rawId, '#' + rawId]),
+      query('DELETE FROM orders WHERE id = ? OR id = ?', [rawId, '#' + rawId])
+    ]);
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting task:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+router.delete('/tasks/:id', handleDeleteTaskRoute);
+router.post('/tasks/:id/delete', handleDeleteTaskRoute);
+router.post('/tasks/delete', handleDeleteTaskRoute);
 
 // ----------------------------------------------------
 // INVOICES ENDPOINTS

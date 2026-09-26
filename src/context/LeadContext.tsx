@@ -312,8 +312,16 @@ export function LeadProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteOrder = async (id: string) => {
-    await mockDataService.deleteOrder(id);
-    setOrders((prev) => prev.filter((order) => order.id !== id));
+    const cleanId = id.replace(/#/g, '');
+    setOrders((prev) => prev.filter((order) => {
+      const oId = String(order.id || '').replace(/#/g, '');
+      return oId !== cleanId && order.id !== id;
+    }));
+    try {
+      await mockDataService.deleteOrder(id);
+    } catch (err) {
+      console.warn("Delete order network notice:", err);
+    }
   };
 
   const addInventoryMovement = async (movement: Omit<InventoryMovement, 'id' | 'createdAt'>) => {

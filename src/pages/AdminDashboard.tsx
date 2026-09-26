@@ -3476,9 +3476,9 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                {((o.staffImages && o.staffImages[0]) || o.marketing_image) && (
-                                  <div className="w-10 h-10 rounded-xl border border-gray-200 overflow-hidden shrink-0 bg-gray-50">
-                                    <img src={o.staffImages?.[0] || o.marketing_image} className="w-full h-full object-cover" />
+                                {((o.staffImages && o.staffImages[0]) || o.marketing_image || o.original_design_file) && (
+                                  <div className="w-10 h-10 rounded-xl border border-gray-200 overflow-hidden shrink-0 bg-gray-50 cursor-pointer hover:opacity-90" onClick={() => setSelectedOrderDetail(o)}>
+                                    <img src={o.original_design_file || o.staffImages?.[0] || o.marketing_image} className="w-full h-full object-cover" />
                                   </div>
                                 )}
                                 <div>

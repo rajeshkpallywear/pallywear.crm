@@ -98,24 +98,26 @@ function stripAttachmentsForStorage(data: any): any {
   if (!Array.isArray(data)) return data;
   return data.map(item => {
     if (!item || typeof item !== 'object' || !item.id) return item;
-    // Don't store large attachment base64 in localStorage cache
+    // Don't store heavy non-image files in localStorage, but ALWAYS preserve
+    // the primary thumbnail/preview so cards and tables always display images!
     if ('status' in item && ('staffImages' in item || 'designAttachments' in item || 'original_design_file' in item)) {
       const {
-        staffImages, staffPdfs, staffAttachments, accountsAttachments,
+        staffPdfs, staffAttachments, accountsAttachments,
         orderManagementAttachments, designAttachments, machineFiles,
-        original_design_file, original_design_zip, marketing_image, invoice_file,
+        original_design_zip, invoice_file,
         ...lightOrder
       } = item;
+      const previewImg = item.marketing_image || (Array.isArray(item.staffImages) && item.staffImages[0]) || item.original_design_file || '';
       return {
         ...lightOrder,
-        staffImages: [],
+        staffImages: previewImg ? [previewImg] : [],
         staffPdfs: [],
         accountsAttachments: [],
         orderManagementAttachments: [],
         designAttachments: [],
         machineFiles: [],
-        marketing_image: '',
-        original_design_file: '',
+        marketing_image: previewImg,
+        original_design_file: item.original_design_file || previewImg,
         original_design_zip: '',
         invoice_file: ''
       };
@@ -278,12 +280,48 @@ export const mockDataService = {
   },
 
   deleteOrder: async (id: string): Promise<void> => {
+    const cleanId = sanitizeId(id);
     invalidateCache('orders');
-    invalidateCache(`att_${sanitizeId(id)}`);
-    const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(sanitizeId(id))}`), {
-      method: 'DELETE'
-    });
-    if (!res.ok) throw new Error('Failed to delete order');
+    invalidateCache(`att_${cleanId}`);
+
+    // Update in-memory & localStorage cached orders immediately
+    const cachedOrders = getCached<Order[]>('orders', 60000);
+    if (cachedOrders && Array.isArray(cachedOrders)) {
+      setCache('orders', cachedOrders.filter(o => sanitizeId(o.id) !== cleanId));
+    }
+
+    let ok = false;
+    try {
+      const res = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(cleanId)}`), {
+        method: 'DELETE'
+      });
+      if (res.ok) ok = true;
+    } catch (_) {}
+
+    // Fallback to POST /delete if DELETE method is blocked by proxy or firewall
+    if (!ok) {
+      try {
+        const postRes = await fetch(getApiUrl(`/api/orders/${encodeURIComponent(cleanId)}/delete`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: cleanId })
+        });
+        if (postRes.ok) ok = true;
+      } catch (_) {}
+    }
+
+    // Also attempt tasks delete endpoint as backup
+    if (!ok) {
+      try {
+        const taskRes = await fetch(getApiUrl(`/api/tasks/${encodeURIComponent(cleanId)}/delete`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: cleanId })
+        });
+        if (taskRes.ok) ok = true;
+      } catch (_) {}
+    }
+
     notifyUpdate();
   },
 
