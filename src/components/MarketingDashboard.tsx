@@ -1229,9 +1229,30 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
     return s === 'delivery' || s === 'delivered';
   };
 
+  const isItemOwnedByCurrentUser = (o: Order) => {
+    if (isAdmin) return true;
+    if (!user) return true;
+    const uId = String(user?.id || (user as any)?.uid || '').trim().toLowerCase();
+    const uName = String(user?.name || '').trim().toLowerCase();
+    const uEmail = String(user?.email || '').trim().toLowerCase();
+    const cBy = String(o.createdBy || '').trim().toLowerCase();
+    const cName = String(o.createdByName || '').trim().toLowerCase();
+    const aTo = String(o.assignedTo || '').trim().toLowerCase();
+    const aName = String((o as any).assignedToName || '').trim().toLowerCase();
+    return (
+      (uId && (cBy === uId || aTo === uId)) ||
+      (uEmail && (cBy === uEmail || aTo === uEmail)) ||
+      (uName && (cName === uName || aName === uName || cBy === uName))
+    );
+  };
+
+  const userScopedOrders = useMemo(() => {
+    return (orders || []).filter(isItemOwnedByCurrentUser);
+  }, [orders, user, isAdmin]);
+
   const filteredOrders = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
-    return (orders || []).filter(o => {
+    return userScopedOrders.filter(o => {
       if (!o) return false;
       const matchesSearch = !term || (o.customerInfo?.name || '').toLowerCase().includes(term) || String(o.id || '').toLowerCase().includes(term) || String(o.reworkNotes || '').toLowerCase().includes(term);
       if (!matchesSearch) return false;
@@ -1254,14 +1275,14 @@ export default function MarketingDashboard({ orders, inventory = [], onCreateOrd
       // 'recent': newly created orders and active pending orders
       return isRecentOrder(o);
     });
-  }, [orders, debouncedSearchTerm, selectedSection]);
+  }, [userScopedOrders, debouncedSearchTerm, selectedSection]);
 
-  const recentOrdersCount = useMemo(() => orders.filter(isRecentOrder).length, [orders]);
-  const taskProcessCount = useMemo(() => orders.filter(isRaisedTaskInProcess).length, [orders]);
-  const taskCompletedCount = useMemo(() => orders.filter(isRaisedTaskCompleted).length, [orders]);
-  const processOrdersCount = useMemo(() => orders.filter(isProcessOrder).length, [orders]);
-  const holdOrdersCount = useMemo(() => orders.filter(isHoldOrder).length, [orders]);
-  const completedOrdersCount = useMemo(() => orders.filter(isDoneOrder).length, [orders]);
+  const recentOrdersCount = useMemo(() => userScopedOrders.filter(isRecentOrder).length, [userScopedOrders]);
+  const taskProcessCount = useMemo(() => userScopedOrders.filter(isRaisedTaskInProcess).length, [userScopedOrders]);
+  const taskCompletedCount = useMemo(() => userScopedOrders.filter(isRaisedTaskCompleted).length, [userScopedOrders]);
+  const processOrdersCount = useMemo(() => userScopedOrders.filter(isProcessOrder).length, [userScopedOrders]);
+  const holdOrdersCount = useMemo(() => userScopedOrders.filter(isHoldOrder).length, [userScopedOrders]);
+  const completedOrdersCount = useMemo(() => userScopedOrders.filter(isDoneOrder).length, [userScopedOrders]);
 
   const isTaskSection = selectedSection === 'task_process' || selectedSection === 'task_completed';
 

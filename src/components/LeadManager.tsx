@@ -195,18 +195,31 @@ export default function LeadManager({ hideAdd = false }: LeadManagerProps) {
   };
 
   const visibleLeads = React.useMemo(() => {
-    const filteredLeads = leads.filter(l => !l.isOnlineLead);
-    if (user?.role === 'admin' || user?.email === 'daniel.smpallywear@gmail.com') return filteredLeads;
+    const nonOnlineLeads = leads.filter(l => !l.isOnlineLead);
+    if (user?.role === 'admin' || user?.role === 'sales_head' || user?.role === 'operations_head' || user?.email === 'daniel.smpallywear@gmail.com') return nonOnlineLeads;
     if (user?.role === 'onlineteam') {
-      return filteredLeads.filter(l => {
+      return nonOnlineLeads.filter(l => {
         const isCreatorOnlineTeam = registeredUsers?.some(
           u => u.id === l.createdBy && (u.role === 'onlineteam' || u.role === 'UserRole.ONLINETEAM')
         );
         return !isCreatorOnlineTeam;
       });
     }
-    // Marketing/staff/other roles: show leads
-    return filteredLeads;
+    // For marketing/staff users: only show leads created by or assigned to this user
+    const uId = String(user?.id || (user as any)?.uid || '').trim().toLowerCase();
+    const uName = String(user?.name || '').trim().toLowerCase();
+    const uEmail = String(user?.email || '').trim().toLowerCase();
+    return nonOnlineLeads.filter(l => {
+      const createdBy = String(l.createdBy || '').trim().toLowerCase();
+      const createdByName = String(l.createdByName || '').trim().toLowerCase();
+      const assignedTo = String(l.assignedTo || '').trim().toLowerCase();
+      const assignedToName = String(l.assignedToName || '').trim().toLowerCase();
+      return (
+        (uId && (createdBy === uId || assignedTo === uId)) ||
+        (uEmail && (createdBy === uEmail || assignedTo === uEmail)) ||
+        (uName && (createdByName === uName || assignedToName === uName || createdBy === uName))
+      );
+    });
   }, [leads, user, registeredUsers]);
 
   const filteredLeads = visibleLeads.filter(l => {

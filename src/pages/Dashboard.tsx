@@ -63,7 +63,6 @@ export default function Dashboard() {
       'delivery',
       'sales_head',
       'operations_head',
-      'marketing',
       UserRole.ADMIN,
       UserRole.ACCOUNTS,
       UserRole.DESIGNER,
@@ -72,26 +71,26 @@ export default function Dashboard() {
       UserRole.DIGITIZER,
       UserRole.DELIVERY,
       UserRole.SALES_HEAD,
-      UserRole.OPERATIONS_HEAD,
-      UserRole.MARKETING
+      UserRole.OPERATIONS_HEAD
     ];
     
     if (viewAllRoles.includes(user.role as any)) {
       return orders;
     }
     
-    const uId = String(user.id || (user as any).uid || '');
+    const uId = String(user.id || (user as any).uid || '').trim().toLowerCase();
     const uName = (user.name || '').toLowerCase().trim();
     const uEmail = (user.email || '').toLowerCase().trim();
     return orders.filter(o => {
-      const createdBy = String(o.createdBy || '');
+      const createdBy = String(o.createdBy || '').toLowerCase().trim();
       const createdByName = (o.createdByName || '').toLowerCase().trim();
-      const assignedTo = String(o.assignedTo || '');
-      return (uId && (createdBy === uId || assignedTo === uId)) ||
-        (user.id && (createdBy === String(user.id) || assignedTo === String(user.id))) ||
-        (user.uid && (createdBy === String((user as any).uid) || assignedTo === String((user as any).uid))) ||
-        (uEmail && (createdBy.toLowerCase() === uEmail || assignedTo.toLowerCase() === uEmail)) ||
-        (uName && (createdByName === uName || createdBy.toLowerCase() === uName));
+      const assignedTo = String(o.assignedTo || '').toLowerCase().trim();
+      const assignedToName = String((o as any).assignedToName || '').toLowerCase().trim();
+      return (
+        (uId && (createdBy === uId || assignedTo === uId)) ||
+        (uEmail && (createdBy === uEmail || assignedTo === uEmail)) ||
+        (uName && (createdByName === uName || assignedToName === uName || createdBy === uName))
+      );
     });
   }, [orders, user]);
 
@@ -318,18 +317,20 @@ export default function Dashboard() {
     }
   };
 
-  const filteredLeads = user?.role === 'admin'
+  const filteredLeads = user?.role === 'admin' || user?.role === 'sales_head' || user?.role === 'operations_head'
     ? leads
     : leads.filter(l => {
-        const uId = String(user?.id || (user as any)?.uid || '');
+        const uId = String(user?.id || (user as any)?.uid || '').trim().toLowerCase();
         const uName = (user?.name || '').toLowerCase().trim();
+        const uEmail = (user?.email || '').toLowerCase().trim();
+        const createdBy = String(l.createdBy || '').toLowerCase().trim();
+        const createdByName = (l.createdByName || '').toLowerCase().trim();
+        const assignedTo = String(l.assignedTo || '').toLowerCase().trim();
+        const assignedToName = String(l.assignedToName || '').toLowerCase().trim();
         return (
-          l.createdBy === uId ||
-          l.assignedTo === uId ||
-          (l.createdByName && l.createdByName.toLowerCase().trim() === uName) ||
-          (l.assignedToName && l.assignedToName.toLowerCase().trim() === uName) ||
-          user?.role === 'marketing' ||
-          user?.role === 'staff'
+          (uId && (createdBy === uId || assignedTo === uId)) ||
+          (uEmail && (createdBy === uEmail || assignedTo === uEmail)) ||
+          (uName && (createdByName === uName || assignedToName === uName || createdBy === uName))
         );
       });
 
