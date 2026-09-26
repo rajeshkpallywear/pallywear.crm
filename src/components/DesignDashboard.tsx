@@ -263,7 +263,8 @@ export default function DesignDashboard({ orders, onUpdateOrder, user }: DesignD
       const isRework = isItemRework(o);
       const isDesignDone = isOrderDesignDone(o);
       const isCompletedDesign = statusLower === 'delivered' || isDesignDone;
-      const isDesignPhase = statusLower === 'design' || statusLower === 'rework' || isRework;
+      const isTask = Boolean(o.isRaisedTask || o.details?.isRaisedTask || o.category === 'Design Task' || o.raisedTaskCategory === 'Design Task');
+      const isDesignPhase = statusLower === 'design' || statusLower === 'rework' || isRework || isTask;
       const isHoldFromDesign = statusLower === 'hold' && prevStatusLower === 'design';
       const isMarketing = !o.sentByAccounts;
       return (isDesignPhase || isHoldFromDesign || isCompletedDesign || isRework) && isMarketing;

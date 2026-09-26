@@ -63,6 +63,7 @@ export default function Dashboard() {
       'delivery',
       'sales_head',
       'operations_head',
+      'marketing',
       UserRole.ADMIN,
       UserRole.ACCOUNTS,
       UserRole.DESIGNER,
@@ -71,7 +72,8 @@ export default function Dashboard() {
       UserRole.DIGITIZER,
       UserRole.DELIVERY,
       UserRole.SALES_HEAD,
-      UserRole.OPERATIONS_HEAD
+      UserRole.OPERATIONS_HEAD,
+      UserRole.MARKETING
     ];
     
     if (viewAllRoles.includes(user.role as any)) {
@@ -131,7 +133,7 @@ export default function Dashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
-  const [tempApiUrl, setTempApiUrl] = React.useState(localStorage.getItem('pallywear_api_url') || 'https://pallywear.in');
+  const [tempApiUrl, setTempApiUrl] = React.useState(localStorage.getItem('pallywear_api_url') || 'http://37.148.202.137:3000');
 
   const saveSettings = () => {
     let url = tempApiUrl.trim();
@@ -145,7 +147,7 @@ export default function Dashboard() {
       }
       localStorage.setItem('pallywear_api_url', url);
     } else {
-      localStorage.setItem('pallywear_api_url', 'https://pallywear.in');
+      localStorage.setItem('pallywear_api_url', 'http://37.148.202.137:3000');
     }
     setShowSettings(false);
     window.location.reload();
@@ -1379,8 +1381,8 @@ export default function Dashboard() {
                     variant="outline"
                     className="text-xs text-red-500 border-red-200 hover:bg-red-50"
                     onClick={() => {
-                      localStorage.setItem('pallywear_api_url', 'https://pallywear.in');
-                      setTempApiUrl('https://pallywear.in');
+                      localStorage.setItem('pallywear_api_url', 'http://37.148.202.137:3000');
+                      setTempApiUrl('http://37.148.202.137:3000');
                       setShowSettings(false);
                       window.location.reload();
                     }}

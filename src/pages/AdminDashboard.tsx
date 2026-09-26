@@ -358,6 +358,7 @@ export default function AdminDashboard() {
       await mockDataService.updateUser({
         ...userToEdit,
         uid: userToEdit.id || userToEdit.uid,
+        password: userToEdit.password ? userToEdit.password.trim() : undefined,
         status: userToEdit.status || (userToEdit.isBlocked ? 'Blocked' : 'Active'),
         isBlocked: Boolean(userToEdit.isBlocked || userToEdit.status === 'Blocked'),
         faceRegistered: Boolean(userToEdit.faceRegistered || userToEdit.faceData),
@@ -428,7 +429,7 @@ export default function AdminDashboard() {
   };
   const [selectedDept, setSelectedDept] = useState<'all' | 'staff' | 'accounts' | 'order_management' | 'production' | 'delivery' | 'designers' | 'digitizer' | 'inventory'>('all');
   const [selectedSection, setSelectedSection] = useState<'total' | 'queue' | 'hold' | 'completed'>('total');
-  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'orders' | 'tasks'>('orders');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'orders' | 'tasks'>('all');
   const [orderClassificationFilter, setOrderClassificationFilter] = useState<'all' | 'bulk' | 'mixed' | 'gift' | 'standard'>('all');
   const [orderStaffSearch, setOrderStaffSearch] = useState('');
   const [orderStaffFilter, setOrderStaffFilter] = useState('all');
@@ -5086,6 +5087,21 @@ export default function AdminDashboard() {
                     <option value="onlineteam">Online Team</option>
                     <option value="vendor">Vendor</option>
                   </select>
+                </div>
+
+                {/* Reset / Change Password */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                    <span>Reset / Set Password</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Leave blank to keep unchanged</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={userToEdit.password || ''}
+                    onChange={(e) => setUserToEdit({ ...userToEdit, password: e.target.value })}
+                    placeholder="Enter new password (e.g. pally@123)"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-brand-primary"
+                  />
                 </div>
 
                 {/* Account Access Status (Active vs Blocked) */}
